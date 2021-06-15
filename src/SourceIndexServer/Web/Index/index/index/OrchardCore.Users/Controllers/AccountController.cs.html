@@ -1,0 +1,823 @@
+﻿<!DOCTYPE html>
+<html><head><title>AccountController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(814);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/Controllers/AccountController.cs" target="_top">Controllers\AccountController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authentication</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Serialization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Scripting</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i">Events</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="t">IWorkflowManager</span> = <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Services</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a>;
+<b>using</b> <span class="t">SignInResult</span> = <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>.<span class="t t">SignInResult</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Controllers</span>
+{
+    [<span class="t constructor">Authorize</span>]
+    <b>public class</b> <a id="3c4a62288ea15c04" href="../R/3c4a62288ea15c04.html" target="n" data-glyph="0,0" class="t t">AccountController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">IUserService</span> <a id="732b8245a15e39d2" href="../R/732b8245a15e39d2.html" target="n" data-glyph="46,1" class="i field">_userService</a>;
+        <b>private readonly</b> <span class="t t">SignInManager</span>&lt;<span class="i">IUser</span>&gt; <a id="58fdc3983f8603ac" href="../R/58fdc3983f8603ac.html" target="n" data-glyph="46,1" class="i field">_signInManager</a>;
+        <b>private readonly</b> <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <a id="5ca6f1f4e3a32be1" href="../R/5ca6f1f4e3a32be1.html" target="n" data-glyph="46,1" class="i field">_userManager</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="c8a97dff15466f8f" href="../R/c8a97dff15466f8f.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <a id="0652b7164dc99e35" href="../R/0652b7164dc99e35.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ILoginFormEvent</span>&gt; <a id="6b2a7b87987d342d" href="../R/6b2a7b87987d342d.html" target="n" data-glyph="46,1" class="i field">_accountEvents</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#a5f6556b5a7b743a" class="t t">IScriptingManager</a> <a id="28d8d62a9e381f5e" href="../R/28d8d62a9e381f5e.html" target="n" data-glyph="46,1" class="i field">_scriptingManager</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="cbfb2012f2f5d9b4" href="../R/cbfb2012f2f5d9b4.html" target="n" data-glyph="46,1" class="i field">_dataProtectionProvider</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="29b265a3c2f90a80" href="../R/29b265a3c2f90a80.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="i">IClock</span> <a id="f4ad4f83ae80e7cf" href="../R/f4ad4f83ae80e7cf.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <span class="t t">IDistributedCache</span> <a id="2bbba9adfe9bc1a4" href="../R/2bbba9adfe9bc1a4.html" target="n" data-glyph="46,1" class="i field">_distributedCache</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IExternalLoginEventHandler</span>&gt; <a id="6002bb686da5bf4e" href="../R/6002bb686da5bf4e.html" target="n" data-glyph="46,1" class="i field">_externalLoginHandlers</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="ab7ef121f8335820" href="../R/ab7ef121f8335820.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="4e4ae032f5b44219" href="../R/4e4ae032f5b44219.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="103febf46ac23d12" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AccountController</a>(
+            <span class="i">IUserService</span> <span id="r0 rd" class="r0 r">userService</span>,
+            <span class="t t">SignInManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r1 rd" class="r1 r">signInManager</span>,
+            <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r2 rd" class="r2 r">userManager</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#3c4a62288ea15c04" class="t t">AccountController</a>&gt; <span id="r3 rd" class="r3 r">logger</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <span id="r4 rd" class="r4 r">siteService</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#3c4a62288ea15c04" class="t t">AccountController</a>&gt; <span id="r5 rd" class="r5 r">htmlLocalizer</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#3c4a62288ea15c04" class="t t">AccountController</a>&gt; <span id="r6 rd" class="r6 r">stringLocalizer</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ILoginFormEvent</span>&gt; <span id="r7 rd" class="r7 r">accountEvents</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#a5f6556b5a7b743a" class="t t">IScriptingManager</a> <span id="r8 rd" class="r8 r">scriptingManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r9 rd" class="r9 r">notifier</span>,
+            <span class="i">IClock</span> <span id="r10 rd" class="r10 r">clock</span>,
+            <span class="t t">IDistributedCache</span> <span id="r11 rd" class="r11 r">distributedCache</span>,
+            <span class="t t">IDataProtectionProvider</span> <span id="r12 rd" class="r12 r">dataProtectionProvider</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IExternalLoginEventHandler</span>&gt; <span id="r13 rd" class="r13 r">externalLoginHandlers</span>)
+        {
+            <a href="#58fdc3983f8603ac" class="i field">_signInManager</a> = <span class="r1 r">signInManager</span>;
+            <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a> = <span class="r2 r">userManager</span>;
+            <a href="#732b8245a15e39d2" class="i field">_userService</a> = <span class="r0 r">userService</span>;
+            <a href="#c8a97dff15466f8f" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+            <a href="#0652b7164dc99e35" class="i field">_siteService</a> = <span class="r4 r">siteService</span>;
+            <a href="#6b2a7b87987d342d" class="i field">_accountEvents</a> = <span class="r7 r">accountEvents</span>;
+            <a href="#28d8d62a9e381f5e" class="i field">_scriptingManager</a> = <span class="r8 r">scriptingManager</span>;
+            <a href="#29b265a3c2f90a80" class="i field">_notifier</a> = <span class="r9 r">notifier</span>;
+            <a href="#f4ad4f83ae80e7cf" class="i field">_clock</a> = <span class="r10 r">clock</span>;
+            <a href="#2bbba9adfe9bc1a4" class="i field">_distributedCache</a> = <span class="r11 r">distributedCache</span>;
+            <a href="#cbfb2012f2f5d9b4" class="i field">_dataProtectionProvider</a> = <span class="r12 r">dataProtectionProvider</span>;
+            <a href="#6002bb686da5bf4e" class="i field">_externalLoginHandlers</a> = <span class="r13 r">externalLoginHandlers</span>;
+            <a href="#ab7ef121f8335820" class="i field">H</a> = <span class="r5 r">htmlLocalizer</span>;
+            <a href="#4e4ae032f5b44219" class="i field">S</a> = <span class="r6 r">stringLocalizer</span>;
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="11aae277906819bf" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Login</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (<span class="i property">HttpContext</span>.<span class="i property">User</span> != <b>null</b> &amp;&amp; <span class="i property">HttpContext</span>.<span class="i property">User</span>.<span class="i property">Identity</span>.<a href="@1@System.Runtime/A.html#74422dd23bbca7de" class="i property">IsAuthenticated</a>)
+            {
+                <span class="r14 r">returnUrl</span> = <b>null</b>;
+            }
+ 
+            <span class="c">// Clear the existing external cookie to ensure a clean login process</span>
+            <b>await</b> <span class="i property">HttpContext</span>.<span class="i method">SignOutAsync</span>(<span class="t t">IdentityConstants</span>.<span class="i field">ExternalScheme</span>);
+ 
+            <a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="k">var</a> <span id="r15 rd" class="r15 r">loginSettings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="t t">LoginSettings</a>&gt;();
+            <b>if</b> (<span class="r15 r">loginSettings</span>.<a href="../Models/LoginSettings.cs.html#4e3a9c2893ab9bb9" class="i property">UseExternalProviderIfOnlyOneDefined</a>)
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r16 rd" class="r16 r">schemes</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">GetExternalAuthenticationSchemesAsync</span>();
+                <b>if</b> (<span class="r16 r">schemes</span>.<span class="i method">Count</span>() == 1)
+                {
+                    <b>var</b> <span id="r17 rd" class="r17 r">dataProtector</span> = <a href="#cbfb2012f2f5d9b4" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<b>nameof</b>(<span class="i">DefaultExternalLogin</span>))
+                                            .<span class="i method">ToTimeLimitedDataProtector</span>();
+ 
+                    <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="k">var</a> <span id="r18 rd" class="r18 r">token</span> = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>();
+                    <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="k">var</a> <span id="r19 rd" class="r19 r">expiration</span> = <b>new</b> <a href="@1@System.Runtime/A.html#22fd9aa3d49cf498" class="t constructor">TimeSpan</a>(0, 0, 5);
+                    <b>var</b> <span id="r20 rd" class="r20 r">protectedToken</span> = <span class="r17 r">dataProtector</span>.<span class="i">Protect</span>(<span class="r18 r">token</span>.<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>(), <a href="#f4ad4f83ae80e7cf" class="i field">_clock</a>.<span class="i">UtcNow</span>.<span class="i">Add</span>(<span class="r19 r">expiration</span>));
+                    <b>await</b> <a href="#2bbba9adfe9bc1a4" class="i field">_distributedCache</a>.<span class="i method">SetAsync</span>(<span class="r18 r">token</span>.<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>(), <span class="r18 r">token</span>.<a href="@1@System.Runtime/A.html#94f5d8dabbf0dbcc" class="i method">ToByteArray</a>(), <b>new</b> <span class="t constructor">DistributedCacheEntryOptions</span>() { <span class="i property">AbsoluteExpirationRelativeToNow</span> = <span class="r19 r">expiration</span> });
+                    <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">DefaultExternalLogin</span>), <b>new</b> { <span class="r20 r">protectedToken</span>, <span class="r14 r">returnUrl</span> });
+                }
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">errorMessage</span> <b>in</b> <span class="i property">TempData</span>.<span class="i method">Where</span>(<span id="r22 rd" class="r22 r">x</span> =&gt; <span class="r22 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>.<a href="@1@System.Runtime/A.html#23804789ea4c9c0e" class="i method">StartsWith</a>(<span class="s">&quot;error&quot;</span>)).<span class="i method">Select</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>()))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <span class="r21 r">errorMessage</span>);
+            }
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r14 r">returnUrl</span>;
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="913fc98422e006b4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DefaultExternalLogin</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r24 rd" class="r24 r">protectedToken</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">returnUrl</span> = <b>null</b>)
+        {
+            <a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="k">var</a> <span id="r26 rd" class="r26 r">loginSettings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="t t">LoginSettings</a>&gt;();
+            <b>if</b> (<span class="r26 r">loginSettings</span>.<a href="../Models/LoginSettings.cs.html#4e3a9c2893ab9bb9" class="i property">UseExternalProviderIfOnlyOneDefined</a>)
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r27 rd" class="r27 r">schemes</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">GetExternalAuthenticationSchemesAsync</span>();
+                <b>if</b> (<span class="r27 r">schemes</span>.<span class="i method">Count</span>() == 1)
+                {
+                    <b>var</b> <span id="r28 rd" class="r28 r">dataProtector</span> = <a href="#cbfb2012f2f5d9b4" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<b>nameof</b>(<span class="i">DefaultExternalLogin</span>))
+                                            .<span class="i method">ToTimeLimitedDataProtector</span>();
+                    <b>try</b>
+                    {
+                        <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a> <span id="r29 rd" class="r29 r">token</span>;
+                        <b>if</b> (<a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#261ce0dae4819cd7" class="i method">TryParse</a>(<span class="r28 r">dataProtector</span>.<span class="i method">Unprotect</span>(<span class="r24 r">protectedToken</span>), <b>out</b> <span class="r29 r">token</span>))
+                        {
+                            <b>byte</b>[] <span id="r30 rd" class="r30 r">tokenBytes</span> = <b>await</b> <a href="#2bbba9adfe9bc1a4" class="i field">_distributedCache</a>.<span class="i method">GetAsync</span>(<span class="r29 r">token</span>.<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>());
+                            <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="k">var</a> <span id="r31 rd" class="r31 r">cacheToken</span> = <b>new</b> <a href="@1@System.Runtime/A.html#2f5155129905e1a3" class="t constructor">Guid</a>(<span class="r30 r">tokenBytes</span>);
+                            <b>if</b> (<span class="r29 r">token</span>.<a href="@1@System.Runtime/A.html#54bcc19a4028b3f2" class="i method">Equals</a>(<span class="r31 r">cacheToken</span>))
+                            {
+                                <b>return</b> <a href="#b0c148892b2984c3" class="i method">ExternalLogin</a>(<span class="r27 r">schemes</span>.<span class="i method">First</span>().<span class="i property">Name</span>, <span class="r25 r">returnUrl</span>);
+                            }
+                        }
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r32 rd" class="r32 r">ex</span>)
+                    {
+                        <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r32 r">ex</span>, <span class="s">&quot;An error occurred while validating DefaultExternalLogin token&quot;</span>);
+                    }
+                }
+            }
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="03df25935e7a12a0" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">AddConfirmEmailError</a>(<span class="i">IUser</span> <span id="r33 rd" class="r33 r">user</span>)
+        {
+            <a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="k">var</a> <span id="r34 rd" class="r34 r">registrationSettings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;();
+            <b>if</b> (<span class="r34 r">registrationSettings</span>.<a href="../Models/RegistrationSettings.cs.html#d0883efb9276ecf2" class="i property">UsersMustValidateEmail</a> == <b>true</b>)
+            {
+                <span class="c">// Require that the users have a confirmed email before they can log on.</span>
+                <b>if</b> (!<b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">IsEmailConfirmedAsync</span>(<span class="r33 r">user</span>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;You must confirm your email.&quot;</span>]);
+                    <b>return</b> <b>true</b>;
+                }
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>private bool</b> <a id="e1ae536346c274b7" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">AddUserEnabledError</a>(<span class="i">IUser</span> <span id="r35 rd" class="r35 r">user</span>)
+        {
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r36 rd" class="r36 r">localUser</span> = <span class="r35 r">user</span> <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+ 
+            <b>if</b> (<span class="r36 r">localUser</span> == <b>null</b> || !<span class="r36 r">localUser</span>.<a href="/OrchardCore.Users.Core/A.html#04ad20cf959d0407" class="i property">IsEnabled</a>)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;The specified user is not allowed to sign in.&quot;</span>]);
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="43c391d678e65ac0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Login</a>(<a href="../ViewModels/LoginViewModel.cs.html#9efa3cec1343059b" class="t t">LoginViewModel</a> <span id="r37 rd" class="r37 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">returnUrl</span> = <b>null</b>)
+        {
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r38 r">returnUrl</span>;
+ 
+            <b>if</b> (<span class="r37 r">model</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r37 r">model</span>));
+ 
+            <b>if</b> (<span class="i method">TryValidateModel</span>(<span class="r37 r">model</span>) &amp;&amp; <span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r39 rd" class="r39 r">disableLocalLogin</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="t t">LoginSettings</a>&gt;().<a href="../Models/LoginSettings.cs.html#b4a49528eca329bd" class="i property">DisableLocalLogin</a>;
+                <b>if</b> (<span class="r39 r">disableLocalLogin</span>)
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;&quot;</span>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Local login is disabled.&quot;</span>]);
+                }
+                <b>else</b>
+                {
+                    <b>await</b> <a href="#6b2a7b87987d342d" class="i field">_accountEvents</a>.<span class="i">InvokeAsync</span>((<span id="r40 rd" class="r40 r">e</span>, <span id="r41 rd" class="r41 r">model</span>, <span id="r42 rd" class="r42 r">modelState</span>) =&gt; <span class="r40 r">e</span>.<span class="i">LoggingInAsync</span>(<span class="r41 r">model</span>.<span class="i">UserName</span>, (<span id="r43 rd" class="r43 r">key</span>, <span id="r44 rd" class="r44 r">message</span>) =&gt; <span class="r42 r">modelState</span>.<span class="i">AddModelError</span>(<span class="r43 r">key</span>, <span class="r44 r">message</span>)), <span class="r37 r">model</span>, <span class="i property">ModelState</span>, <a href="#c8a97dff15466f8f" class="i field">_logger</a>);
+                    <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+                    {
+                        <b>var</b> <span id="r45 rd" class="r45 r">user</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">FindByNameAsync</span>(<span class="r37 r">model</span>.<a href="../ViewModels/LoginViewModel.cs.html#eff3064a6e371ab8" class="i property">UserName</a>) ?? <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">FindByEmailAsync</span>(<span class="r37 r">model</span>.<a href="../ViewModels/LoginViewModel.cs.html#eff3064a6e371ab8" class="i property">UserName</a>);
+                        <span class="c">// This doesn&#39;t count login failures towards account lockout</span>
+                        <span class="c">// To enable password failures to trigger account lockout, set lockoutOnFailure: true</span>
+                        <b>if</b> (<span class="r45 r">user</span> != <b>null</b>)
+                        {
+                            <b>var</b> <span id="r46 rd" class="r46 r">result</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i">CheckPasswordSignInAsync</span>(<span class="r45 r">user</span>, <span class="r37 r">model</span>.<a href="../ViewModels/LoginViewModel.cs.html#7a7d5f435ceff7bc" class="i property">Password</a>, <span class="i">lockoutOnFailure</span>: <b>false</b>);
+                            <b>if</b> (<span class="r46 r">result</span>.<span class="i">Succeeded</span>)
+                            {
+                                <b>if</b> (!<b>await</b> <span class="i">AddConfirmEmailError</span>(<span class="r45 r">user</span>) &amp;&amp; !<span class="i">AddUserEnabledError</span>(<span class="r45 r">user</span>))
+                                {
+                                    <span class="r46 r">result</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i">PasswordSignInAsync</span>(<span class="r45 r">user</span>, <span class="r37 r">model</span>.<a href="../ViewModels/LoginViewModel.cs.html#7a7d5f435ceff7bc" class="i property">Password</a>, <span class="r37 r">model</span>.<a href="../ViewModels/LoginViewModel.cs.html#e9e82b76c16230ad" class="i property">RememberMe</a>, <span class="i">lockoutOnFailure</span>: <b>false</b>);
+ 
+                                    <b>if</b> (<span class="r46 r">result</span>.<span class="i">Succeeded</span>)
+                                    {
+                                        <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogInformation</span>(1, <span class="s">&quot;User logged in.&quot;</span>);
+                                        <b>await</b> <a href="#6b2a7b87987d342d" class="i field">_accountEvents</a>.<span class="i">InvokeAsync</span>((<span id="r47 rd" class="r47 r">e</span>, <span id="r48 rd" class="r48 r">model</span>) =&gt; <span class="r47 r">e</span>.<span class="i">LoggedInAsync</span>(<span class="r48 r">model</span>.<span class="i">UserName</span>), <span class="r37 r">model</span>, <a href="#c8a97dff15466f8f" class="i field">_logger</a>);
+                                        <b>return</b> <b>await</b> <span class="i">LoggedInActionResult</span>(<span class="r45 r">user</span>, <span class="r38 r">returnUrl</span>);
+                                    }
+                                }
+                            }
+                        }
+ 
+                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Invalid login attempt.&quot;</span>]);
+                    }
+ 
+                    <b>await</b> <a href="#6b2a7b87987d342d" class="i field">_accountEvents</a>.<span class="i">InvokeAsync</span>((<span id="r49 rd" class="r49 r">e</span>, <span id="r50 rd" class="r50 r">model</span>) =&gt; <span class="r49 r">e</span>.<span class="i">LoggingInFailedAsync</span>(<span class="r50 r">model</span>.<span class="i">UserName</span>), <span class="r37 r">model</span>, <a href="#c8a97dff15466f8f" class="i field">_logger</a>);
+                }
+            }
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r37 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="89efdb15f4c1f2ff" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LogOff</a>()
+        {
+            <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">SignOutAsync</span>();
+            <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogInformation</span>(4, <span class="s">&quot;User logged out.&quot;</span>);
+ 
+            <b>return</b> <span class="i method">Redirect</span>(<span class="s">&quot;~/&quot;</span>);
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public</b> <span class="t t">IActionResult</span> <a id="e9cc2522d94c8cca" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ChangePassword</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r51 rd" class="r51 r">returnUrl</span> = <b>null</b>)
+        {
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r51 r">returnUrl</span>;
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="26a01eb74d47bd56" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ChangePassword</a>(<a href="../ViewModels/ChangePasswordViewModel.cs.html#9bb7cf219389713b" class="t t">ChangePasswordViewModel</a> <span id="r52 rd" class="r52 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r53 rd" class="r53 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (<span class="i method">TryValidateModel</span>(<span class="r52 r">model</span>) &amp;&amp; <span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>var</b> <span id="r54 rd" class="r54 r">user</span> = <b>await</b> <a href="#732b8245a15e39d2" class="i field">_userService</a>.<span class="i">GetAuthenticatedUserAsync</span>(<span class="i property">User</span>);
+                <b>if</b> (<b>await</b> <a href="#732b8245a15e39d2" class="i field">_userService</a>.<span class="i">ChangePasswordAsync</span>(<span class="r54 r">user</span>, <span class="r52 r">model</span>.<a href="../ViewModels/ChangePasswordViewModel.cs.html#c7a98d2528e2993c" class="i property">CurrentPassword</a>, <span class="r52 r">model</span>.<a href="../ViewModels/ChangePasswordViewModel.cs.html#cdb4006b3c30909b" class="i property">Password</a>, (<span id="r55 rd" class="r55 r">key</span>, <span id="r56 rd" class="r56 r">message</span>) =&gt; <span class="i property">ModelState</span>.<span class="i">AddModelError</span>(<span class="r55 r">key</span>, <span class="r56 r">message</span>)))
+                {
+                    <b>if</b> (<span class="i property">Url</span>.<span class="i method">IsLocalUrl</span>(<span class="r53 r">returnUrl</span>)) {
+                        <a href="#29b265a3c2f90a80" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#ab7ef121f8335820" class="i field">H</a>[<span class="s">&quot;Your password has been changed successfully.&quot;</span>]);
+                        <b>return</b> <span class="i method">Redirect</span>(<span class="r53 r">returnUrl</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <b>return</b> <span class="i method">Redirect</span>(<span class="i property">Url</span>.<span class="i method">Action</span>(<span class="s">&quot;ChangePasswordConfirmation&quot;</span>));
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r52 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public</b> <span class="t t">IActionResult</span> <a id="c44dad4f378148b5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ChangePasswordConfirmation</a>()
+        {
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        <b>private void</b> <a id="092e84b6e1397be1" href="../R/092e84b6e1397be1.html" target="n" data-glyph="76,1" class="i method">AddIdentityErrors</a>(<span class="t t">IdentityResult</span> <span id="r57 rd" class="r57 r">result</span>)
+        {
+            <b>foreach</b> (<b>var</b> <span id="r58 rd" class="r58 r">error</span> <b>in</b> <span class="r57 r">result</span>.<span class="i property">Errors</span>)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <span class="r58 r">error</span>.<span class="i property">Description</span>);
+            }
+        }
+ 
+        <b>private</b> <span class="t t">IActionResult</span> <a id="7bf6b1bf5f8cc3af" href="../R/7bf6b1bf5f8cc3af.html" target="n" data-glyph="76,1" class="i method">RedirectToLocal</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r59 rd" class="r59 r">returnUrl</span>)
+        {
+            <b>if</b> (<span class="i property">Url</span>.<span class="i method">IsLocalUrl</span>(<span class="r59 r">returnUrl</span>))
+            {
+                <b>return</b> <span class="i method">Redirect</span>(<span class="r59 r">returnUrl</span>);
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="i method">Redirect</span>(<span class="s">&quot;~/&quot;</span>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="fbe48cfc785c841e" href="../R/fbe48cfc785c841e.html" target="n" data-glyph="76,1" class="i method">LoggedInActionResult</a>(<span class="i">IUser</span> <span id="r60 rd" class="r60 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r61 rd" class="r61 r">returnUrl</span> = <b>null</b>, <span class="t t">ExternalLoginInfo</span> <span id="r62 rd" class="r62 r">info</span> = <b>null</b>)
+        {
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="k">var</a> <span id="r63 rd" class="r63 r">workflowManager</span> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a>&gt;();
+            <b>if</b> (<span class="r63 r">workflowManager</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r64 rd" class="r64 r">input</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;();
+                <span class="r64 r">input</span>[<span class="s">&quot;UserName&quot;</span>] = <span class="r60 r">user</span>.<span class="i">UserName</span>;
+                <span class="r64 r">input</span>[<span class="s">&quot;ExternalClaims&quot;</span>] = <span class="r62 r">info</span> == <b>null</b> ? <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<span class="i">SerializableClaim</span>&gt;() : <span class="r62 r">info</span>.<span class="i property">Principal</span>.<span class="i">GetSerializableClaims</span>();
+                <span class="r64 r">input</span>[<span class="s">&quot;Roles&quot;</span>] = ((<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>)<span class="r60 r">user</span>).<a href="/OrchardCore.Users.Core/A.html#e971168e3cfbf0bd" class="i property">RoleNames</a>;
+                <span class="r64 r">input</span>[<span class="s">&quot;Provider&quot;</span>] = <span class="r62 r">info</span>?.<span class="i property">LoginProvider</span>;
+                <b>await</b> <span class="r63 r">workflowManager</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#9626a0c9edc23d69" class="i method">TriggerEventAsync</a>(<b>nameof</b>(<span class="i n">Workflows</span>.<span class="i n">Activities</span>.<a href="../Workflows/Activities/UserLoggedInEvent.cs.html#e8deb0106fb42d8b" class="t t">UserLoggedInEvent</a>),
+                    <span class="r65 r">input</span>: <span class="r64 r">input</span>, <span class="r66 r">correlationId</span>: ((<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>)<span class="r60 r">user</span>).<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>);
+            }
+ 
+            <b>return</b> <a href="#7bf6b1bf5f8cc3af" class="i method">RedirectToLocal</a>(<span class="r61 r">returnUrl</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public</b> <span class="t t">IActionResult</span> <a id="b0c148892b2984c3" href="../R/b0c148892b2984c3.html" target="n" data-glyph="72,1" class="i method">ExternalLogin</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r67 rd" class="r67 r">provider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r68 rd" class="r68 r">returnUrl</span> = <b>null</b>)
+        {
+            <span class="c">// Request a redirect to the external login provider.</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r69 rd" class="r69 r">redirectUrl</span> = <span class="i property">Url</span>.<span class="i method">Action</span>(<b>nameof</b>(<span class="i">ExternalLoginCallback</span>), <span class="s">&quot;Account&quot;</span>, <b>new</b> { <span class="r68 r">returnUrl</span> });
+            <b>var</b> <span id="r70 rd" class="r70 r">properties</span> = <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">ConfigureExternalAuthenticationProperties</span>(<span class="r67 r">provider</span>, <span class="r69 r">redirectUrl</span>);
+            <b>return</b> <span class="i method">Challenge</span>(<span class="r70 r">properties</span>, <span class="r67 r">provider</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">SignInResult</span>&gt; <a id="a801c211ea3e253d" href="../R/a801c211ea3e253d.html" target="n" data-glyph="76,1" class="i method">ExternalLoginSignInAsync</a>(<span class="i">IUser</span> <span id="r71 rd" class="r71 r">user</span>, <span class="t t">ExternalLoginInfo</span> <span id="r72 rd" class="r72 r">info</span>)
+        {
+            <b>var</b> <span id="r73 rd" class="r73 r">claims</span> = <span class="r72 r">info</span>.<span class="i property">Principal</span>.<span class="i">GetSerializableClaims</span>();
+            <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r74 rd" class="r74 r">userRoles</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">GetRolesAsync</span>(<span class="r71 r">user</span>);
+            <b>var</b> <span id="r75 rd" class="r75 r">context</span> = <b>new</b> <span class="i">UpdateRolesContext</span>(<span class="r71 r">user</span>, <span class="r72 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r73 r">claims</span>, <span class="r74 r">userRoles</span>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r76 rd" class="r76 r">rolesToAdd</span> = <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[0];
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r77 rd" class="r77 r">rolesToRemove</span> = <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[0];
+ 
+            <a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="k">var</a> <span id="r78 rd" class="r78 r">loginSettings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="t t">LoginSettings</a>&gt;();
+            <b>if</b> (<span class="r78 r">loginSettings</span>.<a href="../Models/LoginSettings.cs.html#38af67c28b1c42db" class="i property">UseScriptToSyncRoles</a>)
+            {
+                <b>try</b>
+                {
+                    <b>var</b> <span id="r79 rd" class="r79 r">jsonSerializerSettings</span> = <b>new</b> <span class="i">JsonSerializerSettings</span>()
+                    {
+                        <span class="i">ContractResolver</span> = <b>new</b> <span class="i">CamelCasePropertyNamesContractResolver</span>()
+                    };
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r80 rd" class="r80 r">script</span> = <span class="s">$&quot;</span><span class="s">js: function syncRoles(context) {{\n</span>{<span class="r78 r">loginSettings</span>.<a href="../Models/LoginSettings.cs.html#c35b2843164b687c" class="i property">SyncRolesScript</a>}<span class="s">\n}}\nvar context=</span>{<span class="i">JsonConvert</span>.<span class="i">SerializeObject</span>(<span class="r75 r">context</span>, <span class="r79 r">jsonSerializerSettings</span>)}<span class="s">;\nsyncRoles(context);\nreturn context;</span><span class="s">&quot;</span>;
+                    <b>dynamic</b> <span id="r81 rd" class="r81 r">evaluationResult</span> = <a href="#28d8d62a9e381f5e" class="i field">_scriptingManager</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#949c361103e28d02" class="i method">Evaluate</a>(<span class="r80 r">script</span>, <b>null</b>, <b>null</b>, <b>null</b>);
+                    <span class="r76 r">rolesToAdd</span> = (<span class="r81 r">evaluationResult</span>.<span class="i">rolesToAdd</span> <b>as object</b>[]).<span class="i method">Select</span>(<span id="r82 rd" class="r82 r">i</span> =&gt; <span class="r82 r">i</span>.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>()).<span class="i method">ToArray</span>();
+                    <span class="r77 r">rolesToRemove</span> = (<span class="r81 r">evaluationResult</span>.<span class="i">rolesToRemove</span> <b>as object</b>[]).<span class="i method">Select</span>(<span id="r83 rd" class="r83 r">i</span> =&gt; <span class="r83 r">i</span>.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>()).<span class="i method">ToArray</span>();
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r84 rd" class="r84 r">ex</span>)
+                {
+                    <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r84 r">ex</span>, <span class="s">&quot;Error Syncing Roles From External Provider {0}&quot;</span>, <span class="r72 r">info</span>.<span class="i property">LoginProvider</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <b>foreach</b> (<b>var</b> <span id="r85 rd" class="r85 r">item</span> <b>in</b> <a href="#6002bb686da5bf4e" class="i field">_externalLoginHandlers</a>)
+                {
+                    <b>try</b>
+                    {
+                        <b>await</b> <span class="r85 r">item</span>.<span class="i">UpdateRoles</span>(<span class="r75 r">context</span>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r86 rd" class="r86 r">ex</span>)
+                    {
+                        <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="r86 r">ex</span>, <span class="s">&quot;{externalLoginHandler} - IExternalLoginHandler.UpdateRoles threw an exception&quot;</span>, <span class="r85 r">item</span>.<span class="i">GetType</span>());
+                    }
+                }
+                <span class="r76 r">rolesToAdd</span> = <span class="r75 r">context</span>.<span class="i">RolesToAdd</span>;
+                <span class="r77 r">rolesToRemove</span> = <span class="r75 r">context</span>.<span class="i">RolesToRemove</span>;
+            }
+ 
+            <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">AddToRolesAsync</span>(<span class="r71 r">user</span>, <span class="r76 r">rolesToAdd</span>.<span class="i method">Distinct</span>());
+            <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">RemoveFromRolesAsync</span>(<span class="r71 r">user</span>, <span class="r77 r">rolesToRemove</span>.<span class="i method">Distinct</span>());
+ 
+            <b>var</b> <span id="r87 rd" class="r87 r">result</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">ExternalLoginSignInAsync</span>(<span class="r72 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r72 r">info</span>.<span class="i property">ProviderKey</span>, <span class="r88 r">isPersistent</span>: <b>false</b>, <span class="r89 r">bypassTwoFactor</span>: <b>true</b>);
+ 
+            <b>if</b> (<span class="r87 r">result</span>.<span class="i property">Succeeded</span>)
+            {
+                <b>var</b> <span id="r90 rd" class="r90 r">identityResult</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">UpdateExternalAuthenticationTokensAsync</span>(<span class="r72 r">info</span>);
+                <b>if</b> (!<span class="r90 r">identityResult</span>.<span class="i property">Succeeded</span>)
+                {
+                    <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Error updating the external authentication tokens.&quot;</span>);
+                }
+            }
+ 
+            <b>return</b> <span class="r87 r">result</span>;
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="9cfb5553d5efa79b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ExternalLoginCallback</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r91 rd" class="r91 r">returnUrl</span> = <b>null</b>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r92 rd" class="r92 r">remoteError</span> = <b>null</b>)
+        {
+            <b>if</b> (<span class="r92 r">remoteError</span> != <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Error from external provider: {Error}&quot;</span>, <span class="r92 r">remoteError</span>);
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;&quot;</span>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;An error occurred in external provider.&quot;</span>]);
+                <b>return</b> <a href="#47628b5afe9c0733" class="i method">RedirectToLogin</a>(<span class="r91 r">returnUrl</span>);
+            }
+ 
+            <b>var</b> <span id="r93 rd" class="r93 r">info</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">GetExternalLoginInfoAsync</span>();
+            <b>if</b> (<span class="r93 r">info</span> == <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Could not get external login info.&quot;</span>);
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;&quot;</span>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;An error occurred in external provider.&quot;</span>]);
+                <b>return</b> <a href="#47628b5afe9c0733" class="i method">RedirectToLogin</a>(<span class="r91 r">returnUrl</span>);
+            }
+ 
+            <a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="k">var</a> <span id="r94 rd" class="r94 r">registrationSettings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;();
+            <b>var</b> <span id="r95 rd" class="r95 r">user</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">FindByLoginAsync</span>(<span class="r93 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r93 r">info</span>.<span class="i property">ProviderKey</span>);
+ 
+            <b>if</b> (<span class="r95 r">user</span> != <b>null</b>)
+            {
+                <b>if</b> (!<b>await</b> <span class="i">AddConfirmEmailError</span>(<span class="r95 r">user</span>) &amp;&amp; !<span class="i">AddUserEnabledError</span>(<span class="r95 r">user</span>))
+                {
+                    <b>await</b> <a href="#6b2a7b87987d342d" class="i field">_accountEvents</a>.<span class="i">InvokeAsync</span>((<span id="r96 rd" class="r96 r">e</span>, <span id="r97 rd" class="r97 r">user</span>, <span id="r98 rd" class="r98 r">modelState</span>) =&gt; <span class="r96 r">e</span>.<span class="i">LoggingInAsync</span>(<span class="r97 r">user</span>.<span class="i">UserName</span>, (<span id="r99 rd" class="r99 r">key</span>, <span id="r100 rd" class="r100 r">message</span>) =&gt; <span class="r98 r">modelState</span>.<span class="i">AddModelError</span>(<span class="r99 r">key</span>, <span class="r100 r">message</span>)), <span class="r95 r">user</span>, <span class="i property">ModelState</span>, <a href="#c8a97dff15466f8f" class="i field">_logger</a>);
+ 
+                    <b>var</b> <span id="r101 rd" class="r101 r">signInResult</span> = <b>await</b> <span class="i">ExternalLoginSignInAsync</span>(<span class="r95 r">user</span>, <span class="r93 r">info</span>);
+                    <b>if</b> (<span class="r101 r">signInResult</span>.<span class="i">Succeeded</span>)
+                    {
+                        <b>return</b> <b>await</b> <span class="i">LoggedInActionResult</span>(<span class="r95 r">user</span>, <span class="r91 r">returnUrl</span>, <span class="r93 r">info</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Invalid login attempt.&quot;</span>]);
+                    }
+                }
+            }
+            <b>else</b>
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r102 rd" class="r102 r">email</span> = <span class="r93 r">info</span>.<span class="i property">Principal</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">Email</span>) ?? <span class="r93 r">info</span>.<span class="i property">Principal</span>.<span class="i method">FindFirstValue</span>(<span class="s">&quot;email&quot;</span>);
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r102 r">email</span>))
+                    <span class="r95 r">user</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">FindByEmailAsync</span>(<span class="r102 r">email</span>);
+ 
+                <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r91 r">returnUrl</span>;
+                <span class="i property">ViewData</span>[<span class="s">&quot;LoginProvider&quot;</span>] = <span class="r93 r">info</span>.<span class="i property">LoginProvider</span>;
+ 
+                <b>if</b> (<span class="r95 r">user</span> != <b>null</b>)
+                {
+                    <span class="c">// Link external login to an existing user</span>
+                    <span class="i property">ViewData</span>[<span class="s">&quot;UserName&quot;</span>] = <span class="r95 r">user</span>.<span class="i">UserName</span>;
+                    <span class="i property">ViewData</span>[<span class="s">&quot;Email&quot;</span>] = <span class="r102 r">email</span>;
+ 
+                    <b>return</b> <span class="i method">View</span>(<b>nameof</b>(<span class="i">LinkExternalLogin</span>));
+                }
+                <b>else</b>
+                {
+                    <span class="c">// no user could be matched, check if a new user can register</span>
+                    <b>if</b> (<span class="r94 r">registrationSettings</span>.<a href="../Models/RegistrationSettings.cs.html#6ebfb85c022e0166" class="i property">UsersCanRegister</a> == <a href="../Models/UserRegistrationType.cs.html#df1fd8775492708d" class="t t">UserRegistrationType</a>.<a href="../Models/UserRegistrationType.cs.html#edb0f0fc10c88b7f" class="i field">NoRegistration</a>)
+                    {
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r103 rd" class="r103 r">message</span> = <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Site does not allow user registration.&quot;</span>];
+                        <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="r103 r">message</span>);
+                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;&quot;</span>, <span class="r103 r">message</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#101e91f9d8686d06" class="k">var</a> <span id="r104 rd" class="r104 r">externalLoginViewModel</span> = <b>new</b> <a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#101e91f9d8686d06" class="t constructor">RegisterExternalLoginViewModel</a>();
+ 
+                        <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#1e8f17ad347bac36" class="i property">NoPassword</a> = <span class="r94 r">registrationSettings</span>.<a href="../Models/RegistrationSettings.cs.html#6522204063c05847" class="i property">NoPasswordForExternalUsers</a>;
+                        <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#a0621b96ddaba273" class="i property">NoEmail</a> = <span class="r94 r">registrationSettings</span>.<a href="../Models/RegistrationSettings.cs.html#87b6032f8ec10597" class="i property">NoEmailForExternalUsers</a>;
+                        <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#dc17ae05bede0206" class="i property">NoUsername</a> = <span class="r94 r">registrationSettings</span>.<a href="../Models/RegistrationSettings.cs.html#bac2c30dc31ee5c3" class="i property">NoUsernameForExternalUsers</a>;
+ 
+                        <span class="c">// If registrationSettings.NoUsernameForExternalUsers is true, this username will not be used</span>
+                        <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#3d728cf4307e7b5b" class="i property">UserName</a> = <b>await</b> <a href="#6e168fa061637ad8" class="i method">GenerateUsername</a>(<span class="r93 r">info</span>);
+                        <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#e0b44c785a17a605" class="i property">Email</a> = <span class="r102 r">email</span>;
+ 
+                        <span class="c">// The user doesn&#39;t exist, if no information required, we can create the account locally</span>
+                        <span class="c">// instead of redirecting to the ExternalLogin</span>
+                        <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r105 rd" class="r105 r">noInformationRequired</span> = <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#1e8f17ad347bac36" class="i property">NoPassword</a>
+                                                        &amp;&amp; <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#a0621b96ddaba273" class="i property">NoEmail</a>
+                                                        &amp;&amp; <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#dc17ae05bede0206" class="i property">NoUsername</a>;
+ 
+                        <b>if</b> (<span class="r105 r">noInformationRequired</span>)
+                        {
+                            <span class="r95 r">user</span> = <b>await</b> <a href="#3c4a62288ea15c04" class="k">this</a>.<a href="ControllerExtensions.cs.html#ed333109b955b54f" class="i method">RegisterUser</a>(<b>new</b> <a href="../ViewModels/RegisterViewModel.cs.html#4bf6d292d51da065" class="t constructor">RegisterViewModel</a>()
+                            {
+                                <a href="../ViewModels/RegisterViewModel.cs.html#873e3745016c0447" class="i property">UserName</a> = <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#3d728cf4307e7b5b" class="i property">UserName</a>,
+                                <a href="../ViewModels/RegisterViewModel.cs.html#6bbcc01c9f54fef6" class="i property">Email</a> = <span class="r104 r">externalLoginViewModel</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#e0b44c785a17a605" class="i property">Email</a>,
+                                <a href="../ViewModels/RegisterViewModel.cs.html#e6b7e2cb5815e7bc" class="i property">Password</a> = <b>null</b>,
+                                <a href="../ViewModels/RegisterViewModel.cs.html#589ea434bef26a00" class="i property">ConfirmPassword</a> = <b>null</b>
+                            }, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Confirm your account&quot;</span>], <a href="#c8a97dff15466f8f" class="i field">_logger</a>);
+ 
+                            <span class="c">// If the registration was successful we can link the external provider and redirect the user</span>
+                            <b>if</b> (<span class="r95 r">user</span> != <b>null</b>)
+                            {
+                                <b>var</b> <span id="r106 rd" class="r106 r">identityResult</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i property">UserManager</span>.<span class="i">AddLoginAsync</span>(<span class="r95 r">user</span>, <b>new</b> <span class="t constructor">UserLoginInfo</span>(<span class="r93 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r93 r">info</span>.<span class="i property">ProviderKey</span>, <span class="r93 r">info</span>.<span class="i property">ProviderDisplayName</span>));
+                                <b>if</b> (<span class="r106 r">identityResult</span>.<span class="i">Succeeded</span>)
+                                {
+                                    <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogInformation</span>(3, <span class="s">&quot;User account linked to {LoginProvider} provider.&quot;</span>, <span class="r93 r">info</span>.<span class="i property">LoginProvider</span>);
+ 
+                                    <span class="c">// We have created/linked to the local user, so we must verify the login.</span>
+                                    <span class="c">// If it does not succeed, the user is not allowed to login</span>
+                                    <b>var</b> <span id="r107 rd" class="r107 r">signInResult</span> = <b>await</b> <span class="i">ExternalLoginSignInAsync</span>(<span class="r95 r">user</span>, <span class="r93 r">info</span>);
+                                    <b>if</b> (<span class="r107 r">signInResult</span>.<span class="i">Succeeded</span>)
+                                    {
+                                        <b>return</b> <b>await</b> <span class="i">LoggedInActionResult</span>(<span class="r95 r">user</span>, <span class="r91 r">returnUrl</span>, <span class="r93 r">info</span>);
+                                    }
+                                    <b>else</b>
+                                    {
+                                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Invalid login attempt.&quot;</span>]);
+                                        <b>return</b> <a href="#47628b5afe9c0733" class="i method">RedirectToLogin</a>(<span class="r91 r">returnUrl</span>);
+                                    }
+                                }
+                                <span class="i">AddIdentityErrors</span>(<span class="r106 r">identityResult</span>);
+                            }
+                        }
+                        <b>return</b> <span class="i method">View</span>(<span class="s">&quot;RegisterExternalLogin&quot;</span>, <span class="r104 r">externalLoginViewModel</span>);
+                    }
+                }
+            }
+            <b>return</b> <a href="#47628b5afe9c0733" class="i method">RedirectToLogin</a>(<span class="r91 r">returnUrl</span>);
+        }
+ 
+        <b>private</b> <span class="t t">RedirectToActionResult</span> <a id="47628b5afe9c0733" href="../R/47628b5afe9c0733.html" target="n" data-glyph="76,1" class="i method">RedirectToLogin</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r108 rd" class="r108 r">returnUrl</span>)
+        {
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r109 rd" class="r109 r">iix</span> = 0;
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r110 rd" class="r110 r">state</span> <b>in</b> <span class="i property">ModelState</span>.<span class="i method">Where</span>(<span id="r111 rd" class="r111 r">x</span> =&gt; <span class="r111 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a> == <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>))
+            {
+                <b>foreach</b> (<b>var</b> <span id="r112 rd" class="r112 r">item</span> <b>in</b> <span class="r110 r">state</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<span class="i property">Errors</span>)
+                {
+                    <span class="i property">TempData</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">$&quot;</span><span class="s">error_</span>{<span class="r109 r">iix</span>++}<span class="s">&quot;</span>] = <span class="r112 r">item</span>.<span class="i property">ErrorMessage</span>;
+                }
+            }
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>), <b>new</b> { <span class="r108 r">returnUrl</span> });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="8c94186a451b3a57" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RegisterExternalLogin</a>(<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#101e91f9d8686d06" class="t t">RegisterExternalLoginViewModel</a> <span id="r113 rd" class="r113 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r114 rd" class="r114 r">returnUrl</span> = <b>null</b>)
+        {
+            <span class="i">IUser</span> <span id="r115 rd" class="r115 r">user</span> = <b>null</b>;
+            <a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="k">var</a> <span id="r116 rd" class="r116 r">settings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;();
+            <b>var</b> <span id="r117 rd" class="r117 r">info</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">GetExternalLoginInfoAsync</span>();
+ 
+            <b>if</b> (<span class="r117 r">info</span> == <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Error loading external login info.&quot;</span>);
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<span class="r116 r">settings</span>.<a href="../Models/RegistrationSettings.cs.html#6ebfb85c022e0166" class="i property">UsersCanRegister</a> == <a href="../Models/UserRegistrationType.cs.html#df1fd8775492708d" class="t t">UserRegistrationType</a>.<a href="../Models/UserRegistrationType.cs.html#edb0f0fc10c88b7f" class="i field">NoRegistration</a>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Site does not allow user registration.&quot;</span>, <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#3d728cf4307e7b5b" class="i property">UserName</a>, <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#e0b44c785a17a605" class="i property">Email</a>);
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r114 r">returnUrl</span>;
+            <span class="i property">ViewData</span>[<span class="s">&quot;LoginProvider&quot;</span>] = <span class="r117 r">info</span>.<span class="i property">LoginProvider</span>;
+ 
+            <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#1e8f17ad347bac36" class="i property">NoPassword</a> = <span class="r116 r">settings</span>.<a href="../Models/RegistrationSettings.cs.html#6522204063c05847" class="i property">NoPasswordForExternalUsers</a>;
+            <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#a0621b96ddaba273" class="i property">NoEmail</a> = <span class="r116 r">settings</span>.<a href="../Models/RegistrationSettings.cs.html#87b6032f8ec10597" class="i property">NoEmailForExternalUsers</a>;
+            <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#dc17ae05bede0206" class="i property">NoUsername</a> = <span class="r116 r">settings</span>.<a href="../Models/RegistrationSettings.cs.html#bac2c30dc31ee5c3" class="i property">NoUsernameForExternalUsers</a>;
+ 
+            <span class="i property">ModelState</span>.<span class="i method">Clear</span>();
+ 
+            <b>if</b> (<span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#a0621b96ddaba273" class="i property">NoEmail</a>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r118 rd" class="r118 r">email</span> = <span class="r117 r">info</span>.<span class="i property">Principal</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">Email</span>) ?? <span class="r117 r">info</span>.<span class="i property">Principal</span>.<span class="i method">FindFirstValue</span>(<span class="s">&quot;email&quot;</span>);
+                <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#e0b44c785a17a605" class="i property">Email</a> = <span class="r118 r">email</span>;
+            }
+ 
+            <b>if</b> (<span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#dc17ae05bede0206" class="i property">NoUsername</a>)
+            {
+                <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#3d728cf4307e7b5b" class="i property">UserName</a> = <b>await</b> <a href="#6e168fa061637ad8" class="i method">GenerateUsername</a>(<span class="r117 r">info</span>);
+            }
+ 
+            <b>if</b> (<span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#1e8f17ad347bac36" class="i property">NoPassword</a>)
+            {
+                <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#5dfaf12b70d163bf" class="i property">Password</a> = <b>null</b>;
+                <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#3aeadb43ac179c5f" class="i property">ConfirmPassword</a> = <b>null</b>;
+            }
+ 
+            <b>if</b> (<span class="i method">TryValidateModel</span>(<span class="r113 r">model</span>) &amp;&amp; <span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r115 r">user</span> = <b>await</b> <a href="#3c4a62288ea15c04" class="k">this</a>.<a href="ControllerExtensions.cs.html#ed333109b955b54f" class="i method">RegisterUser</a>(<b>new</b> <a href="../ViewModels/RegisterViewModel.cs.html#4bf6d292d51da065" class="t constructor">RegisterViewModel</a>() { <a href="../ViewModels/RegisterViewModel.cs.html#873e3745016c0447" class="i property">UserName</a> = <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#3d728cf4307e7b5b" class="i property">UserName</a>, <a href="../ViewModels/RegisterViewModel.cs.html#6bbcc01c9f54fef6" class="i property">Email</a> = <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#e0b44c785a17a605" class="i property">Email</a>, <a href="../ViewModels/RegisterViewModel.cs.html#e6b7e2cb5815e7bc" class="i property">Password</a> = <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#5dfaf12b70d163bf" class="i property">Password</a>, <a href="../ViewModels/RegisterViewModel.cs.html#589ea434bef26a00" class="i property">ConfirmPassword</a> = <span class="r113 r">model</span>.<a href="../ViewModels/RegisterExternalLoginViewModel.cs.html#3aeadb43ac179c5f" class="i property">ConfirmPassword</a> }, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Confirm your account&quot;</span>], <a href="#c8a97dff15466f8f" class="i field">_logger</a>);
+                <b>if</b> (<span class="r115 r">user</span> <b>is null</b>)
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <span class="s">&quot;Registration Failed.&quot;</span>);
+                }
+                <b>else</b>
+                {
+                    <b>var</b> <span id="r119 rd" class="r119 r">identityResult</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i property">UserManager</span>.<span class="i method">AddLoginAsync</span>(<span class="r115 r">user</span>, <b>new</b> <span class="t constructor">UserLoginInfo</span>(<span class="r117 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r117 r">info</span>.<span class="i property">ProviderKey</span>, <span class="r117 r">info</span>.<span class="i property">ProviderDisplayName</span>));
+                    <b>if</b> (<span class="r119 r">identityResult</span>.<span class="i property">Succeeded</span>)
+                    {
+                        <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogInformation</span>(3, <span class="s">&quot;User account linked to {provider} provider.&quot;</span>, <span class="r117 r">info</span>.<span class="i property">LoginProvider</span>);
+ 
+                        <span class="c">// we have created/linked to the local user, so we must verify the login. If it does not succeed,</span>
+                        <span class="c">// the user is not allowed to login</span>
+                        <b>var</b> <span id="r120 rd" class="r120 r">signInResult</span> = <b>await</b> <a href="#a801c211ea3e253d" class="i method">ExternalLoginSignInAsync</a>(<span class="r115 r">user</span>, <span class="r117 r">info</span>);
+                        <b>if</b> (<span class="r120 r">signInResult</span>.<span class="i property">Succeeded</span>)
+                        {
+                            <b>return</b> <b>await</b> <a href="#fbe48cfc785c841e" class="i method">LoggedInActionResult</a>(<span class="r115 r">user</span>, <span class="r114 r">returnUrl</span>, <span class="r117 r">info</span>);
+                        }
+                    }
+                    <a href="#092e84b6e1397be1" class="i method">AddIdentityErrors</a>(<span class="r119 r">identityResult</span>);
+                }
+            }
+            <b>return</b> <span class="i method">View</span>(<span class="s">&quot;RegisterExternalLogin&quot;</span>, <span class="r113 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="28a89379513a9ae8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LinkExternalLogin</a>(<a href="../ViewModels/LinkExternalLoginViewModel.cs.html#257a6f5255505f23" class="t t">LinkExternalLoginViewModel</a> <span id="r121 rd" class="r121 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r122 rd" class="r122 r">returnUrl</span> = <b>null</b>)
+        {
+            <a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="k">var</a> <span id="r123 rd" class="r123 r">settings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;();
+            <b>var</b> <span id="r124 rd" class="r124 r">info</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">GetExternalLoginInfoAsync</span>();
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r125 rd" class="r125 r">email</span> = <span class="r124 r">info</span>.<span class="i property">Principal</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">Email</span>) ?? <span class="r124 r">info</span>.<span class="i property">Principal</span>.<span class="i method">FindFirstValue</span>(<span class="s">&quot;email&quot;</span>);
+ 
+            <b>var</b> <span id="r126 rd" class="r126 r">user</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">FindByEmailAsync</span>(<span class="r125 r">email</span>);
+ 
+            <b>if</b> (<span class="r124 r">info</span> == <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Error loading external login info.&quot;</span>);
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<span class="r126 r">user</span> == <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Suspicious login detected from external provider. {provider} with key [{providerKey}] for {identity}&quot;</span>,
+                    <span class="r124 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r124 r">info</span>.<span class="i property">ProviderKey</span>, <span class="r124 r">info</span>.<span class="i property">Principal</span>?.<span class="i property">Identity</span>?.<a href="@1@System.Runtime/A.html#2e6d5b47e23f7ff4" class="i property">Name</a>);
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+            }
+ 
+            <b>await</b> <a href="#6b2a7b87987d342d" class="i field">_accountEvents</a>.<span class="i">InvokeAsync</span>((<span id="r127 rd" class="r127 r">e</span>, <span id="r128 rd" class="r128 r">model</span>, <span id="r129 rd" class="r129 r">modelState</span>) =&gt; <span class="r127 r">e</span>.<span class="i">LoggingInAsync</span>(<span class="r126 r">user</span>.<span class="i">UserName</span>, (<span id="r130 rd" class="r130 r">key</span>, <span id="r131 rd" class="r131 r">message</span>) =&gt; <span class="r129 r">modelState</span>.<span class="i">AddModelError</span>(<span class="r130 r">key</span>, <span class="r131 r">message</span>)), <span class="r121 r">model</span>, <span class="i property">ModelState</span>, <a href="#c8a97dff15466f8f" class="i field">_logger</a>);
+ 
+            <b>var</b> <span id="r132 rd" class="r132 r">signInResult</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i">CheckPasswordSignInAsync</span>(<span class="r126 r">user</span>, <span class="r121 r">model</span>.<a href="../ViewModels/LinkExternalLoginViewModel.cs.html#9241e3359d8ffc89" class="i property">Password</a>, <b>false</b>);
+            <b>if</b> (!<span class="r132 r">signInResult</span>.<span class="i">Succeeded</span>)
+            {
+                <span class="r126 r">user</span> = <b>null</b>;
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#4e4ae032f5b44219" class="i field">S</a>[<span class="s">&quot;Invalid login attempt.&quot;</span>]);
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r133 rd" class="r133 r">identityResult</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i property">UserManager</span>.<span class="i">AddLoginAsync</span>(<span class="r126 r">user</span>, <b>new</b> <span class="t constructor">UserLoginInfo</span>(<span class="r124 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r124 r">info</span>.<span class="i property">ProviderKey</span>, <span class="r124 r">info</span>.<span class="i property">ProviderDisplayName</span>));
+                <b>if</b> (<span class="r133 r">identityResult</span>.<span class="i">Succeeded</span>)
+                {
+                    <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogInformation</span>(3, <span class="s">&quot;User account linked to {provider} provider.&quot;</span>, <span class="r124 r">info</span>.<span class="i property">LoginProvider</span>);
+                    <span class="c">// we have created/linked to the local user, so we must verify the login. If it does not succeed,</span>
+                    <span class="c">// the user is not allowed to login</span>
+                    <b>if</b> ((<b>await</b> <span class="i">ExternalLoginSignInAsync</span>(<span class="r126 r">user</span>, <span class="r124 r">info</span>)).<span class="i">Succeeded</span>)
+                    {
+                        <b>return</b> <b>await</b> <span class="i">LoggedInActionResult</span>(<span class="r126 r">user</span>, <span class="r122 r">returnUrl</span>, <span class="r124 r">info</span>);
+                    }
+                }
+                <span class="i">AddIdentityErrors</span>(<span class="r133 r">identityResult</span>);
+            }
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="a01a6c4ef5511bf6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ExternalLogins</a>()
+        {
+            <b>var</b> <span id="r134 rd" class="r134 r">user</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">GetUserAsync</span>(<span class="i property">User</span>);
+            <b>if</b> (<span class="r134 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/ExternalLoginsViewModel.cs.html#ed31be5bd24ced04" class="k">var</a> <span id="r135 rd" class="r135 r">model</span> = <b>new</b> <a href="../ViewModels/ExternalLoginsViewModel.cs.html#ed31be5bd24ced04" class="t constructor">ExternalLoginsViewModel</a> { <a href="../ViewModels/ExternalLoginsViewModel.cs.html#976feaa98d2aac14" class="i property">CurrentLogins</a> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i">GetLoginsAsync</span>(<span class="r134 r">user</span>) };
+            <span class="r135 r">model</span>.<a href="../ViewModels/ExternalLoginsViewModel.cs.html#585de2c282883d59" class="i property">OtherLogins</a> = (<b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">GetExternalAuthenticationSchemesAsync</span>())
+                .<span class="i method">Where</span>(<span id="r136 rd" class="r136 r">auth</span> =&gt; <span class="r135 r">model</span>.<a href="../ViewModels/ExternalLoginsViewModel.cs.html#976feaa98d2aac14" class="i property">CurrentLogins</a>.<span class="i method">All</span>(<span id="r137 rd" class="r137 r">ul</span> =&gt; <span class="r136 r">auth</span>.<span class="i property">Name</span> != <span class="r137 r">ul</span>.<span class="i property">LoginProvider</span>))
+                .<span class="i method">ToList</span>();
+            <span class="r135 r">model</span>.<a href="../ViewModels/ExternalLoginsViewModel.cs.html#b121c500bd2963ce" class="i property">ShowRemoveButton</a> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i">HasPasswordAsync</span>(<span class="r134 r">user</span>) || <span class="r135 r">model</span>.<a href="../ViewModels/ExternalLoginsViewModel.cs.html#976feaa98d2aac14" class="i property">CurrentLogins</a>.<a href="@1@System.Runtime/A.html#3d6c21c4e9bd5f63" class="i property">Count</a> &gt; 1;
+            <span class="c">//model.StatusMessage = StatusMessage;</span>
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r135 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="6d80ea8b8d1a6656" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LinkLogin</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r138 rd" class="r138 r">provider</span>)
+        {
+            <span class="c">// Clear the existing external cookie to ensure a clean login process</span>
+            <b>await</b> <span class="i property">HttpContext</span>.<span class="i method">SignOutAsync</span>(<span class="t t">IdentityConstants</span>.<span class="i field">ExternalScheme</span>);
+ 
+            <span class="c">// Request a redirect to the external login provider to link a login for the current user</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r139 rd" class="r139 r">redirectUrl</span> = <span class="i property">Url</span>.<span class="i method">Action</span>(<b>nameof</b>(<span class="i">LinkLoginCallback</span>));
+            <b>var</b> <span id="r140 rd" class="r140 r">properties</span> = <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">ConfigureExternalAuthenticationProperties</span>(<span class="r138 r">provider</span>, <span class="r139 r">redirectUrl</span>, <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">GetUserId</span>(<span class="i property">User</span>));
+            <b>return</b> <b>new</b> <span class="t constructor">ChallengeResult</span>(<span class="r138 r">provider</span>, <span class="r140 r">properties</span>);
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="ec2b4d336457a5e0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LinkLoginCallback</a>()
+        {
+            <b>var</b> <span id="r141 rd" class="r141 r">user</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">GetUserAsync</span>(<span class="i property">User</span>);
+            <b>if</b> (<span class="r141 r">user</span> == <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Unable to load user with ID &#39;{UserId}&#39;.&quot;</span>, <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">GetUserId</span>(<span class="i property">User</span>));
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+            }
+ 
+            <b>var</b> <span id="r142 rd" class="r142 r">info</span> = <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i method">GetExternalLoginInfoAsync</span>();
+            <b>if</b> (<span class="r142 r">info</span> == <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="s">&quot;Unexpected error occurred loading external login info for user &#39;{UserName}&#39;.&quot;</span>, <span class="r141 r">user</span>.<span class="i">UserName</span>);
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+            }
+ 
+            <b>var</b> <span id="r143 rd" class="r143 r">result</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i">AddLoginAsync</span>(<span class="r141 r">user</span>, <b>new</b> <span class="t constructor">UserLoginInfo</span>(<span class="r142 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r142 r">info</span>.<span class="i property">ProviderKey</span>, <span class="r142 r">info</span>.<span class="i property">ProviderDisplayName</span>));
+            <b>if</b> (!<span class="r143 r">result</span>.<span class="i">Succeeded</span>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="s">&quot;Unexpected error occurred adding external login info for user &#39;{UserName}&#39;.&quot;</span>, <span class="r141 r">user</span>.<span class="i">UserName</span>);
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+            }
+ 
+            <span class="c">// Clear the existing external cookie to ensure a clean login process</span>
+            <b>await</b> <span class="i property">HttpContext</span>.<span class="i method">SignOutAsync</span>(<span class="t t">IdentityConstants</span>.<span class="i field">ExternalScheme</span>);
+            <span class="c">// Perform External Login SignIn</span>
+            <b>await</b> <span class="i">ExternalLoginSignInAsync</span>(<span class="r141 r">user</span>, <span class="r142 r">info</span>);
+            <span class="c">//StatusMessage = &quot;The external login was added.&quot;;</span>
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">ExternalLogins</span>));
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="bb3f1692ca709679" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RemoveLogin</a>(<a href="../ViewModels/RemoveLoginViewModel.cs.html#e23a786573426ad2" class="t t">RemoveLoginViewModel</a> <span id="r144 rd" class="r144 r">model</span>)
+        {
+            <b>var</b> <span id="r145 rd" class="r145 r">user</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">GetUserAsync</span>(<span class="i property">User</span>);
+            <b>if</b> (<span class="r145 r">user</span> == <b>null</b>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Unable to load user with ID &#39;{UserId}&#39;.&quot;</span>, <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i method">GetUserId</span>(<span class="i property">User</span>));
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+            }
+ 
+            <b>var</b> <span id="r146 rd" class="r146 r">result</span> = <b>await</b> <a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i">RemoveLoginAsync</span>(<span class="r145 r">user</span>, <span class="r144 r">model</span>.<a href="../ViewModels/RemoveLoginViewModel.cs.html#8776cee0a2dc53e6" class="i property">LoginProvider</a>, <span class="r144 r">model</span>.<a href="../ViewModels/RemoveLoginViewModel.cs.html#e843dbc7fd38e4d7" class="i property">ProviderKey</a>);
+            <b>if</b> (!<span class="r146 r">result</span>.<span class="i">Succeeded</span>)
+            {
+                <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="s">&quot;Unexpected error occurred removing external login info for user &#39;{UserName}&#39;.&quot;</span>, <span class="r145 r">user</span>.<span class="i">UserName</span>);
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Login</span>));
+            }
+ 
+            <span class="c">// Remove External Authentication Tokens</span>
+            <b>foreach</b> (<a href="/OrchardCore.Users.Core/A.html#1a3f5f2a608b07f9" class="k">var</a> <span id="r147 rd" class="r147 r">item</span> <b>in</b> ((<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>)<span class="r145 r">user</span>).<a href="/OrchardCore.Users.Core/A.html#b8be412ebe92d973" class="i property">UserTokens</a>.<span class="i method">Where</span>(<span id="r148 rd" class="r148 r">c</span> =&gt; <span class="r148 r">c</span>.<a href="/OrchardCore.Users.Core/A.html#d6758d379489c648" class="i property">LoginProvider</a> == <span class="r144 r">model</span>.<a href="../ViewModels/RemoveLoginViewModel.cs.html#8776cee0a2dc53e6" class="i property">LoginProvider</a>).<span class="i method">ToList</span>())
+            {
+                <b>if</b> (!(<b>await</b> (<a href="#5ca6f1f4e3a32be1" class="i field">_userManager</a>.<span class="i">RemoveAuthenticationTokenAsync</span>(<span class="r145 r">user</span>, <span class="r144 r">model</span>.<a href="../ViewModels/RemoveLoginViewModel.cs.html#8776cee0a2dc53e6" class="i property">LoginProvider</a>, <span class="r147 r">item</span>.<a href="/OrchardCore.Users.Core/A.html#7e44520b8703d1fb" class="i property">Name</a>))).<span class="i">Succeeded</span>)
+                {
+                    <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="s">&quot;Could not remove &#39;{TokenName}&#39; token while unlinking &#39;{LoginProvider}&#39; provider from user &#39;{UserName}&#39;.&quot;</span>, <span class="r147 r">item</span>.<a href="/OrchardCore.Users.Core/A.html#7e44520b8703d1fb" class="i property">Name</a>, <span class="r144 r">model</span>.<a href="../ViewModels/RemoveLoginViewModel.cs.html#8776cee0a2dc53e6" class="i property">LoginProvider</a>, <span class="r145 r">user</span>.<span class="i">UserName</span>);
+                }
+            }
+ 
+            <b>await</b> <a href="#58fdc3983f8603ac" class="i field">_signInManager</a>.<span class="i">SignInAsync</span>(<span class="r145 r">user</span>, <span class="i">isPersistent</span>: <b>false</b>);
+            <span class="c">//StatusMessage = &quot;The external login was removed.&quot;;</span>
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">ExternalLogins</span>));
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="6e168fa061637ad8" href="../R/6e168fa061637ad8.html" target="n" data-glyph="76,1" class="i method">GenerateUsername</a>(<span class="t t">ExternalLoginInfo</span> <span id="r149 rd" class="r149 r">info</span>)
+        {
+            <b>var</b> <span id="r150 rd" class="r150 r">now</span> = <b>new</b> <span class="t">TimeSpan</span>(<a href="#f4ad4f83ae80e7cf" class="i field">_clock</a>.<span class="i">UtcNow</span>.<span class="i">Ticks</span>) - <b>new</b> <a href="@1@System.Runtime/A.html#9cf98f5e237ce8fb" class="t constructor">TimeSpan</a>(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#c4215d85c50fa46e" class="i field">UnixEpoch</a>.<a href="@1@System.Runtime/A.html#92f52fcc6830b73e" class="i property">Ticks</a>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r151 rd" class="r151 r">ret</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Concat</span>(<span class="s">&quot;u&quot;</span> + <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToInt32</span>(<span class="r150 r">now</span>.<span class="i">TotalSeconds</span>).<a href="@1@System.Runtime/A.html#8d6f2d8bc0589463" class="i method">ToString</a>());
+ 
+            <a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="k">var</a> <span id="r152 rd" class="r152 r">registrationSettings</span> = (<b>await</b> <a href="#0652b7164dc99e35" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;();
+ 
+            <b>var</b> <span id="r153 rd" class="r153 r">externalClaims</span> = <span class="r149 r">info</span> == <b>null</b> ? <b>null</b> : <span class="r149 r">info</span>.<span class="i property">Principal</span>.<span class="i">GetSerializableClaims</span>();
+ 
+            <b>if</b> (<span class="r152 r">registrationSettings</span>.<a href="../Models/RegistrationSettings.cs.html#8daba9c4d2c49645" class="i property">UseScriptToGenerateUsername</a>)
+            {
+                <a href="#dfe3b8f435c41279" class="k">var</a> <span id="r154 rd" class="r154 r">context</span> = <b>new</b> { <a href="#53f015e94b7171fc" class="i property">userName</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#bc3f4bffc51afc50" class="i property">loginProvider</a> = <span class="r149 r">info</span>?.<span class="i property">LoginProvider</span>, <span class="r153 r">externalClaims</span> };
+                <b>var</b> <span id="r155 rd" class="r155 r">jsonSerializerSettings</span> = <b>new</b> <span class="i">JsonSerializerSettings</span>()
+                {
+                    <span class="i">ContractResolver</span> = <b>new</b> <span class="i">CamelCasePropertyNamesContractResolver</span>()
+                };
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r156 rd" class="r156 r">script</span> = <span class="s">$&quot;</span><span class="s">js: function generateUsername(context) {{\n</span>{<span class="r152 r">registrationSettings</span>.<a href="../Models/RegistrationSettings.cs.html#daf1225bda6af57e" class="i property">GenerateUsernameScript</a>}<span class="s">\n}}\nvar context = </span>{<span class="i">JsonConvert</span>.<span class="i">SerializeObject</span>(<span class="r154 r">context</span>, <span class="r155 r">jsonSerializerSettings</span>)}<span class="s">;\ngenerateUsername(context);\nreturn context;</span><span class="s">&quot;</span>;
+                <b>try</b>
+                {
+                    <b>dynamic</b> <span id="r157 rd" class="r157 r">evaluationResult</span> = <a href="#28d8d62a9e381f5e" class="i field">_scriptingManager</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#949c361103e28d02" class="i method">Evaluate</a>(<span class="r156 r">script</span>, <b>null</b>, <b>null</b>, <b>null</b>);
+                    <b>if</b> (<span class="r157 r">evaluationResult</span>?.<span class="i">userName</span> == <b>null</b>)
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#df2d82d91ca29e40" class="t constructor">Exception</a>(<span class="s">&quot;GenerateUsernameScript did not return a username&quot;</span>);
+                    <b>return</b> <span class="r157 r">evaluationResult</span>.<span class="i">userName</span>;
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r158 rd" class="r158 r">ex</span>)
+                {
+                    <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r158 r">ex</span>, <span class="s">&quot;Error evaluating GenerateUsernameScript({context})&quot;</span>, <span class="r154 r">context</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r159 rd" class="r159 r">userNames</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                <b>foreach</b> (<b>var</b> <span id="r160 rd" class="r160 r">item</span> <b>in</b> <a href="#6002bb686da5bf4e" class="i field">_externalLoginHandlers</a>)
+                {
+                    <b>try</b>
+                    {
+                        <b>var</b> <span id="r161 rd" class="r161 r">userName</span> = <b>await</b> <span class="r160 r">item</span>.<span class="i">GenerateUserName</span>(<span class="r149 r">info</span>.<span class="i property">LoginProvider</span>, <span class="r153 r">externalClaims</span>.<span class="i">ToArray</span>());
+                        <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r161 r">userName</span>))
+                        {
+                            <b>if</b> (<span class="r159 r">userNames</span>.<span class="i property">Count</span> == 0)
+                            {
+                                <span class="r151 r">ret</span> = <span class="r161 r">userName</span>;
+                            }
+                            <span class="r159 r">userNames</span>.<span class="i">Add</span>(<span class="r160 r">item</span>.<span class="i">GetType</span>(), <span class="r161 r">userName</span>);
+                        }
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r162 rd" class="r162 r">ex</span>)
+                    {
+                        <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="r162 r">ex</span>, <span class="s">&quot;{externalLoginHandler} - IExternalLoginHandler.GenerateUserName threw an exception&quot;</span>, <span class="r160 r">item</span>.<span class="i">GetType</span>());
+                    }
+                }
+                <b>if</b> (<span class="r159 r">userNames</span>.<span class="i property">Count</span> &gt; 1)
+                {
+                    <a href="#c8a97dff15466f8f" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;More than one IExternalLoginHandler generated username. Used first one registered, {externalLoginHandler}&quot;</span>, <span class="r159 r">userNames</span>.<span class="i method">FirstOrDefault</span>().<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>);
+                }
+            }
+ 
+            <b>return</b> <span class="r151 r">ret</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

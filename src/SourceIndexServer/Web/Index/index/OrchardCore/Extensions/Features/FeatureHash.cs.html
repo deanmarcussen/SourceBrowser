@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html><head><title>FeatureHash.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(57);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Extensions/Features/FeatureHash.cs" target="_top">Extensions\Features\FeatureHash.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>.<span class="i n">Features</span>
+{
+    <b>public class</b> <a id="7c9c36ddb7cf0bb2" href="../../R/7c9c36ddb7cf0bb2.html" target="n" data-glyph="0,0" class="t t">FeatureHash</a> : <a href="/OrchardCore.Abstractions/A.html#3a04d8abb545c3d7" class="t t">IFeatureHash</a>
+    {
+        <b>private const string</b> <a id="0a454dc8490a449c" href="../../R/0a454dc8490a449c.html" target="n" data-glyph="10,1" class="i field">FeatureHashCacheKey</a> = <span class="s">&quot;FeatureHash:Features&quot;</span>;
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#166a0d38f5a4d3a2" class="t t">IShellFeaturesManager</a> <a id="338608134b78fe59" href="../../R/338608134b78fe59.html" target="n" data-glyph="46,1" class="i field">_featureManager</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="ccf90f17040bf6f4" href="../../R/ccf90f17040bf6f4.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+ 
+        <b>public</b> <a id="40461887035bc49d" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">FeatureHash</a>(<a href="/OrchardCore.Abstractions/A.html#166a0d38f5a4d3a2" class="t t">IShellFeaturesManager</a> <span id="r0 rd" class="r0 r">featureManager</span>, <span class="t t">IMemoryCache</span> <span id="r1 rd" class="r1 r">memoryCache</span>)
+        {
+            <a href="#ccf90f17040bf6f4" class="i field">_memoryCache</a> = <span class="r1 r">memoryCache</span>;
+            <a href="#338608134b78fe59" class="i field">_featureManager</a> = <span class="r0 r">featureManager</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>int</b>&gt; <a id="0ff9518403a39fea" href="../../R/0ff9518403a39fea.html" target="n" data-glyph="72,1" class="i method">GetFeatureHashAsync</a>()
+        {
+            <b>if</b> (<a href="#ccf90f17040bf6f4" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>&lt;<b>int</b>&gt;(<a href="#0a454dc8490a449c" class="i field">FeatureHashCacheKey</a>, <b>out</b> <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r2 rd" class="r2 r">serial</span>))
+            {
+                <b>return</b> <span class="r2 r">serial</span>;
+            }
+ 
+            <span class="c">// Calculate a hash of all enabled features&#39; id</span>
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r3 rd" class="r3 r">enabledFeatures</span> = <b>await</b> <a href="#338608134b78fe59" class="i field">_featureManager</a>.<a href="/OrchardCore.Abstractions/A.html#e209c906ae8ef505" class="i method">GetEnabledFeaturesAsync</a>();
+ 
+            <span class="r2 r">serial</span> = <span class="r3 r">enabledFeatures</span>
+                .<span class="i method">OrderBy</span>(<span id="r4 rd" class="r4 r">x</span> =&gt; <span class="r4 r">x</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>)
+                .<span class="i method">Aggregate</span>(0, (<span id="r5 rd" class="r5 r">a</span>, <span id="r6 rd" class="r6 r">f</span>) =&gt; <span class="r5 r">a</span> * 7 + <span class="r6 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>.<a href="@1@System.Runtime/A.html#0a17bbac4851d0d4" class="i method">GetHashCode</a>());
+ 
+            <a href="#ccf90f17040bf6f4" class="i field">_memoryCache</a>.<span class="i method">Set</span>(<a href="#0a454dc8490a449c" class="i field">FeatureHashCacheKey</a>, <span class="r2 r">serial</span>);
+ 
+            <b>return</b> <span class="r2 r">serial</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>int</b>&gt; <a id="b125c0531d783533" href="../../R/b125c0531d783533.html" target="n" data-glyph="72,1" class="i method">GetFeatureHashAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">featureId</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">cacheKey</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#7432dab173fae5fc" class="i method">Format</a>(<span class="s">&quot;{0}:{1}&quot;</span>, <a href="#0a454dc8490a449c" class="i field">FeatureHashCacheKey</a>, <span class="r7 r">featureId</span>);
+ 
+            <b>if</b> (!<a href="#ccf90f17040bf6f4" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>&lt;<b>bool</b>&gt;(<span class="r8 r">cacheKey</span>, <b>out</b> <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r9 rd" class="r9 r">enabled</span>))
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r10 rd" class="r10 r">enabledFeatures</span> = <b>await</b> <a href="#338608134b78fe59" class="i field">_featureManager</a>.<a href="/OrchardCore.Abstractions/A.html#e209c906ae8ef505" class="i method">GetEnabledFeaturesAsync</a>();
+ 
+                <span class="r9 r">enabled</span> = <span class="r10 r">enabledFeatures</span>.<span class="i method">Any</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <span class="r11 r">x</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>.<a href="@1@System.Runtime/A.html#31b307b02a3bd6b9" class="i method">Equals</a>(<span class="r7 r">featureId</span>));
+ 
+                <a href="#ccf90f17040bf6f4" class="i field">_memoryCache</a>.<span class="i method">Set</span>(<span class="r8 r">cacheKey</span>, <span class="r9 r">enabled</span>);
+            }
+ 
+            <b>return</b> <span class="r9 r">enabled</span> ? 1 : 0;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

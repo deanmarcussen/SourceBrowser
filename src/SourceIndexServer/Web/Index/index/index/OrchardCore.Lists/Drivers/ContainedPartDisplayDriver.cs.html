@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContainedPartDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(89);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lists/Drivers/ContainedPartDisplayDriver.cs" target="_top">Drivers\ContainedPartDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lists" target="_top">src\OrchardCore.Modules\OrchardCore.Lists\OrchardCore.Lists.csproj</a> (OrchardCore.Lists)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="86b5bcdb30a5e232" href="../R/86b5bcdb30a5e232.html" target="n" data-glyph="0,0" class="t t">ContainedPartDisplayDriver</a> : <a href="/OrchardCore.ContentManagement.Display/A.html#e2ba4b4a2a5c701e" class="t t">ContentDisplayDriver</a>
+    {
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="7e3b4e4d0d936260" href="../R/7e3b4e4d0d936260.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="12848fa50dab55b1" href="../R/12848fa50dab55b1.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <a href="../Services/IContainerService.cs.html#d44ca777bb535bf4" class="t t">IContainerService</a> <a id="99f03071f655a918" href="../R/99f03071f655a918.html" target="n" data-glyph="46,1" class="i field">_containerService</a>;
+ 
+        <b>public</b> <a id="d1bc71f35b80bf7d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContainedPartDisplayDriver</a>(
+            <span class="i">IContentManager</span> <span id="r0 rd" class="r0 r">contentManager</span>,
+            <span class="i">ISession</span> <span id="r1 rd" class="r1 r">session</span>,
+            <a href="../Services/IContainerService.cs.html#d44ca777bb535bf4" class="t t">IContainerService</a> <span id="r2 rd" class="r2 r">containerService</span>
+            )
+        {
+            <a href="#12848fa50dab55b1" class="i field">_session</a> = <span class="r1 r">session</span>;
+            <a href="#7e3b4e4d0d936260" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+            <a href="#99f03071f655a918" class="i field">_containerService</a> = <span class="r2 r">containerService</span>;
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">IDisplayResult</span>&gt; <a id="081feb7af0f4471f" href="../R/081feb7af0f4471f.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<span class="i">ContentItem</span> <span id="r3 rd" class="r3 r">model</span>, <span class="i">IUpdateModel</span> <span id="r4 rd" class="r4 r">updater</span>)
+        {
+            <span class="c">// This method can get called when a new content item is created, at that point</span>
+            <span class="c">// the query string contains a ListPart.ContainerId value, or when an</span>
+            <span class="c">// existing content item has ContainedPart value. In both cases the hidden field</span>
+            <span class="c">// needs to be rendered in the edit form to maintain the relationship with the parent.</span>
+ 
+            <b>if</b> (<span class="r3 r">model</span>.<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;() != <b>null</b>)
+            {
+                <b>return</b> <span class="i">BuildViewModel</span>(<span class="r3 r">model</span>.<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;().<span class="i">ListContentItemId</span>, <span class="r3 r">model</span>.<span class="i">ContentType</span>);
+            }
+ 
+            <a href="../ViewModels/EditContainedPartViewModel.cs.html#791799c071a2bd30" class="k">var</a> <span id="r5 rd" class="r5 r">viewModel</span> = <b>new</b> <a href="../ViewModels/EditContainedPartViewModel.cs.html#791799c071a2bd30" class="t constructor">EditContainedPartViewModel</a>();
+            <b>if</b> (<b>await</b> <span class="r4 r">updater</span>.<span class="i">TryUpdateModelAsync</span>(<span class="r5 r">viewModel</span>, <b>nameof</b>(<a href="../Models/ListPart.cs.html#9805ddfadd8d801c" class="t t">ListPart</a>)) &amp;&amp; <span class="r5 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#315604d546847089" class="i property">ContainerId</a> != <b>null</b> &amp;&amp; <span class="r5 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#7b33f104269da547" class="i property">ContentType</a> == <span class="r3 r">model</span>.<span class="i">ContentType</span>)
+            {
+                <span class="c">// We are creating a content item that needs to be added to a container</span>
+                <span class="c">// so we render the container id as part of the form, the content type,</span>
+                <span class="c">// and the enable ordering setting.</span>
+                <span class="c">// The content type must be included to prevent any contained items,</span>
+                <span class="c">// such as widgets, from also having a ContainedPart shape built for them.</span>
+ 
+                <b>return</b> <span class="i">BuildViewModel</span>(<span class="r5 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#315604d546847089" class="i property">ContainerId</a>, <span class="r3 r">model</span>.<span class="i">ContentType</span>, <span class="r5 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#70fa9bea41a6b1e9" class="i property">EnableOrdering</a>);
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>private</b> <span class="i">IDisplayResult</span> <a id="05708190a7504fbb" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">BuildViewModel</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">containerId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">contentType</span>, <b>bool</b> <span id="r8 rd" class="r8 r">enableOrdering</span> = <b>false</b>)
+        {
+            <b>return</b> <span class="i">Initialize</span>&lt;<a href="../ViewModels/EditContainedPartViewModel.cs.html#791799c071a2bd30" class="t t">EditContainedPartViewModel</a>&gt;(<span class="s">&quot;ListPart_ContainerId&quot;</span>, <span id="r9 rd" class="r9 r">m</span> =&gt;
+            {
+                <span class="r9 r">m</span>.<span class="i">ContainerId</span> = <span class="r6 r">containerId</span>;
+                <span class="r9 r">m</span>.<span class="i">EnableOrdering</span> = <span class="r8 r">enableOrdering</span>;
+                <span class="r9 r">m</span>.<span class="i">ContentType</span> = <span class="r7 r">contentType</span>;
+            })
+            .<span class="i">Location</span>(<span class="s">&quot;Content&quot;</span>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">IDisplayResult</span>&gt; <a id="e9c2145415c341f8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="i">ContentItem</span> <span id="r10 rd" class="r10 r">model</span>, <span class="i">IUpdateModel</span> <span id="r11 rd" class="r11 r">updater</span>)
+        {
+            <a href="../ViewModels/EditContainedPartViewModel.cs.html#791799c071a2bd30" class="k">var</a> <span id="r12 rd" class="r12 r">viewModel</span> = <b>new</b> <a href="../ViewModels/EditContainedPartViewModel.cs.html#791799c071a2bd30" class="t constructor">EditContainedPartViewModel</a>();
+ 
+            <span class="c">// The content type must match the value provided in the query string</span>
+            <span class="c">// in order for the ContainedPart to be included on the Content Item.</span>
+            <b>if</b> (<b>await</b> <span class="r11 r">updater</span>.<span class="i">TryUpdateModelAsync</span>(<span class="r12 r">viewModel</span>, <b>nameof</b>(<a href="../Models/ListPart.cs.html#9805ddfadd8d801c" class="t t">ListPart</a>)) &amp;&amp; <span class="r12 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#315604d546847089" class="i property">ContainerId</a> != <b>null</b> &amp;&amp; <span class="r12 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#7b33f104269da547" class="i property">ContentType</a> == <span class="r10 r">model</span>.<span class="i">ContentType</span>)
+            {
+                <span class="r10 r">model</span>.<span class="i">Alter</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;(<span id="r13 rd" class="r13 r">x</span> =&gt; <span class="r13 r">x</span>.<span class="i">ListContentItemId</span> = <span class="r12 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#315604d546847089" class="i property">ContainerId</a>);
+                <span class="c">// If creating get next order number so item is added to the end of the list</span>
+                <b>if</b> (<span class="r12 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#70fa9bea41a6b1e9" class="i property">EnableOrdering</a>)
+                {
+                    <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r14 rd" class="r14 r">nextOrder</span> = <b>await</b> <a href="#99f03071f655a918" class="i field">_containerService</a>.<a href="../Services/IContainerService.cs.html#8cdcfae9dd205ead" class="i method">GetNextOrderNumberAsync</a>(<span class="r12 r">viewModel</span>.<a href="../ViewModels/EditContainedPartViewModel.cs.html#315604d546847089" class="i property">ContainerId</a>);
+                    <span class="r10 r">model</span>.<span class="i">Alter</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;(<span id="r15 rd" class="r15 r">x</span> =&gt; <span class="r15 r">x</span>.<span class="i">Order</span> = <span class="r14 r">nextOrder</span>);
+                }
+            }
+ 
+            <b>return</b> <b>await</b> <a href="#081feb7af0f4471f" class="i method">EditAsync</a>(<span class="r10 r">model</span>, <span class="r11 r">updater</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

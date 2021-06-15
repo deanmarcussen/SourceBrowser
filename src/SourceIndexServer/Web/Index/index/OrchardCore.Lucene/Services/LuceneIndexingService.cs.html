@@ -1,0 +1,317 @@
+﻿<!DOCTYPE html>
+<html><head><title>LuceneIndexingService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(308);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Services/LuceneIndexingService.cs" target="_top">Services\LuceneIndexingService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Indexing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Model</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This class provides services to update all the Lucene indices. It is non-rentrant so that calls</span>
+    <span class="c">///</span><span class="c"> from different components can be done simultaneously, e.g. from a background task, an event or a UI interaction.</span>
+    <span class="c">///</span><span class="c"> It also indexes one content item at a time and provides the result to all indices.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="e2827df3cdff875a" href="../R/e2827df3cdff875a.html" target="n" data-glyph="0,0" class="t t">LuceneIndexingService</a>
+    {
+        <b>private const int</b> <a id="411175e837b22ea8" href="../R/411175e837b22ea8.html" target="n" data-glyph="10,1" class="i field">BatchSize</a> = 100;
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="518e13530463618a" href="../R/518e13530463618a.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="4e300d172167f076" href="../R/4e300d172167f076.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <a href="LuceneIndexingState.cs.html#7b1e252a4aa9b81d" class="t t">LuceneIndexingState</a> <a id="e9cfb3ec7ae4451b" href="../R/e9cfb3ec7ae4451b.html" target="n" data-glyph="46,1" class="i field">_indexingState</a>;
+        <b>private readonly</b> <a href="LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <a id="fb427bae2ec5cd56" href="../R/fb427bae2ec5cd56.html" target="n" data-glyph="46,1" class="i field">_luceneIndexSettingsService</a>;
+        <b>private readonly</b> <a href="LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <a id="357a63639c83a2eb" href="../R/357a63639c83a2eb.html" target="n" data-glyph="46,1" class="i field">_indexManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Indexing.Abstractions/A.html#19b554320ff8834a" class="t t">IIndexingTaskManager</a> <a id="980475c612052a1b" href="../R/980475c612052a1b.html" target="n" data-glyph="46,1" class="i field">_indexingTaskManager</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="ef9efc77f16a49e3" href="../R/ef9efc77f16a49e3.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="adba77b4cbd05f93" href="../R/adba77b4cbd05f93.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="efbc5ac43286e333" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LuceneIndexingService</a>(
+            <span class="i">IShellHost</span> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>,
+            <a href="LuceneIndexingState.cs.html#7b1e252a4aa9b81d" class="t t">LuceneIndexingState</a> <span id="r2 rd" class="r2 r">indexingState</span>,
+            <a href="LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <span id="r3 rd" class="r3 r">luceneIndexSettingsService</span>,
+            <a href="LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <span id="r4 rd" class="r4 r">indexManager</span>,
+            <a href="/OrchardCore.Indexing.Abstractions/A.html#19b554320ff8834a" class="t t">IIndexingTaskManager</a> <span id="r5 rd" class="r5 r">indexingTaskManager</span>,
+            <span class="i">ISiteService</span> <span id="r6 rd" class="r6 r">siteService</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#e2827df3cdff875a" class="t t">LuceneIndexingService</a>&gt; <span id="r7 rd" class="r7 r">logger</span>)
+        {
+            <a href="#518e13530463618a" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#4e300d172167f076" class="i field">_shellSettings</a> = <span class="r1 r">shellSettings</span>;
+            <a href="#e9cfb3ec7ae4451b" class="i field">_indexingState</a> = <span class="r2 r">indexingState</span>;
+            <a href="#fb427bae2ec5cd56" class="i field">_luceneIndexSettingsService</a> = <span class="r3 r">luceneIndexSettingsService</span>;
+            <a href="#357a63639c83a2eb" class="i field">_indexManager</a> = <span class="r4 r">indexManager</span>;
+            <a href="#980475c612052a1b" class="i field">_indexingTaskManager</a> = <span class="r5 r">indexingTaskManager</span>;
+            <a href="#ef9efc77f16a49e3" class="i field">_siteService</a> = <span class="r6 r">siteService</span>;
+            <a href="#adba77b4cbd05f93" class="i field">_logger</a> = <span class="r7 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4d6966c1670a9f3f" href="../R/4d6966c1670a9f3f.html" target="n" data-glyph="72,1" class="i method">ProcessContentItemsAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">indexName</span> = <b>default</b>)
+        {
+            <span class="c">// TODO: Lock over the filesystem in case two instances get a command to rebuild the index concurrently.</span>
+            <b>var</b> <span id="r9 rd" class="r9 r">allIndices</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>int</b>&gt;();
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r10 rd" class="r10 r">lastTaskId</span> = <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="t t">Int32</a>.<a href="@1@System.Runtime/A.html#c45153c0501d7122" class="i field">MaxValue</a>;
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="t t">LuceneIndexSettings</a>&gt; <span id="r11 rd" class="r11 r">indexSettingsList</span> = <b>null</b>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r8 r">indexName</span>))
+            {
+                <span class="r11 r">indexSettingsList</span> = <b>await</b> <a href="#fb427bae2ec5cd56" class="i field">_luceneIndexSettingsService</a>.<a href="LuceneIndexSettingsService.cs.html#be2c2197d07ad806" class="i method">GetSettingsAsync</a>();
+ 
+                <b>if</b> (!<span class="r11 r">indexSettingsList</span>.<span class="i method">Any</span>())
+                {
+                    <b>return</b>;
+                }
+ 
+                <span class="c">// Find the lowest task id to process</span>
+                <b>foreach</b> (<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r12 rd" class="r12 r">indexSetting</span> <b>in</b> <span class="r11 r">indexSettingsList</span>)
+                {
+                    <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r13 rd" class="r13 r">taskId</span> = <a href="#e9cfb3ec7ae4451b" class="i field">_indexingState</a>.<a href="LuceneIndexingState.cs.html#8ce2ab47761c8017" class="i method">GetLastTaskId</a>(<span class="r12 r">indexSetting</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>);
+                    <span class="r10 r">lastTaskId</span> = <a href="@1@System.Runtime/A.html#a4407e67b9a5afad" class="t t">Math</a>.<a href="@1@System.Runtime/A.html#f441d55c88d635ad" class="i method">Min</a>(<span class="r10 r">lastTaskId</span>, <span class="r13 r">taskId</span>);
+                    <span class="r9 r">allIndices</span>.<span class="i method">Add</span>(<span class="r12 r">indexSetting</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>, <span class="r13 r">taskId</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r14 rd" class="r14 r">settings</span> = <b>await</b> <a href="#fb427bae2ec5cd56" class="i field">_luceneIndexSettingsService</a>.<a href="LuceneIndexSettingsService.cs.html#d458f0ed69accb9f" class="i method">GetSettingsAsync</a>(<span class="r8 r">indexName</span>);
+ 
+                <b>if</b> (<span class="r14 r">settings</span> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <span class="r11 r">indexSettingsList</span> = <b>new</b> <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="t t">LuceneIndexSettings</a>[1] { <span class="r14 r">settings</span> }.<span class="i method">AsEnumerable</span>();
+ 
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r15 rd" class="r15 r">taskId</span> = <a href="#e9cfb3ec7ae4451b" class="i field">_indexingState</a>.<a href="LuceneIndexingState.cs.html#8ce2ab47761c8017" class="i method">GetLastTaskId</a>(<span class="r8 r">indexName</span>);
+                <span class="r10 r">lastTaskId</span> = <a href="@1@System.Runtime/A.html#a4407e67b9a5afad" class="t t">Math</a>.<a href="@1@System.Runtime/A.html#f441d55c88d635ad" class="i method">Min</a>(<span class="r10 r">lastTaskId</span>, <span class="r15 r">taskId</span>);
+                <span class="r9 r">allIndices</span>.<span class="i method">Add</span>(<span class="r8 r">indexName</span>, <span class="r15 r">taskId</span>);
+            }
+ 
+            <b>if</b> (<span class="r9 r">allIndices</span>.<span class="i property">Count</span> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r16 rd" class="r16 r">batch</span> = <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>&gt;();
+ 
+            <b>do</b>
+            {
+                <span class="c">// Create a scope for the content manager</span>
+                <b>var</b> <span id="r17 rd" class="r17 r">shellScope</span> = <b>await</b> <a href="#518e13530463618a" class="i field">_shellHost</a>.<span class="i">GetScopeAsync</span>(<a href="#4e300d172167f076" class="i field">_shellSettings</a>);
+ 
+                <b>await</b> <span class="r17 r">shellScope</span>.<span class="i">UsingAsync</span>(<b>async</b> <span id="r18 rd" class="r18 r">scope</span> =&gt;
+                {
+                    <span class="c">// Load the next batch of tasks</span>
+                    <span class="r16 r">batch</span> = (<b>await</b> <a href="#980475c612052a1b" class="i field">_indexingTaskManager</a>.<a href="/OrchardCore.Indexing.Abstractions/A.html#9f354818bb7e5812" class="i method">GetIndexingTasksAsync</a>(<span class="r10 r">lastTaskId</span>, <a href="#411175e837b22ea8" class="i field">BatchSize</a>)).<span class="i method">ToArray</span>();
+ 
+                    <b>if</b> (!<span class="r16 r">batch</span>.<span class="i method">Any</span>())
+                    {
+                        <b>return</b>;
+                    }
+ 
+                    <b>var</b> <span id="r19 rd" class="r19 r">contentManager</span> = <span class="r18 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">IContentManager</span>&gt;();
+                    <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r20 rd" class="r20 r">indexHandlers</span> = <span class="r18 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetServices</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#33f535f791f6941b" class="t t">IContentItemIndexHandler</a>&gt;();
+ 
+                    <span class="c">// Pre-load all content items to prevent SELECT N+1</span>
+                    <b>var</b> <span id="r21 rd" class="r21 r">updatedContentItemIds</span> = <span class="r16 r">batch</span>
+                        .<span class="i method">Where</span>(<span id="r22 rd" class="r22 r">x</span> =&gt; <span class="r22 r">x</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#4167ffc6747b7a1c" class="i property">Type</a> == <a href="/OrchardCore.Indexing.Abstractions/A.html#2a295d11f547164f" class="t t">IndexingTaskTypes</a>.<a href="/OrchardCore.Indexing.Abstractions/A.html#f5fc31228148faf8" class="i field">Update</a>)
+                        .<span class="i method">Select</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>)
+                        .<span class="i method">ToArray</span>();
+ 
+                    <b>var</b> <span id="r24 rd" class="r24 r">allPublished</span> = <b>await</b> <span class="r19 r">contentManager</span>.<span class="i">GetAsync</span>(<span class="r21 r">updatedContentItemIds</span>);
+                    <b>var</b> <span id="r25 rd" class="r25 r">allLatest</span> = <b>await</b> <span class="r19 r">contentManager</span>.<span class="i">GetAsync</span>(<span class="r21 r">updatedContentItemIds</span>, <span class="i">latest</span>: <b>true</b>);
+ 
+                    <span class="c">// Group all DocumentIndex by index to batch update them</span>
+                    <b>var</b> <span id="r26 rd" class="r26 r">updatedDocumentsByIndex</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">List</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#0cbc5b91325ef982" class="t t">DocumentIndex</a>&gt;&gt;();
+ 
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r27 rd" class="r27 r">index</span> <b>in</b> <span class="r9 r">allIndices</span>)
+                    {
+                        <span class="r26 r">updatedDocumentsByIndex</span>[<span class="r27 r">index</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>] = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#0cbc5b91325ef982" class="t t">DocumentIndex</a>&gt;();
+                    }
+ 
+                    <b>if</b> (<span class="r8 r">indexName</span> != <b>null</b>)
+                    {
+                        <span class="r11 r">indexSettingsList</span> = <span class="r11 r">indexSettingsList</span>.<span class="i method">Where</span>(<span id="r28 rd" class="r28 r">x</span> =&gt; <span class="r28 r">x</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a> == <span class="r8 r">indexName</span>);
+                    }
+ 
+                    <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r29 rd" class="r29 r">needLatest</span> = <span class="r11 r">indexSettingsList</span>.<span class="i method">FirstOrDefault</span>(<span id="r30 rd" class="r30 r">x</span> =&gt; <span class="r30 r">x</span>.<a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a>) != <b>null</b>;
+                    <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r31 rd" class="r31 r">needPublished</span> = <span class="r11 r">indexSettingsList</span>.<span class="i method">FirstOrDefault</span>(<span id="r32 rd" class="r32 r">x</span> =&gt; !<span class="r32 r">x</span>.<a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a>) != <b>null</b>;
+ 
+                    <b>var</b> <span id="r33 rd" class="r33 r">settingsByIndex</span> = <span class="r11 r">indexSettingsList</span>.<span class="i method">ToDictionary</span>(<span id="r34 rd" class="r34 r">x</span> =&gt; <span class="r34 r">x</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>, <span id="r35 rd" class="r35 r">x</span> =&gt; <span class="r35 r">x</span>);
+ 
+                    <b>foreach</b> (<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="k">var</a> <span id="r36 rd" class="r36 r">task</span> <b>in</b> <span class="r16 r">batch</span>)
+                    {
+                        <b>if</b> (<span class="r36 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#4167ffc6747b7a1c" class="i property">Type</a> == <a href="/OrchardCore.Indexing.Abstractions/A.html#2a295d11f547164f" class="t t">IndexingTaskTypes</a>.<a href="/OrchardCore.Indexing.Abstractions/A.html#f5fc31228148faf8" class="i field">Update</a>)
+                        {
+                            <a href="/OrchardCore.Indexing.Abstractions/A.html#0c8f7540208faa00" class="t t">BuildIndexContext</a> <span id="r37 rd" class="r37 r">publishedIndexContext</span> = <b>null</b>, <span id="r38 rd" class="r38 r">latestIndexContext</span> = <b>null</b>;
+ 
+                            <b>if</b> (<span class="r31 r">needPublished</span>)
+                            {
+                                <b>var</b> <span id="r39 rd" class="r39 r">contentItem</span> = <b>await</b> <span class="r19 r">contentManager</span>.<span class="i">GetAsync</span>(<span class="r36 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>);
+                                <b>if</b> (<span class="r39 r">contentItem</span> != <b>null</b>)
+                                {
+                                    <span class="r37 r">publishedIndexContext</span> = <b>new</b> <span class="t">BuildIndexContext</span>(<b>new</b> <a href="/OrchardCore.Indexing.Abstractions/A.html#e497363b56430457" class="t constructor">DocumentIndex</a>(<span class="r36 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>), <span class="r39 r">contentItem</span>, <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="r39 r">contentItem</span>.<span class="i">ContentType</span> });
+                                    <b>await</b> <span class="r20 r">indexHandlers</span>.<span class="i">InvokeAsync</span>(<span id="r40 rd" class="r40 r">x</span> =&gt; <span class="r40 r">x</span>.<span class="i">BuildIndexAsync</span>(<span class="r37 r">publishedIndexContext</span>), <a href="#adba77b4cbd05f93" class="i field">_logger</a>);
+                                }
+                            }
+ 
+                            <b>if</b> (<span class="r29 r">needLatest</span>)
+                            {
+                                <b>var</b> <span id="r41 rd" class="r41 r">contentItem</span> = <b>await</b> <span class="r19 r">contentManager</span>.<span class="i">GetAsync</span>(<span class="r36 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>, <span class="i">VersionOptions</span>.<span class="i">Latest</span>);
+                                <b>if</b> (<span class="r41 r">contentItem</span> != <b>null</b>)
+                                {
+                                    <span class="r38 r">latestIndexContext</span> = <b>new</b> <span class="t">BuildIndexContext</span>(<b>new</b> <a href="/OrchardCore.Indexing.Abstractions/A.html#e497363b56430457" class="t constructor">DocumentIndex</a>(<span class="r36 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>), <span class="r41 r">contentItem</span>, <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="r41 r">contentItem</span>.<span class="i">ContentType</span> });
+                                    <b>await</b> <span class="r20 r">indexHandlers</span>.<span class="i">InvokeAsync</span>(<span id="r42 rd" class="r42 r">x</span> =&gt; <span class="r42 r">x</span>.<span class="i">BuildIndexAsync</span>(<span class="r38 r">latestIndexContext</span>), <a href="#adba77b4cbd05f93" class="i field">_logger</a>);
+                                }
+                            }
+ 
+                            <span class="c">// Update the document from the index if its lastIndexId is smaller than the current task id.</span>
+                            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r43 rd" class="r43 r">index</span> <b>in</b> <span class="r9 r">allIndices</span>)
+                            {
+                                <b>if</b> (<span class="r43 r">index</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a> &gt;= <span class="r36 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#e43e283f2c05f126" class="i property">Id</a> || !<span class="r33 r">settingsByIndex</span>.<span class="i method">TryGetValue</span>(<span class="r43 r">index</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <b>out</b> <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r44 rd" class="r44 r">settings</span>))
+                                {
+                                    <b>continue</b>;
+                                }
+ 
+                                <a href="/OrchardCore.Indexing.Abstractions/A.html#0c8f7540208faa00" class="k">var</a> <span id="r45 rd" class="r45 r">context</span> = !<span class="r44 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a> ? <span class="r37 r">publishedIndexContext</span> : <span class="r38 r">latestIndexContext</span>;
+ 
+                                <span class="c">//We index only if we actually found a content item in the database</span>
+                                <b>if</b> (<span class="r45 r">context</span> == <b>null</b>)
+                                {
+                                    <span class="c">//TODO purge these content items from IndexingTask table</span>
+                                    <b>continue</b>;
+                                }
+ 
+                                <b>var</b> <span id="r46 rd" class="r46 r">cultureAspect</span> = <b>await</b> <span class="r19 r">contentManager</span>.<span class="i">PopulateAspectAsync</span>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#605bf92af83d0ea5" class="t t">CultureAspect</a>&gt;(<span class="r45 r">context</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#9b82d70e39908e65" class="i property">ContentItem</a>);
+                                <b>var</b> <span id="r47 rd" class="r47 r">culture</span> = <span class="r46 r">cultureAspect</span>.<span class="i">HasCulture</span> ? <span class="r46 r">cultureAspect</span>.<span class="i">Culture</span>.<span class="i">Name</span> : <b>null</b>;
+                                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r48 rd" class="r48 r">ignoreIndexedCulture</span> = <span class="r44 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#5615f7c342b37b3c" class="i property">Culture</a> == <span class="s">&quot;any&quot;</span> ? <b>false</b> : <span class="r47 r">culture</span> != <span class="r44 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#5615f7c342b37b3c" class="i property">Culture</a>;
+ 
+                                <span class="c">// Ignore if the content item content type or culture is not indexed in this index</span>
+                                <b>if</b> (!<span class="r44 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#0f0aec348c89fa26" class="i property">IndexedContentTypes</a>.<span class="i">Contains</span>(<span class="r45 r">context</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#9b82d70e39908e65" class="i property">ContentItem</a>.<span class="i">ContentType</span>) || <span class="r48 r">ignoreIndexedCulture</span>)
+                                {
+                                    <b>continue</b>;
+                                }
+ 
+                                <span class="r26 r">updatedDocumentsByIndex</span>[<span class="r43 r">index</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>].<span class="i method">Add</span>(<span class="r45 r">context</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#95f00ccb3a1e5e4e" class="i property">DocumentIndex</a>);
+                            }
+                        }
+                    }
+ 
+                    <span class="c">// Delete all the existing documents</span>
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r49 rd" class="r49 r">index</span> <b>in</b> <span class="r26 r">updatedDocumentsByIndex</span>)
+                    {
+                        <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r50 rd" class="r50 r">deletedDocuments</span> = <span class="r26 r">updatedDocumentsByIndex</span>[<span class="r49 r">index</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>].<span class="i method">Select</span>(<span id="r51 rd" class="r51 r">x</span> =&gt; <span class="r51 r">x</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#ba202ea75139db8b" class="i property">ContentItemId</a>);
+ 
+                        <b>await</b> <a href="#357a63639c83a2eb" class="i field">_indexManager</a>.<a href="LuceneIndexManager.cs.html#43644c5c2b926c26" class="i method">DeleteDocumentsAsync</a>(<span class="r49 r">index</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r50 r">deletedDocuments</span>);
+                    }
+ 
+                    <span class="c">// Submits all the new documents to the index</span>
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r52 rd" class="r52 r">index</span> <b>in</b> <span class="r26 r">updatedDocumentsByIndex</span>)
+                    {
+                        <b>await</b> <a href="#357a63639c83a2eb" class="i field">_indexManager</a>.<a href="LuceneIndexManager.cs.html#3b380cea2847e60f" class="i method">StoreDocumentsAsync</a>(<span class="r52 r">index</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r26 r">updatedDocumentsByIndex</span>[<span class="r52 r">index</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>]);
+                    }
+ 
+                    <span class="c">// Update task ids</span>
+                    <span class="r10 r">lastTaskId</span> = <span class="r16 r">batch</span>.<span class="i method">Last</span>().<a href="/OrchardCore.Indexing.Abstractions/A.html#e43e283f2c05f126" class="i property">Id</a>;
+ 
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r53 rd" class="r53 r">indexStatus</span> <b>in</b> <span class="r9 r">allIndices</span>)
+                    {
+                        <b>if</b> (<span class="r53 r">indexStatus</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a> &lt; <span class="r10 r">lastTaskId</span>)
+                        {
+                            <a href="#e9cfb3ec7ae4451b" class="i field">_indexingState</a>.<a href="LuceneIndexingState.cs.html#a06f45a410d4545c" class="i method">SetLastTaskId</a>(<span class="r53 r">indexStatus</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r10 r">lastTaskId</span>);
+                        }
+                    }
+ 
+                    <a href="#e9cfb3ec7ae4451b" class="i field">_indexingState</a>.<a href="LuceneIndexingState.cs.html#6fd10830c53cf23b" class="i method">Update</a>();
+                }, <span class="i">activateShell</span>: <b>false</b>);
+            } <b>while</b> (<span class="r16 r">batch</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == <a href="#411175e837b22ea8" class="i field">BatchSize</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a new index</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="3fc6c0addc11c059" href="../R/3fc6c0addc11c059.html" target="n" data-glyph="72,1" class="i method">CreateIndexAsync</a>(<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="t t">LuceneIndexSettings</a> <span id="r54 rd" class="r54 r">indexSettings</span>)
+        {
+            <b>await</b> <a href="#fb427bae2ec5cd56" class="i field">_luceneIndexSettingsService</a>.<a href="LuceneIndexSettingsService.cs.html#f3127b0ac471f4cf" class="i method">UpdateIndexAsync</a>(<span class="r54 r">indexSettings</span>);
+            <b>await</b> <a href="#89fd1c981d82a520" class="i method">RebuildIndexAsync</a>(<span class="r54 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Update an existing index</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="e398102f780fdaaa" href="../R/e398102f780fdaaa.html" target="n" data-glyph="72,1" class="i method">UpdateIndexAsync</a>(<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="t t">LuceneIndexSettings</a> <span id="r55 rd" class="r55 r">indexSettings</span>)
+        {
+            <b>return</b> <a href="#fb427bae2ec5cd56" class="i field">_luceneIndexSettingsService</a>.<a href="LuceneIndexSettingsService.cs.html#f3127b0ac471f4cf" class="i method">UpdateIndexAsync</a>(<span class="r55 r">indexSettings</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Deletes permanently an index</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="318ddada7f294c87" href="../R/318ddada7f294c87.html" target="n" data-glyph="72,1" class="i method">DeleteIndexAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r56 rd" class="r56 r">indexName</span>)
+        {
+            <b>if</b> (<a href="#357a63639c83a2eb" class="i field">_indexManager</a>.<a href="LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r56 r">indexName</span>))
+            {
+                <a href="#357a63639c83a2eb" class="i field">_indexManager</a>.<a href="LuceneIndexManager.cs.html#f38298c8f64b8c31" class="i method">DeleteIndex</a>(<span class="r56 r">indexName</span>);
+            }
+ 
+            <b>return</b> <a href="#fb427bae2ec5cd56" class="i field">_luceneIndexSettingsService</a>.<a href="LuceneIndexSettingsService.cs.html#5bb8366b8d301495" class="i method">DeleteIndexAsync</a>(<span class="r56 r">indexName</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Restarts the indexing process from the beginning in order to update</span>
+        <span class="c">///</span><span class="c"> current content items. It doesn&#39;t delete existing entries from the index.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public void</b> <a id="8c48ef39a1d31599" href="../R/8c48ef39a1d31599.html" target="n" data-glyph="72,1" class="i method">ResetIndex</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r57 rd" class="r57 r">indexName</span>)
+        {
+            <a href="#e9cfb3ec7ae4451b" class="i field">_indexingState</a>.<a href="LuceneIndexingState.cs.html#a06f45a410d4545c" class="i method">SetLastTaskId</a>(<span class="r57 r">indexName</span>, 0);
+            <a href="#e9cfb3ec7ae4451b" class="i field">_indexingState</a>.<a href="LuceneIndexingState.cs.html#6fd10830c53cf23b" class="i method">Update</a>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Deletes and recreates the full index content.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="89fd1c981d82a520" href="../R/89fd1c981d82a520.html" target="n" data-glyph="72,1" class="i method">RebuildIndexAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r58 rd" class="r58 r">indexName</span>)
+        {
+            <b>if</b> (<a href="#357a63639c83a2eb" class="i field">_indexManager</a>.<a href="LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r58 r">indexName</span>))
+            {
+                <a href="#357a63639c83a2eb" class="i field">_indexManager</a>.<a href="LuceneIndexManager.cs.html#f38298c8f64b8c31" class="i method">DeleteIndex</a>(<span class="r58 r">indexName</span>);
+            }
+ 
+            <b>await</b> <a href="#357a63639c83a2eb" class="i field">_indexManager</a>.<a href="LuceneIndexManager.cs.html#60eae94f51af83fa" class="i method">CreateIndexAsync</a>(<span class="r58 r">indexName</span>);
+ 
+            <a href="#8c48ef39a1d31599" class="i method">ResetIndex</a>(<span class="r58 r">indexName</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t t">LuceneSettings</a>&gt; <a id="7bf62596e31b629c" href="../R/7bf62596e31b629c.html" target="n" data-glyph="72,1" class="i method">GetLuceneSettingsAsync</a>()
+        {
+            <b>var</b> <span id="r59 rd" class="r59 r">siteSettings</span> = <b>await</b> <a href="#ef9efc77f16a49e3" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+ 
+            <b>if</b> (<span class="r59 r">siteSettings</span>.<span class="i">Has</span>&lt;<a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t t">LuceneSettings</a>&gt;())
+            {
+                <b>return</b> <span class="r59 r">siteSettings</span>.<span class="i">As</span>&lt;<a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t t">LuceneSettings</a>&gt;();
+            }
+            <b>else</b>
+            {
+                <b>return</b> <b>new</b> <a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t constructor">LuceneSettings</a>();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

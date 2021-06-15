@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html><head><title>SitemapHelperService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(85);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Sitemaps/Services/SitemapHelperService.cs" target="_top">Services\SitemapHelperService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Sitemaps" target="_top">src\OrchardCore.Modules\OrchardCore.Sitemaps\OrchardCore.Sitemaps.csproj</a> (OrchardCore.Sitemaps)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Sitemaps</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Sitemaps</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="67695221f74b4475" href="../R/67695221f74b4475.html" target="n" data-glyph="0,0" class="t t">SitemapHelperService</a> : <a href="/OrchardCore.Sitemaps.Abstractions/A.html#c6144b2cca548873" class="t t">ISitemapHelperService</a>
+    {
+        <span class="c">// Path requirements for sitemaps include . as acceptable character.</span>
+        <b>public static char</b>[] <a id="a6b31eec01ef9c9d" href="../R/a6b31eec01ef9c9d.html" target="n" data-glyph="42,1" class="i field">InvalidCharactersForPath</a> = <span class="s">&quot;:?#[]@!$&amp;&#39;()*+,;=&lt;&gt;\\|%&quot;</span>.<a href="@1@System.Runtime/A.html#81c2d980f5d0ee35" class="i method">ToCharArray</a>();
+        <b>public const int</b> <a id="76a219d22424917f" href="../R/76a219d22424917f.html" target="n" data-glyph="6,1" class="i field">MaxPathLength</a> = 1024;
+        <b>public const string</b> <a id="b260b07423c56cf7" href="../R/b260b07423c56cf7.html" target="n" data-glyph="6,1" class="i field">Prefix</a> = <span class="s">&quot;&quot;</span>;
+        <b>public const string</b> <a id="e59e09da0b7c8b95" href="../R/e59e09da0b7c8b95.html" target="n" data-glyph="6,1" class="i field">Path</a> = <span class="s">&quot;Path&quot;</span>;
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#591c5c4148806d51" class="t t">ISlugService</a> <a id="27d666474f47d11c" href="../R/27d666474f47d11c.html" target="n" data-glyph="46,1" class="i field">_slugService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Sitemaps.Abstractions/A.html#bd035e0cea359d06" class="t t">ISitemapManager</a> <a id="a827da82a0802427" href="../R/a827da82a0802427.html" target="n" data-glyph="46,1" class="i field">_sitemapManager</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="1f5bd6b08e735d04" href="../R/1f5bd6b08e735d04.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="eefc25147b9e3698" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SitemapHelperService</a>(
+            <a href="/OrchardCore.Liquid.Abstractions/A.html#591c5c4148806d51" class="t t">ISlugService</a> <span id="r0 rd" class="r0 r">slugService</span>,
+            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#bd035e0cea359d06" class="t t">ISitemapManager</a> <span id="r1 rd" class="r1 r">sitemapManager</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#67695221f74b4475" class="t t">SitemapHelperService</a>&gt; <span id="r2 rd" class="r2 r">stringLocalizer</span>
+            )
+        {
+            <a href="#27d666474f47d11c" class="i field">_slugService</a> = <span class="r0 r">slugService</span>;
+            <a href="#a827da82a0802427" class="i field">_sitemapManager</a> = <span class="r1 r">sitemapManager</span>;
+            <a href="#1f5bd6b08e735d04" class="i field">S</a> = <span class="r2 r">stringLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ff36fc9e025e6c07" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ValidatePathAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">path</span>, <span class="i">IUpdateModel</span> <span id="r4 rd" class="r4 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">sitemapId</span> = <b>null</b>)
+        {
+            <span class="c">// Keep localized text as similar to Autoroute as possible.</span>
+            <b>if</b> (<span class="r3 r">path</span> == <span class="s">&quot;/&quot;</span>)
+            {
+                <span class="r4 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="#b260b07423c56cf7" class="i field">Prefix</a>, <a href="#e59e09da0b7c8b95" class="i field">Path</a>, <a href="#1f5bd6b08e735d04" class="i field">S</a>[<span class="s">&quot;Your permalink can&#39;t be set to the homepage&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r3 r">path</span>.<a href="@1@System.Runtime/A.html#299d36326434ba20" class="i method">IndexOfAny</a>(<a href="#a6b31eec01ef9c9d" class="i field">InvalidCharactersForPath</a>) &gt; -1 || <span class="r3 r">path</span>.<a href="@1@System.Runtime/A.html#eb06d6d166f6a3d9" class="i method">IndexOf</a>(<span class="s">&#39; &#39;</span>) &gt; -1)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">invalidCharactersForMessage</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot;, &quot;</span>, <a href="#a6b31eec01ef9c9d" class="i field">InvalidCharactersForPath</a>.<span class="i method">Select</span>(<span id="r7 rd" class="r7 r">c</span> =&gt; <span class="s">$&quot;</span>\&quot;{<span class="r7 r">c</span>}\&quot;<span class="s">&quot;</span>));
+                <span class="r4 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="#b260b07423c56cf7" class="i field">Prefix</a>, <a href="#e59e09da0b7c8b95" class="i field">Path</a>, <a href="#1f5bd6b08e735d04" class="i field">S</a>[<span class="s">&quot;Please do not use any of the following characters in your permalink: {0}. No spaces are allowed (please use dashes or underscores instead).&quot;</span>, <span class="r6 r">invalidCharactersForMessage</span>]);
+            }
+ 
+            <span class="c">// Precludes possibility of collision with Autoroute as Autoroute excludes . as a valid path character.</span>
+            <b>if</b> (!<span class="r3 r">path</span>.<a href="@1@System.Runtime/A.html#cb74053b3f2d03f4" class="i method">EndsWith</a>(<a href="/OrchardCore.Sitemaps.Abstractions/A.html#194af4d6efa9884d" class="t t">Sitemap</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#c553d9497276e264" class="i field">PathExtension</a>))
+            {
+                <span class="r4 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="#b260b07423c56cf7" class="i field">Prefix</a>, <a href="#e59e09da0b7c8b95" class="i field">Path</a>, <a href="#1f5bd6b08e735d04" class="i field">S</a>[<span class="s">&quot;Your permalink must end with {0}.&quot;</span>, <a href="/OrchardCore.Sitemaps.Abstractions/A.html#194af4d6efa9884d" class="t t">Sitemap</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#c553d9497276e264" class="i field">PathExtension</a>]);
+            }
+ 
+            <b>if</b> (<span class="r3 r">path</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> &gt; <a href="#76a219d22424917f" class="i field">MaxPathLength</a>)
+            {
+                <span class="r4 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="#b260b07423c56cf7" class="i field">Prefix</a>, <a href="#e59e09da0b7c8b95" class="i field">Path</a>, <a href="#1f5bd6b08e735d04" class="i field">S</a>[<span class="s">&quot;Your permalink is too long. The permalink can only be up to {0} characters.&quot;</span>, <a href="#76a219d22424917f" class="i field">MaxPathLength</a>]);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r8 rd" class="r8 r">routeExists</span> = <b>false</b>;
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r5 r">sitemapId</span>))
+            {
+                <span class="r8 r">routeExists</span> = (<b>await</b> <a href="#a827da82a0802427" class="i field">_sitemapManager</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#0aa9bbcbfb7d6924" class="i method">GetSitemapsAsync</a>())
+                    .<span class="i method">Any</span>(<span id="r9 rd" class="r9 r">p</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r9 r">p</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#e61bf51f3239588c" class="i property">Path</a>, <span class="r3 r">path</span>.<a href="@1@System.Runtime/A.html#f27cc88763410e0f" class="i method">TrimStart</a>(<span class="s">&#39;/&#39;</span>), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+            }
+            <b>else</b>
+            {
+                <span class="r8 r">routeExists</span> = (<b>await</b> <a href="#a827da82a0802427" class="i field">_sitemapManager</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#0aa9bbcbfb7d6924" class="i method">GetSitemapsAsync</a>())
+                    .<span class="i method">Any</span>(<span id="r10 rd" class="r10 r">p</span> =&gt; <span class="r10 r">p</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#d51a00e61f7af4ca" class="i property">SitemapId</a> != <span class="r5 r">sitemapId</span> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r10 r">p</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#e61bf51f3239588c" class="i property">Path</a>, <span class="r3 r">path</span>.<a href="@1@System.Runtime/A.html#f27cc88763410e0f" class="i method">TrimStart</a>(<span class="s">&#39;/&#39;</span>), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+            }
+ 
+            <b>if</b> (<span class="r8 r">routeExists</span>)
+            {
+                <span class="r4 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="#b260b07423c56cf7" class="i field">Prefix</a>, <a href="#e59e09da0b7c8b95" class="i field">Path</a>, <a href="#1f5bd6b08e735d04" class="i field">S</a>[<span class="s">&quot;Your permalink is already in use.&quot;</span>]);
+            }
+        }
+ 
+        <b>public string</b> <a id="a114ecb9ea7f8300" href="../R/a114ecb9ea7f8300.html" target="n" data-glyph="72,1" class="i method">GetSitemapSlug</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">name</span>)
+        {
+            <b>return</b> <a href="#27d666474f47d11c" class="i field">_slugService</a>.<a href="/OrchardCore.Liquid.Abstractions/A.html#fed8b7ed83437078" class="i method">Slugify</a>(<span class="r11 r">name</span>) + <a href="/OrchardCore.Sitemaps.Abstractions/A.html#194af4d6efa9884d" class="t t">Sitemap</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#c553d9497276e264" class="i field">PathExtension</a>;
+        }
+ 
+    }
+}
+</pre></td></tr></table></div></body></html>

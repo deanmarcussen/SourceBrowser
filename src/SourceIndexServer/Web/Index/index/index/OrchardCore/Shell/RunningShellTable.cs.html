@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html><head><title>RunningShellTable.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(184);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Shell/RunningShellTable.cs" target="_top">Shell\RunningShellTable.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>
+{
+    <b>public class</b> <a id="2e9f91e7a301b3f4" href="../R/2e9f91e7a301b3f4.html" target="n" data-glyph="0,0" class="t t"><span id="23a9b060c46d2ff3">RunningShellTable</span></a> : <a href="/OrchardCore.Abstractions/A.html#99578f81a6193ddf" class="t t">IRunningShellTable</a>
+    {
+        <b>private static readonly char</b>[] <a id="e6cd9b353ba517cc" href="../R/e6cd9b353ba517cc.html" target="n" data-glyph="46,1" class="i field">HostSeparators</a> = <b>new</b>[] { <span class="s">&#39;,&#39;</span>, <span class="s">&#39; &#39;</span> };
+ 
+        <b>private</b> <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt; <a id="ddefd2cb0a9340c4" href="../R/ddefd2cb0a9340c4.html" target="n" data-glyph="46,1" class="i field">_shellsByHostAndPrefix</a> = <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt;.<a href="@1@System.Collections.Immutable/A.html#e239e18c083931b5" class="i field">Empty</a>.<a href="@1@System.Collections.Immutable/A.html#4bf7f6f88fdade42" class="i method">WithComparers</a>(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <a id="42dba6bc2cecae69" href="../R/42dba6bc2cecae69.html" target="n" data-glyph="46,1" class="i field">_default</a>;
+        <b>private bool</b> <a id="0e6c622a1f4bd8d5" href="../R/0e6c622a1f4bd8d5.html" target="n" data-glyph="46,1" class="i field">_hasStarMapping</a> = <b>false</b>;
+ 
+        <b>public void</b> <a id="abda3efcb1d1acf1" href="../R/abda3efcb1d1acf1.html" target="n" data-glyph="72,1" class="i method">Add</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r0 rd" class="r0 r">settings</span>)
+        {
+            <b>if</b> (<a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a> == <span class="r0 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>)
+            {
+                <a href="#42dba6bc2cecae69" class="i field">_default</a> = <span class="r0 r">settings</span>;
+            }
+ 
+            <b>var</b> <span id="r1 rd" class="r1 r">allHostsAndPrefix</span> = <a href="#7f84b1b4c10216db" class="i method">GetAllHostsAndPrefix</a>(<span class="r0 r">settings</span>);
+ 
+            <b>var</b> <span id="r2 rd" class="r2 r">settingsByHostAndPrefix</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt;();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r3 rd" class="r3 r">hostAndPrefix</span> <b>in</b> <span class="r1 r">allHostsAndPrefix</span>)
+            {
+                <a href="#0e6c622a1f4bd8d5" class="i field">_hasStarMapping</a> = <a href="#0e6c622a1f4bd8d5" class="i field">_hasStarMapping</a> || <span class="r3 r">hostAndPrefix</span>.<a href="@1@System.Runtime/A.html#df82e02d721cc7f5" class="i method">StartsWith</a>(<span class="s">&#39;*&#39;</span>);
+                <span class="r2 r">settingsByHostAndPrefix</span>.<span class="i method">TryAdd</span>(<span class="r3 r">hostAndPrefix</span>, <span class="r0 r">settings</span>);
+            }
+ 
+            <b>lock</b> (<a href="#2e9f91e7a301b3f4" class="k">this</a>)
+            {
+                <a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a> = <a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>.<a href="@1@System.Collections.Immutable/A.html#424f60b6cfe8f9d4" class="i method">SetItems</a>(<span class="r2 r">settingsByHostAndPrefix</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="08295339fa308156" href="../R/08295339fa308156.html" target="n" data-glyph="72,1" class="i method">Remove</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r4 rd" class="r4 r">settings</span>)
+        {
+            <b>var</b> <span id="r5 rd" class="r5 r">allHostsAndPrefix</span> = <a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>
+                .<span class="i method">Where</span>(<span id="r6 rd" class="r6 r">kv</span> =&gt; <span class="r6 r">kv</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> == <span class="r4 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>)
+                .<span class="i method">Select</span>(<span id="r7 rd" class="r7 r">kv</span> =&gt; <span class="r7 r">kv</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>)
+                .<span class="i method">ToArray</span>();
+ 
+            <b>lock</b> (<a href="#2e9f91e7a301b3f4" class="k">this</a>)
+            {
+                <a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a> = <a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>.<a href="@1@System.Collections.Immutable/A.html#193fec65f578eb04" class="i method">RemoveRange</a>(<span class="r5 r">allHostsAndPrefix</span>);
+            }
+ 
+            <b>if</b> (<a href="#42dba6bc2cecae69" class="i field">_default</a> == <span class="r4 r">settings</span>)
+            {
+                <a href="#42dba6bc2cecae69" class="i field">_default</a> = <b>null</b>;
+            }
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <a id="c585bae03fe8547e" href="../R/c585bae03fe8547e.html" target="n" data-glyph="72,1" class="i method">Match</a>(<span class="t t">HostString</span> <span id="r8 rd" class="r8 r">host</span>, <span class="t t">PathString</span> <span id="r9 rd" class="r9 r">path</span>, <b>bool</b> <span id="r10 rd" class="r10 r">fallbackToDefault</span> = <b>true</b>)
+        {
+            <span class="c">// Supports IPv6 format.</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">hostOnly</span> = <span class="r8 r">host</span>.<span class="i property">Host</span>;
+ 
+            <span class="c">// Specific match?</span>
+            <b>if</b> (<a href="#758d71f6c2660cac" class="i method">TryMatchInternal</a>(<span class="r8 r">host</span>.<span class="i property">Value</span>, <span class="r11 r">hostOnly</span>, <span class="r9 r">path</span>.<span class="i property">Value</span>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r12 rd" class="r12 r">result</span>))
+            {
+                <b>return</b> <span class="r12 r">result</span>;
+            }
+ 
+            <span class="c">// Search for star mapping</span>
+            <span class="c">// Optimization: only if a mapping with a &#39;*&#39; has been added</span>
+ 
+            <b>if</b> (<a href="#0e6c622a1f4bd8d5" class="i field">_hasStarMapping</a> &amp;&amp; <a href="#5f39a2e55a08d555" class="i method">TryMatchStarMapping</a>(<span class="r8 r">host</span>.<span class="i property">Value</span>, <span class="r11 r">hostOnly</span>, <span class="r9 r">path</span>.<span class="i property">Value</span>, <b>out</b> <span class="r12 r">result</span>))
+            {
+                <b>return</b> <span class="r12 r">result</span>;
+            }
+ 
+            <span class="c">// Check if the Default tenant is a catch-all</span>
+            <b>if</b> (<span class="r10 r">fallbackToDefault</span> &amp;&amp; <a href="#9687416d6b188246" class="i method">DefaultIsCatchAll</a>())
+            {
+                <b>return</b> <a href="#42dba6bc2cecae69" class="i field">_default</a>;
+            }
+ 
+            <span class="c">// Search for another catch-all</span>
+            <b>if</b> (<span class="r10 r">fallbackToDefault</span> &amp;&amp; <a href="#758d71f6c2660cac" class="i method">TryMatchInternal</a>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;&quot;</span>, <span class="s">&quot;/&quot;</span>, <b>out</b> <span class="r12 r">result</span>))
+            {
+                <b>return</b> <span class="r12 r">result</span>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>private bool</b> <a id="758d71f6c2660cac" href="../R/758d71f6c2660cac.html" target="n" data-glyph="76,1" class="i method">TryMatchInternal</a>(<span class="t t">StringSegment</span> <span id="r13 rd" class="r13 r">host</span>, <span class="t t">StringSegment</span> <span id="r14 rd" class="r14 r">hostOnly</span>, <span class="t t">StringSegment</span> <span id="r15 rd" class="r15 r">path</span>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r16 rd" class="r16 r">result</span>)
+        {
+            <span class="c">// 1. Search for Host:Port + Prefix match</span>
+ 
+            <b>if</b> (<span class="r13 r">host</span>.<span class="i property">Length</span> == 0 || !<a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<a href="#84c56a46de7b8ac8" class="i method">GetHostAndPrefix</a>(<span class="r13 r">host</span>, <span class="r15 r">path</span>), <b>out</b> <span class="r16 r">result</span>))
+            {
+                <span class="c">// 2. Search for Host + Prefix match</span>
+ 
+                <b>if</b> (<span class="r13 r">host</span>.<span class="i property">Length</span> == <span class="r14 r">hostOnly</span>.<span class="i property">Length</span> || !<a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<a href="#84c56a46de7b8ac8" class="i method">GetHostAndPrefix</a>(<span class="r14 r">hostOnly</span>, <span class="r15 r">path</span>), <b>out</b> <span class="r16 r">result</span>))
+                {
+                    <span class="c">// 3. Search for Host:Port only match</span>
+ 
+                    <b>if</b> (<span class="r13 r">host</span>.<span class="i property">Length</span> == 0 || !<a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<a href="#84c56a46de7b8ac8" class="i method">GetHostAndPrefix</a>(<span class="r13 r">host</span>, <span class="s">&quot;/&quot;</span>), <b>out</b> <span class="r16 r">result</span>))
+                    {
+                        <span class="c">// 4. Search for Host only match</span>
+ 
+                        <b>if</b> (<span class="r13 r">host</span>.<span class="i property">Length</span> == <span class="r14 r">hostOnly</span>.<span class="i property">Length</span> || !<a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<a href="#84c56a46de7b8ac8" class="i method">GetHostAndPrefix</a>(<span class="r14 r">hostOnly</span>, <span class="s">&quot;/&quot;</span>), <b>out</b> <span class="r16 r">result</span>))
+                        {
+                            <span class="c">// 5. Search for Prefix only match</span>
+ 
+                            <b>if</b> (!<a href="#ddefd2cb0a9340c4" class="i field">_shellsByHostAndPrefix</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<a href="#84c56a46de7b8ac8" class="i method">GetHostAndPrefix</a>(<span class="s">&quot;&quot;</span>, <span class="r15 r">path</span>), <b>out</b> <span class="r16 r">result</span>))
+                            {
+                                <span class="r16 r">result</span> = <b>null</b>;
+                                <b>return</b> <b>false</b>;
+                            }
+                        }
+                    }
+                }
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <b>private bool</b> <a id="5f39a2e55a08d555" href="../R/5f39a2e55a08d555.html" target="n" data-glyph="76,1" class="i method">TryMatchStarMapping</a>(<span class="t t">StringSegment</span> <span id="r17 rd" class="r17 r">host</span>, <span class="t t">StringSegment</span> <span id="r18 rd" class="r18 r">hostOnly</span>, <span class="t t">StringSegment</span> <span id="r19 rd" class="r19 r">path</span>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r20 rd" class="r20 r">result</span>)
+        {
+            <b>if</b> (<a href="#758d71f6c2660cac" class="i method">TryMatchInternal</a>(<span class="s">&quot;*.&quot;</span> + <span class="r17 r">host</span>, <span class="s">&quot;*.&quot;</span> + <span class="r18 r">hostOnly</span>, <span class="r19 r">path</span>, <b>out</b> <span class="r20 r">result</span>))
+            {
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r21 rd" class="r21 r">index</span> = -1;
+ 
+            <span class="c">// Take the longest subdomain and look for a mapping</span>
+            <b>while</b> (-1 != (<span class="r21 r">index</span> = <span class="r17 r">host</span>.<span class="i method">IndexOf</span>(<span class="s">&#39;.&#39;</span>, <span class="r21 r">index</span> + 1)))
+            {
+                <b>if</b> (<a href="#758d71f6c2660cac" class="i method">TryMatchInternal</a>(<span class="s">&quot;*&quot;</span> + <span class="r17 r">host</span>.<span class="i method">Subsegment</span>(<span class="r21 r">index</span>), <span class="s">&quot;*&quot;</span> + <span class="r18 r">hostOnly</span>.<span class="i method">Subsegment</span>(<span class="r21 r">index</span>), <span class="r19 r">path</span>, <b>out</b> <span class="r20 r">result</span>))
+                {
+                    <b>return</b> <b>true</b>;
+                }
+            }
+ 
+            <span class="r20 r">result</span> = <b>null</b>;
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>private string</b> <a id="84c56a46de7b8ac8" href="../R/84c56a46de7b8ac8.html" target="n" data-glyph="76,1" class="i method">GetHostAndPrefix</a>(<span class="t t">StringSegment</span> <span id="r22 rd" class="r22 r">host</span>, <span class="t t">StringSegment</span> <span id="r23 rd" class="r23 r">path</span>)
+        {
+            <span class="c">// The request path starts with a leading &#39;/&#39;</span>
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r24 rd" class="r24 r">firstSegmentIndex</span> = <span class="r23 r">path</span>.<span class="i property">Length</span> &gt; 0 ? <span class="r23 r">path</span>.<span class="i method">IndexOf</span>(<span class="s">&#39;/&#39;</span>, 1) : -1;
+            <b>if</b> (<span class="r24 r">firstSegmentIndex</span> &gt; -1)
+            {
+                <b>return</b> <span class="r22 r">host</span> + <span class="r23 r">path</span>.<span class="i method">Subsegment</span>(0, <span class="r24 r">firstSegmentIndex</span>).<span class="i property">Value</span>;
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="r22 r">host</span> + <span class="r23 r">path</span>.<span class="i property">Value</span>;
+            }
+        }
+ 
+        <b>private string</b>[] <a id="7f84b1b4c10216db" href="../R/7f84b1b4c10216db.html" target="n" data-glyph="76,1" class="i method">GetAllHostsAndPrefix</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r25 rd" class="r25 r">shellSettings</span>)
+        {
+            <span class="c">// For each host entry return HOST/PREFIX</span>
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r25 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#258c1ed033e90731" class="i property">RequestUrlHost</a>))
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="s">&quot;/&quot;</span> + <span class="r25 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a> };
+            }
+ 
+            <b>return</b> <span class="r25 r">shellSettings</span>
+                .<a href="/OrchardCore.Abstractions/A.html#258c1ed033e90731" class="i property">RequestUrlHost</a>
+                .<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#e6cd9b353ba517cc" class="i field">HostSeparators</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>)
+                .<span class="i method">Select</span>(<span id="r26 rd" class="r26 r">ruh</span> =&gt; <span class="r26 r">ruh</span> + <span class="s">&quot;/&quot;</span> + <span class="r25 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a>)
+                .<span class="i method">ToArray</span>();
+        }
+ 
+        <b>private bool</b> <a id="9687416d6b188246" href="../R/9687416d6b188246.html" target="n" data-glyph="76,1" class="i method">DefaultIsCatchAll</a>()
+        {
+            <b>return</b> <a href="#42dba6bc2cecae69" class="i field">_default</a> != <b>null</b> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#42dba6bc2cecae69" class="i field">_default</a>.<a href="/OrchardCore.Abstractions/A.html#258c1ed033e90731" class="i property">RequestUrlHost</a>) &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#42dba6bc2cecae69" class="i field">_default</a>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

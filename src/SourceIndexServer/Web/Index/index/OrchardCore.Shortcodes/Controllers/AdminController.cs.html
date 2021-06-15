@@ -1,0 +1,353 @@
+﻿<!DOCTYPE html>
+<html><head><title>AdminController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(344);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Shortcodes/Controllers/AdminController.cs" target="_top">Controllers\AdminController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Shortcodes" target="_top">src\OrchardCore.Modules\OrchardCore.Shortcodes\OrchardCore.Shortcodes.csproj</a> (OrchardCore.Shortcodes)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">RegularExpressions</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shortcodes</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shortcodes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shortcodes</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i">Parlot</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Shortcodes</span>.<span class="i n">Controllers</span>
+{
+    [<span class="i">Feature</span>(<span class="s">&quot;OrchardCore.Shortcodes.Templates&quot;</span>)]
+    <b>public class</b> <a id="cd78676801f27e8f" href="../R/cd78676801f27e8f.html" target="n" data-glyph="0,0" class="t t">AdminController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="6647030475159a0f" href="../R/6647030475159a0f.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="../Services/ShortcodeTemplatesManager.cs.html#d9e239ee9d155ff1" class="t t">ShortcodeTemplatesManager</a> <a id="327b5cd95cc9c6b9" href="../R/327b5cd95cc9c6b9.html" target="n" data-glyph="46,1" class="i field">_shortcodeTemplatesManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <a id="4b80139c1a5007ee" href="../R/4b80139c1a5007ee.html" target="n" data-glyph="46,1" class="i field">_liquidTemplateManager</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="a8bbb5fc783f676e" href="../R/a8bbb5fc783f676e.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="a14f346cdc949ed1" href="../R/a14f346cdc949ed1.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="d178a3eb3a3cf24a" href="../R/d178a3eb3a3cf24a.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="275503811e2bbb52" href="../R/275503811e2bbb52.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly dynamic</b> <a id="89360a7b4003a319" href="../R/89360a7b4003a319.html" target="n" data-glyph="46,1" class="i field">New</a>;
+ 
+        <b>public</b> <a id="85b729dc8689fa22" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AdminController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <a href="../Services/ShortcodeTemplatesManager.cs.html#d9e239ee9d155ff1" class="t t">ShortcodeTemplatesManager</a> <span id="r1 rd" class="r1 r">shortcodeTemplatesManager</span>,
+            <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <span id="r2 rd" class="r2 r">liquidTemplateManager</span>,
+            <span class="i">ISiteService</span> <span id="r3 rd" class="r3 r">siteService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r4 rd" class="r4 r">notifier</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r5 rd" class="r5 r">shapeFactory</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#cd78676801f27e8f" class="t t">AdminController</a>&gt; <span id="r6 rd" class="r6 r">stringLocalizer</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#cd78676801f27e8f" class="t t">AdminController</a>&gt; <span id="r7 rd" class="r7 r">htmlLocalizer</span>
+            )
+        {
+            <a href="#6647030475159a0f" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a> = <span class="r1 r">shortcodeTemplatesManager</span>;
+            <a href="#4b80139c1a5007ee" class="i field">_liquidTemplateManager</a> = <span class="r2 r">liquidTemplateManager</span>;
+            <a href="#a8bbb5fc783f676e" class="i field">_siteService</a> = <span class="r3 r">siteService</span>;
+            <a href="#a14f346cdc949ed1" class="i field">_notifier</a> = <span class="r4 r">notifier</span>;
+            <a href="#89360a7b4003a319" class="i field">New</a> = <span class="r5 r">shapeFactory</span>;
+            <a href="#d178a3eb3a3cf24a" class="i field">S</a> = <span class="r6 r">stringLocalizer</span>;
+            <a href="#275503811e2bbb52" class="i field">H</a> = <span class="r7 r">htmlLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="1161c6ec590ade21" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#6d0b92be47544eed" class="t t">ContentOptions</a> <span id="r8 rd" class="r8 r">options</span>, <a href="/OrchardCore.Navigation.Core/A.html#51c8763abc99132d" class="t t">PagerParameters</a> <span id="r9 rd" class="r9 r">pagerParameters</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#6647030475159a0f" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b4059690594bff6b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a0bee2c9b570c7a8" class="i field">ManageShortcodeTemplates</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">siteSettings</span> = <b>await</b> <a href="#a8bbb5fc783f676e" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+            <a href="/OrchardCore.Navigation.Core/A.html#e6e879b28e4fdee2" class="k">var</a> <span id="r11 rd" class="r11 r">pager</span> = <b>new</b> <span class="t">Pager</span>(<span class="r9 r">pagerParameters</span>, <span class="r10 r">siteSettings</span>.<span class="i">PageSize</span>);
+            <a href="../Models/ShortcodeTemplatesDocument.cs.html#8ccf5141336d3fd5" class="k">var</a> <span id="r12 rd" class="r12 r">shortcodeTemplatesDocument</span> = <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#5f330e789e06e6c4" class="i method">GetShortcodeTemplatesDocumentAsync</a>();
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">shortcodeTemplates</span> = <span class="r12 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>.<span class="i method">ToList</span>();
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r8 r">options</span>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#28538fed5ebe570b" class="i property">Search</a>))
+            {
+                <span class="r13 r">shortcodeTemplates</span> = <span class="r13 r">shortcodeTemplates</span>.<span class="i method">Where</span>(<span id="r14 rd" class="r14 r">x</span> =&gt; <span class="r14 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>.<a href="@1@System.Runtime/A.html#3c7c3a0a723d7e1b" class="i method">Contains</a>(<span class="r8 r">options</span>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#28538fed5ebe570b" class="i property">Search</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)).<span class="i method">ToList</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r15 rd" class="r15 r">count</span> = <span class="r13 r">shortcodeTemplates</span>.<span class="i property">Count</span>;
+ 
+            <span class="r13 r">shortcodeTemplates</span> = <span class="r13 r">shortcodeTemplates</span>.<span class="i method">OrderBy</span>(<span id="r16 rd" class="r16 r">x</span> =&gt; <span class="r16 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>)
+                .<span class="i method">Skip</span>(<span class="r11 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#985e078e8039ce3c" class="i method">GetStartIndex</a>())
+                .<span class="i method">Take</span>(<span class="r11 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2ca905c9c05191b1" class="i property">PageSize</a>).<span class="i method">ToList</span>();
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">pagerShape</span> = (<b>await</b> <a href="#89360a7b4003a319" class="i field">New</a>.<span class="i">Pager</span>(<span class="r11 r">pager</span>)).<span class="i">TotalItemCount</span>(<span class="r15 r">count</span>);
+ 
+            <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#2aa626e0ad24c90c" class="k">var</a> <span id="r18 rd" class="r18 r">model</span> = <b>new</b> <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#2aa626e0ad24c90c" class="t constructor">ShortcodeTemplateIndexViewModel</a>
+            {
+                <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#cf148154a31179db" class="i property">ShortcodeTemplates</a> = <span class="r13 r">shortcodeTemplates</span>.<span class="i method">Select</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <b>new</b> <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#25e4f79079178973" class="t constructor">ShortcodeTemplateEntry</a> { <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#be0ae6593c915e4f" class="i property">Name</a> = <span class="r19 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#43496f29b264440f" class="i property">ShortcodeTemplate</a> = <span class="r19 r">x</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a> }).<span class="i method">ToList</span>(),
+                <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#cf2ec4bb6735b0d5" class="i property">Options</a> = <span class="r8 r">options</span>,
+                <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#ca409a9498ddc960" class="i property">Pager</a> = <span class="r17 r">pagerShape</span>
+            };
+ 
+            <span class="r18 r">model</span>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#cf2ec4bb6735b0d5" class="i property">Options</a>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#40e11534c822fca8" class="i property">ContentsBulkAction</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;() {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;Delete&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#eeec3994c84b7c68" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#d51ae0a2baf6da6e" class="i field">Remove</a>) }
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="s">&quot;Index&quot;</span>, <span class="r18 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Filter&quot;</span>)]
+        <b>public</b> <span class="t t">ActionResult</span> <a id="9dd550d9f9bd3a29" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexFilterPOST</a>(<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#2aa626e0ad24c90c" class="t t">ShortcodeTemplateIndexViewModel</a> <span id="r20 rd" class="r20 r">model</span>)
+        {
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>), <b>new</b> <span class="t constructor">RouteValueDictionary</span> {
+                { <span class="s">&quot;Options.Search&quot;</span>, <span class="r20 r">model</span>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#cf2ec4bb6735b0d5" class="i property">Options</a>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#28538fed5ebe570b" class="i property">Search</a> }
+            });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="e50a215de0ab461d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a> <span id="r21 rd" class="r21 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#6647030475159a0f" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b4059690594bff6b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a0bee2c9b570c7a8" class="i field">ManageShortcodeTemplates</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t constructor">ShortcodeTemplateViewModel</a>());
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Create&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="6dffa9e6505c477c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreatePost</a>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a> <span id="r22 rd" class="r22 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r23 rd" class="r23 r">submit</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#6647030475159a0f" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b4059690594bff6b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a0bee2c9b570c7a8" class="i field">ManageShortcodeTemplates</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The name is mandatory.&quot;</span>]);
+                }
+                <b>else</b> <b>if</b> (!<a href="#9bedfd18dd2a9e6e" class="i method">IsValidShortcodeName</a>(<span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The name contains invalid characters.&quot;</span>]);
+                }
+                <b>else</b>
+                {
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#8ccf5141336d3fd5" class="k">var</a> <span id="r24 rd" class="r24 r">shortcodeTemplatesDocument</span> = <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#5f330e789e06e6c4" class="i method">GetShortcodeTemplatesDocumentAsync</a>();
+ 
+                    <b>if</b> (<span class="r24 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>.<span class="i method">ContainsKey</span>(<span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>))
+                    {
+                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;A template with the same name already exists.&quot;</span>]);
+                    }
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The template content is mandatory.&quot;</span>]);
+                }
+                <b>else</b> <b>if</b> (!<a href="#4b80139c1a5007ee" class="i field">_liquidTemplateManager</a>.<a href="/OrchardCore.Liquid.Abstractions/A.html#a81d1b8de159c639" class="i method">Validate</a>(<span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>, <b>out</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r25 rd" class="r25 r">errors</span>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The template doesn&#39;t contain a valid Liquid expression. Details: {0}&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot; &quot;</span>, <span class="r25 r">errors</span>)]);
+                }
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <a href="../Models/ShortcodeTemplatesDocument.cs.html#174df5c8a29e7897" class="k">var</a> <span id="r26 rd" class="r26 r">template</span> = <b>new</b> <a href="../Models/ShortcodeTemplatesDocument.cs.html#174df5c8a29e7897" class="t constructor">ShortcodeTemplate</a>
+                {
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#0e07701754f09296" class="i property">Content</a> = <span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#b31f073272abd10a" class="i property">Hint</a> = <span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#61d60f1f18f9fc02" class="i property">Hint</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#6edf3946b55f8dfa" class="i property">Usage</a> = <span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#dd0c9edddee06893" class="i property">Usage</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#734d11f7926ee5bb" class="i property">DefaultValue</a> = <span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#e1913b2f28f25695" class="i property">DefaultValue</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#59d4938790aa693f" class="i property">Categories</a> = <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[]&gt;(<span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#0d83f8f42d223822" class="i property">SelectedCategories</a>)
+                };
+ 
+                <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#3d50ba41976be634" class="i method">UpdateShortcodeTemplateAsync</a>(<span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>, <span class="r26 r">template</span>);
+ 
+                <b>if</b> (<span class="r23 r">submit</span> == <span class="s">&quot;SaveAndContinue&quot;</span>)
+                {
+                    <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <a href="#7f2c76320f26c965" class="i property">name</a> = <span class="r22 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a> });
+                }
+                <b>else</b>
+                {
+                    <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+                }
+            }
+ 
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r22 r">model</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="92ab4b4d536f9dcb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">name</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#6647030475159a0f" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b4059690594bff6b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a0bee2c9b570c7a8" class="i field">ManageShortcodeTemplates</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../Models/ShortcodeTemplatesDocument.cs.html#8ccf5141336d3fd5" class="k">var</a> <span id="r28 rd" class="r28 r">shortcodeTemplatesDocument</span> = <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#5f330e789e06e6c4" class="i method">GetShortcodeTemplatesDocumentAsync</a>();
+ 
+            <b>if</b> (!<span class="r28 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>.<span class="i method">ContainsKey</span>(<span class="r27 r">name</span>))
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Create</span>), <b>new</b> { <span class="r27 r">name</span> });
+            }
+ 
+            <a href="../Models/ShortcodeTemplatesDocument.cs.html#174df5c8a29e7897" class="k">var</a> <span id="r29 rd" class="r29 r">template</span> = <span class="r28 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>[<span class="r27 r">name</span>];
+ 
+            <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="k">var</a> <span id="r30 rd" class="r30 r">model</span> = <b>new</b> <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t constructor">ShortcodeTemplateViewModel</a>
+            {
+                <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a> = <span class="r27 r">name</span>,
+                <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a> = <span class="r29 r">template</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#0e07701754f09296" class="i property">Content</a>,
+                <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#61d60f1f18f9fc02" class="i property">Hint</a> = <span class="r29 r">template</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#b31f073272abd10a" class="i property">Hint</a>,
+                <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#dd0c9edddee06893" class="i property">Usage</a> = <span class="r29 r">template</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#6edf3946b55f8dfa" class="i property">Usage</a>,
+                <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#e1913b2f28f25695" class="i property">DefaultValue</a> = <span class="r29 r">template</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#734d11f7926ee5bb" class="i property">DefaultValue</a>,
+                <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#f9d5cf63360e33ac" class="i property">Categories</a> = <span class="r29 r">template</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#59d4938790aa693f" class="i property">Categories</a>
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r30 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="61c0676c6e0a2b6e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">sourceName</span>, <a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a> <span id="r32 rd" class="r32 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r33 rd" class="r33 r">submit</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#6647030475159a0f" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b4059690594bff6b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a0bee2c9b570c7a8" class="i field">ManageShortcodeTemplates</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../Models/ShortcodeTemplatesDocument.cs.html#8ccf5141336d3fd5" class="k">var</a> <span id="r34 rd" class="r34 r">shortcodeTemplatesDocument</span> = <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#cf82dd3bdc95f3f7" class="i method">LoadShortcodeTemplatesDocumentAsync</a>();
+ 
+            <b>if</b> (!<span class="r34 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>.<span class="i method">ContainsKey</span>(<span class="r31 r">sourceName</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The name is mandatory.&quot;</span>]);
+                }
+                <b>else</b> <b>if</b> (!<a href="#9bedfd18dd2a9e6e" class="i method">IsValidShortcodeName</a>(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The name contains invalid characters.&quot;</span>]);
+                }
+                <b>else</b> <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>, <span class="r31 r">sourceName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)
+                    &amp;&amp; <span class="r34 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>.<span class="i method">ContainsKey</span>(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;A template with the same name already exists.&quot;</span>]);
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The template content is mandatory.&quot;</span>]);
+                }
+                <b>else</b> <b>if</b> (!<a href="#4b80139c1a5007ee" class="i field">_liquidTemplateManager</a>.<a href="/OrchardCore.Liquid.Abstractions/A.html#a81d1b8de159c639" class="i method">Validate</a>(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>, <b>out</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r35 rd" class="r35 r">errors</span>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#06a2ca6899b4c5d6" class="t t">ShortcodeTemplateViewModel</a>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>), <a href="#d178a3eb3a3cf24a" class="i field">S</a>[<span class="s">&quot;The template doesn&#39;t contain a valid Liquid expression. Details: {0}&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot; &quot;</span>, <span class="r35 r">errors</span>)]);
+                }
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <a href="../Models/ShortcodeTemplatesDocument.cs.html#174df5c8a29e7897" class="k">var</a> <span id="r36 rd" class="r36 r">template</span> = <b>new</b> <a href="../Models/ShortcodeTemplatesDocument.cs.html#174df5c8a29e7897" class="t constructor">ShortcodeTemplate</a>
+                {
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#0e07701754f09296" class="i property">Content</a> = <span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#ff85b1f27501a70d" class="i property">Content</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#b31f073272abd10a" class="i property">Hint</a> = <span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#61d60f1f18f9fc02" class="i property">Hint</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#6edf3946b55f8dfa" class="i property">Usage</a> = <span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#dd0c9edddee06893" class="i property">Usage</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#734d11f7926ee5bb" class="i property">DefaultValue</a> = <span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#e1913b2f28f25695" class="i property">DefaultValue</a>,
+                    <a href="../Models/ShortcodeTemplatesDocument.cs.html#59d4938790aa693f" class="i property">Categories</a> = <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[]&gt;(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#0d83f8f42d223822" class="i property">SelectedCategories</a>)
+                };
+ 
+                <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#b69575f540ca2bcc" class="i method">RemoveShortcodeTemplateAsync</a>(<span class="r31 r">sourceName</span>);
+ 
+                <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#3d50ba41976be634" class="i method">UpdateShortcodeTemplateAsync</a>(<span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a>, <span class="r36 r">template</span>);
+ 
+                <b>if</b> (<span class="r33 r">submit</span> == <span class="s">&quot;SaveAndContinue&quot;</span>)
+                {
+                    <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <a href="#7f2c76320f26c965" class="i property">name</a> = <span class="r32 r">model</span>.<a href="../ViewModels/ShortcodeTemplateViewModel.cs.html#b85003b8e42b3128" class="i property">Name</a> });
+                }
+                <b>else</b>
+                {
+                    <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+                }
+            }
+ 
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r32 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="eabf8e4181a68f0b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Delete</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r37 rd" class="r37 r">name</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#6647030475159a0f" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b4059690594bff6b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a0bee2c9b570c7a8" class="i field">ManageShortcodeTemplates</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../Models/ShortcodeTemplatesDocument.cs.html#8ccf5141336d3fd5" class="k">var</a> <span id="r38 rd" class="r38 r">shortcodeTemplatesDocument</span> = <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#cf82dd3bdc95f3f7" class="i method">LoadShortcodeTemplatesDocumentAsync</a>();
+ 
+            <b>if</b> (!<span class="r38 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>.<span class="i method">ContainsKey</span>(<span class="r37 r">name</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#b69575f540ca2bcc" class="i method">RemoveShortcodeTemplateAsync</a>(<span class="r37 r">name</span>);
+ 
+            <a href="#a14f346cdc949ed1" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#275503811e2bbb52" class="i field">H</a>[<span class="s">&quot;Shortcode template deleted successfully.&quot;</span>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.BulkAction&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="3e8358e15cb16754" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexPost</a>(<span class="i n">ViewModels</span>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#6d0b92be47544eed" class="t t">ContentOptions</a> <span id="r39 rd" class="r39 r">options</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r40 rd" class="r40 r">itemIds</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#6647030475159a0f" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b4059690594bff6b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a0bee2c9b570c7a8" class="i field">ManageShortcodeTemplates</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="r40 r">itemIds</span>?.<span class="i method">Count</span>() &gt; 0)
+            {
+                <a href="../Models/ShortcodeTemplatesDocument.cs.html#8ccf5141336d3fd5" class="k">var</a> <span id="r41 rd" class="r41 r">shortcodeTemplatesDocument</span> = <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#cf82dd3bdc95f3f7" class="i method">LoadShortcodeTemplatesDocumentAsync</a>();
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r42 rd" class="r42 r">checkedContentItems</span> = <span class="r41 r">shortcodeTemplatesDocument</span>.<a href="../Models/ShortcodeTemplatesDocument.cs.html#fd23c028f2268be9" class="i property">ShortcodeTemplates</a>.<span class="i method">Where</span>(<span id="r43 rd" class="r43 r">x</span> =&gt; <span class="r40 r">itemIds</span>.<span class="i method">Contains</span>(<span class="r43 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>));
+                <b>switch</b> (<span class="r39 r">options</span>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#d46ed23127558e26" class="i property">BulkAction</a>)
+                {
+                    <b>case</b> <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#eeec3994c84b7c68" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#e3c325ee2c391e9d" class="i field">None</a>:
+                        <b>break</b>;
+                    <b>case</b> <a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#eeec3994c84b7c68" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/ShortcodeTemplateIndexViewModel.cs.html#d51ae0a2baf6da6e" class="i field">Remove</a>:
+                        <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r44 rd" class="r44 r">item</span> <b>in</b> <span class="r42 r">checkedContentItems</span>)
+                        {
+                            <b>await</b> <a href="#327b5cd95cc9c6b9" class="i field">_shortcodeTemplatesManager</a>.<a href="../Services/ShortcodeTemplatesManager.cs.html#b69575f540ca2bcc" class="i method">RemoveShortcodeTemplateAsync</a>(<span class="r44 r">item</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>);
+                        }
+                        <a href="#a14f346cdc949ed1" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#275503811e2bbb52" class="i field">H</a>[<span class="s">&quot;Shortcode templates successfully removed.&quot;</span>]);
+                        <b>break</b>;
+                    <b>default</b>:
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#337b690f0704f510" class="t constructor">ArgumentOutOfRangeException</a>();
+                }
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>private static bool</b> <a id="9bedfd18dd2a9e6e" href="../R/9bedfd18dd2a9e6e.html" target="n" data-glyph="76,1" class="i method">IsValidShortcodeName</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">name</span>)
+        {
+            <b>var</b> <span id="r46 rd" class="r46 r">scanner</span> = <b>new</b> <span class="i">Scanner</span>(<span class="r45 r">name</span>);
+            <b>return</b> <span class="r46 r">scanner</span>.<span class="i">ReadIdentifier</span>(<b>out</b> <b>var</b> <span id="r47 rd" class="r47 r">result</span>) &amp;&amp; <span class="r45 r">name</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> == <span class="r47 r">result</span>.<span class="i">Length</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

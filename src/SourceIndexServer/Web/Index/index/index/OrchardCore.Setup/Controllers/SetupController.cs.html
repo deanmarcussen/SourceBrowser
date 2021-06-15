@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html><head><title>SetupController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(268);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Setup/Controllers/SetupController.cs" target="_top">Controllers\SetupController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Setup" target="_top">src\OrchardCore.Modules\OrchardCore.Setup\OrchardCore.Setup.csproj</a> (OrchardCore.Setup)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Abstractions</span>.<span class="i">Setup</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Email</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="26e1756c5a97f7e1" href="../R/26e1756c5a97f7e1.html" target="n" data-glyph="0,0" class="t t">SetupController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">IClock</span> <a id="09d54061783cf0cb" href="../R/09d54061783cf0cb.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <span class="i">ISetupService</span> <a id="42a926a1517f4cc9" href="../R/42a926a1517f4cc9.html" target="n" data-glyph="46,1" class="i field">_setupService</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="d9a3f003c1830e44" href="../R/d9a3f003c1830e44.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="ddccac53880d0c76" href="../R/ddccac53880d0c76.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private</b> <span class="t t">IdentityOptions</span> <a id="dbf89e9fb579bf17" href="../R/dbf89e9fb579bf17.html" target="n" data-glyph="46,1" class="i field">_identityOptions</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <a id="cd522e0d049da372" href="../R/cd522e0d049da372.html" target="n" data-glyph="46,1" class="i field">_emailAddressValidator</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">DatabaseProvider</span>&gt; <a id="4ff22b06ba7dc3da" href="../R/4ff22b06ba7dc3da.html" target="n" data-glyph="46,1" class="i field">_databaseProviders</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="6c0a9ca81d907b10" href="../R/6c0a9ca81d907b10.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="ebd9283a1ea255a7" href="../R/ebd9283a1ea255a7.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="a8cb094f97c2600b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SetupController</a>(
+            <span class="i">IClock</span> <span id="r0 rd" class="r0 r">clock</span>,
+            <span class="i">ISetupService</span> <span id="r1 rd" class="r1 r">setupService</span>,
+            <span class="i">ShellSettings</span> <span id="r2 rd" class="r2 r">shellSettings</span>,
+            <span class="i">IShellHost</span> <span id="r3 rd" class="r3 r">shellHost</span>,
+            <span class="t t">IOptions</span>&lt;<span class="t t">IdentityOptions</span>&gt; <span id="r4 rd" class="r4 r">identityOptions</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <span id="r5 rd" class="r5 r">emailAddressValidator</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">DatabaseProvider</span>&gt; <span id="r6 rd" class="r6 r">databaseProviders</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#26e1756c5a97f7e1" class="t t">SetupController</a>&gt; <span id="r7 rd" class="r7 r">localizer</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#26e1756c5a97f7e1" class="t t">SetupController</a>&gt; <span id="r8 rd" class="r8 r">logger</span>)
+        {
+            <a href="#09d54061783cf0cb" class="i field">_clock</a> = <span class="r0 r">clock</span>;
+            <a href="#42a926a1517f4cc9" class="i field">_setupService</a> = <span class="r1 r">setupService</span>;
+            <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a> = <span class="r2 r">shellSettings</span>;
+            <a href="#ddccac53880d0c76" class="i field">_shellHost</a> = <span class="r3 r">shellHost</span>;
+            <a href="#dbf89e9fb579bf17" class="i field">_identityOptions</a> = <span class="r4 r">identityOptions</span>.<span class="i property">Value</span>;
+            <a href="#cd522e0d049da372" class="i field">_emailAddressValidator</a> = <span class="r5 r">emailAddressValidator</span>;
+            <a href="#4ff22b06ba7dc3da" class="i field">_databaseProviders</a> = <span class="r6 r">databaseProviders</span>;
+            <a href="#6c0a9ca81d907b10" class="i field">_logger</a> = <span class="r8 r">logger</span>;
+            <a href="#ebd9283a1ea255a7" class="i field">S</a> = <span class="r7 r">localizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="cc7a1afcc63b771b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">token</span>)
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">recipes</span> = <b>await</b> <a href="#42a926a1517f4cc9" class="i field">_setupService</a>.<span class="i">GetSetupRecipesAsync</span>();
+            <b>var</b> <span id="r11 rd" class="r11 r">defaultRecipe</span> = <span class="r10 r">recipes</span>.<span class="i">FirstOrDefault</span>(<span id="r12 rd" class="r12 r">x</span> =&gt; <span class="r12 r">x</span>.<span class="i">Tags</span>.<span class="i">Contains</span>(<span class="s">&quot;default&quot;</span>)) ?? <span class="r10 r">recipes</span>.<span class="i">FirstOrDefault</span>();
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrWhiteSpace</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;Secret&quot;</span>]))
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r9 r">token</span>) || !<b>await</b> <a href="#971f7e4fe8f83724" class="i method">IsTokenValid</a>(<span class="r9 r">token</span>))
+                {
+                    <a href="#6c0a9ca81d907b10" class="i field">_logger</a>.<span class="i">LogWarning</span>(<span class="s">&quot;An attempt to access &#39;{TenantName}&#39; without providing a secret was made&quot;</span>, <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>.<span class="i">Name</span>);
+                    <b>return</b> <span class="i method">StatusCode</span>(404);
+                }
+            }
+ 
+            <a href="../ViewModels/SetupViewModel.cs.html#5870280d955559b7" class="k">var</a> <span id="r13 rd" class="r13 r">model</span> = <b>new</b> <a href="../ViewModels/SetupViewModel.cs.html#5870280d955559b7" class="t constructor">SetupViewModel</a>
+            {
+                <a href="../ViewModels/SetupViewModel.cs.html#606eb3bbcb8dc4e1" class="i property">DatabaseProviders</a> = <a href="#4ff22b06ba7dc3da" class="i field">_databaseProviders</a>,
+                <a href="../ViewModels/SetupViewModel.cs.html#c140ccc885606b57" class="i property">Recipes</a> = <span class="r10 r">recipes</span>,
+                <a href="../ViewModels/SetupViewModel.cs.html#2b25e11963747bfa" class="i property">RecipeName</a> = <span class="r11 r">defaultRecipe</span>?.<span class="i">Name</span>,
+                <a href="../ViewModels/SetupViewModel.cs.html#215a7f2e2b4a1bd2" class="i property">Secret</a> = <span class="r9 r">token</span>
+            };
+ 
+            <a href="#147b785ef7304243" class="i method">CopyShellSettingsValues</a>(<span class="r13 r">model</span>);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;TablePrefix&quot;</span>]))
+            {
+                <span class="r13 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a9d27e6ad46484eb" class="i property">DatabaseConfigurationPreset</a> = <b>true</b>;
+                <span class="r13 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#5212350a88a98649" class="i property">TablePrefix</a> = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;TablePrefix&quot;</span>];
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r13 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="e7ec8f22a4aa4d42" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexPOST</a>(<a href="../ViewModels/SetupViewModel.cs.html#5870280d955559b7" class="t t">SetupViewModel</a> <span id="r14 rd" class="r14 r">model</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrWhiteSpace</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;Secret&quot;</span>]))
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#215a7f2e2b4a1bd2" class="i property">Secret</a>) || !<b>await</b> <a href="#971f7e4fe8f83724" class="i method">IsTokenValid</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#215a7f2e2b4a1bd2" class="i property">Secret</a>))
+                {
+                    <a href="#6c0a9ca81d907b10" class="i field">_logger</a>.<span class="i">LogWarning</span>(<span class="s">&quot;An attempt to access &#39;{TenantName}&#39; without providing a valid secret was made&quot;</span>, <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>.<span class="i">Name</span>);
+                    <b>return</b> <span class="i method">StatusCode</span>(404);
+                }
+            }
+ 
+            <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#606eb3bbcb8dc4e1" class="i property">DatabaseProviders</a> = <a href="#4ff22b06ba7dc3da" class="i field">_databaseProviders</a>;
+            <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#c140ccc885606b57" class="i property">Recipes</a> = <b>await</b> <a href="#42a926a1517f4cc9" class="i field">_setupService</a>.<span class="i">GetSetupRecipesAsync</span>();
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">selectedProvider</span> = <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#606eb3bbcb8dc4e1" class="i property">DatabaseProviders</a>.<span class="i method">FirstOrDefault</span>(<span id="r16 rd" class="r16 r">x</span> =&gt; <span class="r16 r">x</span>.<span class="i">Value</span> == <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#965cd321253a2c63" class="i property">DatabaseProvider</a>);
+ 
+            <b>if</b> (!<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a9d27e6ad46484eb" class="i property">DatabaseConfigurationPreset</a>)
+            {
+                <b>if</b> (<span class="r15 r">selectedProvider</span> != <b>null</b> &amp;&amp; <span class="r15 r">selectedProvider</span>.<span class="i">HasConnectionString</span> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#c28736a83ec430be" class="i property">ConnectionString</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#c28736a83ec430be" class="i property">ConnectionString</a>), <a href="#ebd9283a1ea255a7" class="i field">S</a>[<span class="s">&quot;The connection string is mandatory for this provider.&quot;</span>]);
+                }
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#886e6736e0587ff0" class="i property">Password</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#886e6736e0587ff0" class="i property">Password</a>), <a href="#ebd9283a1ea255a7" class="i field">S</a>[<span class="s">&quot;The password is required.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#886e6736e0587ff0" class="i property">Password</a> != <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#555354ee660338d7" class="i property">PasswordConfirmation</a>)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#555354ee660338d7" class="i property">PasswordConfirmation</a>), <a href="#ebd9283a1ea255a7" class="i field">S</a>[<span class="s">&quot;The password confirmation doesn&#39;t match the password.&quot;</span>]);
+            }
+ 
+            <a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="t t">RecipeDescriptor</a> <span id="r17 rd" class="r17 r">selectedRecipe</span> = <b>null</b>;
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;RecipeName&quot;</span>]))
+            {
+                <span class="r17 r">selectedRecipe</span> = <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#c140ccc885606b57" class="i property">Recipes</a>.<span class="i method">FirstOrDefault</span>(<span id="r18 rd" class="r18 r">x</span> =&gt; <span class="r18 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#7158f1f797da090d" class="i property">Name</a> == <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;RecipeName&quot;</span>]);
+                <b>if</b> (<span class="r17 r">selectedRecipe</span> == <b>null</b>)
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#2b25e11963747bfa" class="i property">RecipeName</a>), <a href="#ebd9283a1ea255a7" class="i field">S</a>[<span class="s">&quot;Invalid recipe.&quot;</span>]);
+                }
+            }
+            <b>else</b> <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#2b25e11963747bfa" class="i property">RecipeName</a>) || (<span class="r17 r">selectedRecipe</span> = <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#c140ccc885606b57" class="i property">Recipes</a>.<span class="i method">FirstOrDefault</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <span class="r19 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#7158f1f797da090d" class="i property">Name</a> == <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#2b25e11963747bfa" class="i property">RecipeName</a>)) == <b>null</b>)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#2b25e11963747bfa" class="i property">RecipeName</a>), <a href="#ebd9283a1ea255a7" class="i field">S</a>[<span class="s">&quot;Invalid recipe.&quot;</span>]);
+            }
+ 
+            <span class="c">// Only add additional errors if attribute validation has passed.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a4fc5aecd0d4d65c" class="i property">Email</a>) &amp;&amp; !<a href="#cd522e0d049da372" class="i field">_emailAddressValidator</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#20ced43e7c1e4aca" class="i method">Validate</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a4fc5aecd0d4d65c" class="i property">Email</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a4fc5aecd0d4d65c" class="i property">Email</a>), <a href="#ebd9283a1ea255a7" class="i field">S</a>[<span class="s">&quot;The email is invalid.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#d75814500e6bab25" class="i property">UserName</a>) &amp;&amp; <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#d75814500e6bab25" class="i property">UserName</a>.<span class="i method">Any</span>(<span id="r20 rd" class="r20 r">c</span> =&gt; !<a href="#dbf89e9fb579bf17" class="i field">_identityOptions</a>.<span class="i property">User</span>.<span class="i property">AllowedUserNameCharacters</span>.<a href="@1@System.Runtime/A.html#98876d0c1980f5ef" class="i method">Contains</a>(<span class="r20 r">c</span>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#d75814500e6bab25" class="i property">UserName</a>), <a href="#ebd9283a1ea255a7" class="i field">S</a>[<span class="s">&quot;User name &#39;{0}&#39; is invalid, can only contain letters or digits.&quot;</span>, <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#d75814500e6bab25" class="i property">UserName</a>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <a href="#147b785ef7304243" class="i method">CopyShellSettingsValues</a>(<span class="r14 r">model</span>);
+                <b>return</b> <span class="i method">View</span>(<span class="r14 r">model</span>);
+            }
+ 
+            <b>var</b> <span id="r21 rd" class="r21 r">setupContext</span> = <b>new</b> <span class="i">SetupContext</span>
+            {
+                <span class="i">ShellSettings</span> = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>,
+                <span class="i">EnabledFeatures</span> = <b>null</b>, <span class="c">// default list,</span>
+                <span class="i">Errors</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(),
+                <span class="i">Recipe</span> = <span class="r17 r">selectedRecipe</span>,
+                <span class="i">Properties</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;
+                {
+                    { <span class="i">SetupConstants</span>.<span class="i">SiteName</span>, <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#732cb4c1706a4cbf" class="i property">SiteName</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminUsername</span>, <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#d75814500e6bab25" class="i property">UserName</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminEmail</span>, <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a4fc5aecd0d4d65c" class="i property">Email</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminPassword</span>, <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#886e6736e0587ff0" class="i property">Password</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">SiteTimeZone</span>, <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#f71a3553f71e07c7" class="i property">SiteTimeZone</a> },
+                }
+            };
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;ConnectionString&quot;</span>]))
+            {
+                <span class="r21 r">setupContext</span>.<span class="i">Properties</span>[<span class="i">SetupConstants</span>.<span class="i">DatabaseProvider</span>] = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;DatabaseProvider&quot;</span>];
+                <span class="r21 r">setupContext</span>.<span class="i">Properties</span>[<span class="i">SetupConstants</span>.<span class="i">DatabaseConnectionString</span>] = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;ConnectionString&quot;</span>];
+                <span class="r21 r">setupContext</span>.<span class="i">Properties</span>[<span class="i">SetupConstants</span>.<span class="i">DatabaseTablePrefix</span>] = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;TablePrefix&quot;</span>];
+            }
+            <b>else</b>
+            {
+                <span class="r21 r">setupContext</span>.<span class="i">Properties</span>[<span class="i">SetupConstants</span>.<span class="i">DatabaseProvider</span>] = <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#965cd321253a2c63" class="i property">DatabaseProvider</a>;
+                <span class="r21 r">setupContext</span>.<span class="i">Properties</span>[<span class="i">SetupConstants</span>.<span class="i">DatabaseConnectionString</span>] = <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#c28736a83ec430be" class="i property">ConnectionString</a>;
+                <span class="r21 r">setupContext</span>.<span class="i">Properties</span>[<span class="i">SetupConstants</span>.<span class="i">DatabaseTablePrefix</span>] = <span class="r14 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#5212350a88a98649" class="i property">TablePrefix</a>;
+            }
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">executionId</span> = <b>await</b> <a href="#42a926a1517f4cc9" class="i field">_setupService</a>.<span class="i">SetupAsync</span>(<span class="r21 r">setupContext</span>);
+ 
+            <span class="c">// Check if a component in the Setup failed</span>
+            <b>if</b> (<span class="r21 r">setupContext</span>.<span class="i">Errors</span>.<span class="i">Any</span>())
+            {
+                <b>foreach</b> (<b>var</b> <span id="r23 rd" class="r23 r">error</span> <b>in</b> <span class="r21 r">setupContext</span>.<span class="i">Errors</span>)
+                {
+                    <span class="i property">ModelState</span>.<span class="i">AddModelError</span>(<span class="r23 r">error</span>.<span class="i">Key</span>, <span class="r23 r">error</span>.<span class="i">Value</span>);
+                }
+ 
+                <b>return</b> <span class="i method">View</span>(<span class="r14 r">model</span>);
+            }
+ 
+            <b>return</b> <span class="i method">Redirect</span>(<span class="s">&quot;~/&quot;</span>);
+        }
+ 
+        <b>private void</b> <a id="147b785ef7304243" href="../R/147b785ef7304243.html" target="n" data-glyph="76,1" class="i method">CopyShellSettingsValues</a>(<a href="../ViewModels/SetupViewModel.cs.html#5870280d955559b7" class="t t">SetupViewModel</a> <span id="r24 rd" class="r24 r">model</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;ConnectionString&quot;</span>]))
+            {
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a9d27e6ad46484eb" class="i property">DatabaseConfigurationPreset</a> = <b>true</b>;
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#c28736a83ec430be" class="i property">ConnectionString</a> = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;ConnectionString&quot;</span>];
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;RecipeName&quot;</span>]))
+            {
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#fabdfbb2652d9bf0" class="i property">RecipeNamePreset</a> = <b>true</b>;
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#2b25e11963747bfa" class="i property">RecipeName</a> = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;RecipeName&quot;</span>];
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;DatabaseProvider&quot;</span>]))
+            {
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#a9d27e6ad46484eb" class="i property">DatabaseConfigurationPreset</a> = <b>true</b>;
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#965cd321253a2c63" class="i property">DatabaseProvider</a> = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;DatabaseProvider&quot;</span>];
+            }
+            <b>else</b>
+            {
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#965cd321253a2c63" class="i property">DatabaseProvider</a> = <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#606eb3bbcb8dc4e1" class="i property">DatabaseProviders</a>.<span class="i method">FirstOrDefault</span>(<span id="r25 rd" class="r25 r">p</span> =&gt; <span class="r25 r">p</span>.<span class="i">IsDefault</span>)?.<span class="i">Value</span>;
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;Description&quot;</span>]))
+            {
+                <span class="r24 r">model</span>.<a href="../ViewModels/SetupViewModel.cs.html#71c89adc22e6ecad" class="i property">Description</a> = <a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;Description&quot;</span>];
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="971f7e4fe8f83724" href="../R/971f7e4fe8f83724.html" target="n" data-glyph="76,1" class="i method">IsTokenValid</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">token</span>)
+        {
+            <b>try</b>
+            {
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r27 rd" class="r27 r">result</span> = <b>false</b>;
+ 
+                <b>var</b> <span id="r28 rd" class="r28 r">shellScope</span> = <b>await</b> <a href="#ddccac53880d0c76" class="i field">_shellHost</a>.<span class="i">GetScopeAsync</span>(<span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>);
+ 
+                <b>await</b> <span class="r28 r">shellScope</span>.<span class="i">UsingAsync</span>(<span id="r29 rd" class="r29 r">scope</span> =&gt;
+                {
+                    <b>var</b> <span id="r30 rd" class="r30 r">dataProtectionProvider</span> = <span class="r29 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetRequiredService</span>&lt;<span class="t t">IDataProtectionProvider</span>&gt;();
+                    <b>var</b> <span id="r31 rd" class="r31 r">dataProtector</span> = <span class="r30 r">dataProtectionProvider</span>.<span class="i method">CreateProtector</span>(<span class="s">&quot;Tokens&quot;</span>).<span class="i method">ToTimeLimitedDataProtector</span>();
+ 
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r32 rd" class="r32 r">tokenValue</span> = <span class="r31 r">dataProtector</span>.<span class="i method">Unprotect</span>(<span class="r26 r">token</span>, <b>out</b> <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="k">var</a> <span id="r33 rd" class="r33 r">expiration</span>);
+ 
+                    <b>if</b> (<a href="#09d54061783cf0cb" class="i field">_clock</a>.<span class="i">UtcNow</span> &lt; <span class="r33 r">expiration</span>.<a href="@1@System.Runtime/A.html#40089ed9a791899a" class="i method">ToUniversalTime</a>())
+                    {
+                        <b>if</b> (<a href="#d9a3f003c1830e44" class="i field">_shellSettings</a>[<span class="s">&quot;Secret&quot;</span>] == <span class="r32 r">tokenValue</span>)
+                        {
+                            <span class="r27 r">result</span> = <b>true</b>;
+                        }
+                    }
+ 
+                    <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+                });
+ 
+                <b>return</b> <span class="r27 r">result</span>;
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r34 rd" class="r34 r">ex</span>)
+            {
+                <a href="#6c0a9ca81d907b10" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r34 r">ex</span>, <span class="s">&quot;Error in decrypting the token&quot;</span>);
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

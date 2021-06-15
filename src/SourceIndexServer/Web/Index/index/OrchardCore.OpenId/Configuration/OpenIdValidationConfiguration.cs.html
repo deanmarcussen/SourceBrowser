@@ -1,0 +1,289 @@
+﻿<!DOCTYPE html>
+<html><head><title>OpenIdValidationConfiguration.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(280);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId/Configuration/OpenIdValidationConfiguration.cs" target="_top">Configuration\OpenIdValidationConfiguration.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId" target="_top">src\OrchardCore.Modules\OrchardCore.OpenId\OrchardCore.OpenId.csproj</a> (OrchardCore.OpenId)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">ComponentModel</span>.<span class="i n">DataAnnotations</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authentication</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i">IdentityModel</span>.<span class="i">Protocols</span>.<span class="i">OpenIdConnect</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i">IdentityModel</span>.<span class="i">Tokens</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Validation</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Validation</span>.<span class="i">AspNetCore</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Validation</span>.<span class="i">DataProtection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>;
+<b>using static</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>.<span class="i">OpenIddictConstants</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Configuration</span>
+{
+    [<span class="i">Feature</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#b0e247f8196e91a5" class="t t">Features</a>.<a href="/OrchardCore.OpenId.Core/A.html#19dc625c518e1930" class="i field">Validation</a>)]
+    <b>public class</b> <a id="ded81072628ecfbd" href="../R/ded81072628ecfbd.html" target="n" data-glyph="0,0" class="t t">OpenIdValidationConfiguration</a> : <span class="t t">IConfigureOptions</span>&lt;<span class="t t">AuthenticationOptions</span>&gt;,
+        <span class="t t">IConfigureOptions</span>&lt;<span class="i">OpenIddictValidationOptions</span>&gt;,
+        <span class="t t">IConfigureOptions</span>&lt;<span class="i">OpenIddictValidationDataProtectionOptions</span>&gt;,
+        <span class="t t">IConfigureNamedOptions</span>&lt;<span class="i">ApiAuthorizationOptions</span>&gt;
+    {
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="37da091afeab6084" href="../R/37da091afeab6084.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <a href="../Services/IOpenIdValidationService.cs.html#0356455d8c87b531" class="t t">IOpenIdValidationService</a> <a id="8b884b33d695a8e5" href="../R/8b884b33d695a8e5.html" target="n" data-glyph="46,1" class="i field">_validationService</a>;
+        <b>private readonly</b> <span class="i">IRunningShellTable</span> <a id="e270c9f39c90f58f" href="../R/e270c9f39c90f58f.html" target="n" data-glyph="46,1" class="i field">_runningShellTable</a>;
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="245b2114b667b107" href="../R/245b2114b667b107.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="9c62ef2e97655d49" href="../R/9c62ef2e97655d49.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+ 
+        <b>public</b> <a id="9d5dae06e5d336db" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">OpenIdValidationConfiguration</a>(
+            <span class="t t">ILogger</span>&lt;<a href="#ded81072628ecfbd" class="t t">OpenIdValidationConfiguration</a>&gt; <span id="r0 rd" class="r0 r">logger</span>,
+            <a href="../Services/IOpenIdValidationService.cs.html#0356455d8c87b531" class="t t">IOpenIdValidationService</a> <span id="r1 rd" class="r1 r">validationService</span>,
+            <span class="i">IRunningShellTable</span> <span id="r2 rd" class="r2 r">runningShellTable</span>,
+            <span class="i">IShellHost</span> <span id="r3 rd" class="r3 r">shellHost</span>,
+            <span class="i">ShellSettings</span> <span id="r4 rd" class="r4 r">shellSettings</span>)
+        {
+            <a href="#37da091afeab6084" class="i field">_logger</a> = <span class="r0 r">logger</span>;
+            <a href="#8b884b33d695a8e5" class="i field">_validationService</a> = <span class="r1 r">validationService</span>;
+            <a href="#e270c9f39c90f58f" class="i field">_runningShellTable</a> = <span class="r2 r">runningShellTable</span>;
+            <a href="#245b2114b667b107" class="i field">_shellHost</a> = <span class="r3 r">shellHost</span>;
+            <a href="#9c62ef2e97655d49" class="i field">_shellSettings</a> = <span class="r4 r">shellSettings</span>;
+        }
+ 
+        <b>public void</b> <a id="eb7159c2fbd1357b" href="../R/eb7159c2fbd1357b.html" target="n" data-glyph="72,1" class="i method">Configure</a>(<span class="t t">AuthenticationOptions</span> <span id="r5 rd" class="r5 r">options</span>)
+        {
+            <a href="../Settings/OpenIdValidationSettings.cs.html#ab453f4d8bb869e9" class="k">var</a> <span id="r6 rd" class="r6 r">settings</span> = <a href="#9a5d65ed61f5f688" class="i method">GetValidationSettingsAsync</a>().<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>();
+            <b>if</b> (<span class="r6 r">settings</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r6 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#a19872b5894b5b7f" class="i property">Authority</a> != <b>null</b>)
+            {
+                <span class="r5 r">options</span>.<span class="i">AddScheme</span>&lt;<span class="i">OpenIddictValidationAspNetCoreHandler</span>&gt;(
+                    <span class="i">OpenIddictValidationAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>, <span class="i">displayName</span>: <b>null</b>);
+ 
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Note: the shell host guarantees that the OpenID server service resolved inside</span>
+            <span class="c">// this using block won&#39;t be disposed until the service scope itself is released.</span>
+            <a href="#7a71073279b9a139" class="i method">CreateTenantScope</a>(<span class="r6 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#f6c7875ba800b6aa" class="i property">Tenant</a>).<span class="i">UsingAsync</span>(<b>async</b> <span id="r7 rd" class="r7 r">scope</span> =&gt;
+            {
+                <a href="../Services/IOpenIdServerService.cs.html#16b68e76cf5b848a" class="k">var</a> <span id="r8 rd" class="r8 r">service</span> = <span class="r7 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetService</span>&lt;<a href="../Services/IOpenIdServerService.cs.html#16b68e76cf5b848a" class="t t">IOpenIdServerService</a>&gt;();
+                <b>if</b> (<span class="r8 r">service</span> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="k">var</a> <span id="r9 rd" class="r9 r">configuration</span> = <b>await</b> <a href="#2f7395e9722e3f27" class="i method">GetServerSettingsAsync</a>(<span class="r8 r">service</span>);
+                <b>if</b> (<span class="r9 r">configuration</span> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <span class="r5 r">options</span>.<span class="i">AddScheme</span>&lt;<span class="i">OpenIddictValidationAspNetCoreHandler</span>&gt;(
+                    <span class="i">OpenIddictValidationAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>, <span class="i">displayName</span>: <b>null</b>);
+            }).<span class="i">GetAwaiter</span>().<span class="i">GetResult</span>();
+        }
+ 
+        <b>public void</b> <a id="fb5814c904947e21" href="../R/fb5814c904947e21.html" target="n" data-glyph="72,1" class="i method">Configure</a>(<span class="i">OpenIddictValidationOptions</span> <span id="r10 rd" class="r10 r">options</span>)
+        {
+            <a href="../Settings/OpenIdValidationSettings.cs.html#ab453f4d8bb869e9" class="k">var</a> <span id="r11 rd" class="r11 r">settings</span> = <a href="#9a5d65ed61f5f688" class="i method">GetValidationSettingsAsync</a>().<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>();
+            <b>if</b> (<span class="r11 r">settings</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If the tokens are issued by an authorization server located in an Orchard tenant, retrieve the</span>
+            <span class="c">// authority and the signing key and register them in the token validation parameters to prevent</span>
+            <span class="c">// the handler from using an HTTP call to retrieve the discovery document from the other tenant.</span>
+            <span class="c">// Otherwise, set the authority to allow the handler to retrieve the endpoint URLs/signing keys</span>
+            <span class="c">// from the remote server&#39;s metadata by sending an OpenID Connect/OAuth 2.0 discovery request.</span>
+ 
+            <b>if</b> (<span class="r11 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#a19872b5894b5b7f" class="i property">Authority</a> != <b>null</b>)
+            {
+                <span class="r10 r">options</span>.<span class="i">Issuer</span> = <span class="r11 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#a19872b5894b5b7f" class="i property">Authority</a>;
+                <span class="r10 r">options</span>.<span class="i">Audiences</span>.<span class="i">Add</span>(<span class="r11 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#0f36ed0da7f9255e" class="i property">Audience</a>);
+ 
+                <span class="c">// Note: OpenIddict 3.0 only accepts tokens issued with a non-empty token type (e.g &quot;at+jwt&quot;)</span>
+                <span class="c">// or with the generic &quot;JWT&quot; type and a special &quot;token_type&quot; claim containing the actual type</span>
+                <span class="c">// for backward compatibility, which matches the recommended best practices and helps prevent</span>
+                <span class="c">// token substitution attacks by ensuring JWT tokens of any other type are always rejected.</span>
+                <span class="c">// Unfortunately, most of the OAuth 2.0/OpenID Connect servers haven&#39;t been updated to emit</span>
+                <span class="c">// access tokens using the &quot;at+jwt&quot; token type header. To ensure the validation handler can still</span>
+                <span class="c">// be used with these servers, an option is provided to disable the token validation logic.</span>
+                <span class="c">// In this case, the received tokens are assumed to be access tokens (which is the only type</span>
+                <span class="c">// currently used in the API validation feature), no matter what their actual &quot;typ&quot; header is.</span>
+                <b>if</b> (<span class="r11 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#ad99fb04f5b4831f" class="i property">DisableTokenTypeValidation</a>)
+                {
+                    <span class="r10 r">options</span>.<span class="i">TokenValidationParameters</span>.<span class="i">TypeValidator</span> = (<span id="r12 rd" class="r12 r">type</span>, <span id="r13 rd" class="r13 r">token</span>, <span id="r14 rd" class="r14 r">parameters</span>)
+                        =&gt; <span class="i">JsonWebTokenTypes</span>.<span class="i">AccessToken</span>;
+                }
+            }
+ 
+            <span class="c">// Note: the shell host guarantees that the OpenID server service resolved inside</span>
+            <span class="c">// this using block won&#39;t be disposed until the service scope itself is released.</span>
+            <a href="#7a71073279b9a139" class="i method">CreateTenantScope</a>(<span class="r11 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#f6c7875ba800b6aa" class="i property">Tenant</a>).<span class="i">UsingAsync</span>(<b>async</b> <span id="r15 rd" class="r15 r">scope</span> =&gt;
+            {
+                <a href="../Services/IOpenIdServerService.cs.html#16b68e76cf5b848a" class="k">var</a> <span id="r16 rd" class="r16 r">service</span> = <span class="r15 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetService</span>&lt;<a href="../Services/IOpenIdServerService.cs.html#16b68e76cf5b848a" class="t t">IOpenIdServerService</a>&gt;();
+                <b>if</b> (<span class="r16 r">service</span> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="k">var</a> <span id="r17 rd" class="r17 r">configuration</span> = <b>await</b> <a href="#2f7395e9722e3f27" class="i method">GetServerSettingsAsync</a>(<span class="r16 r">service</span>);
+                <b>if</b> (<span class="r17 r">configuration</span> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <span class="r10 r">options</span>.<span class="i">Configuration</span> = <b>new</b> <span class="i">OpenIdConnectConfiguration</span>
+                {
+                    <span class="i">Issuer</span> = <span class="r17 r">configuration</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>?.<a href="@1@System.Runtime/A.html#e335fec0022465e6" class="i property">AbsoluteUri</a>
+                };
+ 
+                <span class="c">// Import the signing keys from the OpenID server configuration.</span>
+                <b>foreach</b> (<b>var</b> <span id="r18 rd" class="r18 r">key</span> <b>in</b> <b>await</b> <span class="r16 r">service</span>.<a href="../Services/IOpenIdServerService.cs.html#d7cbba666f35f0a0" class="i method">GetSigningKeysAsync</a>())
+                {
+                    <span class="r10 r">options</span>.<span class="i">Configuration</span>.<span class="i">SigningKeys</span>.<span class="i">Add</span>(<span class="r18 r">key</span>);
+                }
+ 
+                <span class="c">// Register the encryption keys used by the OpenID Connect server.</span>
+                <b>foreach</b> (<b>var</b> <span id="r19 rd" class="r19 r">key</span> <b>in</b> <b>await</b> <span class="r16 r">service</span>.<a href="../Services/IOpenIdServerService.cs.html#8b2d3f3a0bfb0a9c" class="i method">GetEncryptionKeysAsync</a>())
+                {
+                    <span class="r10 r">options</span>.<span class="i">EncryptionCredentials</span>.<span class="i">Add</span>(<b>new</b> <span class="i">EncryptingCredentials</span>(<span class="r19 r">key</span>,
+                        <span class="i">SecurityAlgorithms</span>.<span class="i">RsaOAEP</span>, <span class="i">SecurityAlgorithms</span>.<span class="i">Aes256CbcHmacSha512</span>));
+                }
+ 
+                <span class="c">// When the server is another tenant, don&#39;t allow the current tenant</span>
+                <span class="c">// to choose the valid audiences, as this would otherwise allow it</span>
+                <span class="c">// to validate/introspect tokens meant to be used with another tenant.</span>
+                <span class="r10 r">options</span>.<span class="i">Audiences</span>.<span class="i">Add</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#70a05db26ae04a93" class="t t">Prefixes</a>.<a href="/OrchardCore.OpenId.Core/A.html#03c10ba0056de799" class="i field">Tenant</a> + <a href="#9c62ef2e97655d49" class="i field">_shellSettings</a>.<span class="i">Name</span>);
+ 
+                <span class="c">// Note: token entry validation must be enabled to be able to validate reference tokens.</span>
+                <span class="r10 r">options</span>.<span class="i">EnableTokenEntryValidation</span> = <span class="r17 r">configuration</span>.<a href="../Settings/OpenIdServerSettings.cs.html#a80acda7be191950" class="i property">UseReferenceAccessTokens</a>;
+ 
+                <span class="c">// If an authority was explicitly set in the OpenID server options,</span>
+                <span class="c">// prefer it to the dynamic tenant comparison as it&#39;s more efficient.</span>
+                <b>if</b> (<span class="r17 r">configuration</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a> != <b>null</b>)
+                {
+                    <span class="r10 r">options</span>.<span class="i">TokenValidationParameters</span>.<span class="i">ValidIssuer</span> = <span class="r17 r">configuration</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>.<a href="@1@System.Runtime/A.html#e335fec0022465e6" class="i property">AbsoluteUri</a>;
+                }
+                <b>else</b>
+                {
+                    <span class="r10 r">options</span>.<span class="i">TokenValidationParameters</span>.<span class="i">IssuerValidator</span> = (<span id="r20 rd" class="r20 r">issuer</span>, <span id="r21 rd" class="r21 r">token</span>, <span id="r22 rd" class="r22 r">parameters</span>) =&gt;
+                    {
+                        <b>if</b> (!<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<span class="i">TryCreate</span>(<span class="r20 r">issuer</span>, <a href="@1@System.Runtime/A.html#ac43655101ad74be" class="t t">UriKind</a>.<a href="@1@System.Runtime/A.html#d734108197254429" class="i field">Absolute</a>, <b>out</b> <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a> <span id="r23 rd" class="r23 r">uri</span>))
+                        {
+                            <b>throw</b> <b>new</b> <span class="i">SecurityTokenInvalidIssuerException</span>(<span class="s">&quot;The token issuer is not valid.&quot;</span>);
+                        }
+ 
+                        <b>var</b> <span id="r24 rd" class="r24 r">tenant</span> = <a href="#e270c9f39c90f58f" class="i field">_runningShellTable</a>.<span class="i">Match</span>(<span class="t t">HostString</span>.<span class="i method">FromUriComponent</span>(<span class="r23 r">uri</span>), <span class="r23 r">uri</span>.<a href="@1@System.Runtime/A.html#a25e99acb6b73c81" class="i property">AbsolutePath</a>);
+                        <b>if</b> (<span class="r24 r">tenant</span> == <b>null</b> || !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r24 r">tenant</span>.<span class="i">Name</span>, <span class="r11 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#f6c7875ba800b6aa" class="i property">Tenant</a>))
+                        {
+                            <b>throw</b> <b>new</b> <span class="i">SecurityTokenInvalidIssuerException</span>(<span class="s">&quot;The token issuer is not valid.&quot;</span>);
+                        }
+ 
+                        <b>return</b> <span class="r20 r">issuer</span>;
+                    };
+                }
+            }).<span class="i">GetAwaiter</span>().<span class="i">GetResult</span>();
+        }
+ 
+        <b>public void</b> <a id="d703d259189d8e79" href="../R/d703d259189d8e79.html" target="n" data-glyph="72,1" class="i method">Configure</a>(<span class="i">OpenIddictValidationDataProtectionOptions</span> <span id="r25 rd" class="r25 r">options</span>)
+        {
+            <a href="../Settings/OpenIdValidationSettings.cs.html#ab453f4d8bb869e9" class="k">var</a> <span id="r26 rd" class="r26 r">settings</span> = <a href="#9a5d65ed61f5f688" class="i method">GetValidationSettingsAsync</a>().<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>();
+            <b>if</b> (<span class="r26 r">settings</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If the tokens are issued by an authorization server located in a separate tenant,</span>
+            <span class="c">// resolve the isolated data protection provider associated with the specified tenant.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r26 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#f6c7875ba800b6aa" class="i property">Tenant</a>) &amp;&amp;
+                !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r26 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#f6c7875ba800b6aa" class="i property">Tenant</a>, <a href="#9c62ef2e97655d49" class="i field">_shellSettings</a>.<span class="i">Name</span>))
+            {
+                <a href="#7a71073279b9a139" class="i method">CreateTenantScope</a>(<span class="r26 r">settings</span>.<a href="../Settings/OpenIdValidationSettings.cs.html#f6c7875ba800b6aa" class="i property">Tenant</a>).<span class="i">UsingAsync</span>(<b>async</b> <span id="r27 rd" class="r27 r">scope</span> =&gt;
+                {
+                    <span class="c">// If the other tenant is released, ensure the current tenant is also restarted as it</span>
+                    <span class="c">// relies on a data protection provider whose lifetime is managed by the other tenant.</span>
+                    <span class="c">// To make sure the other tenant is not disposed before all the pending requests are</span>
+                    <span class="c">// processed by the current tenant, a tenant dependency is manually added.</span>
+                    <span class="r27 r">scope</span>.<span class="i">ShellContext</span>.<span class="i">AddDependentShell</span>(<b>await</b> <a href="#245b2114b667b107" class="i field">_shellHost</a>.<span class="i">GetOrCreateShellContextAsync</span>(<a href="#9c62ef2e97655d49" class="i field">_shellSettings</a>));
+ 
+                    <span class="c">// Note: the data protection provider is always registered as a singleton and thus will</span>
+                    <span class="c">// survive the current scope, which is mainly used to prevent the other tenant from being</span>
+                    <span class="c">// released before we have a chance to declare the current tenant as a dependent tenant.</span>
+                    <span class="r25 r">options</span>.<span class="i">DataProtectionProvider</span> = <span class="r27 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetDataProtectionProvider</span>();
+                }).<span class="i">GetAwaiter</span>().<span class="i">GetResult</span>();
+            }
+        }
+ 
+        <b>public void</b> <a id="2e9db78b414e4953" href="../R/2e9db78b414e4953.html" target="n" data-glyph="72,1" class="i method">Configure</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">name</span>, <span class="i">ApiAuthorizationOptions</span> <span id="r29 rd" class="r29 r">options</span>)
+        {
+            <span class="c">// The default Orchard API authentication handler uses &quot;Bearer&quot; as the forwarded</span>
+            <span class="c">// authentication scheme, that corresponds to the default value used by the JWT</span>
+            <span class="c">// bearer handler from Microsoft. Yet, the OpenIddict validation handler uses</span>
+            <span class="c">// a different authentication scheme, so the API scheme must be manually replaced.</span>
+            <span class="r29 r">options</span>.<span class="i">ApiAuthenticationScheme</span> = <span class="i">OpenIddictValidationAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>;
+        }
+ 
+        <b>public void</b> <a id="51c823860abd04cb" href="../R/51c823860abd04cb.html" target="n" data-glyph="72,1" class="i method">Configure</a>(<span class="i">ApiAuthorizationOptions</span> <span id="r30 rd" class="r30 r">options</span>)
+            =&gt; <a href="@1@System.Runtime/A.html#632c6da37ce825df" class="t t">Debug</a>.<a href="@1@System.Runtime/A.html#edba047e49087cd7" class="i method">Fail</a>(<span class="s">&quot;This infrastructure method shouldn&#39;t be called.&quot;</span>);
+ 
+        <b>private</b> <span class="i">ShellScope</span> <a id="7a71073279b9a139" href="../R/7a71073279b9a139.html" target="n" data-glyph="76,1" class="i method">CreateTenantScope</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">tenant</span>)
+        {
+            <span class="c">// Optimization: if the specified name corresponds to the current tenant, use the current &#39;ShellScope&#39;.</span>
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r31 r">tenant</span>) || <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r31 r">tenant</span>, <a href="#9c62ef2e97655d49" class="i field">_shellSettings</a>.<span class="i">Name</span>))
+            {
+                <b>return</b> <span class="i">ShellScope</span>.<span class="i">Current</span>;
+            }
+ 
+            <b>return</b> <a href="#245b2114b667b107" class="i field">_shellHost</a>.<span class="i">GetScopeAsync</span>(<span class="r31 r">tenant</span>).<span class="i">GetAwaiter</span>().<span class="i">GetResult</span>();
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a>&gt; <a id="2f7395e9722e3f27" href="../R/2f7395e9722e3f27.html" target="n" data-glyph="76,1" class="i method">GetServerSettingsAsync</a>(<a href="../Services/IOpenIdServerService.cs.html#16b68e76cf5b848a" class="t t">IOpenIdServerService</a> <span id="r32 rd" class="r32 r">service</span>)
+        {
+            <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="k">var</a> <span id="r33 rd" class="r33 r">settings</span> = <b>await</b> <span class="r32 r">service</span>.<a href="../Services/IOpenIdServerService.cs.html#946640ea6cbfa2d1" class="i method">GetSettingsAsync</a>();
+            <b>if</b> ((<b>await</b> <span class="r32 r">service</span>.<a href="../Services/IOpenIdServerService.cs.html#968709e28d0b010d" class="i method">ValidateSettingsAsync</a>(<span class="r33 r">settings</span>)).<a href="@1@System.Collections.Immutable/A.html#bf86338597b2e4ec" class="i method">Any</a>(<span id="r34 rd" class="r34 r">result</span> =&gt; <span class="r34 r">result</span> != <span class="t t">ValidationResult</span>.<span class="i field">Success</span>))
+            {
+                <b>if</b> (<a href="#9c62ef2e97655d49" class="i field">_shellSettings</a>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Running</span>)
+                {
+                    <a href="#37da091afeab6084" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The OpenID Connect module is not correctly configured.&quot;</span>);
+                }
+ 
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <span class="r33 r">settings</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Settings/OpenIdValidationSettings.cs.html#ab453f4d8bb869e9" class="t t">OpenIdValidationSettings</a>&gt; <a id="9a5d65ed61f5f688" href="../R/9a5d65ed61f5f688.html" target="n" data-glyph="76,1" class="i method">GetValidationSettingsAsync</a>()
+        {
+            <a href="../Settings/OpenIdValidationSettings.cs.html#ab453f4d8bb869e9" class="k">var</a> <span id="r35 rd" class="r35 r">settings</span> = <b>await</b> <a href="#8b884b33d695a8e5" class="i field">_validationService</a>.<a href="../Services/IOpenIdValidationService.cs.html#7d24a0bd0ba7f318" class="i method">GetSettingsAsync</a>();
+            <b>if</b> ((<b>await</b> <a href="#8b884b33d695a8e5" class="i field">_validationService</a>.<a href="../Services/IOpenIdValidationService.cs.html#78792a409d5946bc" class="i method">ValidateSettingsAsync</a>(<span class="r35 r">settings</span>)).<a href="@1@System.Collections.Immutable/A.html#bf86338597b2e4ec" class="i method">Any</a>(<span id="r36 rd" class="r36 r">result</span> =&gt; <span class="r36 r">result</span> != <span class="t t">ValidationResult</span>.<span class="i field">Success</span>))
+            {
+                <b>if</b> (<a href="#9c62ef2e97655d49" class="i field">_shellSettings</a>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Running</span>)
+                {
+                    <a href="#37da091afeab6084" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The OpenID Connect module is not correctly configured.&quot;</span>);
+                }
+ 
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <span class="r35 r">settings</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

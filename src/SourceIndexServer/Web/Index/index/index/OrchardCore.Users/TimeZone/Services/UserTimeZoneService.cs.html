@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html><head><title>UserTimeZoneService.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(88);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/TimeZone/Services/UserTimeZoneService.cs" target="_top">TimeZone\Services\UserTimeZoneService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">TimeZone</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">TimeZone</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="35867a8b838393f2" href="../../R/35867a8b838393f2.html" target="n" data-glyph="0,0" class="t t">UserTimeZoneService</a>
+    {
+        <b>private const string</b> <a id="300ce5e2cac61faf" href="../../R/300ce5e2cac61faf.html" target="n" data-glyph="10,1" class="i field">CacheKey</a> = <span class="s">&quot;UserTimeZone/&quot;</span>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="48a4bb8a39bd5bbb" href="../../R/48a4bb8a39bd5bbb.html" target="n" data-glyph="46,1" class="i field">SlidingExpiration</a> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#ae74be5264df78d8" class="i method">FromMinutes</a>(1);
+ 
+        <b>private readonly</b> <span class="i">IClock</span> <a id="bc34625060da40d3" href="../../R/bc34625060da40d3.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <span class="t t">IDistributedCache</span> <a id="52e920de4c9d8adc" href="../../R/52e920de4c9d8adc.html" target="n" data-glyph="46,1" class="i field">_distributedCache</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="ce64929b9fc3662b" href="../../R/ce64929b9fc3662b.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <a id="81c69ce590ed5205" href="../../R/81c69ce590ed5205.html" target="n" data-glyph="46,1" class="i field">_userManager</a>;
+ 
+        <b>public</b> <a id="4a70f21b175bf9a9" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UserTimeZoneService</a>(
+            <span class="i">IClock</span> <span id="r0 rd" class="r0 r">clock</span>,
+            <span class="t t">IDistributedCache</span> <span id="r1 rd" class="r1 r">distributedCache</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>,
+            <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r3 rd" class="r3 r">userManager</span>
+            )
+        {
+            <a href="#bc34625060da40d3" class="i field">_clock</a> = <span class="r0 r">clock</span>;
+            <a href="#52e920de4c9d8adc" class="i field">_distributedCache</a> = <span class="r1 r">distributedCache</span>;
+            <a href="#ce64929b9fc3662b" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+            <a href="#81c69ce590ed5205" class="i field">_userManager</a> = <span class="r3 r">userManager</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">ITimeZone</span>&gt; <a id="9560765d9b527e68" href="../../R/9560765d9b527e68.html" target="n" data-glyph="72,1" class="i method">GetUserTimeZoneAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">currentTimeZoneId</span> = <b>await</b> <a href="#c419e298ce955ca8" class="i method">GetCurrentUserTimeZoneIdAsync</a>();
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r4 r">currentTimeZoneId</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <a href="#bc34625060da40d3" class="i field">_clock</a>.<span class="i">GetTimeZone</span>(<span class="r4 r">currentTimeZoneId</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="75776a23ff01ff60" href="../../R/75776a23ff01ff60.html" target="n" data-glyph="72,1" class="i method">UpdateUserTimeZoneAsync</a>(<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a> <span id="r5 rd" class="r5 r">user</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">userName</span> = <span class="r5 r">user</span>?.<a href="/OrchardCore.Users.Core/A.html#d3cb3fa5644a34e8" class="i property">UserName</a>;
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">userName</span>))
+            {
+                <b>return</b> <a href="#52e920de4c9d8adc" class="i field">_distributedCache</a>.<span class="i method">RemoveAsync</span>(<a href="#ca44e36a8fba1563" class="i method">GetCacheKey</a>(<span class="r6 r">userName</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="c419e298ce955ca8" href="../../R/c419e298ce955ca8.html" target="n" data-glyph="72,1" class="i method">GetCurrentUserTimeZoneIdAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r7 rd" class="r7 r">userName</span> = <a href="#ce64929b9fc3662b" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>?.<span class="i property">Identity</span>?.<a href="@1@System.Runtime/A.html#2e6d5b47e23f7ff4" class="i property">Name</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r7 r">userName</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">key</span> = <a href="#ca44e36a8fba1563" class="i method">GetCacheKey</a>(<span class="r7 r">userName</span>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">timeZoneId</span> = <b>await</b> <a href="#52e920de4c9d8adc" class="i field">_distributedCache</a>.<span class="i method">GetStringAsync</span>(<span class="r8 r">key</span>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r9 r">timeZoneId</span>))
+            {
+                <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r10 rd" class="r10 r">user</span> = <b>await</b> <a href="#81c69ce590ed5205" class="i field">_userManager</a>.<span class="i method">FindByNameAsync</span>(<span class="r7 r">userName</span>) <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+                <span class="r9 r">timeZoneId</span> = <span class="r10 r">user</span>.<span class="i">As</span>&lt;<a href="../Models/UserTimeZone.cs.html#6bc158912ce7d61b" class="t t">UserTimeZone</a>&gt;()?.<a href="../Models/UserTimeZone.cs.html#bc866ebc6d5f2e43" class="i property">TimeZoneId</a>;
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r9 r">timeZoneId</span>))
+                {
+                    <b>await</b> <a href="#52e920de4c9d8adc" class="i field">_distributedCache</a>.<span class="i method">SetStringAsync</span>(<span class="r8 r">key</span>, <span class="r9 r">timeZoneId</span>, <b>new</b> <span class="t constructor">DistributedCacheEntryOptions</span> { <span class="i property">SlidingExpiration</span> = <a href="#48a4bb8a39bd5bbb" class="i field">SlidingExpiration</a> });
+                }
+            }
+ 
+            <b>return</b> <span class="r9 r">timeZoneId</span>;
+        }
+ 
+        <b>private string</b> <a id="ca44e36a8fba1563" href="../../R/ca44e36a8fba1563.html" target="n" data-glyph="76,1" class="i method">GetCacheKey</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">userName</span>) =&gt; <a href="#300ce5e2cac61faf" class="i field">CacheKey</a> + <span class="r11 r">userName</span>;
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,319 @@
+﻿<!DOCTYPE html>
+<html><head><title>LiquidViewTemplate.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(310);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid/LiquidViewTemplate.cs" target="_top">LiquidViewTemplate.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid" target="_top">src\OrchardCore\OrchardCore.DisplayManagement.Liquid\OrchardCore.DisplayManagement.Liquid.csproj</a> (OrchardCore.DisplayManagement.Liquid)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Accessors</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Abstractions</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Infrastructure</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Shapes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i">TimeZoneConverter</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>
+{
+    <b>public class</b> <a id="9fbef59705c4102a" href="R/9fbef59705c4102a.html" target="n" data-glyph="0,0" class="t t">LiquidViewTemplate</a>
+    {
+        <b>public static readonly string</b> <a id="1a0123be544d1b69" href="R/1a0123be544d1b69.html" target="n" data-glyph="42,1" class="i field">ViewsFolder</a> = <span class="s">&quot;Views&quot;</span>;
+        <b>public static readonly string</b> <a id="b6362942e3bda091" href="R/b6362942e3bda091.html" target="n" data-glyph="42,1" class="i field">ViewExtension</a> = <span class="s">&quot;.liquid&quot;</span>;
+        <b>public static readonly</b> <span class="t t">MemoryCache</span> <a id="2fac91e4865a01b5" href="R/2fac91e4865a01b5.html" target="n" data-glyph="42,1" class="i field">Cache</a> = <b>new</b> <span class="t constructor">MemoryCache</span>(<b>new</b> <span class="t constructor">MemoryCacheOptions</span>());
+        <b>public</b> <span class="i">IFluidTemplate</span> <a id="881076eed61bcaae" href="R/881076eed61bcaae.html" target="n" data-glyph="102,1" class="i property">FluidTemplate</a> { <b>get</b>; }
+ 
+        <b>public</b> <a id="7e205fffaaba26f3" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LiquidViewTemplate</a>(<span class="i">IFluidTemplate</span> <span id="r0 rd" class="r0 r">fluidTemplate</span>)
+        {
+            <a href="#881076eed61bcaae" class="i property">FluidTemplate</a> = <span class="r0 r">fluidTemplate</span>;
+        }
+ 
+        <b>internal static async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="99b2d58c392bf678" href="R/99b2d58c392bf678.html" target="n" data-glyph="74,1" class="i method">RenderAsync</a>(<span class="t t">RazorPage</span>&lt;<b>dynamic</b>&gt; <span id="r1 rd" class="r1 r">page</span>)
+        {
+            <b>var</b> <span id="r2 rd" class="r2 r">services</span> = <span class="r1 r">page</span>.<span class="i property">Context</span>.<span class="i property">RequestServices</span>;
+            <a href="LiquidViewParser.cs.html#10c79fc080ed5f86" class="k">var</a> <span id="r3 rd" class="r3 r">liquidViewParser</span> = <span class="r2 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<a href="LiquidViewParser.cs.html#10c79fc080ed5f86" class="t t">LiquidViewParser</a>&gt;();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r4 rd" class="r4 r">path</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#8b380aa7025bf5f6" class="i method">ChangeExtension</a>(<span class="r1 r">page</span>.<span class="i property">ViewContext</span>.<span class="i property">ExecutingFilePath</span>, <a href="#b6362942e3bda091" class="i field">ViewExtension</a>);
+            <b>var</b> <span id="r5 rd" class="r5 r">templateOptions</span> = <span class="r2 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IOptions</span>&lt;<span class="i">TemplateOptions</span>&gt;&gt;().<span class="i property">Value</span>;
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r6 rd" class="r6 r">isDevelopment</span> = <span class="r2 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IHostEnvironment</span>&gt;().<span class="i method">IsDevelopment</span>();
+            <b>var</b> <span id="r7 rd" class="r7 r">template</span> = <b>await</b> <span class="i">ParseAsync</span>(<span class="r3 r">liquidViewParser</span>, <span class="r4 r">path</span>, <span class="r5 r">templateOptions</span>.<span class="i">FileProvider</span>, <a href="#2fac91e4865a01b5" class="i field">Cache</a>, <span class="r6 r">isDevelopment</span>);
+            <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="k">var</a> <span id="r8 rd" class="r8 r">context</span> = <b>new</b> <span class="t">LiquidTemplateContext</span>(<span class="r2 r">services</span>, <span class="r5 r">templateOptions</span>);
+            <b>var</b> <span id="r9 rd" class="r9 r">htmlEncoder</span> = <span class="r2 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">HtmlEncoder</span>&gt;();
+ 
+            <b>try</b>
+            {
+                <a href="ViewBufferTextWriterContent.cs.html#3e60ca0522d36009" class="k">var</a> <span id="r10 rd" class="r10 r">content</span> = <b>new</b> <a href="ViewBufferTextWriterContent.cs.html#94a84e77763f63a2" class="t constructor">ViewBufferTextWriterContent</a>();
+                <b>await</b> <span class="r8 r">context</span>.<a href="#d3d8db381faa557e" class="i method">EnterScopeAsync</a>(<span class="r1 r">page</span>.<span class="i property">ViewContext</span>, (<b>object</b>)<span class="r1 r">page</span>.<span class="i property">Model</span>);
+                <b>await</b> <span class="r7 r">template</span>.<span class="i">FluidTemplate</span>.<span class="i">RenderAsync</span>(<span class="r10 r">content</span>, <span class="r9 r">htmlEncoder</span>, <span class="r8 r">context</span>);
+ 
+                <span class="c">// Use ViewBufferTextWriter.Write(object) from ASP.NET directly since it will use a special code path</span>
+                <span class="c">// for IHtmlContent. This prevent the TextWriter methods from copying the content from our buffer</span>
+                <span class="c">// if we did content.WriteTo(page.Output)</span>
+ 
+                <span class="r1 r">page</span>.<span class="i property">Output</span>.<a href="@1@System.Runtime/A.html#20e18fa41ebefe91" class="i method">Write</a>(<span class="r10 r">content</span>);
+            }
+            <b>finally</b>
+            {
+                <span class="r8 r">context</span>.<span class="i">ReleaseScope</span>();
+            }
+        }
+ 
+        <b>public static</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="#9fbef59705c4102a" class="t t">LiquidViewTemplate</a>&gt; <a id="4d63aa36c6c8b3eb" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ParseAsync</a>(<a href="LiquidViewParser.cs.html#10c79fc080ed5f86" class="t t">LiquidViewParser</a> <span id="r11 rd" class="r11 r">parser</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">path</span>, <span class="t t">IFileProvider</span> <span id="r13 rd" class="r13 r">fileProvider</span>, <span class="t t">IMemoryCache</span> <span id="r14 rd" class="r14 r">cache</span>, <b>bool</b> <span id="r15 rd" class="r15 r">isDevelopment</span>)
+        {
+            <b>return</b> <span class="r14 r">cache</span>.<span class="i">GetOrCreateAsync</span>(<span class="r12 r">path</span>, <b>async</b> <span id="r16 rd" class="r16 r">entry</span> =&gt;
+            {
+                <span class="r16 r">entry</span>.<span class="i method">SetSlidingExpiration</span>(<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#060fe8cc38e0a7e3" class="i method">FromHours</a>(1));
+                <b>var</b> <span id="r17 rd" class="r17 r">fileInfo</span> = <span class="r13 r">fileProvider</span>.<span class="i method">GetFileInfo</span>(<span class="r12 r">path</span>);
+ 
+                <b>if</b> (<span class="r15 r">isDevelopment</span>)
+                {
+                    <span class="r16 r">entry</span>.<span class="i property">ExpirationTokens</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r13 r">fileProvider</span>.<span class="i method">Watch</span>(<span class="r12 r">path</span>));
+                }
+ 
+                <b>using</b> <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r18 rd" class="r18 r">stream</span> = <span class="r17 r">fileInfo</span>.<span class="i method">CreateReadStream</span>();
+                <b>using</b> <a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r19 rd" class="r19 r">sr</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r18 r">stream</span>);
+ 
+                <b>if</b> (<span class="r11 r">parser</span>.<span class="i">TryParse</span>(<b>await</b> <span class="r19 r">sr</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>(), <b>out</b> <b>var</b> <span id="r20 rd" class="r20 r">template</span>, <b>out</b> <b>var</b> <span id="r21 rd" class="r21 r">errors</span>))
+                {
+                    <b>return</b> <b>new</b> <span class="t">LiquidViewTemplate</span>(<span class="r20 r">template</span>);
+                }
+                <b>else</b>
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#df2d82d91ca29e40" class="t constructor">Exception</a>(<span class="s">$&quot;</span><span class="s">Failed to parse liquid file </span>{<span class="r12 r">path</span>}<span class="s">: </span>{<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Join</span>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>, <span class="r21 r">errors</span>)}<span class="s">&quot;</span>);
+                }
+            });
+        }
+    }
+ 
+    <b>internal class</b> <a id="c045638f7b4c17ef" href="R/c045638f7b4c17ef.html" target="n" data-glyph="2,0" class="t t">ShapeAccessor</a> : <span class="i">DelegateAccessor</span>
+    {
+        <b>public</b> <a id="54b8f64057bf34be" href="R/54b8f64057bf34be.html" target="n" data-glyph="72,1" class="t constructor">ShapeAccessor</a>() : <b>base</b>(<a href="#4a78ab1f79d4c947" class="i property">_getter</a>)
+        {
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<b>object</b>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; <a id="4a78ab1f79d4c947" href="R/4a78ab1f79d4c947.html" target="n" data-glyph="106,1" class="i property">_getter</a> =&gt; (<span id="r22 rd" class="r22 r">o</span>, <span id="r23 rd" class="r23 r">n</span>) =&gt;
+        {
+            <b>if</b> (<span class="r22 r">o</span> <b>is</b> <a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a> <span id="r24 rd" class="r24 r">shape</span>)
+            {
+                <b>object</b> <span id="r25 rd" class="r25 r">obj</span> = <span class="r23 r">n</span> <b>switch</b>
+                {
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#f8d9062693727a44" class="i property">Id</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#f8d9062693727a44" class="i property">Id</a>,
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#0b88787d17636347" class="i property">TagName</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#0b88787d17636347" class="i property">TagName</a>,
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#0a035400a372d525" class="i property">HasItems</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#0a035400a372d525" class="i property">HasItems</a>,
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#419fc8909ed5b6f2" class="i property">Classes</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#419fc8909ed5b6f2" class="i property">Classes</a>,
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#12d58fb55c22267b" class="i property">Attributes</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#12d58fb55c22267b" class="i property">Attributes</a>,
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#f8c03aa650dde841" class="i property">Metadata</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#f8c03aa650dde841" class="i property">Metadata</a>,
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#f1ca04fc4e58e2a3" class="i property">Items</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#f1ca04fc4e58e2a3" class="i property">Items</a>,
+                    <b>nameof</b>(<a href="/OrchardCore.DisplayManagement/A.html#f395cd18375dde70" class="t t">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#79eaef0117518ed5" class="i property">Properties</a>) =&gt; <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#79eaef0117518ed5" class="i property">Properties</a>,
+                    <b>_</b> =&gt; <b>null</b>
+                };
+ 
+                <b>if</b> (<span class="r25 r">obj</span> != <b>null</b>)
+                {
+                    <b>return</b> <span class="r25 r">obj</span>;
+                }
+ 
+                <b>if</b> (<span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#79eaef0117518ed5" class="i property">Properties</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r23 r">n</span>, <b>out</b> <span class="r25 r">obj</span>))
+                {
+                    <b>return</b> <span class="r25 r">obj</span>;
+                }
+ 
+                <span class="c">// &#39;MyType-MyField-FieldType_Display__DisplayMode&#39;.</span>
+                <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r26 rd" class="r26 r">namedShaped</span> = <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#0f1f2758c1e87599" class="i method">Named</a>(<span class="r23 r">n</span>);
+                <b>if</b> (<span class="r26 r">namedShaped</span> != <b>null</b>)
+                {
+                    <b>return</b> <span class="r26 r">namedShaped</span>;
+                }
+ 
+                <span class="c">// &#39;MyNamedPart&#39;, &#39;MyType__MyField&#39; &#39;MyType-MyField&#39;.</span>
+                <b>return</b> <span class="r24 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#ad5e8e6aa3bae1c3" class="i method">NormalizedNamed</a>(<span class="r23 r">n</span>.<a href="@1@System.Runtime/A.html#69fc1d0aa6df8a90" class="i method">Replace</a>(<span class="s">&quot;__&quot;</span>, <span class="s">&quot;-&quot;</span>));
+            }
+ 
+            <b>return</b> <b>null</b>;
+        };
+    }
+ 
+    <b>public static class</b> <a id="4ce5cd970bda7b88" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">LiquidViewTemplateExtensions</a>
+    {
+        <b>public static async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="f3d2b829c413781f" href="R/../../0000000000.html" target="n" data-glyph="220,1" class="i method">RenderAsync</a>(<b>this</b> <a href="#9fbef59705c4102a" class="t t">LiquidViewTemplate</a> <span id="r27 rd" class="r27 r">template</span>, <span class="t t">TextEncoder</span> <span id="r28 rd" class="r28 r">encoder</span>, <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a> <span id="r29 rd" class="r29 r">context</span>, <b>object</b> <span id="r30 rd" class="r30 r">model</span>)
+        {
+            <a href="/OrchardCore.DisplayManagement/A.html#e4beefc493c22244" class="k">var</a> <span id="r31 rd" class="r31 r">viewContextAccessor</span> = <span class="r29 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#35b8fed4ca686dda" class="i property">Services</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#e4beefc493c22244" class="t t">ViewContextAccessor</a>&gt;();
+            <b>var</b> <span id="r32 rd" class="r32 r">viewContext</span> = <span class="r31 r">viewContextAccessor</span>.<a href="/OrchardCore.DisplayManagement/A.html#508e067b11296606" class="i property">ViewContext</a>;
+ 
+            <b>if</b> (<span class="r32 r">viewContext</span> == <b>null</b>)
+            {
+                <span class="r32 r">viewContext</span> = <span class="r31 r">viewContextAccessor</span>.<a href="/OrchardCore.DisplayManagement/A.html#508e067b11296606" class="i property">ViewContext</a> = <b>await</b> <a href="#39b69d852798212c" class="i method">GetViewContextAsync</a>(<span class="r29 r">context</span>);
+            }
+ 
+            <b>try</b>
+            {
+                <b>await</b> <span class="r29 r">context</span>.<a href="#d3d8db381faa557e" class="i method">EnterScopeAsync</a>(<span class="r32 r">viewContext</span>, <span class="r30 r">model</span>);
+                <b>return</b> <b>await</b> <span class="r27 r">template</span>.<a href="#881076eed61bcaae" class="i property">FluidTemplate</a>.<span class="i">RenderAsync</span>(<span class="r29 r">context</span>, <span class="r28 r">encoder</span>);
+            }
+            <b>finally</b>
+            {
+                <span class="r29 r">context</span>.<span class="i">ReleaseScope</span>();
+            }
+        }
+ 
+        <b>public static async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="47c2ed6a4847c7a2" href="R/../../0000000000.html" target="n" data-glyph="220,1" class="i method">RenderAsync</a>(<b>this</b> <a href="#9fbef59705c4102a" class="t t">LiquidViewTemplate</a> <span id="r33 rd" class="r33 r">template</span>, <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r34 rd" class="r34 r">writer</span>, <span class="t t">TextEncoder</span> <span id="r35 rd" class="r35 r">encoder</span>, <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a> <span id="r36 rd" class="r36 r">context</span>, <b>object</b> <span id="r37 rd" class="r37 r">model</span>)
+        {
+            <a href="/OrchardCore.DisplayManagement/A.html#e4beefc493c22244" class="k">var</a> <span id="r38 rd" class="r38 r">viewContextAccessor</span> = <span class="r36 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#35b8fed4ca686dda" class="i property">Services</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#e4beefc493c22244" class="t t">ViewContextAccessor</a>&gt;();
+            <b>var</b> <span id="r39 rd" class="r39 r">viewContext</span> = <span class="r38 r">viewContextAccessor</span>.<a href="/OrchardCore.DisplayManagement/A.html#508e067b11296606" class="i property">ViewContext</a>;
+ 
+            <b>if</b> (<span class="r39 r">viewContext</span> == <b>null</b>)
+            {
+                <span class="r39 r">viewContext</span> = <span class="r38 r">viewContextAccessor</span>.<a href="/OrchardCore.DisplayManagement/A.html#508e067b11296606" class="i property">ViewContext</a> = <b>await</b> <a href="#39b69d852798212c" class="i method">GetViewContextAsync</a>(<span class="r36 r">context</span>);
+            }
+ 
+            <b>try</b>
+            {
+                <b>await</b> <span class="r36 r">context</span>.<a href="#d3d8db381faa557e" class="i method">EnterScopeAsync</a>(<span class="r39 r">viewContext</span>, <span class="r37 r">model</span>);
+                <b>await</b> <span class="r33 r">template</span>.<a href="#881076eed61bcaae" class="i property">FluidTemplate</a>.<span class="i">RenderAsync</span>(<span class="r34 r">writer</span>, <span class="r35 r">encoder</span>, <span class="r36 r">context</span>);
+            }
+            <b>finally</b>
+            {
+                <span class="r36 r">context</span>.<span class="i">ReleaseScope</span>();
+            }
+        }
+ 
+        <b>public static async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ViewContext</span>&gt; <a id="39b69d852798212c" href="R/39b69d852798212c.html" target="n" data-glyph="72,1" class="i method">GetViewContextAsync</a>(<a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a> <span id="r40 rd" class="r40 r">context</span>)
+        {
+            <b>var</b> <span id="r41 rd" class="r41 r">actionContext</span> = <span class="r40 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#35b8fed4ca686dda" class="i property">Services</a>.<span class="i method">GetService</span>&lt;<span class="t t">IActionContextAccessor</span>&gt;()?.<span class="i property">ActionContext</span>;
+ 
+            <b>if</b> (<span class="r41 r">actionContext</span> == <b>null</b>)
+            {
+                <b>var</b> <span id="r42 rd" class="r42 r">httpContext</span> = <span class="r40 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#35b8fed4ca686dda" class="i property">Services</a>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;().<span class="i property">HttpContext</span>;
+                <span class="r41 r">actionContext</span> = <b>await</b> <a href="#dc9848f3b356e178" class="i method">GetActionContextAsync</a>(<span class="r42 r">httpContext</span>);
+            }
+ 
+            <b>return</b> <a href="#9c635321d376415b" class="i method">GetViewContext</a>(<span class="r41 r">actionContext</span>);
+        }
+ 
+        <b>internal static async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionContext</span>&gt; <a id="dc9848f3b356e178" href="R/dc9848f3b356e178.html" target="n" data-glyph="74,1" class="i method">GetActionContextAsync</a>(<span class="t t">HttpContext</span> <span id="r43 rd" class="r43 r">httpContext</span>)
+        {
+            <b>var</b> <span id="r44 rd" class="r44 r">routeData</span> = <b>new</b> <span class="t constructor">RouteData</span>();
+            <span class="r44 r">routeData</span>.<span class="i property">Routers</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<b>new</b> <span class="t constructor">RouteCollection</span>());
+ 
+            <b>var</b> <span id="r45 rd" class="r45 r">actionContext</span> = <b>new</b> <span class="t constructor">ActionContext</span>(<span class="r43 r">httpContext</span>, <span class="r44 r">routeData</span>, <b>new</b> <span class="t constructor">ActionDescriptor</span>());
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r46 rd" class="r46 r">filters</span> = <span class="r43 r">httpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#22215d5c17a3bd24" class="t t">IAsyncViewActionFilter</a>&gt;();
+ 
+            <b>foreach</b> (<a href="/OrchardCore.DisplayManagement/A.html#22215d5c17a3bd24" class="k">var</a> <span id="r47 rd" class="r47 r">filter</span> <b>in</b> <span class="r46 r">filters</span>)
+            {
+                <b>await</b> <span class="r47 r">filter</span>.<a href="/OrchardCore.DisplayManagement/A.html#a3311c360203839b" class="i method">OnActionExecutionAsync</a>(<span class="r45 r">actionContext</span>);
+            }
+ 
+            <b>return</b> <span class="r45 r">actionContext</span>;
+        }
+ 
+        <b>internal static</b> <span class="t t">ViewContext</span> <a id="9c635321d376415b" href="R/9c635321d376415b.html" target="n" data-glyph="74,1" class="i method">GetViewContext</a>(<span class="t t">ActionContext</span> <span id="r48 rd" class="r48 r">actionContext</span>)
+        {
+            <b>var</b> <span id="r49 rd" class="r49 r">services</span> = <span class="r48 r">actionContext</span>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>;
+ 
+            <b>var</b> <span id="r50 rd" class="r50 r">options</span> = <span class="r49 r">services</span>.<span class="i method">GetService</span>&lt;<span class="t t">IOptions</span>&lt;<span class="t t">MvcViewOptions</span>&gt;&gt;();
+            <b>var</b> <span id="r51 rd" class="r51 r">viewEngine</span> = <span class="r50 r">options</span>.<span class="i property">Value</span>.<span class="i property">ViewEngines</span>[0];
+ 
+            <b>var</b> <span id="r52 rd" class="r52 r">viewResult</span> = <span class="r51 r">viewEngine</span>.<span class="i method">GetView</span>(<span class="r53 r">executingFilePath</span>: <b>null</b>,
+                <a href="LiquidViewsFeatureProvider.cs.html#eb08850ed4e81bc3" class="t t">LiquidViewsFeatureProvider</a>.<a href="LiquidViewsFeatureProvider.cs.html#32cf1ff4771b5cf8" class="i field">DefaultRazorViewPath</a>, <span class="r54 r">isMainPage</span>: <b>true</b>);
+ 
+            <b>var</b> <span id="r55 rd" class="r55 r">tempDataProvider</span> = <span class="r49 r">services</span>.<span class="i method">GetService</span>&lt;<span class="t t">ITempDataProvider</span>&gt;();
+ 
+            <b>var</b> <span id="r56 rd" class="r56 r">viewContext</span> = <b>new</b> <span class="t constructor">ViewContext</span>(
+                <span class="r48 r">actionContext</span>,
+                <span class="r52 r">viewResult</span>.<span class="i property">View</span>,
+                <b>new</b> <span class="t constructor">ViewDataDictionary</span>(
+                    <span class="r57 r">metadataProvider</span>: <b>new</b> <span class="t constructor">EmptyModelMetadataProvider</span>(),
+                    <span class="r58 r">modelState</span>: <b>new</b> <span class="t constructor">ModelStateDictionary</span>()),
+                <b>new</b> <span class="t constructor">TempDataDictionary</span>(
+                    <span class="r48 r">actionContext</span>.<span class="i property">HttpContext</span>,
+                    <span class="r55 r">tempDataProvider</span>),
+                <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a>.<a href="@1@System.Runtime/A.html#416d61e61f460ce0" class="i field">Null</a>,
+                <b>new</b> <span class="t constructor">HtmlHelperOptions</span>());
+ 
+            <b>if</b> (<span class="r56 r">viewContext</span>.<span class="i property">View</span> <b>is</b> <span class="t t">RazorView</span> <span id="r59 rd" class="r59 r">razorView</span>)
+            {
+                <span class="r59 r">razorView</span>.<span class="i property">RazorPage</span>.<span class="i property">ViewContext</span> = <span class="r56 r">viewContext</span>;
+            }
+ 
+            <b>return</b> <span class="r56 r">viewContext</span>;
+        }
+    }
+ 
+    <b>public static class</b> <a id="303d2bab93591a65" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">LiquidTemplateContextExtensions</a>
+    {
+        <b>internal static async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="d3d8db381faa557e" href="R/d3d8db381faa557e.html" target="n" data-glyph="221,1" class="i method">EnterScopeAsync</a>(<b>this</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a> <span id="r60 rd" class="r60 r">context</span>, <span class="t t">ViewContext</span> <span id="r61 rd" class="r61 r">viewContext</span>, <b>object</b> <span id="r62 rd" class="r62 r">model</span>)
+        {
+            <b>if</b> (!<span class="r60 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#acc9141f9e1db79e" class="i property">IsInitialized</a>)
+            {
+                <b>var</b> <span id="r63 rd" class="r63 r">localClock</span> = <span class="r60 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#35b8fed4ca686dda" class="i property">Services</a>.<span class="i method">GetRequiredService</span>&lt;<span class="i">ILocalClock</span>&gt;();
+ 
+                <span class="c">// Configure Fluid with the time zone to represent local date and times</span>
+                <b>var</b> <span id="r64 rd" class="r64 r">localTimeZone</span> = <b>await</b> <span class="r63 r">localClock</span>.<span class="i">GetLocalTimeZoneAsync</span>();
+ 
+                <b>if</b> (<span class="i">TZConvert</span>.<span class="i">TryGetTimeZoneInfo</span>(<span class="r64 r">localTimeZone</span>.<span class="i">TimeZoneId</span>, <b>out</b> <b>var</b> <span id="r65 rd" class="r65 r">timeZoneInfo</span>))
+                {
+                    <span class="r60 r">context</span>.<span class="i">TimeZone</span> = <span class="r65 r">timeZoneInfo</span>;
+                }
+ 
+                <span class="c">// Configure Fluid with the local date and time</span>
+                <b>var</b> <span id="r66 rd" class="r66 r">now</span> = <b>await</b> <span class="r63 r">localClock</span>.<span class="i">LocalNowAsync</span>;
+ 
+                <span class="r60 r">context</span>.<span class="i">Now</span> = () =&gt; <span class="r66 r">now</span>;
+ 
+                <span class="r60 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#7ee53ed86e7b2f5f" class="i property">ViewContext</a> = <span class="r61 r">viewContext</span>;
+ 
+                <span class="r60 r">context</span>.<span class="i">CultureInfo</span> = <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#ff8fd0bdccb4794e" class="i property">CurrentUICulture</a>;
+ 
+                <span class="r60 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#acc9141f9e1db79e" class="i property">IsInitialized</a> = <b>true</b>;
+            }
+ 
+            <span class="r60 r">context</span>.<span class="i">EnterChildScope</span>();
+ 
+            <b>var</b> <span id="r67 rd" class="r67 r">viewLocalizer</span> = <span class="r60 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#35b8fed4ca686dda" class="i property">Services</a>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IViewLocalizer</span>&gt;();
+ 
+            <b>if</b> (<span class="r67 r">viewLocalizer</span> <b>is</b> <span class="t t">IViewContextAware</span> <span id="r68 rd" class="r68 r">contextable</span>)
+            {
+                <span class="r68 r">contextable</span>.<span class="i method">Contextualize</span>(<span class="r61 r">viewContext</span>);
+            }
+ 
+            <span class="r60 r">context</span>.<span class="i">SetValue</span>(<span class="s">&quot;ViewLocalizer&quot;</span>, <b>new</b> <span class="i">ObjectValue</span>(<span class="r67 r">viewLocalizer</span>));
+ 
+            <b>if</b> (<span class="r60 r">context</span>.<span class="i">GetValue</span>(<span class="s">&quot;Model&quot;</span>)?.<span class="i">ToObjectValue</span>() == <span class="r62 r">model</span> &amp;&amp; <span class="r62 r">model</span> <b>is</b> <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r69 rd" class="r69 r">shape</span>)
+            {
+                <b>if</b> (<span class="r60 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#a1f5d3853477976d" class="i property">ShapeRecursions</a>++ &gt; <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a>.<a href="/OrchardCore.Liquid.Abstractions/A.html#4ff1411357a1aef5" class="i field">MaxShapeRecursions</a>)
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(
+                        <span class="s">$&quot;</span><span class="s">The &#39;</span>{<span class="r69 r">shape</span>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#75eacf8c582a4ce1" class="i property">Type</a>}<span class="s">&#39; shape has been called recursively more than </span>{<a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a>.<a href="/OrchardCore.Liquid.Abstractions/A.html#4ff1411357a1aef5" class="i field">MaxShapeRecursions</a>}<span class="s"> times.</span><span class="s">&quot;</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <span class="r60 r">context</span>.<a href="/OrchardCore.Liquid.Abstractions/A.html#a1f5d3853477976d" class="i property">ShapeRecursions</a> = 0;
+            }
+ 
+            <span class="r60 r">context</span>.<span class="i">SetValue</span>(<span class="s">&quot;Model&quot;</span>, <span class="r62 r">model</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

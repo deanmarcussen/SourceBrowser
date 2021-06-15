@@ -1,0 +1,991 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultContentManager.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(982);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentManagement/DefaultContentManager.cs" target="_top">DefaultContentManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentManagement" target="_top">src\OrchardCore\OrchardCore.ContentManagement\OrchardCore.ContentManagement.csproj</a> (OrchardCore.ContentManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">ComponentModel</span>.<span class="i n">DataAnnotations</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">CompiledQueries</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>
+{
+    <b>public class</b> <a id="ec17f690e696ae31" href="R/ec17f690e696ae31.html" target="n" data-glyph="0,0" class="t t">DefaultContentManager</a> : <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a>
+    {
+        <b>private const int</b> <a id="aafa701a9cdd3b81" href="R/aafa701a9cdd3b81.html" target="n" data-glyph="10,1" class="i field">ImportBatchSize</a> = 500;
+        <b>private static readonly</b> <span class="i">JsonMergeSettings</span> <a id="69e84e1240d75154" href="R/69e84e1240d75154.html" target="n" data-glyph="46,1" class="i field">UpdateJsonMergeSettings</a> = <b>new</b> <span class="i">JsonMergeSettings</span> { <span class="i">MergeArrayHandling</span> = <span class="i">MergeArrayHandling</span>.<span class="i">Replace</span> };
+ 
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="1db4c77fc633ca21" href="R/1db4c77fc633ca21.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="4d4c116b0f108d9b" href="R/4d4c116b0f108d9b.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="405653dd16ede75c" href="R/405653dd16ede75c.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#c1b9808236f14f5c" class="t t">IContentManagerSession</a> <a id="1c81b1ec00164dc1" href="R/1c81b1ec00164dc1.html" target="n" data-glyph="46,1" class="i field">_contentManagerSession</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#fd54bb0f4e88e2cc" class="t t">IContentItemIdGenerator</a> <a id="22f61d56d2909961" href="R/22f61d56d2909961.html" target="n" data-glyph="46,1" class="i field">_idGenerator</a>;
+        <b>private readonly</b> <span class="i">IClock</span> <a id="56e56b3ea3b24ce4" href="R/56e56b3ea3b24ce4.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+ 
+        <b>public</b> <a id="0706b77a9bba2f8d" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultContentManager</a>(
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r0 rd" class="r0 r">contentDefinitionManager</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#c1b9808236f14f5c" class="t t">IContentManagerSession</a> <span id="r1 rd" class="r1 r">contentManagerSession</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#887416973166e420" class="t t">IContentHandler</a>&gt; <span id="r2 rd" class="r2 r">handlers</span>,
+            <span class="i">ISession</span> <span id="r3 rd" class="r3 r">session</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#fd54bb0f4e88e2cc" class="t t">IContentItemIdGenerator</a> <span id="r4 rd" class="r4 r">idGenerator</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#ec17f690e696ae31" class="t t">DefaultContentManager</a>&gt; <span id="r5 rd" class="r5 r">logger</span>,
+            <span class="i">IClock</span> <span id="r6 rd" class="r6 r">clock</span>)
+        {
+            <a href="#1db4c77fc633ca21" class="i field">_contentDefinitionManager</a> = <span class="r0 r">contentDefinitionManager</span>;
+            <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a> = <span class="r2 r">handlers</span>;
+            <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a> = <span class="r2 r">handlers</span>.<span class="i method">Reverse</span>().<span class="i method">ToArray</span>();
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a> = <span class="r3 r">session</span>;
+            <a href="#22f61d56d2909961" class="i field">_idGenerator</a> = <span class="r4 r">idGenerator</span>;
+            <a href="#1c81b1ec00164dc1" class="i field">_contentManagerSession</a> = <span class="r1 r">contentManagerSession</span>;
+            <a href="#405653dd16ede75c" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+            <a href="#56e56b3ea3b24ce4" class="i field">_clock</a> = <span class="r6 r">clock</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#887416973166e420" class="t t">IContentHandler</a>&gt; <a id="a3657a5ea4c3f61a" href="R/a3657a5ea4c3f61a.html" target="n" data-glyph="102,1" class="i property">Handlers</a> { <b>get</b>; <b>private set</b>; }
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#887416973166e420" class="t t">IContentHandler</a>&gt; <a id="5f2f78c0b5a40257" href="R/5f2f78c0b5a40257.html" target="n" data-glyph="102,1" class="i property">ReversedHandlers</a> { <b>get</b>; <b>private set</b>; }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="9124c25fb4b6297d" href="R/9124c25fb4b6297d.html" target="n" data-glyph="72,1" class="i method">NewAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">contentType</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r8 rd" class="r8 r">contentTypeDefinition</span> = <a href="#1db4c77fc633ca21" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r7 r">contentType</span>);
+            <b>if</b> (<span class="r8 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <span class="r8 r">contentTypeDefinition</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#e5782873f4f87b47" class="t constructor">ContentTypeDefinitionBuilder</a>().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#8cfd8c288ff88699" class="i method">Named</a>(<span class="r7 r">contentType</span>).<a href="/OrchardCore.ContentManagement.Abstractions/A.html#dc74aca27184f87b" class="i method">Build</a>();
+            }
+ 
+            <span class="c">// create a new kernel for the model instance</span>
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#68df79ad4946db6b" class="k">var</a> <span id="r9 rd" class="r9 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#68df79ad4946db6b" class="t constructor">ActivatingContentContext</a>
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#77af9a85b1f66aef" class="i property">ContentType</a> = <span class="r8 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>,
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#5ddd0c82d9c7a661" class="i property">Definition</a> = <span class="r8 r">contentTypeDefinition</span>,
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f7e2cedc6bbc08de" class="i property">ContentItem</a> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#e43e0766f682fea5" class="t constructor">ContentItem</a>() { <a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a> = <span class="r8 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> }
+            };
+ 
+            <span class="c">// invoke handlers to weld aspects onto kernel</span>
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r10 rd" class="r10 r">handler</span>, <span id="r11 rd" class="r11 r">context</span>) =&gt; <span class="r10 r">handler</span>.<span class="i">ActivatingAsync</span>(<span class="r11 r">context</span>), <span class="r9 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#39ccc56a5c285ed7" class="k">var</a> <span id="r12 rd" class="r12 r">context2</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#72b358c7e4da01d1" class="t constructor">ActivatedContentContext</a>(<span class="r9 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f7e2cedc6bbc08de" class="i property">ContentItem</a>);
+ 
+            <span class="r12 r">context2</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9eee13905fcb9f1e" class="i property">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> = <a href="#22f61d56d2909961" class="i field">_idGenerator</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0113ff445b8cc6e" class="i method">GenerateUniqueId</a>(<span class="r12 r">context2</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9eee13905fcb9f1e" class="i property">ContentItem</a>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r13 rd" class="r13 r">handler</span>, <span id="r14 rd" class="r14 r">context2</span>) =&gt; <span class="r13 r">handler</span>.<span class="i">ActivatedAsync</span>(<span class="r14 r">context2</span>), <span class="r12 r">context2</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#23e97441160fb512" class="k">var</a> <span id="r15 rd" class="r15 r">context3</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#4e6a8c5610e4502b" class="t constructor">InitializingContentContext</a>(<span class="r12 r">context2</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9eee13905fcb9f1e" class="i property">ContentItem</a>);
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r16 rd" class="r16 r">handler</span>, <span id="r17 rd" class="r17 r">context3</span>) =&gt; <span class="r16 r">handler</span>.<span class="i">InitializingAsync</span>(<span class="r17 r">context3</span>), <span class="r15 r">context3</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r18 rd" class="r18 r">handler</span>, <span id="r19 rd" class="r19 r">context3</span>) =&gt; <span class="r18 r">handler</span>.<span class="i">InitializedAsync</span>(<span class="r19 r">context3</span>), <span class="r15 r">context3</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <span class="c">// composite result is returned</span>
+            <b>return</b> <span class="r15 r">context3</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9eee13905fcb9f1e" class="i property">ContentItem</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="f33beb077360bc19" href="R/f33beb077360bc19.html" target="n" data-glyph="72,1" class="i method">GetAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">contentItemId</span>)
+        {
+            <b>return</b> <a href="#910aa9a95e6693b5" class="i method">GetAsync</a>(<span class="r20 r">contentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b49d9c14699611c" class="i property">Published</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;&gt; <a id="2e2f5f58349bf77c" href="R/2e2f5f58349bf77c.html" target="n" data-glyph="72,1" class="i method">GetAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r21 rd" class="r21 r">contentItemIds</span>, <b>bool</b> <span id="r22 rd" class="r22 r">latest</span> = <b>false</b>)
+        {
+            <b>if</b> (<span class="r21 r">contentItemIds</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r21 r">contentItemIds</span>));
+            }
+ 
+            <span class="t t">List</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r23 rd" class="r23 r">contentItems</span> = <b>null</b>;
+            <span class="t t">List</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r24 rd" class="r24 r">storedItems</span> = <b>null</b>;
+ 
+            <b>if</b> (<span class="r22 r">latest</span>)
+            {
+                <span class="r23 r">contentItems</span> = (<b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                    .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r25 rd" class="r25 r">x</span> =&gt; <span class="r25 r">x</span>.<span class="i">ContentItemId</span>.<span class="i">IsIn</span>(<span class="r21 r">contentItemIds</span>) &amp;&amp; <span class="r25 r">x</span>.<span class="i">Latest</span> == <b>true</b>)
+                    .<span class="i">ListAsync</span>()).<span class="i">ToList</span>();
+            }
+            <b>else</b>
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r26 rd" class="r26 r">contentItemId</span> <b>in</b> <span class="r21 r">contentItemIds</span>)
+                {
+                    <span class="c">// If the published version is already stored, we can return it.</span>
+                    <b>if</b> (<a href="#1c81b1ec00164dc1" class="i field">_contentManagerSession</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#32e85d0afd99423e" class="i method">RecallPublishedItemId</a>(<span class="r26 r">contentItemId</span>, <b>out</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r27 rd" class="r27 r">contentItem</span>))
+                    {
+                        <b>if</b> (<span class="r24 r">storedItems</span> == <b>null</b>)
+                        {
+                            <span class="r24 r">storedItems</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;();
+                        }
+ 
+                        <span class="r24 r">storedItems</span>.<span class="i method">Add</span>(<span class="r27 r">contentItem</span>);
+                    }
+                }
+ 
+                <span class="c">// Only query the ids not already stored.</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r28 rd" class="r28 r">itemIdsToQuery</span> = <span class="r24 r">storedItems</span> != <b>null</b>
+                    ? <span class="r21 r">contentItemIds</span>.<span class="i method">Except</span>(<span class="r24 r">storedItems</span>.<span class="i method">Select</span>(<span id="r29 rd" class="r29 r">x</span> =&gt; <span class="r29 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>))
+                    : <span class="r21 r">contentItemIds</span>;
+ 
+                <b>if</b> (<span class="r28 r">itemIdsToQuery</span>.<span class="i method">Any</span>())
+                {
+                    <span class="r23 r">contentItems</span> = (<b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                       .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                       .<span class="i">Where</span>(<span id="r30 rd" class="r30 r">x</span> =&gt; <span class="r30 r">x</span>.<span class="i">ContentItemId</span>.<span class="i">IsIn</span>(<span class="r28 r">itemIdsToQuery</span>) &amp;&amp; <span class="r30 r">x</span>.<span class="i">Published</span> == <b>true</b>)
+                       .<span class="i">ListAsync</span>()).<span class="i">ToList</span>();
+                }
+            }
+ 
+            <b>if</b> (<span class="r23 r">contentItems</span> != <b>null</b>)
+            {
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r31 rd" class="r31 r">i</span> = 0; <span class="r31 r">i</span> &lt; <span class="r23 r">contentItems</span>.<span class="i property">Count</span>; <span class="r31 r">i</span>++)
+                {
+                    <span class="r23 r">contentItems</span>[<span class="r31 r">i</span>] = <b>await</b> <a href="#5676a12ab36bfdcd" class="i method">LoadAsync</a>(<span class="r23 r">contentItems</span>[<span class="r31 r">i</span>]);
+                }
+ 
+                <b>if</b> (<span class="r24 r">storedItems</span> != <b>null</b>)
+                {
+                    <span class="r23 r">contentItems</span>.<span class="i method">AddRange</span>(<span class="r24 r">storedItems</span>);
+                }
+            }
+            <b>else</b> <b>if</b> (<span class="r24 r">storedItems</span> != <b>null</b>)
+            {
+                <span class="r23 r">contentItems</span> = <span class="r24 r">storedItems</span>;
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;();
+            }
+ 
+            <a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="k">var</a> <span id="r32 rd" class="r32 r">contentItemIdsArray</span> = <span class="r21 r">contentItemIds</span>.<a href="@1@System.Collections.Immutable/A.html#7ec519665e45a686" class="i method">ToImmutableArray</a>();
+            <b>return</b> <span class="r23 r">contentItems</span>.<span class="i method">OrderBy</span>(<span id="r33 rd" class="r33 r">c</span> =&gt; <span class="r32 r">contentItemIdsArray</span>.<a href="@1@System.Collections.Immutable/A.html#c618dbb14cdc8a78" class="i method">IndexOf</a>(<span class="r33 r">c</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="910aa9a95e6693b5" href="R/910aa9a95e6693b5.html" target="n" data-glyph="72,1" class="i method">GetAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r34 rd" class="r34 r">contentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a> <span id="r35 rd" class="r35 r">options</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r34 r">contentItemId</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r36 rd" class="r36 r">contentItem</span> = <b>null</b>;
+ 
+            <b>if</b> (<span class="r35 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0ac09babf3301c7e" class="i property">IsLatest</a>)
+            {
+                <span class="r36 r">contentItem</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                    .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r37 rd" class="r37 r">x</span> =&gt; <span class="r37 r">x</span>.<span class="i">ContentItemId</span> == <span class="r34 r">contentItemId</span> &amp;&amp; <span class="r37 r">x</span>.<span class="i">Latest</span> == <b>true</b>)
+                    .<span class="i">FirstOrDefaultAsync</span>();
+            }
+            <b>else</b> <b>if</b> (<span class="r35 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d9f1c246d99d795b" class="i property">IsDraft</a> &amp;&amp; !<span class="r35 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38feb9f5b922b4b0" class="i property">IsDraftRequired</a>)
+            {
+                <span class="r36 r">contentItem</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                    .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r38 rd" class="r38 r">x</span> =&gt;
+                        <span class="r38 r">x</span>.<span class="i">ContentItemId</span> == <span class="r34 r">contentItemId</span> &amp;&amp;
+                        <span class="r38 r">x</span>.<span class="i">Published</span> == <b>false</b> &amp;&amp;
+                        <span class="r38 r">x</span>.<span class="i">Latest</span> == <b>true</b>)
+                    .<span class="i">FirstOrDefaultAsync</span>();
+            }
+            <b>else</b> <b>if</b> (<span class="r35 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d9f1c246d99d795b" class="i property">IsDraft</a> || <span class="r35 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38feb9f5b922b4b0" class="i property">IsDraftRequired</a>)
+            {
+                <span class="c">// Loaded whatever is the latest as it will be cloned</span>
+                <span class="r36 r">contentItem</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                    .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r39 rd" class="r39 r">x</span> =&gt;
+                        <span class="r39 r">x</span>.<span class="i">ContentItemId</span> == <span class="r34 r">contentItemId</span> &amp;&amp;
+                        <span class="r39 r">x</span>.<span class="i">Latest</span> == <b>true</b>)
+                    .<span class="i">FirstOrDefaultAsync</span>();
+            }
+            <b>else</b> <b>if</b> (<span class="r35 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28480a00b3e4264" class="i property">IsPublished</a>)
+            {
+                <span class="c">// If the published version is requested and is already loaded, we can</span>
+                <span class="c">// return it right away</span>
+                <b>if</b> (<a href="#1c81b1ec00164dc1" class="i field">_contentManagerSession</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#32e85d0afd99423e" class="i method">RecallPublishedItemId</a>(<span class="r34 r">contentItemId</span>, <b>out</b> <span class="r36 r">contentItem</span>))
+                {
+                    <b>return</b> <span class="r36 r">contentItem</span>;
+                }
+ 
+                <span class="r36 r">contentItem</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">ExecuteQuery</span>(<b>new</b> <a href="CompiledQueries/PublishedContentItemById.cs.html#4dac2613c3c9ba76" class="t constructor">PublishedContentItemById</a>(<span class="r34 r">contentItemId</span>)).<span class="i">FirstOrDefaultAsync</span>();
+            }
+ 
+            <b>if</b> (<span class="r36 r">contentItem</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <span class="r36 r">contentItem</span> = <b>await</b> <a href="#5676a12ab36bfdcd" class="i method">LoadAsync</a>(<span class="r36 r">contentItem</span>);
+ 
+            <b>if</b> (<span class="r35 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38feb9f5b922b4b0" class="i property">IsDraftRequired</a>)
+            {
+                <span class="c">// When draft is required and latest is published a new version is added</span>
+                <b>if</b> (<span class="r36 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>)
+                {
+                    <span class="c">// We save the previous version further because this call might do a session query.</span>
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r40 rd" class="r40 r">contentTypeDefinition</span> = <a href="#1db4c77fc633ca21" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r36 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+ 
+                    <span class="c">// Check if not versionable, meaning we use only one version</span>
+                    <b>if</b> (!(<span class="r40 r">contentTypeDefinition</span>?.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#441bb4e322200c86" class="i property">Versionable</a> ?? <b>true</b>))
+                    {
+                        <span class="r36 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <b>false</b>;
+                    }
+                    <b>else</b>
+                    {
+                        <span class="c">// Save the previous version</span>
+                        <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r36 r">contentItem</span>);
+ 
+                        <span class="r36 r">contentItem</span> = <b>await</b> <a href="#86b1552e2b60107c" class="i method">BuildNewVersionAsync</a>(<span class="r36 r">contentItem</span>);
+                    }
+                }
+ 
+                <span class="c">// Save the new version</span>
+                <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r36 r">contentItem</span>);
+            }
+ 
+            <b>return</b> <span class="r36 r">contentItem</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="5676a12ab36bfdcd" href="R/5676a12ab36bfdcd.html" target="n" data-glyph="72,1" class="i method">LoadAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r41 rd" class="r41 r">contentItem</span>)
+        {
+            <b>if</b> (!<a href="#1c81b1ec00164dc1" class="i field">_contentManagerSession</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#aaad7b02a0754443" class="i method">RecallVersionId</a>(<span class="r41 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#39d1b4da804eb4f0" class="i property">Id</a>, <b>out</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r42 rd" class="r42 r">loaded</span>))
+            {
+                <span class="c">// store in session prior to loading to avoid some problems with simple circular dependencies</span>
+                <a href="#1c81b1ec00164dc1" class="i field">_contentManagerSession</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#edd416b30345b0b8" class="i method">Store</a>(<span class="r41 r">contentItem</span>);
+ 
+                <span class="c">// create a context with a new instance to load</span>
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#b2b24f5ace684290" class="k">var</a> <span id="r43 rd" class="r43 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d7ca8dbbd52f1ba3" class="t constructor">LoadContentContext</a>(<span class="r41 r">contentItem</span>);
+ 
+                <span class="c">// invoke handlers to acquire state, or at least establish lazy loading callbacks</span>
+                <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r44 rd" class="r44 r">handler</span>, <span id="r45 rd" class="r45 r">context</span>) =&gt; <span class="r44 r">handler</span>.<span class="i">LoadingAsync</span>(<span class="r45 r">context</span>), <span class="r43 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+                <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r46 rd" class="r46 r">handler</span>, <span id="r47 rd" class="r47 r">context</span>) =&gt; <span class="r46 r">handler</span>.<span class="i">LoadedAsync</span>(<span class="r47 r">context</span>), <span class="r43 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+                <span class="r42 r">loaded</span> = <span class="r43 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9eee13905fcb9f1e" class="i property">ContentItem</a>;
+            }
+ 
+            <b>return</b> <span class="r42 r">loaded</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="53b6bff93415d355" href="R/53b6bff93415d355.html" target="n" data-glyph="72,1" class="i method">GetVersionAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r48 rd" class="r48 r">contentItemVersionId</span>)
+        {
+            <b>var</b> <span id="r49 rd" class="r49 r">contentItem</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r50 rd" class="r50 r">x</span> =&gt; <span class="r50 r">x</span>.<span class="i">ContentItemVersionId</span> == <span class="r48 r">contentItemVersionId</span>)
+                .<span class="i">FirstOrDefaultAsync</span>();
+ 
+            <b>if</b> (<span class="r49 r">contentItem</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <b>await</b> <span class="i">LoadAsync</span>(<span class="r49 r">contentItem</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="2ac2201a21da724d" href="R/2ac2201a21da724d.html" target="n" data-glyph="72,1" class="i method">SaveDraftAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r51 rd" class="r51 r">contentItem</span>)
+        {
+            <b>if</b> (!<span class="r51 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> || <span class="r51 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#58e9ae0fcbd662ec" class="k">var</a> <span id="r52 rd" class="r52 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ef8c7ba76d6a9744" class="t constructor">SaveDraftContentContext</a>(<span class="r51 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r53 rd" class="r53 r">handler</span>, <span id="r54 rd" class="r54 r">context</span>) =&gt; <span class="r53 r">handler</span>.<span class="i">DraftSavingAsync</span>(<span class="r54 r">context</span>), <span class="r52 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r51 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r55 rd" class="r55 r">handler</span>, <span id="r56 rd" class="r56 r">context</span>) =&gt; <span class="r55 r">handler</span>.<span class="i">DraftSavedAsync</span>(<span class="r56 r">context</span>), <span class="r52 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9e49d1c40596c0d3" href="R/9e49d1c40596c0d3.html" target="n" data-glyph="72,1" class="i method">PublishAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r57 rd" class="r57 r">contentItem</span>)
+        {
+            <b>if</b> (<span class="r57 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Create a context for the item and it&#39;s previous published record</span>
+            <span class="c">// Because of this query the content item will need to be re-enlisted</span>
+            <span class="c">// to be saved.</span>
+            <b>var</b> <span id="r58 rd" class="r58 r">previous</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r59 rd" class="r59 r">x</span> =&gt;
+                    <span class="r59 r">x</span>.<span class="i">ContentItemId</span> == <span class="r57 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> &amp;&amp; <span class="r59 r">x</span>.<span class="i">Published</span>)
+                .<span class="i">FirstOrDefaultAsync</span>();
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2cfae1dbd7ed6177" class="k">var</a> <span id="r60 rd" class="r60 r">context</span> = <b>new</b> <span class="t">PublishContentContext</span>(<span class="r57 r">contentItem</span>, <span class="r58 r">previous</span>);
+ 
+            <span class="c">// invoke handlers to acquire state, or at least establish lazy loading callbacks</span>
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r61 rd" class="r61 r">handler</span>, <span id="r62 rd" class="r62 r">context</span>) =&gt; <span class="r61 r">handler</span>.<span class="i">PublishingAsync</span>(<span class="r62 r">context</span>), <span class="r60 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>if</b> (<span class="r60 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#94f8ef336003f585" class="i property">Cancel</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r58 r">previous</span> != <b>null</b>)
+            {
+                <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r58 r">previous</span>);
+                <span class="r58 r">previous</span>.<span class="i">Published</span> = <b>false</b>;
+            }
+ 
+            <span class="r57 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <b>true</b>;
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r57 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r63 rd" class="r63 r">handler</span>, <span id="r64 rd" class="r64 r">context</span>) =&gt; <span class="r63 r">handler</span>.<span class="i">PublishedAsync</span>(<span class="r64 r">context</span>), <span class="r60 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="eca350c98f343dc7" href="R/eca350c98f343dc7.html" target="n" data-glyph="72,1" class="i method">UnpublishAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r65 rd" class="r65 r">contentItem</span>)
+        {
+            <span class="c">// This method needs to be called using the latest version</span>
+            <b>if</b> (!<span class="r65 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Not the latest version.&quot;</span>);
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r66 rd" class="r66 r">publishedItem</span>;
+            <b>if</b> (<span class="r65 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>)
+            {
+                <span class="c">// The version passed in is the published one</span>
+                <span class="r66 r">publishedItem</span> = <span class="r65 r">contentItem</span>;
+            }
+            <b>else</b>
+            {
+                <span class="c">// Try to locate the published version of this item</span>
+                <span class="r66 r">publishedItem</span> = <b>await</b> <a href="#910aa9a95e6693b5" class="i method">GetAsync</a>(<span class="r65 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b49d9c14699611c" class="i property">Published</a>);
+            }
+ 
+            <b>if</b> (<span class="r66 r">publishedItem</span> == <b>null</b>)
+            {
+                <span class="c">// No published version exists. no work to perform.</span>
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Create a context for the item. the publishing version is null in this case</span>
+            <span class="c">// and the previous version is the one active prior to unpublishing. handlers</span>
+            <span class="c">// should take this null check into account</span>
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2cfae1dbd7ed6177" class="k">var</a> <span id="r67 rd" class="r67 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#32659d5c06d8efc2" class="t constructor">PublishContentContext</a>(<span class="r65 r">contentItem</span>, <span class="r66 r">publishedItem</span>)
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#8b3ca11395a851ad" class="i property">PublishingItem</a> = <b>null</b>
+            };
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r68 rd" class="r68 r">handler</span>, <span id="r69 rd" class="r69 r">context</span>) =&gt; <span class="r68 r">handler</span>.<span class="i">UnpublishingAsync</span>(<span class="r69 r">context</span>), <span class="r67 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <span class="r66 r">publishedItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <b>false</b>;
+            <span class="r66 r">publishedItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5fb385d6e628e76f" class="i property">ModifiedUtc</a> = <a href="#56e56b3ea3b24ce4" class="i field">_clock</a>.<span class="i">UtcNow</span>;
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r66 r">publishedItem</span>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r70 rd" class="r70 r">handler</span>, <span id="r71 rd" class="r71 r">context</span>) =&gt; <span class="r70 r">handler</span>.<span class="i">UnpublishedAsync</span>(<span class="r71 r">context</span>), <span class="r67 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+        }
+ 
+        <b>protected async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="86b1552e2b60107c" href="R/86b1552e2b60107c.html" target="n" data-glyph="75,1" class="i method">BuildNewVersionAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r72 rd" class="r72 r">existingContentItem</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r73 rd" class="r73 r">latestVersion</span>;
+ 
+            <b>if</b> (<span class="r72 r">existingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>)
+            {
+                <span class="r73 r">latestVersion</span> = <span class="r72 r">existingContentItem</span>;
+            }
+            <b>else</b>
+            {
+                <span class="r73 r">latestVersion</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                    .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r74 rd" class="r74 r">x</span> =&gt;
+                        <span class="r74 r">x</span>.<span class="i">ContentItemId</span> == <span class="r72 r">existingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> &amp;&amp;
+                        <span class="r74 r">x</span>.<span class="i">Latest</span>)
+                    .<span class="i">FirstOrDefaultAsync</span>();
+ 
+                <b>if</b> (<span class="r73 r">latestVersion</span> != <b>null</b>)
+                {
+                    <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r73 r">latestVersion</span>);
+                }
+            }
+ 
+            <b>if</b> (<span class="r73 r">latestVersion</span> != <b>null</b>)
+            {
+                <span class="r73 r">latestVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <b>false</b>;
+            }
+ 
+            <span class="c">// We are not invoking NewAsync as we are cloning an existing item</span>
+            <span class="c">// This will also prevent the Elements (parts) from being allocated unnecessarily</span>
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r75 rd" class="r75 r">buildingContentItem</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#e43e0766f682fea5" class="t constructor">ContentItem</a>();
+ 
+            <span class="r75 r">buildingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a> = <span class="r72 r">existingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>;
+            <span class="r75 r">buildingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> = <span class="r72 r">existingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>;
+            <span class="r75 r">buildingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a> = <a href="#22f61d56d2909961" class="i field">_idGenerator</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0113ff445b8cc6e" class="i method">GenerateUniqueId</a>(<span class="r72 r">existingContentItem</span>);
+            <span class="r75 r">buildingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a> = <span class="r72 r">existingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a>;
+            <span class="r75 r">buildingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <b>true</b>;
+            <span class="r75 r">buildingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ee599976b2e92cbe" class="i property">Data</a> = <b>new</b> <span class="i">JObject</span>(<span class="r72 r">existingContentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ee599976b2e92cbe" class="i property">Data</a>);
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#bb19bcfbbead51c8" class="k">var</a> <span id="r76 rd" class="r76 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#9ca740010ba72f4a" class="t constructor">VersionContentContext</a>(<span class="r72 r">existingContentItem</span>, <span class="r75 r">buildingContentItem</span>);
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r77 rd" class="r77 r">handler</span>, <span id="r78 rd" class="r78 r">context</span>) =&gt; <span class="r77 r">handler</span>.<span class="i">VersioningAsync</span>(<span class="r78 r">context</span>), <span class="r76 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r79 rd" class="r79 r">handler</span>, <span id="r80 rd" class="r80 r">context</span>) =&gt; <span class="r79 r">handler</span>.<span class="i">VersionedAsync</span>(<span class="r80 r">context</span>), <span class="r76 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r76 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#12494ca329830260" class="i property">BuildingContentItem</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4d751bd0f122f672" href="R/4d751bd0f122f672.html" target="n" data-glyph="72,1" class="i method">CreateAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r81 rd" class="r81 r">contentItem</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a> <span id="r82 rd" class="r82 r">options</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r81 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>))
+            {
+                <span class="r81 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a> = <a href="#22f61d56d2909961" class="i field">_idGenerator</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0113ff445b8cc6e" class="i method">GenerateUniqueId</a>(<span class="r81 r">contentItem</span>);
+                <span class="r81 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <b>true</b>;
+                <span class="r81 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <b>true</b>;
+            }
+ 
+            <span class="c">// Draft flag on create is required for explicitly-published content items</span>
+            <b>if</b> (<span class="r82 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d9f1c246d99d795b" class="i property">IsDraft</a>)
+            {
+                <span class="r81 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <b>false</b>;
+            }
+ 
+            <span class="c">// Build a context with the initialized instance to create</span>
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#df7a9e8edcad2a1f" class="k">var</a> <span id="r83 rd" class="r83 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#e2d8fb28fbf8b015" class="t constructor">CreateContentContext</a>(<span class="r81 r">contentItem</span>);
+ 
+            <span class="c">// invoke handlers to add information to persistent stores</span>
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r84 rd" class="r84 r">handler</span>, <span id="r85 rd" class="r85 r">context</span>) =&gt; <span class="r84 r">handler</span>.<span class="i">CreatingAsync</span>(<span class="r85 r">context</span>), <span class="r83 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r81 r">contentItem</span>);
+            <a href="#1c81b1ec00164dc1" class="i field">_contentManagerSession</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#edd416b30345b0b8" class="i method">Store</a>(<span class="r81 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r86 rd" class="r86 r">handler</span>, <span id="r87 rd" class="r87 r">context</span>) =&gt; <span class="r86 r">handler</span>.<span class="i">CreatedAsync</span>(<span class="r87 r">context</span>), <span class="r83 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>if</b> (<span class="r82 r">options</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28480a00b3e4264" class="i property">IsPublished</a>)
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2cfae1dbd7ed6177" class="k">var</a> <span id="r88 rd" class="r88 r">publishContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#32659d5c06d8efc2" class="t constructor">PublishContentContext</a>(<span class="r81 r">contentItem</span>, <b>null</b>);
+ 
+                <span class="c">// invoke handlers to acquire state, or at least establish lazy loading callbacks</span>
+                <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r89 rd" class="r89 r">handler</span>, <span id="r90 rd" class="r90 r">context</span>) =&gt; <span class="r89 r">handler</span>.<span class="i">PublishingAsync</span>(<span class="r90 r">context</span>), <span class="r88 r">publishContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+                <span class="c">// invoke handlers to acquire state, or at least establish lazy loading callbacks</span>
+                <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r91 rd" class="r91 r">handler</span>, <span id="r92 rd" class="r92 r">context</span>) =&gt; <span class="r91 r">handler</span>.<span class="i">PublishedAsync</span>(<span class="r92 r">context</span>), <span class="r88 r">publishContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#220ffd72d78f34d5" class="t t">ContentValidateResult</a>&gt; <a id="470edf38ff8ef1f8" href="R/470edf38ff8ef1f8.html" target="n" data-glyph="72,1" class="i method">CreateContentItemVersionAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r93 rd" class="r93 r">contentItem</span>)
+        {
+            <b>return</b> <a href="#dba7a977df18036a" class="i method">CreateContentItemVersionAsync</a>(<span class="r93 r">contentItem</span>, <b>null</b>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#220ffd72d78f34d5" class="t t">ContentValidateResult</a>&gt; <a id="444519f7a1492f4f" href="R/444519f7a1492f4f.html" target="n" data-glyph="72,1" class="i method">UpdateContentItemVersionAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r94 rd" class="r94 r">updatingVersion</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r95 rd" class="r95 r">updatedVersion</span>)
+        {
+            <b>return</b> <a href="#8a480d83b3691169" class="i method">UpdateContentItemVersionAsync</a>(<span class="r94 r">updatingVersion</span>, <span class="r95 r">updatedVersion</span>, <b>null</b>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="11f1eb1949785b0b" href="R/11f1eb1949785b0b.html" target="n" data-glyph="72,1" class="i method">ImportAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r96 rd" class="r96 r">contentItems</span>)
+        {
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r97 rd" class="r97 r">skip</span> = 0;
+ 
+            <b>var</b> <span id="r98 rd" class="r98 r">importedVersionIds</span> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r99 rd" class="r99 r">batchedContentItems</span> = <span class="r96 r">contentItems</span>.<span class="i method">Take</span>(<a href="#aafa701a9cdd3b81" class="i field">ImportBatchSize</a>);
+ 
+            <b>while</b> (<span class="r99 r">batchedContentItems</span>.<span class="i method">Any</span>())
+            {
+                <span class="c">// Preload all the versions for this batch from the database.</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r100 rd" class="r100 r">versionIds</span> = <span class="r99 r">batchedContentItems</span>
+                     .<span class="i method">Where</span>(<span id="r101 rd" class="r101 r">x</span> =&gt; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r101 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>))
+                     .<span class="i method">Select</span>(<span id="r102 rd" class="r102 r">x</span> =&gt; <span class="r102 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>);
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r103 rd" class="r103 r">itemIds</span> = <span class="r99 r">batchedContentItems</span>
+                    .<span class="i method">Where</span>(<span id="r104 rd" class="r104 r">x</span> =&gt; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r104 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>))
+                    .<span class="i method">Select</span>(<span id="r105 rd" class="r105 r">x</span> =&gt; <span class="r105 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>);
+ 
+                <b>var</b> <span id="r106 rd" class="r106 r">existingContentItems</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>
+                    .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r107 rd" class="r107 r">x</span> =&gt;
+                        <span class="r107 r">x</span>.<span class="i">ContentItemId</span>.<span class="i">IsIn</span>(<span class="r103 r">itemIds</span>) &amp;&amp;
+                        (<span class="r107 r">x</span>.<span class="i">Latest</span> || <span class="r107 r">x</span>.<span class="i">Published</span> || <span class="r107 r">x</span>.<span class="i">ContentItemVersionId</span>.<span class="i">IsIn</span>(<span class="r100 r">versionIds</span>)))
+                    .<span class="i">ListAsync</span>();
+ 
+                <b>var</b> <span id="r108 rd" class="r108 r">versionsToUpdate</span> = <span class="r106 r">existingContentItems</span>.<span class="i">Where</span>(<span id="r109 rd" class="r109 r">c</span> =&gt; <span class="r100 r">versionIds</span>.<span class="i method">Any</span>(<span id="r110 rd" class="r110 r">v</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r110 r">v</span>, <span class="r109 r">c</span>.<span class="i">ContentItemVersionId</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)));
+                <b>var</b> <span id="r111 rd" class="r111 r">versionsThatMaybeEvicted</span> = <span class="r106 r">existingContentItems</span>.<span class="i">Except</span>(<span class="r108 r">versionsToUpdate</span>);
+ 
+                <b>foreach</b> (<b>var</b> <span id="r112 rd" class="r112 r">version</span> <b>in</b> <span class="r106 r">existingContentItems</span>)
+                {
+                    <b>await</b> <span class="i">LoadAsync</span>(<span class="r112 r">version</span>);
+                }
+ 
+                <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r113 rd" class="r113 r">importingItem</span> <b>in</b> <span class="r99 r">batchedContentItems</span>)
+                {
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r114 rd" class="r114 r">originalVersion</span> = <b>null</b>;
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>))
+                    {
+                        <b>if</b> (<span class="r98 r">importedVersionIds</span>.<span class="i method">Contains</span>(<span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>))
+                        {
+                            <a href="#405653dd16ede75c" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Duplicate content item version id &#39;{ContentItemVersionId}&#39; skipped&quot;</span>, <span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>);
+                            <b>continue</b>;
+                        }
+ 
+                        <span class="r98 r">importedVersionIds</span>.<span class="i method">Add</span>(<span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>);
+ 
+                        <span class="r114 r">originalVersion</span> = <span class="r108 r">versionsToUpdate</span>.<span class="i">FirstOrDefault</span>(<span id="r115 rd" class="r115 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r115 r">x</span>.<span class="i">ContentItemVersionId</span>, <span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+                    }
+ 
+                    <b>if</b> (<span class="r114 r">originalVersion</span> == <b>null</b>)
+                    {
+                        <span class="c">// The version does not exist in the current database.</span>
+                        <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2391c274a01edd6f" class="k">var</a> <span id="r116 rd" class="r116 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#75eeb368530897a5" class="t constructor">ImportContentContext</a>(<span class="r113 r">importingItem</span>);
+ 
+                        <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r117 rd" class="r117 r">handler</span>, <span id="r118 rd" class="r118 r">context</span>) =&gt; <span class="r117 r">handler</span>.<span class="i">ImportingAsync</span>(<span class="r118 r">context</span>), <span class="r116 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+                        <b>var</b> <span id="r119 rd" class="r119 r">evictionVersions</span> = <span class="r111 r">versionsThatMaybeEvicted</span>.<span class="i">Where</span>(<span id="r120 rd" class="r120 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r120 r">x</span>.<span class="i">ContentItemId</span>, <span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+                        <b>var</b> <span id="r121 rd" class="r121 r">result</span> = <b>await</b> <span class="i">CreateContentItemVersionAsync</span>(<span class="r113 r">importingItem</span>, <span class="r119 r">evictionVersions</span>);
+                        <b>if</b> (!<span class="r121 r">result</span>.<span class="i">Succeeded</span>)
+                        {
+                            <b>if</b> (<a href="#405653dd16ede75c" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Error</span>))
+                            {
+                                <a href="#405653dd16ede75c" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Error importing content item version id &#39;{ContentItemVersionId}&#39; : &#39;{Errors}&#39;&quot;</span>, <span class="r113 r">importingItem</span>?.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r121 r">result</span>.<span class="i">Errors</span>));
+                            }
+ 
+                            <b>throw</b> <b>new</b> <span class="t constructor">ValidationException</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r121 r">result</span>.<span class="i">Errors</span>));
+                        }
+ 
+                        <span class="c">// Imported handlers will only be fired if the validation has been successful.</span>
+                        <span class="c">// Consumers should implement validated handlers to alter the success of that operation.</span>
+                        <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r122 rd" class="r122 r">handler</span>, <span id="r123 rd" class="r123 r">context</span>) =&gt; <span class="r122 r">handler</span>.<span class="i">ImportedAsync</span>(<span class="r123 r">context</span>), <span class="r116 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+                    }
+                    <b>else</b>
+                    {
+                        <span class="c">// The version exists in the database.</span>
+                        <span class="c">// It is important to only import changed items.</span>
+                        <span class="c">// We compare the two versions and skip importing it if they are the same.</span>
+                        <span class="c">// We do this to prevent unnecessary sql updates, and because UpdateContentItemVersionAsync</span>
+                        <span class="c">// may remove drafts of updated items.</span>
+                        <span class="c">// This is necesary because an imported item maybe set to latest, and published.</span>
+                        <span class="c">// In this case, the draft item in the system, must be removed, or there will be two drafts.</span>
+                        <span class="c">// The draft item should be removed, because it would now be orphaned, as the imported published item</span>
+                        <span class="c">// would be further ahead, on a timeline, between the two.</span>
+ 
+                        <b>var</b> <span id="r124 rd" class="r124 r">jImporting</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r113 r">importingItem</span>);
+ 
+                        <span class="c">// Removed Published and Latest from consideration when evaluating.</span>
+                        <span class="c">// Otherwise an import of an unchanged (but published) version would overwrite a newer published version.</span>
+                        <span class="r124 r">jImporting</span>.<span class="i">Remove</span>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>));
+                        <span class="r124 r">jImporting</span>.<span class="i">Remove</span>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>));
+ 
+                        <b>var</b> <span id="r125 rd" class="r125 r">jOriginal</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r114 r">originalVersion</span>);
+ 
+                        <span class="r125 r">jOriginal</span>.<span class="i">Remove</span>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>));
+                        <span class="r125 r">jOriginal</span>.<span class="i">Remove</span>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>));
+ 
+                        <b>if</b> (<span class="i">JToken</span>.<span class="i">DeepEquals</span>(<span class="r124 r">jImporting</span>, <span class="r125 r">jOriginal</span>))
+                        {
+                            <a href="#405653dd16ede75c" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Importing &#39;{ContentItemVersionId}&#39; skipped as it is unchanged&quot;</span>, <span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>);
+                            <b>continue</b>;
+                        }
+ 
+                        <span class="c">// Handlers are only fired if the import is going ahead.</span>
+                        <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2391c274a01edd6f" class="k">var</a> <span id="r126 rd" class="r126 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#75eeb368530897a5" class="t constructor">ImportContentContext</a>(<span class="r113 r">importingItem</span>, <span class="r114 r">originalVersion</span>);
+ 
+                        <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r127 rd" class="r127 r">handler</span>, <span id="r128 rd" class="r128 r">context</span>) =&gt; <span class="r127 r">handler</span>.<span class="i">ImportingAsync</span>(<span class="r128 r">context</span>), <span class="r126 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+                        <b>var</b> <span id="r129 rd" class="r129 r">evictionVersions</span> = <span class="r111 r">versionsThatMaybeEvicted</span>.<span class="i">Where</span>(<span id="r130 rd" class="r130 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r130 r">x</span>.<span class="i">ContentItemId</span>, <span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+                        <b>var</b> <span id="r131 rd" class="r131 r">result</span> = <b>await</b> <span class="i">UpdateContentItemVersionAsync</span>(<span class="r114 r">originalVersion</span>, <span class="r113 r">importingItem</span>, <span class="r129 r">evictionVersions</span>);
+                        <b>if</b> (!<span class="r131 r">result</span>.<span class="i">Succeeded</span>)
+                        {
+                            <b>if</b> (<a href="#405653dd16ede75c" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Error</span>))
+                            {
+                                <a href="#405653dd16ede75c" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Error importing content item version id &#39;{ContentItemVersionId}&#39; : &#39;{Errors}&#39;&quot;</span>, <span class="r113 r">importingItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r131 r">result</span>.<span class="i">Errors</span>));
+                            }
+ 
+                            <b>throw</b> <b>new</b> <span class="t constructor">ValidationException</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r131 r">result</span>.<span class="i">Errors</span>));
+                        }
+ 
+                        <span class="c">// Imported handlers will only be fired if the validation has been successful.</span>
+                        <span class="c">// Consumers should implement validated handlers to alter the success of that operation.</span>
+                        <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r132 rd" class="r132 r">handler</span>, <span id="r133 rd" class="r133 r">context</span>) =&gt; <span class="r132 r">handler</span>.<span class="i">ImportedAsync</span>(<span class="r133 r">context</span>), <span class="r126 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+                    }
+                }
+ 
+                <span class="r97 r">skip</span> += <a href="#aafa701a9cdd3b81" class="i field">ImportBatchSize</a>;
+                <span class="r99 r">batchedContentItems</span> = <span class="r96 r">contentItems</span>.<span class="i method">Skip</span>(<span class="r97 r">skip</span>).<span class="i method">Take</span>(<a href="#aafa701a9cdd3b81" class="i field">ImportBatchSize</a>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="777eba30f16c9aa2" href="R/777eba30f16c9aa2.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r134 rd" class="r134 r">contentItem</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#17034b8a83935eae" class="k">var</a> <span id="r135 rd" class="r135 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#b63b50988bd3e2c1" class="t constructor">UpdateContentContext</a>(<span class="r134 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r136 rd" class="r136 r">handler</span>, <span id="r137 rd" class="r137 r">context</span>) =&gt; <span class="r136 r">handler</span>.<span class="i">UpdatingAsync</span>(<span class="r137 r">context</span>), <span class="r135 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r134 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r138 rd" class="r138 r">handler</span>, <span id="r139 rd" class="r139 r">context</span>) =&gt; <span class="r138 r">handler</span>.<span class="i">UpdatedAsync</span>(<span class="r139 r">context</span>), <span class="r135 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#220ffd72d78f34d5" class="t t">ContentValidateResult</a>&gt; <a id="42cfb56673278b51" href="R/42cfb56673278b51.html" target="n" data-glyph="72,1" class="i method">ValidateAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r140 rd" class="r140 r">contentItem</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#3bf9e0a38421f705" class="k">var</a> <span id="r141 rd" class="r141 r">validateContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#c56de164654a2cad" class="t constructor">ValidateContentContext</a>(<span class="r140 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r142 rd" class="r142 r">handler</span>, <span id="r143 rd" class="r143 r">context</span>) =&gt; <span class="r142 r">handler</span>.<span class="i">ValidatingAsync</span>(<span class="r143 r">context</span>), <span class="r141 r">validateContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r144 rd" class="r144 r">handler</span>, <span id="r145 rd" class="r145 r">context</span>) =&gt; <span class="r144 r">handler</span>.<span class="i">ValidatedAsync</span>(<span class="r145 r">context</span>), <span class="r141 r">validateContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>if</b> (!<span class="r141 r">validateContext</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f4c966ec8d82e29" class="i property">ContentValidateResult</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1d08ec543b70721b" class="i property">Succeeded</a>)
+            {
+                <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">CancelAsync</span>();
+            }
+ 
+            <b>return</b> <span class="r141 r">validateContext</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f4c966ec8d82e29" class="i property">ContentValidateResult</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r146 r t">TAspect</span>&gt; <a id="3145dee328ae8ab3" href="R/3145dee328ae8ab3.html" target="n" data-glyph="72,1" class="i method">PopulateAspectAsync</a>&lt;<span id="r146 rd t" class="r146 r t">TAspect</span>&gt;(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#2d654c0cac85cfb3" class="t t">IContent</a> <span id="r147 rd" class="r147 r">content</span>, <span class="r146 r t">TAspect</span> <span id="r148 rd" class="r148 r">aspect</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a7f068870ae3c460" class="k">var</a> <span id="r149 rd" class="r149 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a7f068870ae3c460" class="t constructor">ContentItemAspectContext</a>
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#56db935ddbd8e34a" class="i property">ContentItem</a> = <span class="r147 r">content</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#dbc33328a31b553f" class="i property">ContentItem</a>,
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#c299d501ccc2e42c" class="i property">Aspect</a> = <span class="r148 r">aspect</span>
+            };
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r150 rd" class="r150 r">handler</span>, <span id="r151 rd" class="r151 r">context</span>) =&gt; <span class="r150 r">handler</span>.<span class="i">GetContentItemAspectAsync</span>(<span class="r151 r">context</span>), <span class="r149 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r148 r">aspect</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="572fd1cb97aa061e" href="R/572fd1cb97aa061e.html" target="n" data-glyph="72,1" class="i method">RemoveAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r152 rd" class="r152 r">contentItem</span>)
+        {
+            <b>var</b> <span id="r153 rd" class="r153 r">activeVersions</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                .<span class="i">Where</span>(<span id="r154 rd" class="r154 r">x</span> =&gt;
+                    <span class="r154 r">x</span>.<span class="i">ContentItemId</span> == <span class="r152 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> &amp;&amp;
+                    (<span class="r154 r">x</span>.<span class="i">Published</span> || <span class="r154 r">x</span>.<span class="i">Latest</span>)).<span class="i">ListAsync</span>();
+ 
+            <b>if</b> (!<span class="r153 r">activeVersions</span>.<span class="i">Any</span>())
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#9d447d893ddfc27b" class="k">var</a> <span id="r155 rd" class="r155 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebbb6d2b93499ff0" class="t constructor">RemoveContentContext</a>(<span class="r152 r">contentItem</span>, <b>true</b>);
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r156 rd" class="r156 r">handler</span>, <span id="r157 rd" class="r157 r">context</span>) =&gt; <span class="r156 r">handler</span>.<span class="i">RemovingAsync</span>(<span class="r157 r">context</span>), <span class="r155 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r158 rd" class="r158 r">version</span> <b>in</b> <span class="r153 r">activeVersions</span>)
+            {
+                <span class="r158 r">version</span>.<span class="i">Published</span> = <b>false</b>;
+                <span class="r158 r">version</span>.<span class="i">Latest</span> = <b>false</b>;
+                <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r158 r">version</span>);
+            }
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r159 rd" class="r159 r">handler</span>, <span id="r160 rd" class="r160 r">context</span>) =&gt; <span class="r159 r">handler</span>.<span class="i">RemovedAsync</span>(<span class="r160 r">context</span>), <span class="r155 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="d0ed121b59c8d9db" href="R/d0ed121b59c8d9db.html" target="n" data-glyph="72,1" class="i method">DiscardDraftAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r161 rd" class="r161 r">contentItem</span>)
+        {
+            <b>if</b> (<span class="r161 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> || !<span class="r161 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Not a draft version.&quot;</span>);
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r162 rd" class="r162 r">publishedItem</span> = <b>await</b> <a href="#910aa9a95e6693b5" class="i method">GetAsync</a>(<span class="r161 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b49d9c14699611c" class="i property">Published</a>);
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#9d447d893ddfc27b" class="k">var</a> <span id="r163 rd" class="r163 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebbb6d2b93499ff0" class="t constructor">RemoveContentContext</a>(<span class="r161 r">contentItem</span>, <span class="r162 r">publishedItem</span> == <b>null</b>);
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r164 rd" class="r164 r">handler</span>, <span id="r165 rd" class="r165 r">context</span>) =&gt; <span class="r164 r">handler</span>.<span class="i">RemovingAsync</span>(<span class="r165 r">context</span>), <span class="r163 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <span class="r161 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <b>false</b>;
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r161 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r166 rd" class="r166 r">handler</span>, <span id="r167 rd" class="r167 r">context</span>) =&gt; <span class="r166 r">handler</span>.<span class="i">RemovedAsync</span>(<span class="r167 r">context</span>), <span class="r163 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>if</b> (<span class="r162 r">publishedItem</span> != <b>null</b>)
+            {
+                <span class="r162 r">publishedItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <b>true</b>;
+                <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r162 r">publishedItem</span>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="4b08bdc459f3af04" href="R/4b08bdc459f3af04.html" target="n" data-glyph="72,1" class="i method">CloneAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r168 rd" class="r168 r">contentItem</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r169 rd" class="r169 r">cloneContentItem</span> = <b>await</b> <a href="#9124c25fb4b6297d" class="i method">NewAsync</a>(<span class="r168 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+            <b>await</b> <a href="#4d751bd0f122f672" class="i method">CreateAsync</a>(<span class="r169 r">cloneContentItem</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f2cba94b9bb57acc" class="i property">Draft</a>);
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#559932079b8ad3da" class="k">var</a> <span id="r170 rd" class="r170 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2fdcf0dc8fdf0544" class="t constructor">CloneContentContext</a>(<span class="r168 r">contentItem</span>, <span class="r169 r">cloneContentItem</span>);
+ 
+            <span class="r170 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#efd9e01c53a8dd88" class="i property">CloneContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ee599976b2e92cbe" class="i property">Data</a> = <span class="r168 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ee599976b2e92cbe" class="i property">Data</a>.<span class="i">DeepClone</span>() <b>as</b> <span class="i">JObject</span>;
+            <span class="r170 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#efd9e01c53a8dd88" class="i property">CloneContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a> = <span class="r168 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a>;
+ 
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r171 rd" class="r171 r">handler</span>, <span id="r172 rd" class="r172 r">context</span>) =&gt; <span class="r171 r">handler</span>.<span class="i">CloningAsync</span>(<span class="r172 r">context</span>), <span class="r170 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r170 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#efd9e01c53a8dd88" class="i property">CloneContentItem</a>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r173 rd" class="r173 r">handler</span>, <span id="r174 rd" class="r174 r">context</span>) =&gt; <span class="r173 r">handler</span>.<span class="i">ClonedAsync</span>(<span class="r174 r">context</span>), <span class="r170 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r170 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#efd9e01c53a8dd88" class="i property">CloneContentItem</a>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#220ffd72d78f34d5" class="t t">ContentValidateResult</a>&gt; <a id="dba7a977df18036a" href="R/dba7a977df18036a.html" target="n" data-glyph="76,1" class="i method">CreateContentItemVersionAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r175 rd" class="r175 r">contentItem</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r176 rd" class="r176 r">evictionVersions</span> = <b>null</b>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>))
+            {
+                <span class="c">// NewAsync should be used to create new content items.</span>
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>));
+            }
+ 
+            <span class="c">// Initializes the Id as it could be interpreted as an updated object when added back to YesSql</span>
+            <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#39d1b4da804eb4f0" class="i property">Id</a> = 0;
+ 
+            <span class="c">// Maintain modified and published dates as these will be reset by the Create Handlers</span>
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r177 rd" class="r177 r">modifiedUtc</span> = <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5fb385d6e628e76f" class="i property">ModifiedUtc</a>;
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r178 rd" class="r178 r">publishedUtc</span> = <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cb28c1600552aede" class="i property">PublishedUtc</a>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r179 rd" class="r179 r">owner</span> = <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9a39e7f4cd17d33" class="i property">Owner</a>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r180 rd" class="r180 r">author</span> = <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#281ff71a3af811c2" class="i property">Author</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a>))
+            {
+                <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c72b4523fa5c088c" class="i property">ContentItemVersionId</a> = <a href="#22f61d56d2909961" class="i field">_idGenerator</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0113ff445b8cc6e" class="i method">GenerateUniqueId</a>(<span class="r175 r">contentItem</span>);
+            }
+ 
+            <span class="c">// Remove previous latest item or they will continue to be listed as latest.</span>
+            <span class="c">// When importing a new draft the existing latest must be set to false. The creating version wins.</span>
+            <b>if</b> (<span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> &amp;&amp; !<span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>)
+            {
+                <b>await</b> <a href="#8b700c38539b4870" class="i method">RemoveLatestVersionAsync</a>(<span class="r175 r">contentItem</span>, <span class="r176 r">evictionVersions</span>);
+            }
+            <b>else</b> <b>if</b> (<span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>)
+            {
+                <span class="c">// When importing a published item existing drafts and existing published must be removed.</span>
+                <span class="c">// Otherwise an existing draft would become an orphan and if published would overwrite</span>
+                <span class="c">// the imported (which we assume is the version that wins) content.</span>
+                <b>await</b> <a href="#08356406853d0d03" class="i method">RemoveVersionsAsync</a>(<span class="r175 r">contentItem</span>, <span class="r176 r">evictionVersions</span>);
+            }
+            <span class="c">// When neither published or latest the operation will create a database record</span>
+            <span class="c">// which will be part of the content item archive.</span>
+ 
+            <span class="c">// Invoked create handlers.</span>
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#df7a9e8edcad2a1f" class="k">var</a> <span id="r181 rd" class="r181 r">context</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#e2d8fb28fbf8b015" class="t constructor">CreateContentContext</a>(<span class="r175 r">contentItem</span>);
+            <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r182 rd" class="r182 r">handler</span>, <span id="r183 rd" class="r183 r">context</span>) =&gt; <span class="r182 r">handler</span>.<span class="i">CreatingAsync</span>(<span class="r183 r">context</span>), <span class="r181 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <span class="c">// The content item should be placed in the session store so that further calls</span>
+            <span class="c">// to ContentManager.Get by a scoped index provider will resolve the imported item correctly.</span>
+            <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r175 r">contentItem</span>);
+            <a href="#1c81b1ec00164dc1" class="i field">_contentManagerSession</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#edd416b30345b0b8" class="i method">Store</a>(<span class="r175 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r184 rd" class="r184 r">handler</span>, <span id="r185 rd" class="r185 r">context</span>) =&gt; <span class="r184 r">handler</span>.<span class="i">CreatedAsync</span>(<span class="r185 r">context</span>), <span class="r181 r">context</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+            <b>await</b> <a href="#777eba30f16c9aa2" class="i method">UpdateAsync</a>(<span class="r175 r">contentItem</span>);
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#220ffd72d78f34d5" class="k">var</a> <span id="r186 rd" class="r186 r">result</span> = <b>await</b> <a href="#42cfb56673278b51" class="i method">ValidateAsync</a>(<span class="r175 r">contentItem</span>);
+            <b>if</b> (!<span class="r186 r">result</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1d08ec543b70721b" class="i property">Succeeded</a>)
+            {
+                <b>return</b> <span class="r186 r">result</span>;
+            }
+ 
+            <b>if</b> (<span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>)
+            {
+                <span class="c">// Invoke published handlers to add information to persistent stores</span>
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2cfae1dbd7ed6177" class="k">var</a> <span id="r187 rd" class="r187 r">publishContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#32659d5c06d8efc2" class="t constructor">PublishContentContext</a>(<span class="r175 r">contentItem</span>, <b>null</b>);
+ 
+                <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r188 rd" class="r188 r">handler</span>, <span id="r189 rd" class="r189 r">context</span>) =&gt; <span class="r188 r">handler</span>.<span class="i">PublishingAsync</span>(<span class="r189 r">context</span>), <span class="r187 r">publishContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+                <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r190 rd" class="r190 r">handler</span>, <span id="r191 rd" class="r191 r">context</span>) =&gt; <span class="r190 r">handler</span>.<span class="i">PublishedAsync</span>(<span class="r191 r">context</span>), <span class="r187 r">publishContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            }
+            <b>else</b>
+            {
+                <b>await</b> <a href="#2ac2201a21da724d" class="i method">SaveDraftAsync</a>(<span class="r175 r">contentItem</span>);
+            }
+ 
+            <span class="c">// Restore values that may have been altered by handlers.</span>
+            <b>if</b> (<span class="r177 r">modifiedUtc</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5fb385d6e628e76f" class="i property">ModifiedUtc</a> = <span class="r177 r">modifiedUtc</span>;
+            }
+            <b>if</b> (<span class="r178 r">publishedUtc</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cb28c1600552aede" class="i property">PublishedUtc</a> = <span class="r178 r">publishedUtc</span>;
+            }
+ 
+            <span class="c">// There is a risk here that the owner or author does not exist in the importing system.</span>
+            <span class="c">// We check that at least a value has been supplied, if not the owner property and author</span>
+            <span class="c">// property would be left as the user who has run this import.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r179 r">owner</span>))
+            {
+                <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9a39e7f4cd17d33" class="i property">Owner</a> = <span class="r179 r">owner</span>;
+            }
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r180 r">author</span>))
+            {
+                <span class="r175 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#281ff71a3af811c2" class="i property">Author</a> = <span class="r180 r">author</span>;
+            }
+ 
+            <b>return</b> <span class="r186 r">result</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#220ffd72d78f34d5" class="t t">ContentValidateResult</a>&gt; <a id="8a480d83b3691169" href="R/8a480d83b3691169.html" target="n" data-glyph="76,1" class="i method">UpdateContentItemVersionAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r192 rd" class="r192 r">updatingVersion</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r193 rd" class="r193 r">updatedVersion</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r194 rd" class="r194 r">evictionVersions</span> = <b>null</b>)
+        {
+            <span class="c">// Replaces the id to force the current item to be updated</span>
+            <span class="r192 r">updatingVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#39d1b4da804eb4f0" class="i property">Id</a> = <span class="r193 r">updatedVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#39d1b4da804eb4f0" class="i property">Id</a>;
+ 
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r195 rd" class="r195 r">modifiedUtc</span> = <span class="r193 r">updatedVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5fb385d6e628e76f" class="i property">ModifiedUtc</a>;
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r196 rd" class="r196 r">publishedUtc</span> = <span class="r193 r">updatedVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cb28c1600552aede" class="i property">PublishedUtc</a>;
+ 
+            <span class="c">// Remove previous published or draft items if necesary or they will continue to be listed as published or draft.</span>
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r197 rd" class="r197 r">discardLatest</span> = <b>false</b>;
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r198 rd" class="r198 r">removePublished</span> = <b>false</b>;
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r199 rd" class="r199 r">importingLatest</span> = <span class="r193 r">updatedVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>;
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r200 rd" class="r200 r">existingLatest</span> = <span class="r192 r">updatingVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>;
+ 
+            <span class="c">// If latest values do not match and importing latest is true then we must find and evict the previous latest.</span>
+            <b>if</b> (<span class="r199 r">importingLatest</span> != <span class="r200 r">existingLatest</span> &amp;&amp; <span class="r199 r">importingLatest</span> == <b>true</b>)
+            {
+                <span class="r197 r">discardLatest</span> = <b>true</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r201 rd" class="r201 r">importingPublished</span> = <span class="r193 r">updatedVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>;
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r202 rd" class="r202 r">existingPublished</span> = <span class="r192 r">updatingVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>;
+ 
+            <span class="c">// If published values do not match and importing published is true then we must find and evict the previous published</span>
+            <span class="c">// This is when the existing content item version is not published, but the importing version is set to published.</span>
+            <span class="c">// For this to occur there must have been a draft made, and the mutation to published is being made on the draft.</span>
+            <b>if</b> (<span class="r201 r">importingPublished</span> != <span class="r202 r">existingPublished</span> &amp;&amp; <span class="r201 r">importingPublished</span> == <b>true</b>)
+            {
+                <span class="r198 r">removePublished</span> = <b>true</b>;
+            }
+ 
+            <b>if</b> (<span class="r197 r">discardLatest</span> &amp;&amp; <span class="r198 r">removePublished</span>)
+            {
+                <b>await</b> <a href="#08356406853d0d03" class="i method">RemoveVersionsAsync</a>(<span class="r192 r">updatingVersion</span>, <span class="r194 r">evictionVersions</span>);
+            }
+            <b>else</b> <b>if</b> (<span class="r197 r">discardLatest</span>)
+            {
+                <b>await</b> <a href="#8b700c38539b4870" class="i method">RemoveLatestVersionAsync</a>(<span class="r192 r">updatingVersion</span>, <span class="r194 r">evictionVersions</span>);
+            }
+            <b>else</b> <b>if</b> (<span class="r198 r">removePublished</span>)
+            {
+                <b>await</b> <a href="#f9f6f7c0b7fd9616" class="i method">RemovePublishedVersionAsync</a>(<span class="r192 r">updatingVersion</span>, <span class="r194 r">evictionVersions</span>);
+            }
+ 
+            <span class="r192 r">updatingVersion</span>.<span class="i">Merge</span>(<span class="r193 r">updatedVersion</span>, <a href="#69e84e1240d75154" class="i field">UpdateJsonMergeSettings</a>);
+            <span class="r192 r">updatingVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <span class="r199 r">importingLatest</span>;
+            <span class="r192 r">updatingVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <span class="r201 r">importingPublished</span>;
+ 
+            <b>await</b> <a href="#777eba30f16c9aa2" class="i method">UpdateAsync</a>(<span class="r192 r">updatingVersion</span>);
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#220ffd72d78f34d5" class="k">var</a> <span id="r203 rd" class="r203 r">result</span> = <b>await</b> <a href="#42cfb56673278b51" class="i method">ValidateAsync</a>(<span class="r192 r">updatingVersion</span>);
+ 
+            <span class="c">// Session is cancelled now so previous updates to versions are cancelled also.</span>
+            <b>if</b> (!<span class="r203 r">result</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1d08ec543b70721b" class="i property">Succeeded</a>)
+            {
+                <b>return</b> <span class="r203 r">result</span>;
+            }
+ 
+            <b>if</b> (<span class="r201 r">importingPublished</span>)
+            {
+                <span class="c">// Invoke published handlers to add information to persistent stores</span>
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#2cfae1dbd7ed6177" class="k">var</a> <span id="r204 rd" class="r204 r">publishContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#32659d5c06d8efc2" class="t constructor">PublishContentContext</a>(<span class="r192 r">updatingVersion</span>, <b>null</b>);
+ 
+                <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r205 rd" class="r205 r">handler</span>, <span id="r206 rd" class="r206 r">context</span>) =&gt; <span class="r205 r">handler</span>.<span class="i">PublishingAsync</span>(<span class="r206 r">context</span>), <span class="r204 r">publishContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+                <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r207 rd" class="r207 r">handler</span>, <span id="r208 rd" class="r208 r">context</span>) =&gt; <span class="r207 r">handler</span>.<span class="i">PublishedAsync</span>(<span class="r208 r">context</span>), <span class="r204 r">publishContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            }
+            <b>else</b>
+            {
+                <b>await</b> <a href="#2ac2201a21da724d" class="i method">SaveDraftAsync</a>(<span class="r192 r">updatingVersion</span>);
+            }
+ 
+            <span class="c">// Restore values that may have been altered by handlers.</span>
+            <b>if</b> (<span class="r195 r">modifiedUtc</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r192 r">updatingVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5fb385d6e628e76f" class="i property">ModifiedUtc</a> = <span class="r195 r">modifiedUtc</span>;
+            }
+            <b>if</b> (<span class="r196 r">publishedUtc</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r192 r">updatingVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cb28c1600552aede" class="i property">PublishedUtc</a> = <span class="r196 r">publishedUtc</span>;
+            }
+ 
+            <b>return</b> <span class="r203 r">result</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="8b700c38539b4870" href="R/8b700c38539b4870.html" target="n" data-glyph="76,1" class="i method">RemoveLatestVersionAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r209 rd" class="r209 r">contentItem</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r210 rd" class="r210 r">evictionVersions</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r211 rd" class="r211 r">latestVersion</span>;
+            <b>if</b> (<span class="r210 r">evictionVersions</span> == <b>null</b>)
+            {
+                <span class="r211 r">latestVersion</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r212 rd" class="r212 r">x</span> =&gt; <span class="r212 r">x</span>.<span class="i">ContentItemId</span> == <span class="r209 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> &amp;&amp; <span class="r212 r">x</span>.<span class="i">Latest</span>)
+                    .<span class="i">FirstOrDefaultAsync</span>();
+            }
+            <b>else</b>
+            {
+                <span class="r211 r">latestVersion</span> = <span class="r210 r">evictionVersions</span>.<span class="i method">FirstOrDefault</span>(<span id="r213 rd" class="r213 r">x</span> =&gt; <span class="r213 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a>);
+            }
+ 
+            <b>if</b> (<span class="r211 r">latestVersion</span> != <b>null</b>)
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r214 rd" class="r214 r">publishedVersion</span> = <span class="r210 r">evictionVersions</span>?.<span class="i method">FirstOrDefault</span>(<span id="r215 rd" class="r215 r">x</span> =&gt; <span class="r215 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>);
+ 
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#9d447d893ddfc27b" class="k">var</a> <span id="r216 rd" class="r216 r">removeContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebbb6d2b93499ff0" class="t constructor">RemoveContentContext</a>(<span class="r209 r">contentItem</span>, <span class="r214 r">publishedVersion</span> == <b>null</b>);
+ 
+                <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r217 rd" class="r217 r">handler</span>, <span id="r218 rd" class="r218 r">context</span>) =&gt; <span class="r217 r">handler</span>.<span class="i">RemovingAsync</span>(<span class="r218 r">context</span>), <span class="r216 r">removeContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+                <span class="r211 r">latestVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <b>false</b>;
+                <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r211 r">latestVersion</span>);
+ 
+                <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r219 rd" class="r219 r">handler</span>, <span id="r220 rd" class="r220 r">context</span>) =&gt; <span class="r219 r">handler</span>.<span class="i">RemovedAsync</span>(<span class="r220 r">context</span>), <span class="r216 r">removeContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f9f6f7c0b7fd9616" href="R/f9f6f7c0b7fd9616.html" target="n" data-glyph="76,1" class="i method">RemovePublishedVersionAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r221 rd" class="r221 r">contentItem</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r222 rd" class="r222 r">evictionVersions</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r223 rd" class="r223 r">publishedVersion</span>;
+            <b>if</b> (<span class="r222 r">evictionVersions</span> == <b>null</b>)
+            {
+                <span class="r223 r">publishedVersion</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r224 rd" class="r224 r">x</span> =&gt; <span class="r224 r">x</span>.<span class="i">ContentItemId</span> == <span class="r221 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> &amp;&amp; <span class="r224 r">x</span>.<span class="i">Published</span>)
+                    .<span class="i">FirstOrDefaultAsync</span>();
+            }
+            <b>else</b>
+            {
+                <span class="r223 r">publishedVersion</span> = <span class="r222 r">evictionVersions</span>.<span class="i method">FirstOrDefault</span>(<span id="r225 rd" class="r225 r">x</span> =&gt; <span class="r225 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>);
+            }
+ 
+            <b>if</b> (<span class="r223 r">publishedVersion</span> != <b>null</b>)
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#9d447d893ddfc27b" class="k">var</a> <span id="r226 rd" class="r226 r">removeContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebbb6d2b93499ff0" class="t constructor">RemoveContentContext</a>(<span class="r221 r">contentItem</span>, <b>true</b>);
+ 
+                <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r227 rd" class="r227 r">handler</span>, <span id="r228 rd" class="r228 r">context</span>) =&gt; <span class="r227 r">handler</span>.<span class="i">RemovingAsync</span>(<span class="r228 r">context</span>), <span class="r226 r">removeContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+                <span class="r223 r">publishedVersion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <b>false</b>;
+                <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r223 r">publishedVersion</span>);
+ 
+                <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r229 rd" class="r229 r">handler</span>, <span id="r230 rd" class="r230 r">context</span>) =&gt; <span class="r229 r">handler</span>.<span class="i">RemovedAsync</span>(<span class="r230 r">context</span>), <span class="r226 r">removeContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="08356406853d0d03" href="R/08356406853d0d03.html" target="n" data-glyph="76,1" class="i method">RemoveVersionsAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r231 rd" class="r231 r">contentItem</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r232 rd" class="r232 r">evictionVersions</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r233 rd" class="r233 r">activeVersions</span>;
+            <b>if</b> (<span class="r232 r">evictionVersions</span> == <b>null</b>)
+            {
+                <span class="r233 r">activeVersions</span> = <b>await</b> <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="Records/ContentItemIndex.cs.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r234 rd" class="r234 r">x</span> =&gt;
+                        <span class="r234 r">x</span>.<span class="i">ContentItemId</span> == <span class="r231 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a> &amp;&amp;
+                        (<span class="r234 r">x</span>.<span class="i">Published</span> || <span class="r234 r">x</span>.<span class="i">Latest</span>)).<span class="i">ListAsync</span>();
+            }
+            <b>else</b>
+            {
+                <span class="r233 r">activeVersions</span> = <span class="r232 r">evictionVersions</span>.<span class="i method">Where</span>(<span id="r235 rd" class="r235 r">x</span> =&gt; <span class="r235 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> || <span class="r235 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a>);
+            }
+ 
+            <b>if</b> (<span class="r233 r">activeVersions</span>.<span class="i method">Any</span>())
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#9d447d893ddfc27b" class="k">var</a> <span id="r236 rd" class="r236 r">removeContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebbb6d2b93499ff0" class="t constructor">RemoveContentContext</a>(<span class="r231 r">contentItem</span>, <b>true</b>);
+ 
+                <b>await</b> <a href="#a3657a5ea4c3f61a" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r237 rd" class="r237 r">handler</span>, <span id="r238 rd" class="r238 r">context</span>) =&gt; <span class="r237 r">handler</span>.<span class="i">RemovingAsync</span>(<span class="r238 r">context</span>), <span class="r236 r">removeContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+ 
+                <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r239 rd" class="r239 r">version</span> <b>in</b> <span class="r233 r">activeVersions</span>)
+                {
+                    <span class="r239 r">version</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bf73c8e4a1bdbbd2" class="i property">Published</a> = <b>false</b>;
+                    <span class="r239 r">version</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#cbca558aa3d40d82" class="i property">Latest</a> = <b>false</b>;
+                    <a href="#4d4c116b0f108d9b" class="i field">_session</a>.<span class="i">Save</span>(<span class="r239 r">version</span>);
+                }
+ 
+                <b>await</b> <a href="#5f2f78c0b5a40257" class="i property">ReversedHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r240 rd" class="r240 r">handler</span>, <span id="r241 rd" class="r241 r">context</span>) =&gt; <span class="r240 r">handler</span>.<span class="i">RemovedAsync</span>(<span class="r241 r">context</span>), <span class="r236 r">removeContext</span>, <a href="#405653dd16ede75c" class="i field">_logger</a>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

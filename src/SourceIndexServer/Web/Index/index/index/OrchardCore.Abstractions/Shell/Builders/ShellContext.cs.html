@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellContext.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(228);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Shell/Builders/ShellContext.cs" target="_top">Shell\Builders\ShellContext.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Scope</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> The shell context represents the shell&#39;s state that is kept alive</span>
+    <span class="c">///</span><span class="c"> for the whole life of the application</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="0220d010e7ac04ce" href="../../R/0220d010e7ac04ce.html" target="n" data-glyph="0,0" class="t t"><span id="2c3f812255f87b99">ShellContext</span></a> : <a href="@1@System.Runtime/A.html#1f55292c3174123d" class="t t">IDisposable</a>
+    {
+        <b>private bool</b> <a id="eab71ecffa7c5578" href="../../R/eab71ecffa7c5578.html" target="n" data-glyph="46,1" class="i field">_disposed</a>;
+        <b>private</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#809df5135c2bec67" class="t t">WeakReference</a>&lt;<a href="#0220d010e7ac04ce" class="t t">ShellContext</a>&gt;&gt; <a id="6ec10b240efdf1b7" href="../../R/6ec10b240efdf1b7.html" target="n" data-glyph="46,1" class="i field">_dependents</a>;
+        <b>private readonly object</b> <a id="1332b0b9cb20c041" href="../../R/1332b0b9cb20c041.html" target="n" data-glyph="46,1" class="i field">_synLock</a> = <b>new</b> <b>object</b>();
+ 
+        <b>internal volatile int</b> <a id="4113c3000d657c1f" href="../../R/4113c3000d657c1f.html" target="n" data-glyph="44,1" class="i field">_refCount</a>;
+        <b>internal volatile int</b> <a id="01afbfeb6e99b891" href="../../R/01afbfeb6e99b891.html" target="n" data-glyph="44,1" class="i field">_terminated</a>;
+        <b>internal bool</b> <a id="0dff73440b3719c4" href="../../R/0dff73440b3719c4.html" target="n" data-glyph="44,1" class="i field">_released</a>;
+ 
+        <b>public</b> <a href="../ShellSettings.cs.html#368947b748b893a0" class="t t">ShellSettings</a> <a id="9460b7caf2e38f54" href="../../R/9460b7caf2e38f54.html" target="n" data-glyph="102,1" class="i property">Settings</a> { <b>get</b>; <b>set</b>; }
+        <b>public</b> <a href="Models/ShellBlueprint.cs.html#155107f1d2a14540" class="t t">ShellBlueprint</a> <a id="d014653d2e38149a" href="../../R/d014653d2e38149a.html" target="n" data-glyph="102,1" class="i property">Blueprint</a> { <b>get</b>; <b>set</b>; }
+        <b>public</b> <span class="t t">IServiceProvider</span> <a id="14806dab63c4713f" href="../../R/14806dab63c4713f.html" target="n" data-glyph="102,1" class="i property">ServiceProvider</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether the shell is activated.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public bool</b> <a id="ba619911827f29e7" href="../../R/ba619911827f29e7.html" target="n" data-glyph="102,1" class="i property">IsActivated</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The Pipeline built for this shell.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="IShellPipeline.cs.html#20454e7ec76cf417" class="t t">IShellPipeline</a> <a id="83bf1f479f57ae7a" href="../../R/83bf1f479f57ae7a.html" target="n" data-glyph="102,1" class="i property">Pipeline</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public class</b> <a id="887510aa7404bc5c" href="../../R/887510aa7404bc5c.html" target="n" data-glyph="0,1" class="t t">PlaceHolder</a> : <a href="#0220d010e7ac04ce" class="t t">ShellContext</a>
+        {
+            <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+            <span class="c">///</span><span class="c"> Used as a place holder for a shell that will be lazily created.</span>
+            <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+            <b>public</b> <a id="5103611c442362a9" href="../../R/5103611c442362a9.html" target="n" data-glyph="72,2" class="t constructor">PlaceHolder</a>()
+            {
+                <a href="#0dff73440b3719c4" class="i field">_released</a> = <b>true</b>;
+                <a href="#eab71ecffa7c5578" class="i field">_disposed</a> = <b>true</b>;
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="../Scope/ShellScope.cs.html#6bc229032c2ec619" class="t t">ShellScope</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> on this shell context.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="../Scope/ShellScope.cs.html#6bc229032c2ec619" class="t t">ShellScope</a> <a id="1b416e9497f78ec4" href="../../R/1b416e9497f78ec4.html" target="n" data-glyph="72,1" class="i method">CreateScope</a>()
+        {
+            <span class="c">// Don&#39;t create a shell scope on a released shell.</span>
+            <b>if</b> (<a href="#0dff73440b3719c4" class="i field">_released</a>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="../Scope/ShellScope.cs.html#6bc229032c2ec619" class="k">var</a> <span id="r0 rd" class="r0 r">scope</span> = <b>new</b> <a href="../Scope/ShellScope.cs.html#8b00c66b241e54bb" class="t constructor">ShellScope</a>(<a href="#0220d010e7ac04ce" class="k">this</a>);
+ 
+            <span class="c">// Don&#39;t start using a new scope on a released shell.</span>
+            <b>if</b> (<a href="#0dff73440b3719c4" class="i field">_released</a>)
+            {
+                <span class="c">// But let this scope manage the shell state as usual.</span>
+                <span class="r0 r">scope</span>.<a href="../Scope/ShellScope.cs.html#d88be643b53d3d91" class="i method">TerminateShellAsync</a>().<a href="@1@System.Runtime/A.html#9865ec4fb8abca74" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#fac5be2731353aa8" class="i method">GetResult</a>();
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <span class="r0 r">scope</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#0220d010e7ac04ce" class="t t">ShellContext</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> instance is not yet built or has been released, for instance when a tenant is changed.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public bool</b> <a id="fb03a9b2428f332c" href="../../R/fb03a9b2428f332c.html" target="n" data-glyph="102,1" class="i property">Released</a> =&gt; <a href="#0dff73440b3719c4" class="i field">_released</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the number of active scopes on this tenant.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public int</b> <a id="61facb238f3b2ed2" href="../../R/61facb238f3b2ed2.html" target="n" data-glyph="102,1" class="i property">ActiveScopes</a> =&gt; <a href="#4113c3000d657c1f" class="i field">_refCount</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Mark the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#0220d010e7ac04ce" class="t t">ShellContext</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> as released and then a candidate to be disposed.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public void</b> <a id="9447d373011960c3" href="../../R/9447d373011960c3.html" target="n" data-glyph="72,1" class="i method">Release</a>() =&gt; <a href="#d85e4d455ac8b2a8" class="i method">ReleaseInternal</a>();
+ 
+        <b>internal void</b> <a id="b4bd1d85c654e1df" href="../../R/b4bd1d85c654e1df.html" target="n" data-glyph="74,1" class="i method">ReleaseFromLastScope</a>() =&gt; <a href="#d85e4d455ac8b2a8" class="i method">ReleaseInternal</a>(<a href="#6d79ccab5529f42d" class="t t">ReleaseMode</a>.<a href="#30a9c3b08312fd83" class="i field">FromLastScope</a>);
+ 
+        <b>internal void</b> <a id="79fb65ecb295a9b9" href="../../R/79fb65ecb295a9b9.html" target="n" data-glyph="74,1" class="i method">ReleaseFromDependency</a>() =&gt; <a href="#d85e4d455ac8b2a8" class="i method">ReleaseInternal</a>(<a href="#6d79ccab5529f42d" class="t t">ReleaseMode</a>.<a href="#59b85b472119a5bd" class="i field">FromDependency</a>);
+ 
+        <b>internal void</b> <a id="d85e4d455ac8b2a8" href="../../R/d85e4d455ac8b2a8.html" target="n" data-glyph="74,1" class="i method">ReleaseInternal</a>(<a href="#6d79ccab5529f42d" class="t t">ReleaseMode</a> <span id="r1 rd" class="r1 r">mode</span> = <a href="#6d79ccab5529f42d" class="t t">ReleaseMode</a>.<a href="#b614134b69562a42" class="i field">Normal</a>)
+        {
+            <b>if</b> (<a href="#0dff73440b3719c4" class="i field">_released</a>)
+            {
+                <span class="c">// Prevent infinite loops with circular dependencies</span>
+                <b>return</b>;
+            }
+ 
+            <span class="c">// A disabled shell still in use will be released by its last scope, as checked at the host level.</span>
+            <b>if</b> (<span class="r1 r">mode</span> == <a href="#6d79ccab5529f42d" class="t t">ReleaseMode</a>.<a href="#59b85b472119a5bd" class="i field">FromDependency</a> &amp;&amp; <a href="#9460b7caf2e38f54" class="i property">Settings</a>.<a href="../ShellSettings.cs.html#42a6610d7f01c165" class="i property">State</a> == <a href="../Models/TenantState.cs.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="../Models/TenantState.cs.html#2196b7a2790a7b9b" class="i field">Disabled</a> &amp;&amp; <a href="#4113c3000d657c1f" class="i field">_refCount</a> != 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// When a tenant is changed and should be restarted, its shell context is replaced with a new one,</span>
+            <span class="c">// so that new request can&#39;t use it anymore. However some existing request might still be running and try to</span>
+            <span class="c">// resolve or use its services. We then call this method to count the remaining references and dispose it</span>
+            <span class="c">// when the number reached zero.</span>
+ 
+            <a href="../Scope/ShellScope.cs.html#6bc229032c2ec619" class="t t">ShellScope</a> <span id="r2 rd" class="r2 r">scope</span> = <b>null</b>;
+            <b>lock</b> (<a href="#1332b0b9cb20c041" class="i field">_synLock</a>)
+            {
+                <b>if</b> (<a href="#0dff73440b3719c4" class="i field">_released</a>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <b>if</b> (<a href="#6ec10b240efdf1b7" class="i field">_dependents</a> != <b>null</b>)
+                {
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#809df5135c2bec67" class="k">var</a> <span id="r3 rd" class="r3 r">dependent</span> <b>in</b> <a href="#6ec10b240efdf1b7" class="i field">_dependents</a>)
+                    {
+                        <b>if</b> (<span class="r3 r">dependent</span>.<a href="@1@System.Runtime/A.html#655561bce79c86cd" class="i method">TryGetTarget</a>(<b>out</b> <a href="#0220d010e7ac04ce" class="k">var</a> <span id="r4 rd" class="r4 r">shellContext</span>))
+                        {
+                            <span class="r4 r">shellContext</span>.<a href="#79fb65ecb295a9b9" class="i method">ReleaseFromDependency</a>();
+                        }
+                    }
+                }
+ 
+                <b>if</b> (<span class="r1 r">mode</span> != <a href="#6d79ccab5529f42d" class="t t">ReleaseMode</a>.<a href="#30a9c3b08312fd83" class="i field">FromLastScope</a> &amp;&amp; <a href="#14806dab63c4713f" class="i property">ServiceProvider</a> != <b>null</b>)
+                {
+                    <span class="c">// Before marking the shell as released, we create a new scope that will manage the shell state,</span>
+                    <span class="c">// so that we always use the same shell scope logic to check if the reference counter reached 0.</span>
+                    <span class="r2 r">scope</span> = <b>new</b> <a href="../Scope/ShellScope.cs.html#8b00c66b241e54bb" class="t constructor">ShellScope</a>(<a href="#0220d010e7ac04ce" class="k">this</a>);
+                }
+ 
+                <a href="#0dff73440b3719c4" class="i field">_released</a> = <b>true</b>;
+            }
+ 
+            <b>if</b> (<span class="r1 r">mode</span> == <a href="#6d79ccab5529f42d" class="t t">ReleaseMode</a>.<a href="#30a9c3b08312fd83" class="i field">FromLastScope</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r2 r">scope</span> != <b>null</b>)
+            {
+                <span class="c">// Use this scope to manage the shell state as usual.</span>
+                <span class="r2 r">scope</span>.<a href="../Scope/ShellScope.cs.html#d88be643b53d3d91" class="i method">TerminateShellAsync</a>().<a href="@1@System.Runtime/A.html#9865ec4fb8abca74" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#fac5be2731353aa8" class="i method">GetResult</a>();
+                <b>return</b>;
+            }
+ 
+            <a href="#cfc101cbffaed525" class="i method">Dispose</a>();
+        }
+ 
+        <b>internal enum</b> <a id="6d79ccab5529f42d" href="../../R/6d79ccab5529f42d.html" target="n" data-glyph="20,1" class="t t"><span id="adf3c3d3429f61c2">ReleaseMode</span></a>
+        {
+            <a id="b614134b69562a42" href="../../R/b614134b69562a42.html" target="n" data-glyph="24,2" class="i field">Normal</a>,
+            <a id="30a9c3b08312fd83" href="../../R/30a9c3b08312fd83.html" target="n" data-glyph="24,2" class="i field">FromLastScope</a>,
+            <a id="59b85b472119a5bd" href="../../R/59b85b472119a5bd.html" target="n" data-glyph="24,2" class="i field">FromDependency</a>
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Registers the specified shellContext as dependent such that it is also released when the current shell context is released.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public void</b> <a id="45221a99d273a00f" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddDependentShell</a>(<a href="#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r5 rd" class="r5 r">shellContext</span>)
+        {
+            <span class="c">// If the dependent is released, nothing to do.</span>
+            <b>if</b> (<span class="r5 r">shellContext</span>.<a href="#fb03a9b2428f332c" class="i property">Released</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If the dependency is already released.</span>
+            <b>if</b> (<a href="#0dff73440b3719c4" class="i field">_released</a>)
+            {
+                <span class="c">// The dependent is released immediately.</span>
+                <span class="r5 r">shellContext</span>.<a href="#9447d373011960c3" class="i method">Release</a>();
+                <b>return</b>;
+            }
+ 
+            <b>lock</b> (<a href="#1332b0b9cb20c041" class="i field">_synLock</a>)
+            {
+                <b>if</b> (<a href="#6ec10b240efdf1b7" class="i field">_dependents</a> == <b>null</b>)
+                {
+                    <a href="#6ec10b240efdf1b7" class="i field">_dependents</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#809df5135c2bec67" class="t t">WeakReference</a>&lt;<a href="#0220d010e7ac04ce" class="t t">ShellContext</a>&gt;&gt;();
+                }
+ 
+                <span class="c">// Remove any previous instance that represent the same tenant in case it has been released (restarted).</span>
+                <a href="#6ec10b240efdf1b7" class="i field">_dependents</a>.<span class="i method">RemoveAll</span>(<span id="r6 rd" class="r6 r">x</span> =&gt; !<span class="r6 r">x</span>.<a href="@1@System.Runtime/A.html#655561bce79c86cd" class="i method">TryGetTarget</a>(<b>out</b> <a href="#0220d010e7ac04ce" class="k">var</a> <span id="r7 rd" class="r7 r">shell</span>) || <span class="r7 r">shell</span>.<a href="#9460b7caf2e38f54" class="i property">Settings</a>.<a href="../ShellSettings.cs.html#7248e6f40dfe7c7f" class="i property">Name</a> == <span class="r5 r">shellContext</span>.<a href="#9460b7caf2e38f54" class="i property">Settings</a>.<a href="../ShellSettings.cs.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+ 
+                <a href="#6ec10b240efdf1b7" class="i field">_dependents</a>.<span class="i method">Add</span>(<b>new</b> <a href="@1@System.Runtime/A.html#0bcc5ece65ea67eb" class="t constructor">WeakReference</a>&lt;<a href="#0220d010e7ac04ce" class="t t">ShellContext</a>&gt;(<span class="r5 r">shellContext</span>));
+            }
+        }
+ 
+        <b>public void</b> <a id="cfc101cbffaed525" href="../../R/cfc101cbffaed525.html" target="n" data-glyph="72,1" class="i method">Dispose</a>()
+        {
+            <a href="#1a2aca715424a192" class="i method">Close</a>();
+            <a href="@1@System.Runtime/A.html#25d9c1e022317a99" class="t t">GC</a>.<a href="@1@System.Runtime/A.html#2673f5220a565bf2" class="i method">SuppressFinalize</a>(<a href="#0220d010e7ac04ce" class="k">this</a>);
+        }
+ 
+        <b>public void</b> <a id="1a2aca715424a192" href="../../R/1a2aca715424a192.html" target="n" data-glyph="72,1" class="i method">Close</a>()
+        {
+            <b>if</b> (<a href="#eab71ecffa7c5578" class="i field">_disposed</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#eab71ecffa7c5578" class="i field">_disposed</a> = <b>true</b>;
+ 
+            <span class="c">// Disposes all the services registered for this shell</span>
+            <b>if</b> (<a href="#14806dab63c4713f" class="i property">ServiceProvider</a> != <b>null</b>)
+            {
+                (<a href="#14806dab63c4713f" class="i property">ServiceProvider</a> <b>as</b> <a href="@1@System.Runtime/A.html#1f55292c3174123d" class="t t">IDisposable</a>)?.<a href="@1@System.Runtime/A.html#4e23fed29bd598fa" class="i method">Dispose</a>();
+                <a href="#14806dab63c4713f" class="i property">ServiceProvider</a> = <b>null</b>;
+            }
+ 
+            <a href="#ba619911827f29e7" class="i property">IsActivated</a> = <b>false</b>;
+            <a href="#d014653d2e38149a" class="i property">Blueprint</a> = <b>null</b>;
+            <a href="#83bf1f479f57ae7a" class="i property">Pipeline</a> = <b>null</b>;
+        }
+ 
+        ~<a id="826b68186b2cd771" href="../../R/../../0000000000.html" target="n" data-glyph="75,1" class="t method">ShellContext</a>()
+        {
+            <a href="#1a2aca715424a192" class="i method">Close</a>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

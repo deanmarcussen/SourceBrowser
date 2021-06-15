@@ -1,0 +1,239 @@
+﻿<!DOCTYPE html>
+<html><head><title>AutoSetupMiddleware.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(230);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.AutoSetup/AutoSetupMiddleware.cs" target="_top">AutoSetupMiddleware.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.AutoSetup" target="_top">src\OrchardCore.Modules\OrchardCore.AutoSetup\OrchardCore.AutoSetup.csproj</a> (OrchardCore.AutoSetup)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Abstractions</span>.<span class="i n">Setup</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">AutoSetup</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">AutoSetup</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> The auto setup middleware.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="3b2c43662ebc7fb5" href="R/3b2c43662ebc7fb5.html" target="n" data-glyph="0,0" class="t t">AutoSetupMiddleware</a>
+    {
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The next middleware in the execution pipeline.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private readonly</b> <span class="t t">RequestDelegate</span> <a id="6eaa1f60d5207b11" href="R/6eaa1f60d5207b11.html" target="n" data-glyph="46,1" class="i field">_next</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The Shell host.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <a id="423150ee036ff1d2" href="R/423150ee036ff1d2.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The Shell settings.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <a id="72b81a8cba8f58e9" href="R/72b81a8cba8f58e9.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The Shell settings manager.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#b384cb770bdec8af" class="t t">IShellSettingsManager</a> <a id="fe2ab3b05eecb4e8" href="R/fe2ab3b05eecb4e8.html" target="n" data-glyph="46,1" class="i field">_shellSettingsManager</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The auto-setup options.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private readonly</b> <a href="Options/AutoSetupOptions.cs.html#2be4895f86fa613b" class="t t">AutoSetupOptions</a> <a id="86efa82d7eb0e02f" href="R/86efa82d7eb0e02f.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The logger.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private readonly</b> <span class="t t">ILogger</span>&lt;<a href="#3b2c43662ebc7fb5" class="t t">AutoSetupMiddleware</a>&gt; <a id="bdd5622e53a23ed1" href="R/bdd5622e53a23ed1.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private readonly</b> <a href="Options/TenantSetupOptions.cs.html#5fa981012e7434fe" class="t t">TenantSetupOptions</a> <a id="83dde0a2d3391bf4" href="R/83dde0a2d3391bf4.html" target="n" data-glyph="46,1" class="i field">_setupOptions</a>;
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="536bd4fc5cf26ddc" href="R/536bd4fc5cf26ddc.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Initializes a new instance of the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#3b2c43662ebc7fb5" class="t t">AutoSetupMiddleware</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> class.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r0 r">next</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The next middleware in the execution pipeline.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r">shellHost</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The Shell host.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r2 r">shellSettings</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The Shell settings.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r3 r">shellSettingsManager</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The Shell settings manager.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r4 r">options</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The auto-setup Options.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r5 r">logger</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The logger.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a id="f534f22902ebc2c1" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AutoSetupMiddleware</a>(
+            <span class="t t">RequestDelegate</span> <span id="r0 rd" class="r0 r">next</span>,
+            <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <span id="r1 rd" class="r1 r">shellHost</span>,
+            <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r2 rd" class="r2 r">shellSettings</span>,
+            <a href="/OrchardCore.Abstractions/A.html#b384cb770bdec8af" class="t t">IShellSettingsManager</a> <span id="r3 rd" class="r3 r">shellSettingsManager</span>,
+            <span class="t t">IOptions</span>&lt;<a href="Options/AutoSetupOptions.cs.html#2be4895f86fa613b" class="t t">AutoSetupOptions</a>&gt; <span id="r4 rd" class="r4 r">options</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#3b2c43662ebc7fb5" class="t t">AutoSetupMiddleware</a>&gt; <span id="r5 rd" class="r5 r">logger</span>)
+        {
+            <a href="#6eaa1f60d5207b11" class="i field">_next</a> = <span class="r0 r">next</span>;
+            <a href="#423150ee036ff1d2" class="i field">_shellHost</a> = <span class="r1 r">shellHost</span>;
+            <a href="#72b81a8cba8f58e9" class="i field">_shellSettings</a> = <span class="r2 r">shellSettings</span>;
+            <a href="#fe2ab3b05eecb4e8" class="i field">_shellSettingsManager</a> = <span class="r3 r">shellSettingsManager</span>;
+            <a href="#86efa82d7eb0e02f" class="i field">_options</a> = <span class="r4 r">options</span>.<span class="i property">Value</span>;
+            <a href="#bdd5622e53a23ed1" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+ 
+            <a href="#83dde0a2d3391bf4" class="i field">_setupOptions</a> = <a href="#86efa82d7eb0e02f" class="i field">_options</a>.<a href="Options/AutoSetupOptions.cs.html#0582968e801f4c1b" class="i property">Tenants</a>.<span class="i method">FirstOrDefault</span>(<span id="r6 rd" class="r6 r">options</span> =&gt; <a href="#72b81a8cba8f58e9" class="i field">_shellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> == <span class="r6 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#35139647e2eed025" class="i property">ShellName</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The middleware auto-setup invoke.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r7 r">httpContext</span><span class="c">&quot;</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The http context.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="47954805533498e1" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">InvokeAsync</a>(<span class="t t">HttpContext</span> <span id="r7 rd" class="r7 r">httpContext</span>)
+        {
+            <b>if</b> (<a href="#83dde0a2d3391bf4" class="i field">_setupOptions</a> != <b>null</b> &amp;&amp; <a href="#72b81a8cba8f58e9" class="i field">_shellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#75039d899725f387" class="i field">Uninitialized</a>)
+            {
+                <b>await</b> <a href="#536bd4fc5cf26ddc" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+                <b>try</b>
+                {
+                    <b>if</b> (<a href="#72b81a8cba8f58e9" class="i field">_shellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#75039d899725f387" class="i field">Uninitialized</a>)
+                    {
+                        <a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="k">var</a> <span id="r8 rd" class="r8 r">setupService</span> = <span class="r7 r">httpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a>&gt;();
+                        <b>if</b> (<b>await</b> <a href="#0f1995bab59d486b" class="i method">SetupTenantAsync</a>(<span class="r8 r">setupService</span>, <a href="#83dde0a2d3391bf4" class="i field">_setupOptions</a>, <a href="#72b81a8cba8f58e9" class="i field">_shellSettings</a>))
+                        {
+                            <b>if</b> (<a href="#83dde0a2d3391bf4" class="i field">_setupOptions</a>.<a href="Options/TenantSetupOptions.cs.html#34bc16b29c5b91c8" class="i property">IsDefault</a>)
+                            {
+                                <span class="c">// Create the rest of the Shells for further on demand setup.</span>
+                                <b>foreach</b> (<a href="Options/TenantSetupOptions.cs.html#5fa981012e7434fe" class="k">var</a> <span id="r9 rd" class="r9 r">setupOptions</span> <b>in</b> <a href="#86efa82d7eb0e02f" class="i field">_options</a>.<a href="Options/AutoSetupOptions.cs.html#0582968e801f4c1b" class="i property">Tenants</a>)
+                                {
+                                    <b>if</b> (<a href="#83dde0a2d3391bf4" class="i field">_setupOptions</a> != <span class="r9 r">setupOptions</span>)
+                                    {
+                                        <b>await</b> <a href="#fb181ec1c45ec9fd" class="i method">CreateTenantSettingsAsync</a>(<span class="r9 r">setupOptions</span>);
+                                    }
+                                }
+                            }
+ 
+                            <b>var</b> <span id="r10 rd" class="r10 r">pathBase</span> = <span class="r7 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span>;
+                            <b>if</b> (!<span class="r10 r">pathBase</span>.<span class="i property">HasValue</span>)
+                            {
+                                <span class="r10 r">pathBase</span> = <span class="s">&quot;/&quot;</span>;
+                            }
+ 
+                            <span class="r7 r">httpContext</span>.<span class="i property">Response</span>.<span class="i method">Redirect</span>(<span class="r10 r">pathBase</span>);
+ 
+                            <b>return</b>;
+                        }
+                    }
+                }
+                <b>finally</b>
+                {
+                    <a href="#536bd4fc5cf26ddc" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+                }
+            }
+ 
+            <b>await</b> <a href="#6eaa1f60d5207b11" class="i field">_next</a>.<span class="i method">Invoke</span>(<span class="r7 r">httpContext</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Setup tenant.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r11 r">setupService</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The setup service.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r12 r">setupOptions</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The tenant setup options.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r13 r">shellSettings</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The tenant shell settings.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="0f1995bab59d486b" href="R/0f1995bab59d486b.html" target="n" data-glyph="72,1" class="i method">SetupTenantAsync</a>(<a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a> <span id="r11 rd" class="r11 r">setupService</span>, <a href="Options/TenantSetupOptions.cs.html#5fa981012e7434fe" class="t t">TenantSetupOptions</a> <span id="r12 rd" class="r12 r">setupOptions</span>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r13 rd" class="r13 r">shellSettings</span>)
+        {
+            <a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="k">var</a> <span id="r14 rd" class="r14 r">setupContext</span> = <b>await</b> <a href="#af1a0edc7f4187d5" class="i method">GetSetupContextAsync</a>(<span class="r12 r">setupOptions</span>, <span class="r11 r">setupService</span>, <span class="r13 r">shellSettings</span>);
+ 
+            <a href="#bdd5622e53a23ed1" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;AutoSetup is initializing the site&quot;</span>);
+ 
+            <b>await</b> <span class="r11 r">setupService</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#16ade5dbf324eb8c" class="i method">SetupAsync</a>(<span class="r14 r">setupContext</span>);
+ 
+            <b>if</b> (<span class="r14 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>.<a href="@1@System.Runtime/A.html#3d6c21c4e9bd5f63" class="i property">Count</a> == 0)
+            {
+                <a href="#bdd5622e53a23ed1" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">$&quot;</span><span class="s">AutoSetup successfully provisioned the site </span>{<span class="r12 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#1ed5f0d286d2cc05" class="i property">SiteName</a>}<span class="s">&quot;</span>);
+ 
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="k">var</a> <span id="r15 rd" class="r15 r">stringBuilder</span> = <b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>();
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r16 rd" class="r16 r">error</span> <b>in</b> <span class="r14 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>)
+            {
+                <span class="r15 r">stringBuilder</span>.<a href="@1@System.Runtime/A.html#73bc75596acbac77" class="i method">AppendLine</a>(<span class="s">$&quot;</span>{<span class="r16 r">error</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>}<span class="s"> : &#39;</span>{<span class="r16 r">error</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>}<span class="s">&#39;</span><span class="s">&quot;</span>);
+            }
+ 
+            <a href="#bdd5622e53a23ed1" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;AutoSetup failed installing the site &#39;{SiteName}&#39; with errors: {Errors}&quot;</span>, <span class="r12 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#1ed5f0d286d2cc05" class="i property">SiteName</a>, <span class="r15 r">stringBuilder</span>);
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Create tenant shell settings.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r17 r">setupOptions</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The setup options.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt; <a id="fb181ec1c45ec9fd" href="R/fb181ec1c45ec9fd.html" target="n" data-glyph="72,1" class="i method">CreateTenantSettingsAsync</a>(<a href="Options/TenantSetupOptions.cs.html#5fa981012e7434fe" class="t t">TenantSetupOptions</a> <span id="r17 rd" class="r17 r">setupOptions</span>)
+        {
+            <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r18 rd" class="r18 r">shellSettings</span> = <a href="#fe2ab3b05eecb4e8" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#0fd6f52d82e2dba8" class="i method">CreateDefaultSettings</a>();
+ 
+            <span class="r18 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> = <span class="r17 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#35139647e2eed025" class="i property">ShellName</a>;
+            <span class="r18 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#258c1ed033e90731" class="i property">RequestUrlHost</a> = <span class="r17 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#7c6744cb0f2d620f" class="i property">RequestUrlHost</a>;
+            <span class="r18 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a> = <span class="r17 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#dbfcfc8240b939b6" class="i property">RequestUrlPrefix</a>;
+            <span class="r18 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> = <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#75039d899725f387" class="i field">Uninitialized</a>;
+ 
+            <span class="r18 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;ConnectionString&quot;</span>] = <span class="r17 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#ae536c6442852b5d" class="i property">DatabaseConnectionString</a>;
+            <span class="r18 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;TablePrefix&quot;</span>] = <span class="r17 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#318cd31d7f570c0a" class="i property">DatabaseTablePrefix</a>;
+            <span class="r18 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;DatabaseProvider&quot;</span>] = <span class="r17 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#8890c6d40f9c96fd" class="i property">DatabaseProvider</a>;
+            <span class="r18 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;Secret&quot;</span>] = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>();
+            <span class="r18 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;RecipeName&quot;</span>] = <span class="r17 r">setupOptions</span>.<a href="Options/TenantSetupOptions.cs.html#f207447e92661c7d" class="i property">RecipeName</a>;
+ 
+            <b>await</b> <a href="#423150ee036ff1d2" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#50ed402345afd8d9" class="i method">UpdateShellSettingsAsync</a>(<span class="r18 r">shellSettings</span>);
+ 
+            <b>return</b> <span class="r18 r">shellSettings</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Get setup context from the configuration.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r19 r">options</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The tenant setup options.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r20 r">setupService</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The setup service.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r21 r">shellSettings</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The tenant shell settings.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c"> The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="t t">SetupContext</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">. to setup the site </span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>private static async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="t t">SetupContext</a>&gt; <a id="af1a0edc7f4187d5" href="R/af1a0edc7f4187d5.html" target="n" data-glyph="76,1" class="i method">GetSetupContextAsync</a>(<a href="Options/TenantSetupOptions.cs.html#5fa981012e7434fe" class="t t">TenantSetupOptions</a> <span id="r19 rd" class="r19 r">options</span>, <a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a> <span id="r20 rd" class="r20 r">setupService</span>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r21 rd" class="r21 r">shellSettings</span>)
+        {
+            <b>var</b> <span id="r22 rd" class="r22 r">recipes</span> = <b>await</b> <span class="r20 r">setupService</span>.<span class="i">GetSetupRecipesAsync</span>();
+ 
+            <b>var</b> <span id="r23 rd" class="r23 r">recipe</span> = <span class="r22 r">recipes</span>.<span class="i">SingleOrDefault</span>(<span id="r24 rd" class="r24 r">r</span> =&gt; <span class="r24 r">r</span>.<span class="i">Name</span> == <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#f207447e92661c7d" class="i property">RecipeName</a>);
+ 
+            <a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="k">var</a> <span id="r25 rd" class="r25 r">setupContext</span> = <b>new</b> <a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="t constructor">SetupContext</a>
+            {
+                <a href="/OrchardCore.Setup.Abstractions/A.html#374fdc99d51319ef" class="i property">Recipe</a> = <span class="r23 r">recipe</span>,
+                <a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a> = <span class="r21 r">shellSettings</span>,
+                <a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;()
+            };
+ 
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#6b07d68b53e8ab77" class="i field">AdminEmail</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#57f353d8d82b4c21" class="i property">AdminEmail</a>;
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#05629d40aa147086" class="i field">AdminPassword</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#33256da8229ade3a" class="i property">AdminPassword</a>;
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#c5b4288afea079c6" class="i field">AdminUsername</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#fa08f504e510c192" class="i property">AdminUsername</a>;
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#faba1de90a2e50ad" class="i field">DatabaseConnectionString</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#ae536c6442852b5d" class="i property">DatabaseConnectionString</a>;
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#98ec9f7e23646097" class="i field">DatabaseProvider</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#8890c6d40f9c96fd" class="i property">DatabaseProvider</a>;
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#d70db8cfb0c97dc0" class="i field">DatabaseTablePrefix</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#318cd31d7f570c0a" class="i property">DatabaseTablePrefix</a>;
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#ccd60951383f9ba7" class="i field">SiteName</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#1ed5f0d286d2cc05" class="i property">SiteName</a>;
+            <span class="r25 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#84f7ddfea5edfe2f" class="i field">SiteTimeZone</a>] = <span class="r19 r">options</span>.<a href="Options/TenantSetupOptions.cs.html#5f78a4c5d5725f96" class="i property">SiteTimeZone</a>;
+ 
+            <b>return</b> <span class="r25 r">setupContext</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

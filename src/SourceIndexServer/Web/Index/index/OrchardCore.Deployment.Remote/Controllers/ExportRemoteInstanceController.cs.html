@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html><head><title>ExportRemoteInstanceController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(128);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Deployment.Remote/Controllers/ExportRemoteInstanceController.cs" target="_top">Controllers\ExportRemoteInstanceController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Deployment.Remote" target="_top">src\OrchardCore.Modules\OrchardCore.Deployment.Remote\OrchardCore.Deployment.Remote.csproj</a> (OrchardCore.Deployment.Remote)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>.<span class="i n">Compression</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Core</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Remote</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Remote</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Recipes</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Remote</span>.<span class="i n">Controllers</span>
+{
+    [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>]
+    <b>public class</b> <a id="81b862acea702b5c" href="../R/81b862acea702b5c.html" target="n" data-glyph="0,0" class="t t">ExportRemoteInstanceController</a> : <span class="t t">Controller</span>
+    {
+        <b>private static readonly</b> <span class="t t">HttpClient</span> <a id="cb4165594a3486a1" href="../R/cb4165594a3486a1.html" target="n" data-glyph="46,1" class="i field">_httpClient</a> = <b>new</b> <span class="t constructor">HttpClient</span>();
+ 
+        <b>private readonly</b> <span class="i">IDeploymentManager</span> <a id="cde729fe8d514069" href="../R/cde729fe8d514069.html" target="n" data-glyph="46,1" class="i field">_deploymentManager</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="59d6d946e240c824" href="../R/59d6d946e240c824.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="379e8ffa4f78961e" href="../R/379e8ffa4f78961e.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <a href="../Services/RemoteInstanceService.cs.html#def488f4bd69aa58" class="t t">RemoteInstanceService</a> <a id="37356e23fa53c393" href="../R/37356e23fa53c393.html" target="n" data-glyph="46,1" class="i field">_service</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="0819b58b685011e0" href="../R/0819b58b685011e0.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="0a47da71a02e764a" href="../R/0a47da71a02e764a.html" target="n" data-glyph="46,1" class="i field">H</a>;
+ 
+        <b>public</b> <a id="0fe1510dabcb5881" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ExportRemoteInstanceController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <span class="i">ISession</span> <span id="r1 rd" class="r1 r">session</span>,
+            <a href="../Services/RemoteInstanceService.cs.html#def488f4bd69aa58" class="t t">RemoteInstanceService</a> <span id="r2 rd" class="r2 r">service</span>,
+            <span class="i">IDeploymentManager</span> <span id="r3 rd" class="r3 r">deploymentManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r4 rd" class="r4 r">notifier</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#81b862acea702b5c" class="t t">ExportRemoteInstanceController</a>&gt; <span id="r5 rd" class="r5 r">localizer</span>)
+        {
+            <a href="#59d6d946e240c824" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#cde729fe8d514069" class="i field">_deploymentManager</a> = <span class="r3 r">deploymentManager</span>;
+            <a href="#379e8ffa4f78961e" class="i field">_session</a> = <span class="r1 r">session</span>;
+            <a href="#37356e23fa53c393" class="i field">_service</a> = <span class="r2 r">service</span>;
+            <a href="#0819b58b685011e0" class="i field">_notifier</a> = <span class="r4 r">notifier</span>;
+            <a href="#0a47da71a02e764a" class="i field">H</a> = <span class="r5 r">localizer</span>;
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="0401c1dbe2a21593" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Execute</a>(<b>int</b> <span id="r6 rd" class="r6 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">remoteInstanceId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">returnUrl</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#59d6d946e240c824" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#3ecf5d2b49fc0e1b" class="t t">Permissions</a>.<a href="../Permissions.cs.html#b8f9c8e21fe6bbf7" class="i field">Export</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">deploymentPlan</span> = <b>await</b> <a href="#379e8ffa4f78961e" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="i">DeploymentPlan</span>&gt;(<span class="r6 r">id</span>);
+ 
+            <b>if</b> (<span class="r9 r">deploymentPlan</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../Models/RemoteInstance.cs.html#52e0b4e1d45b1a29" class="k">var</a> <span id="r10 rd" class="r10 r">remoteInstance</span> = <b>await</b> <a href="#37356e23fa53c393" class="i field">_service</a>.<a href="../Services/RemoteInstanceService.cs.html#2b13ef9501652272" class="i method">GetRemoteInstanceAsync</a>(<span class="r7 r">remoteInstanceId</span>);
+ 
+            <b>if</b> (<span class="r10 r">remoteInstance</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">archiveFileName</span>;
+            <b>var</b> <span id="r12 rd" class="r12 r">filename</span> = <span class="r9 r">deploymentPlan</span>.<span class="i">Name</span>.<span class="i">ToSafeName</span>() + <span class="s">&quot;.zip&quot;</span>;
+ 
+            <b>using</b> (<a href="/OrchardCore.Deployment.Core/A.html#b6ec81a933f40d3c" class="k">var</a> <span id="r13 rd" class="r13 r">fileBuilder</span> = <b>new</b> <a href="/OrchardCore.Deployment.Core/A.html#a238a8f98eb467ec" class="t constructor">TemporaryFileBuilder</a>())
+            {
+                <span class="r11 r">archiveFileName</span> = <span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3a7a8c72321c6e1d" class="i method">GetTempPath</a>(), <span class="r12 r">filename</span>);
+ 
+                <b>var</b> <span id="r14 rd" class="r14 r">deploymentPlanResult</span> = <b>new</b> <span class="i">DeploymentPlanResult</span>(<span class="r13 r">fileBuilder</span>, <b>new</b> <span class="i">RecipeDescriptor</span>());
+                <b>await</b> <a href="#cde729fe8d514069" class="i field">_deploymentManager</a>.<span class="i">ExecuteDeploymentPlanAsync</span>(<span class="r9 r">deploymentPlan</span>, <span class="r14 r">deploymentPlanResult</span>);
+ 
+                <b>if</b> (<span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r11 r">archiveFileName</span>))
+                {
+                    <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r11 r">archiveFileName</span>);
+                }
+ 
+                <span class="t t">ZipFile</span>.<span class="i method">CreateFromDirectory</span>(<span class="r13 r">fileBuilder</span>.<a href="/OrchardCore.Deployment.Core/A.html#b569fa7e8934ce85" class="i property">Folder</a>, <span class="r11 r">archiveFileName</span>);
+            }
+ 
+            <span class="t t">HttpResponseMessage</span> <span id="r15 rd" class="r15 r">response</span>;
+ 
+            <b>try</b>
+            {
+                <b>using</b> (<b>var</b> <span id="r16 rd" class="r16 r">requestContent</span> = <b>new</b> <span class="t constructor">MultipartFormDataContent</span>())
+                {
+                    <span class="r16 r">requestContent</span>.<span class="i method">Add</span>(<b>new</b> <span class="t constructor">StreamContent</span>(
+                        <b>new</b> <a href="@1@System.Runtime/A.html#b64107cb400278ec" class="t constructor">FileStream</a>(<span class="r11 r">archiveFileName</span>,
+                        <a href="@1@System.Runtime/A.html#c0cb6ba6af625b3a" class="t t">FileMode</a>.<a href="@1@System.Runtime/A.html#f4421e1d202f76fa" class="i field">Open</a>, <a href="@1@System.Runtime/A.html#5cc5644ae3acd24b" class="t t">FileAccess</a>.<a href="@1@System.Runtime/A.html#0f1c68c756d0636b" class="i field">Read</a>, <a href="@1@System.Runtime/A.html#2bfafb4d44a4f126" class="t t">FileShare</a>.<a href="@1@System.Runtime/A.html#e51e30298bd05259" class="i field">ReadWrite</a>, 1, <a href="@1@System.Runtime/A.html#4d439b7469a1b468" class="t t">FileOptions</a>.<a href="@1@System.Runtime/A.html#ce83d774bb7a9312" class="i field">Asynchronous</a> | <a href="@1@System.Runtime/A.html#4d439b7469a1b468" class="t t">FileOptions</a>.<a href="@1@System.Runtime/A.html#980c8cfecaf1b9f9" class="i field">SequentialScan</a>)
+                    ),
+                        <b>nameof</b>(<a href="../ViewModels/ImportViewModel.cs.html#916765dbfb801b78" class="t t">ImportViewModel</a>.<a href="../ViewModels/ImportViewModel.cs.html#56f8d6d9bfccbe04" class="i property">Content</a>), <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#95facc58d06cadd0" class="i method">GetFileName</a>(<span class="r11 r">archiveFileName</span>));
+                    <span class="r16 r">requestContent</span>.<span class="i method">Add</span>(<b>new</b> <span class="t constructor">StringContent</span>(<span class="r10 r">remoteInstance</span>.<a href="../Models/RemoteInstance.cs.html#2749308438c849c8" class="i property">ClientName</a>), <b>nameof</b>(<a href="../ViewModels/ImportViewModel.cs.html#916765dbfb801b78" class="t t">ImportViewModel</a>.<a href="../ViewModels/ImportViewModel.cs.html#10c7f0f0a1e09c38" class="i property">ClientName</a>));
+                    <span class="r16 r">requestContent</span>.<span class="i method">Add</span>(<b>new</b> <span class="t constructor">StringContent</span>(<span class="r10 r">remoteInstance</span>.<a href="../Models/RemoteInstance.cs.html#8d36ed754c028d2b" class="i property">ApiKey</a>), <b>nameof</b>(<a href="../ViewModels/ImportViewModel.cs.html#916765dbfb801b78" class="t t">ImportViewModel</a>.<a href="../ViewModels/ImportViewModel.cs.html#7884b2732d53e514" class="i property">ApiKey</a>));
+ 
+                    <span class="r15 r">response</span> = <b>await</b> <a href="#cb4165594a3486a1" class="i field">_httpClient</a>.<span class="i method">PostAsync</span>(<span class="r10 r">remoteInstance</span>.<a href="../Models/RemoteInstance.cs.html#8780b716f58441a3" class="i property">Url</a>, <span class="r16 r">requestContent</span>);
+                }
+ 
+                <b>if</b> (<span class="r15 r">response</span>.<span class="i property">StatusCode</span> == <span class="i n">System</span>.<span class="i n">Net</span>.<span class="t t">HttpStatusCode</span>.<span class="i field">OK</span>)
+                {
+                    <a href="#0819b58b685011e0" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#0a47da71a02e764a" class="i field">H</a>[<span class="s">&quot;Deployment executed successfully.&quot;</span>]);
+                }
+                <b>else</b>
+                {
+                    <a href="#0819b58b685011e0" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#0a47da71a02e764a" class="i field">H</a>[<span class="s">&quot;An error occurred while sending the deployment to the remote instance: \&quot;{0} ({1})\&quot;&quot;</span>, <span class="r15 r">response</span>.<span class="i property">ReasonPhrase</span>, (<b>int</b>)<span class="r15 r">response</span>.<span class="i property">StatusCode</span>]);
+                }
+            }
+            <b>finally</b>
+            {
+                <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r11 r">archiveFileName</span>);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r8 r">returnUrl</span>))
+            {
+                <b>return</b> <span class="i method">LocalRedirect</span>(<span class="r8 r">returnUrl</span>);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<span class="s">&quot;Display&quot;</span>, <span class="s">&quot;DeploymentPlan&quot;</span>, <b>new</b> { <a href="#372d2bea7feada7f" class="i property">area</a> = <span class="s">&quot;OrchardCore.Deployment&quot;</span>, <span class="r6 r">id</span> });
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

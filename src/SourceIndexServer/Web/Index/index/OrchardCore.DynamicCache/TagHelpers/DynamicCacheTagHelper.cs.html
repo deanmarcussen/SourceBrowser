@@ -1,0 +1,285 @@
+﻿<!DOCTYPE html>
+<html><head><title>DynamicCacheTagHelper.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(276);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DynamicCache/TagHelpers/DynamicCacheTagHelper.cs" target="_top">TagHelpers\DynamicCacheTagHelper.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DynamicCache" target="_top">src\OrchardCore.Modules\OrchardCore.DynamicCache\OrchardCore.DynamicCache.csproj</a> (OrchardCore.DynamicCache)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">TagHelpers</span>.<span class="i n">Cache</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Abstractions</span>.<span class="i">Pooling</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Cache</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DynamicCache</span>.<span class="i n">TagHelpers</span>
+{
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;dynamic-cache&quot;</span>, <span class="i property">Attributes</span> = <a href="#e31f6bb52bbf9a05" class="i field">CacheIdAttributeName</a>)]
+    <b>public class</b> <a id="0fa8f4d549ce7d3f" href="../R/0fa8f4d549ce7d3f.html" target="n" data-glyph="0,0" class="t t">DynamicCacheTagHelper</a> : <span class="t t">TagHelper</span>
+    {
+        <b>private const string</b> <a id="e31f6bb52bbf9a05" href="../R/e31f6bb52bbf9a05.html" target="n" data-glyph="10,1" class="i field">CacheIdAttributeName</a> = <span class="s">&quot;cache-id&quot;</span>;
+        <b>private const string</b> <a id="d589a4939074e66e" href="../R/d589a4939074e66e.html" target="n" data-glyph="10,1" class="i field">VaryByAttributeName</a> = <span class="s">&quot;vary-by&quot;</span>;
+        <b>private const string</b> <a id="a2c83debdf2b759f" href="../R/a2c83debdf2b759f.html" target="n" data-glyph="10,1" class="i field">DependenciesAttributeNAme</a> = <span class="s">&quot;dependencies&quot;</span>;
+        <b>private const string</b> <a id="e1c5cc49c42a669c" href="../R/e1c5cc49c42a669c.html" target="n" data-glyph="10,1" class="i field">ExpiresOnAttributeName</a> = <span class="s">&quot;expires-on&quot;</span>;
+        <b>private const string</b> <a id="1ba40e44c757f152" href="../R/1ba40e44c757f152.html" target="n" data-glyph="10,1" class="i field">ExpiresAfterAttributeName</a> = <span class="s">&quot;expires-after&quot;</span>;
+        <b>private const string</b> <a id="b6a66ff1d1b5cfb8" href="../R/b6a66ff1d1b5cfb8.html" target="n" data-glyph="10,1" class="i field">ExpiresSlidingAttributeName</a> = <span class="s">&quot;expires-sliding&quot;</span>;
+        <b>private const string</b> <a id="1c080b6379702af3" href="../R/1c080b6379702af3.html" target="n" data-glyph="10,1" class="i field">EnabledAttributeName</a> = <span class="s">&quot;enabled&quot;</span>;
+ 
+        <b>private static readonly char</b>[] <a id="b038aca99ee232dc" href="../R/b038aca99ee232dc.html" target="n" data-glyph="46,1" class="i field">SplitChars</a> = <b>new</b>[] { <span class="s">&#39;,&#39;</span>, <span class="s">&#39; &#39;</span> };
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The default duration, from the time the cache entry was added, when it should be evicted.</span>
+        <span class="c">///</span><span class="c"> This default duration will only be used if no other expiration criteria is specified.</span>
+        <span class="c">///</span><span class="c"> The default expiration time is a sliding expiration of 30 seconds.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public static readonly</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="c871ab5fe65f2b3f" href="../R/c871ab5fe65f2b3f.html" target="n" data-glyph="42,1" class="i field">DefaultExpiration</a> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#c24437e069f958f9" class="i method">FromSeconds</a>(30);
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>.<span class="t t">HtmlEncoder</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> which encodes the content to be cached.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>protected</b> <span class="t t">HtmlEncoder</span> <a id="d9b8cc2031bc279d" href="../R/d9b8cc2031bc279d.html" target="n" data-glyph="105,1" class="i property">HtmlEncoder</a> { <b>get</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets or sets a </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a><span class="c">&quot;</span> <span class="c">/&gt;</span><span class="c"> identifying this cache entry.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#e31f6bb52bbf9a05" class="i field">CacheIdAttributeName</a>)]
+        <b>public string</b> <a id="d3b00231ee3ab186" href="../R/d3b00231ee3ab186.html" target="n" data-glyph="102,1" class="i property">CacheId</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets or sets a </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a><span class="c">&quot;</span> <span class="c">/&gt;</span><span class="c"> to vary the cached result by.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#d589a4939074e66e" class="i field">VaryByAttributeName</a>)]
+        <b>public string</b> <a id="9fb65800039ca566" href="../R/9fb65800039ca566.html" target="n" data-glyph="102,1" class="i property">VaryBy</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets or sets a </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a><span class="c">&quot;</span> <span class="c">/&gt;</span><span class="c"> with the dependencies to invalidate the cache with.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#a2c83debdf2b759f" class="i field">DependenciesAttributeNAme</a>)]
+        <b>public string</b> <a id="d770bc0f3534fe3f" href="../R/d770bc0f3534fe3f.html" target="n" data-glyph="102,1" class="i property">Dependencies</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets or sets the exact </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> the cache entry should be evicted.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#e1c5cc49c42a669c" class="i field">ExpiresOnAttributeName</a>)]
+        <b>public</b> <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>? <a id="aad453a2e55c4b00" href="../R/aad453a2e55c4b00.html" target="n" data-glyph="102,1" class="i property">ExpiresOn</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets or sets the duration, from the time the cache entry was added, when it should be evicted.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#1ba40e44c757f152" class="i field">ExpiresAfterAttributeName</a>)]
+        <b>public</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>? <a id="39bcd3fc0d250274" href="../R/39bcd3fc0d250274.html" target="n" data-glyph="102,1" class="i property">ExpiresAfter</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets or sets the duration from last access that the cache entry should be evicted.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#b6a66ff1d1b5cfb8" class="i field">ExpiresSlidingAttributeName</a>)]
+        <b>public</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>? <a id="bb7753135bf1d651" href="../R/bb7753135bf1d651.html" target="n" data-glyph="102,1" class="i property">ExpiresSliding</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets or sets the value which determines if the tag helper is enabled or not.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#1c080b6379702af3" class="i field">EnabledAttributeName</a>)]
+        <b>public bool</b> <a id="e2c9f04e7bbb5dfb" href="../R/e2c9f04e7bbb5dfb.html" target="n" data-glyph="102,1" class="i property">Enabled</a> { <b>get</b>; <b>set</b>; } = <b>true</b>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Prefix used by </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#0fa8f4d549ce7d3f" class="t t">DynamicCacheTagHelper</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> instances when creating entries in </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public static readonly string</b> <a id="aed9b014cc1f60db" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">CacheKeyPrefix</a> = <b>nameof</b>(<a href="#0fa8f4d549ce7d3f" class="t t">DynamicCacheTagHelper</a>);
+ 
+        <b>private readonly</b> <a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a> <a id="8aad8840c4c70a2c" href="../R/8aad8840c4c70a2c.html" target="n" data-glyph="46,1" class="i field">_dynamicCacheService</a>;
+        <b>private readonly</b> <span class="i">ICacheScopeManager</span> <a id="8fa9011143db6edc" href="../R/8fa9011143db6edc.html" target="n" data-glyph="46,1" class="i field">_cacheScopeManager</a>;
+        <b>private readonly</b> <a href="DynamicCacheTagHelperService.cs.html#d6ac6b8820d97f39" class="t t">DynamicCacheTagHelperService</a> <a id="162f055b731a7def" href="../R/162f055b731a7def.html" target="n" data-glyph="46,1" class="i field">_dynamicCacheTagHelperService</a>;
+        <b>private readonly</b> <span class="i">CacheOptions</span> <a id="a1f912a285447925" href="../R/a1f912a285447925.html" target="n" data-glyph="46,1" class="i field">_cacheOptions</a>;
+ 
+        <b>public</b> <a id="a7d9cec5294ceb98" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DynamicCacheTagHelper</a>(
+            <a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a> <span id="r0 rd" class="r0 r">dynamicCacheService</span>,
+            <span class="i">ICacheScopeManager</span> <span id="r1 rd" class="r1 r">cacheScopeManager</span>,
+            <span class="t t">HtmlEncoder</span> <span id="r2 rd" class="r2 r">htmlEncoder</span>,
+            <a href="DynamicCacheTagHelperService.cs.html#d6ac6b8820d97f39" class="t t">DynamicCacheTagHelperService</a> <span id="r3 rd" class="r3 r">dynamicCacheTagHelperService</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">CacheOptions</span>&gt; <span id="r4 rd" class="r4 r">cacheOptions</span>)
+        {
+            <a href="#8aad8840c4c70a2c" class="i field">_dynamicCacheService</a> = <span class="r0 r">dynamicCacheService</span>;
+            <a href="#8fa9011143db6edc" class="i field">_cacheScopeManager</a> = <span class="r1 r">cacheScopeManager</span>;
+            <a href="#d9b8cc2031bc279d" class="i property">HtmlEncoder</a> = <span class="r2 r">htmlEncoder</span>;
+            <a href="#162f055b731a7def" class="i field">_dynamicCacheTagHelperService</a> = <span class="r3 r">dynamicCacheTagHelperService</span>;
+            <a href="#a1f912a285447925" class="i field">_cacheOptions</a> = <span class="r4 r">cacheOptions</span>.<span class="i property">Value</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="0ea615eea4aeeab5" href="../R/0ea615eea4aeeab5.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="t t">TagHelperContext</span> <span id="r5 rd" class="r5 r">context</span>, <span class="t t">TagHelperOutput</span> <span id="r6 rd" class="r6 r">output</span>)
+        {
+            <b>if</b> (<span class="r5 r">context</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r5 r">context</span>));
+            }
+ 
+            <b>if</b> (<span class="r6 r">output</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r6 r">output</span>));
+            }
+ 
+            <span class="t t">IHtmlContent</span> <span id="r7 rd" class="r7 r">content</span>;
+ 
+            <b>if</b> (<a href="#e2c9f04e7bbb5dfb" class="i property">Enabled</a>)
+            {
+                <b>var</b> <span id="r8 rd" class="r8 r">cacheContext</span> = <b>new</b> <span class="i">CacheContext</span>(<a href="#d3b00231ee3ab186" class="i property">CacheId</a>);
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#9fb65800039ca566" class="i property">VaryBy</a>))
+                {
+                    <span class="r8 r">cacheContext</span>.<span class="i">AddContext</span>(<a href="#9fb65800039ca566" class="i property">VaryBy</a>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#b038aca99ee232dc" class="i field">SplitChars</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>));
+                }
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#d770bc0f3534fe3f" class="i property">Dependencies</a>))
+                {
+                    <span class="r8 r">cacheContext</span>.<span class="i">AddTag</span>(<a href="#d770bc0f3534fe3f" class="i property">Dependencies</a>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#b038aca99ee232dc" class="i field">SplitChars</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>));
+                }
+ 
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r9 rd" class="r9 r">hasEvictionCriteria</span> = <b>false</b>;
+ 
+                <b>if</b> (<a href="#aad453a2e55c4b00" class="i property">ExpiresOn</a>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+                {
+                    <span class="r9 r">hasEvictionCriteria</span> = <b>true</b>;
+                    <span class="r8 r">cacheContext</span>.<span class="i">WithExpiryOn</span>(<a href="#aad453a2e55c4b00" class="i property">ExpiresOn</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+                }
+ 
+                <b>if</b> (<a href="#39bcd3fc0d250274" class="i property">ExpiresAfter</a>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+                {
+                    <span class="r9 r">hasEvictionCriteria</span> = <b>true</b>;
+                    <span class="r8 r">cacheContext</span>.<span class="i">WithExpiryAfter</span>(<a href="#39bcd3fc0d250274" class="i property">ExpiresAfter</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+                }
+ 
+                <b>if</b> (<a href="#bb7753135bf1d651" class="i property">ExpiresSliding</a>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+                {
+                    <span class="r9 r">hasEvictionCriteria</span> = <b>true</b>;
+                    <span class="r8 r">cacheContext</span>.<span class="i">WithExpirySliding</span>(<a href="#bb7753135bf1d651" class="i property">ExpiresSliding</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+                }
+ 
+                <b>if</b> (!<span class="r9 r">hasEvictionCriteria</span>)
+                {
+                    <span class="r8 r">cacheContext</span>.<span class="i">WithExpirySliding</span>(<a href="#c871ab5fe65f2b3f" class="i field">DefaultExpiration</a>);
+                }
+ 
+                <a href="#8fa9011143db6edc" class="i field">_cacheScopeManager</a>.<span class="i">EnterScope</span>(<span class="r8 r">cacheContext</span>);
+ 
+                <b>try</b>
+                {
+                    <span class="r7 r">content</span> = <b>await</b> <a href="#fc5a68c71e297fcb" class="i method">ProcessContentAsync</a>(<span class="r6 r">output</span>, <span class="r8 r">cacheContext</span>);
+                }
+                <b>finally</b>
+                {
+                    <a href="#8fa9011143db6edc" class="i field">_cacheScopeManager</a>.<span class="i">ExitScope</span>();
+                }
+            }
+            <b>else</b>
+            {
+                <span class="r7 r">content</span> = <b>await</b> <span class="r6 r">output</span>.<span class="i method">GetChildContentAsync</span>();
+            }
+ 
+            <span class="c">// Clear the contents of the &quot;cache&quot; element since we don&#39;t want to render it.</span>
+            <span class="r6 r">output</span>.<span class="i method">SuppressOutput</span>();
+ 
+            <span class="r6 r">output</span>.<span class="i property">Content</span>.<span class="i method">SetHtmlContent</span>(<span class="r7 r">content</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="fc5a68c71e297fcb" href="../R/fc5a68c71e297fcb.html" target="n" data-glyph="72,1" class="i method">ProcessContentAsync</a>(<span class="t t">TagHelperOutput</span> <span id="r10 rd" class="r10 r">output</span>, <span class="i">CacheContext</span> <span id="r11 rd" class="r11 r">cacheContext</span>)
+        {
+            <span class="t t">IHtmlContent</span> <span id="r12 rd" class="r12 r">content</span> = <b>null</b>;
+ 
+            <b>while</b> (<span class="r12 r">content</span> == <b>null</b>)
+            {
+                <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <span id="r13 rd" class="r13 r">result</span>;
+ 
+                <span class="c">// Is there any request already processing the value?</span>
+                <b>if</b> (!<a href="#162f055b731a7def" class="i field">_dynamicCacheTagHelperService</a>.<a href="DynamicCacheTagHelperService.cs.html#c45d6fd34de2ad81" class="i field">Workers</a>.<span class="i method">TryGetValue</span>(<a href="#d3b00231ee3ab186" class="i property">CacheId</a>, <b>out</b> <span class="r13 r">result</span>))
+                {
+                    <span class="c">// There is a small race condition here between TryGetValue and TryAdd that might cause the</span>
+                    <span class="c">// content to be computed more than once. We don&#39;t care about this race as the probability of</span>
+                    <span class="c">// happening is very small and the impact is not critical.</span>
+                    <a href="@1@System.Runtime/A.html#94bf04047d6bd325" class="k">var</a> <span id="r14 rd" class="r14 r">tcs</span> = <b>new</b> <a href="@1@System.Runtime/A.html#4aca22f9388e0ac8" class="t constructor">TaskCompletionSource</a>&lt;<span class="t t">IHtmlContent</span>&gt;();
+ 
+                    <a href="#162f055b731a7def" class="i field">_dynamicCacheTagHelperService</a>.<a href="DynamicCacheTagHelperService.cs.html#c45d6fd34de2ad81" class="i field">Workers</a>.<span class="i method">TryAdd</span>(<a href="#d3b00231ee3ab186" class="i property">CacheId</a>, <span class="r14 r">tcs</span>.<a href="@1@System.Runtime/A.html#14fe3876fba4607a" class="i property">Task</a>);
+ 
+                    <b>try</b>
+                    {
+                        <b>var</b> <span id="r15 rd" class="r15 r">value</span> = <b>await</b> <a href="#8aad8840c4c70a2c" class="i field">_dynamicCacheService</a>.<span class="i">GetCachedValueAsync</span>(<span class="r11 r">cacheContext</span>);
+ 
+                        <b>if</b> (<span class="r15 r">value</span> == <b>null</b>)
+                        {
+                            <span class="c">// The value is not cached, we need to render the tag helper output</span>
+                            <b>var</b> <span id="r16 rd" class="r16 r">processedContent</span> = <b>await</b> <span class="r10 r">output</span>.<span class="i method">GetChildContentAsync</span>();
+ 
+                            <b>using</b> <b>var</b> <span id="r17 rd" class="r17 r">writer</span> = <b>new</b> <span class="i">ZStringWriter</span>();
+                            <span class="c">// Write the start of a cache debug block.</span>
+                            <b>if</b> (<a href="#a1f912a285447925" class="i field">_cacheOptions</a>.<span class="i">DebugMode</span>)
+                            {
+                                <span class="c">// No need to optimize this code as it will be used for debugging purpose.</span>
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>();
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">$&quot;</span><span class="s">&lt;!-- CACHE BLOCK: </span>{<span class="r11 r">cacheContext</span>.<span class="i">CacheId</span>}<span class="s"> (</span>{<a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>()}<span class="s">)</span><span class="s">&quot;</span>);
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">$&quot;</span><span class="s">         VARY BY: </span>{<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r11 r">cacheContext</span>.<span class="i">Contexts</span>)}<span class="s">&quot;</span>);
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">$&quot;</span><span class="s">    DEPENDENCIES: </span>{<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r11 r">cacheContext</span>.<span class="i">Tags</span>)}<span class="s">&quot;</span>);
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">$&quot;</span><span class="s">      EXPIRES ON: </span>{<span class="r11 r">cacheContext</span>.<span class="i">ExpiresOn</span>}<span class="s">&quot;</span>);
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">$&quot;</span><span class="s">   EXPIRES AFTER: </span>{<span class="r11 r">cacheContext</span>.<span class="i">ExpiresAfter</span>}<span class="s">&quot;</span>);
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">$&quot;</span><span class="s"> EXPIRES SLIDING: </span>{<span class="r11 r">cacheContext</span>.<span class="i">ExpiresSliding</span>}<span class="s">&quot;</span>);
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">&quot;--&gt;&quot;</span>);
+                            }
+ 
+                            <span class="c">// Always write the content regardless of debug mode.</span>
+                            <span class="r16 r">processedContent</span>.<span class="i">WriteTo</span>(<span class="r17 r">writer</span>, <a href="#d9b8cc2031bc279d" class="i property">HtmlEncoder</a>);
+ 
+                            <span class="c">// Write the end of a cache debug block.</span>
+                            <b>if</b> (<a href="#a1f912a285447925" class="i field">_cacheOptions</a>.<span class="i">DebugMode</span>)
+                            {
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>();
+                                <span class="r17 r">writer</span>.<span class="i">WriteLine</span>(<span class="s">$&quot;</span><span class="s">&lt;!-- END CACHE BLOCK: </span>{<span class="r11 r">cacheContext</span>.<span class="i">CacheId</span>}<span class="s"> --&gt;</span><span class="s">&quot;</span>);
+                            }
+ 
+                            <b>await</b> <span class="r17 r">writer</span>.<span class="i">FlushAsync</span>();
+ 
+                            <b>var</b> <span id="r18 rd" class="r18 r">html</span> = <span class="r17 r">writer</span>.<span class="i">ToString</span>();
+ 
+                            <b>var</b> <span id="r19 rd" class="r19 r">formattingContext</span> = <b>new</b> <span class="t constructor">DistributedCacheTagHelperFormattingContext</span>
+                            {
+                                <span class="i property">Html</span> = <b>new</b> <span class="t">HtmlString</span>(<span class="r18 r">html</span>)
+                            };
+ 
+                            <b>await</b> <a href="#8aad8840c4c70a2c" class="i field">_dynamicCacheService</a>.<span class="i">SetCachedValueAsync</span>(<span class="r11 r">cacheContext</span>, <span class="r18 r">html</span>);
+ 
+                            <span class="r12 r">content</span> = <span class="r19 r">formattingContext</span>.<span class="i property">Html</span>;
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r12 r">content</span> = <b>new</b> <span class="t">HtmlString</span>(<span class="r15 r">value</span>);
+                        }
+                    }
+                    <b>catch</b>
+                    {
+                        <span class="r12 r">content</span> = <b>null</b>;
+                        <b>throw</b>;
+                    }
+                    <b>finally</b>
+                    {
+                        <span class="c">// Remove the worker task before setting the result.</span>
+                        <span class="c">// If the result is null, other threads would potentially</span>
+                        <span class="c">// acquire it otherwise.</span>
+                        <a href="#162f055b731a7def" class="i field">_dynamicCacheTagHelperService</a>.<a href="DynamicCacheTagHelperService.cs.html#c45d6fd34de2ad81" class="i field">Workers</a>.<span class="i method">TryRemove</span>(<a href="#d3b00231ee3ab186" class="i property">CacheId</a>, <b>out</b> <span class="r13 r">result</span>);
+ 
+                        <span class="c">// Notify all other awaiters to render the content</span>
+                        <span class="r14 r">tcs</span>.<a href="@1@System.Runtime/A.html#f58e440930617bf6" class="i method">TrySetResult</a>(<span class="r12 r">content</span>);
+                    }
+                }
+                <b>else</b>
+                {
+                    <span class="r12 r">content</span> = <b>await</b> <span class="r13 r">result</span>;
+                }
+            }
+ 
+            <b>return</b> <span class="r12 r">content</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

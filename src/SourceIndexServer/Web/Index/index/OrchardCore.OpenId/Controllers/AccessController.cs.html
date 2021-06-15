@@ -1,0 +1,681 @@
+﻿<!DOCTYPE html>
+<html><head><title>AccessController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(672);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId/Controllers/AccessController.cs" target="_top">Controllers\AccessController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId" target="_top">src\OrchardCore.Modules\OrchardCore.OpenId\OrchardCore.OpenId.csproj</a> (OrchardCore.OpenId)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authentication</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Server</span>.<span class="i">AspNetCore</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Managers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Services</span>;
+<b>using static</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>.<span class="i">OpenIddictConstants</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Controllers</span>
+{
+    <span class="c">// Note: the error descriptions used in this controller are deliberately not localized as</span>
+    <span class="c">// the OAuth 2.0 specification only allows select US-ASCII characters in error_description.</span>
+    [<span class="t constructor">Authorize</span>, <span class="i">Feature</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#b0e247f8196e91a5" class="t t">Features</a>.<a href="/OrchardCore.OpenId.Core/A.html#95bdd03828e4cce9" class="i field">Server</a>)]
+    <b>public class</b> <a id="e5006e8b912f1cb9" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">AccessController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.OpenId.Core/A.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a> <a id="5bcaa14748defca6" href="../R/5bcaa14748defca6.html" target="n" data-glyph="46,1" class="i field">_applicationManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.OpenId.Core/A.html#29eaa4dac80ccb3b" class="t t">IOpenIdAuthorizationManager</a> <a id="caafd90c618671cf" href="../R/caafd90c618671cf.html" target="n" data-glyph="46,1" class="i field">_authorizationManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.OpenId.Core/A.html#2849ab6754687c18" class="t t">IOpenIdScopeManager</a> <a id="31f7149a7b06d803" href="../R/31f7149a7b06d803.html" target="n" data-glyph="46,1" class="i field">_scopeManager</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="1e9e757066a5a8e0" href="../R/1e9e757066a5a8e0.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+ 
+        <b>public</b> <a id="62a23cb7d944ad4c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AccessController</a>(
+            <a href="/OrchardCore.OpenId.Core/A.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a> <span id="r0 rd" class="r0 r">applicationManager</span>,
+            <a href="/OrchardCore.OpenId.Core/A.html#29eaa4dac80ccb3b" class="t t">IOpenIdAuthorizationManager</a> <span id="r1 rd" class="r1 r">authorizationManager</span>,
+            <a href="/OrchardCore.OpenId.Core/A.html#2849ab6754687c18" class="t t">IOpenIdScopeManager</a> <span id="r2 rd" class="r2 r">scopeManager</span>,
+            <span class="i">ShellSettings</span> <span id="r3 rd" class="r3 r">shellSettings</span>)
+        {
+            <a href="#5bcaa14748defca6" class="i field">_applicationManager</a> = <span class="r0 r">applicationManager</span>;
+            <a href="#caafd90c618671cf" class="i field">_authorizationManager</a> = <span class="r1 r">authorizationManager</span>;
+            <a href="#31f7149a7b06d803" class="i field">_scopeManager</a> = <span class="r2 r">scopeManager</span>;
+            <a href="#1e9e757066a5a8e0" class="i field">_shellSettings</a> = <span class="r3 r">shellSettings</span>;
+        }
+ 
+        [<span class="t constructor">AllowAnonymous</span>, <span class="t constructor">HttpGet</span>, <span class="t constructor">HttpPost</span>, <span class="t constructor">IgnoreAntiforgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="aed945e2879918bc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Authorize</a>()
+        {
+            <b>var</b> <span id="r4 rd" class="r4 r">response</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerResponse</span>();
+            <b>if</b> (<span class="r4 r">response</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="s">&quot;Error&quot;</span>, <b>new</b> <a href="../ViewModels/ErrorViewModel.cs.html#38f9467266584217" class="t constructor">ErrorViewModel</a>
+                {
+                    <a href="../ViewModels/ErrorViewModel.cs.html#42df366f2e6286c5" class="i property">Error</a> = <span class="r4 r">response</span>.<span class="i">Error</span>,
+                    <a href="../ViewModels/ErrorViewModel.cs.html#76d3908fd425002a" class="i property">ErrorDescription</a> = <span class="r4 r">response</span>.<span class="i">ErrorDescription</span>
+                });
+            }
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r5 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Retrieve the claims stored in the authentication cookie.</span>
+            <span class="c">// If they can&#39;t be extracted, redirect the user to the login page.</span>
+            <b>var</b> <span id="r6 rd" class="r6 r">result</span> = <b>await</b> <span class="i property">HttpContext</span>.<span class="i method">AuthenticateAsync</span>();
+            <b>if</b> (<span class="r6 r">result</span> == <b>null</b> || !<span class="r6 r">result</span>.<span class="i property">Succeeded</span> || <span class="r5 r">request</span>.<span class="i">HasPrompt</span>(<span class="i">Prompts</span>.<span class="i">Login</span>))
+            {
+                <b>return</b> <span class="i">RedirectToLoginPage</span>(<span class="r5 r">request</span>);
+            }
+ 
+            <span class="c">// If a max_age parameter was provided, ensure that the cookie is not too old.</span>
+            <span class="c">// If it&#39;s too old, automatically redirect the user agent to the login page.</span>
+            <b>if</b> (<span class="r5 r">request</span>.<span class="i">MaxAge</span> != <b>null</b> &amp;&amp; <span class="r6 r">result</span>.<span class="i property">Properties</span>.<span class="i property">IssuedUtc</span> != <b>null</b> &amp;&amp;
+                <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>.<a href="@1@System.Runtime/A.html#04abe0cac293ebd0" class="i property">UtcNow</a> - <span class="r6 r">result</span>.<span class="i property">Properties</span>.<span class="i property">IssuedUtc</span> &gt; <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<span class="i">FromSeconds</span>(<span class="r5 r">request</span>.<span class="i">MaxAge</span>.<span class="i">Value</span>))
+            {
+                <b>return</b> <span class="i">RedirectToLoginPage</span>(<span class="r5 r">request</span>);
+            }
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">application</span> = <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">FindByClientIdAsync</span>(<span class="r5 r">request</span>.<span class="i">ClientId</span>) ??
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;The application details cannot be found.&quot;</span>);
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">authorizations</span> = <b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">FindAsync</span>(
+                <span class="i">subject</span>: <span class="r6 r">result</span>.<span class="i property">Principal</span>.<a href="../OpenIdExtensions.cs.html#c3726489e98efd27" class="i method">GetUserIdentifier</a>(),
+                <span class="i">client</span>: <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetIdAsync</span>(<span class="r7 r">application</span>),
+                <span class="i">status</span>: <span class="i">Statuses</span>.<span class="i">Valid</span>,
+                <span class="i">type</span>: <span class="i">AuthorizationTypes</span>.<span class="i">Permanent</span>,
+                <span class="i">scopes</span>: <span class="r5 r">request</span>.<span class="i">GetScopes</span>()).<span class="i">ToListAsync</span>();
+ 
+            <b>switch</b> (<b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetConsentTypeAsync</span>(<span class="r7 r">application</span>))
+            {
+                <b>case</b> <span class="i">ConsentTypes</span>.<span class="i">External</span> <b>when</b> !<span class="r8 r">authorizations</span>.<span class="i">Any</span>():
+                    <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                    {
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">ConsentRequired</span>,
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] =
+                            <span class="s">&quot;The logged in user is not allowed to access this client application.&quot;</span>
+                    }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+ 
+                <b>case</b> <span class="i">ConsentTypes</span>.<span class="i">Implicit</span>:
+                <b>case</b> <span class="i">ConsentTypes</span>.<span class="i">External</span> <b>when</b> <span class="r8 r">authorizations</span>.<span class="i">Any</span>():
+                <b>case</b> <span class="i">ConsentTypes</span>.<span class="i">Explicit</span> <b>when</b> <span class="r8 r">authorizations</span>.<span class="i">Any</span>() &amp;&amp; !<span class="r5 r">request</span>.<span class="i">HasPrompt</span>(<span class="i">Prompts</span>.<span class="i">Consent</span>):
+                    <b>var</b> <span id="r9 rd" class="r9 r">identity</span> = <b>new</b> <span class="t">ClaimsIdentity</span>(<span class="r6 r">result</span>.<span class="i property">Principal</span>.<span class="i property">Claims</span>, <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+                    <b>var</b> <span id="r10 rd" class="r10 r">principal</span> = <b>new</b> <span class="t constructor">ClaimsPrincipal</span>(<span class="r9 r">identity</span>);
+ 
+                    <span class="r9 r">identity</span>.<span class="i">AddClaim</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>, <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#f93f39d86a7bd580" class="t t">EntityTypes</a>.<a href="/OrchardCore.OpenId.Core/A.html#39730dd96577994d" class="i field">User</a>,
+                        <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+                    <span class="c">// Note: while ASP.NET Core Identity uses the legacy WS-Federation claims (exposed by the ClaimTypes class),</span>
+                    <span class="c">// OpenIddict uses the newer JWT claims defined by the OpenID Connect specification. To ensure the mandatory</span>
+                    <span class="c">// subject claim is correctly populated (and avoid an InvalidOperationException), it&#39;s manually added here.</span>
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r6 r">result</span>.<span class="i property">Principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">Subject</span>)?.<span class="i property">Value</span>))
+                    {
+                        <span class="r9 r">identity</span>.<span class="i method">AddClaim</span>(<b>new</b> <span class="t">Claim</span>(<span class="i">Claims</span>.<span class="i">Subject</span>, <span class="r6 r">result</span>.<span class="i property">Principal</span>.<a href="../OpenIdExtensions.cs.html#c3726489e98efd27" class="i method">GetUserIdentifier</a>()));
+                    }
+ 
+                    <span class="r10 r">principal</span>.<span class="i">SetScopes</span>(<span class="r5 r">request</span>.<span class="i">GetScopes</span>());
+                    <span class="r10 r">principal</span>.<span class="i">SetResources</span>(<b>await</b> <span class="i">GetResourcesAsync</span>(<span class="r5 r">request</span>.<span class="i">GetScopes</span>()));
+ 
+                    <span class="c">// Automatically create a permanent authorization to avoid requiring explicit consent</span>
+                    <span class="c">// for future authorization or token requests containing the same scopes.</span>
+                    <b>var</b> <span id="r11 rd" class="r11 r">authorization</span> = <span class="r8 r">authorizations</span>.<span class="i">LastOrDefault</span>();
+                    <b>if</b> (<span class="r11 r">authorization</span> == <b>null</b>)
+                    {
+                        <span class="r11 r">authorization</span> = <b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">CreateAsync</span>(
+                            <span class="i">principal</span>: <span class="r10 r">principal</span>,
+                            <span class="i">subject</span>: <span class="r10 r">principal</span>.<a href="../OpenIdExtensions.cs.html#c3726489e98efd27" class="i method">GetUserIdentifier</a>(),
+                            <span class="i">client</span>: <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetIdAsync</span>(<span class="r7 r">application</span>),
+                            <span class="i">type</span>: <span class="i">AuthorizationTypes</span>.<span class="i">Permanent</span>,
+                            <span class="i">scopes</span>: <span class="r10 r">principal</span>.<span class="i">GetScopes</span>());
+                    }
+ 
+                    <span class="r10 r">principal</span>.<span class="i">SetAuthorizationId</span>(<b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">GetIdAsync</span>(<span class="r11 r">authorization</span>));
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r12 rd" class="r12 r">claim</span> <b>in</b> <span class="r10 r">principal</span>.<span class="i property">Claims</span>)
+                    {
+                        <span class="r12 r">claim</span>.<span class="i">SetDestinations</span>(<a href="#67869caaac783e89" class="i method">GetDestinations</a>(<span class="r12 r">claim</span>, <span class="r10 r">principal</span>));
+                    }
+ 
+                    <b>return</b> <span class="i">SignIn</span>(<span class="r10 r">principal</span>, <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+ 
+                <b>case</b> <span class="i">ConsentTypes</span>.<span class="i">Explicit</span> <b>when</b> <span class="r5 r">request</span>.<span class="i">HasPrompt</span>(<span class="i">Prompts</span>.<span class="i">None</span>):
+                    <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                    {
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">ConsentRequired</span>,
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] =
+                            <span class="s">&quot;Interactive user consent is required.&quot;</span>
+                    }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+ 
+                <b>default</b>:
+                    <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="../ViewModels/AuthorizeViewModel.cs.html#15af7a18e56b5e69" class="t constructor">AuthorizeViewModel</a>
+                    {
+                        <a href="../ViewModels/AuthorizeViewModel.cs.html#fd0e716dc85a779c" class="i property">ApplicationName</a> = <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetLocalizedDisplayNameAsync</span>(<span class="r7 r">application</span>),
+                        <a href="../ViewModels/AuthorizeViewModel.cs.html#f64a8c375b09ded0" class="i property">RequestId</a> = <span class="r5 r">request</span>.<span class="i">RequestId</span>,
+                        <a href="../ViewModels/AuthorizeViewModel.cs.html#2c9be6beb74604b9" class="i property">Scope</a> = <span class="r5 r">request</span>.<span class="i">Scope</span>
+                    });
+            }
+ 
+            <span class="t t">IActionResult</span> <a id="11d880eabe7e3b0a" href="../R/../../0000000000.html" target="n" data-glyph="76,2" class="i method">RedirectToLoginPage</a>(<span class="i">OpenIddictRequest</span> <span id="r13 rd" class="r13 r">request</span>)
+            {
+                <span class="c">// If the client application requested promptless authentication,</span>
+                <span class="c">// return an error indicating that the user is not logged in.</span>
+                <b>if</b> (<span class="r13 r">request</span>.<span class="i">HasPrompt</span>(<span class="i">Prompts</span>.<span class="i">None</span>))
+                {
+                    <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                    {
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">LoginRequired</span>,
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] = <span class="s">&quot;The user is not logged in.&quot;</span>
+                    }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+                }
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <a id="f9f43a70563293d1" href="../R/f9f43a70563293d1.html" target="n" data-glyph="76,3" class="i method">GetRedirectUrl</a>()
+                {
+                    <span class="c">// Override the prompt parameter to prevent infinite authentication/authorization loops.</span>
+                    <b>var</b> <span id="r14 rd" class="r14 r">parameters</span> = <span class="i property">Request</span>.<span class="i property">Query</span>.<span class="i method">ToDictionary</span>(<span id="r15 rd" class="r15 r">kvp</span> =&gt; <span class="r15 r">kvp</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span id="r16 rd" class="r16 r">kvp</span> =&gt; <span class="r16 r">kvp</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                    <span class="r14 r">parameters</span>[<span class="i">Parameters</span>.<span class="i">Prompt</span>] = <span class="s">&quot;continue&quot;</span>;
+ 
+                    <b>return</b> <span class="i property">Request</span>.<span class="i property">PathBase</span> + <span class="i property">Request</span>.<span class="i property">Path</span> + <span class="t t">QueryString</span>.<span class="i method">Create</span>(<span class="r14 r">parameters</span>);
+                }
+ 
+                <b>return</b> <span class="i method">Challenge</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>
+                {
+                    <span class="i property">RedirectUri</span> = <a href="#f9f43a70563293d1" class="i method">GetRedirectUrl</a>()
+                });
+            }
+        }
+ 
+        [<span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Authorize</span>))]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Accept&quot;</span>), <span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="c9d4637d77a513e0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AuthorizeAccept</a>()
+        {
+            <span class="c">// Warning: unlike the main Authorize method, this method MUST NOT be decorated with</span>
+            <span class="c">// [IgnoreAntiforgeryToken] as we must be able to reject authorization requests</span>
+            <span class="c">// sent by a malicious client that could abuse this interactive endpoint to silently</span>
+            <span class="c">// get codes/tokens without the user explicitly approving the authorization demand.</span>
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">response</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerResponse</span>();
+            <b>if</b> (<span class="r17 r">response</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="s">&quot;Error&quot;</span>, <b>new</b> <a href="../ViewModels/ErrorViewModel.cs.html#38f9467266584217" class="t constructor">ErrorViewModel</a>
+                {
+                    <a href="../ViewModels/ErrorViewModel.cs.html#42df366f2e6286c5" class="i property">Error</a> = <span class="r17 r">response</span>.<span class="i">Error</span>,
+                    <a href="../ViewModels/ErrorViewModel.cs.html#76d3908fd425002a" class="i property">ErrorDescription</a> = <span class="r17 r">response</span>.<span class="i">ErrorDescription</span>
+                });
+            }
+ 
+            <b>var</b> <span id="r18 rd" class="r18 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r18 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">application</span> = <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">FindByClientIdAsync</span>(<span class="r18 r">request</span>.<span class="i">ClientId</span>)
+                ?? <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;The application details cannot be found.&quot;</span>);
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">authorizations</span> = <b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">FindAsync</span>(
+                <span class="i">subject</span>: <span class="i property">User</span>.<a href="../OpenIdExtensions.cs.html#c3726489e98efd27" class="i method">GetUserIdentifier</a>(),
+                <span class="i">client</span>: <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetIdAsync</span>(<span class="r19 r">application</span>),
+                <span class="i">status</span>: <span class="i">Statuses</span>.<span class="i">Valid</span>,
+                <span class="i">type</span>: <span class="i">AuthorizationTypes</span>.<span class="i">Permanent</span>,
+                <span class="i">scopes</span>: <span class="r18 r">request</span>.<span class="i">GetScopes</span>()).<span class="i">ToListAsync</span>();
+ 
+            <span class="c">// Note: the same check is already made in the GET action but is repeated</span>
+            <span class="c">// here to ensure a malicious user can&#39;t abuse this POST endpoint and</span>
+            <span class="c">// force it to return a valid response without the external authorization.</span>
+            <b>switch</b> (<b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetConsentTypeAsync</span>(<span class="r19 r">application</span>))
+            {
+                <b>case</b> <span class="i">ConsentTypes</span>.<span class="i">External</span> <b>when</b> !<span class="r20 r">authorizations</span>.<span class="i">Any</span>():
+                    <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                    {
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">ConsentRequired</span>,
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] =
+                            <span class="s">&quot;The logged in user is not allowed to access this client application.&quot;</span>
+                    }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+ 
+                <b>default</b>:
+                    <b>var</b> <span id="r21 rd" class="r21 r">identity</span> = <b>new</b> <span class="t">ClaimsIdentity</span>(<span class="i property">User</span>.<span class="i property">Claims</span>, <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+                    <b>var</b> <span id="r22 rd" class="r22 r">principal</span> = <b>new</b> <span class="t constructor">ClaimsPrincipal</span>(<span class="r21 r">identity</span>);
+ 
+                    <span class="r21 r">identity</span>.<span class="i">AddClaim</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>, <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#f93f39d86a7bd580" class="t t">EntityTypes</a>.<a href="/OrchardCore.OpenId.Core/A.html#39730dd96577994d" class="i field">User</a>,
+                        <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+                    <span class="c">// Note: while ASP.NET Core Identity uses the legacy WS-Federation claims (exposed by the ClaimTypes class),</span>
+                    <span class="c">// OpenIddict uses the newer JWT claims defined by the OpenID Connect specification. To ensure the mandatory</span>
+                    <span class="c">// subject claim is correctly populated (and avoid an InvalidOperationException), it&#39;s manually added here.</span>
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="i property">User</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">Subject</span>)?.<span class="i property">Value</span>))
+                    {
+                        <span class="r21 r">identity</span>.<span class="i method">AddClaim</span>(<b>new</b> <span class="t">Claim</span>(<span class="i">Claims</span>.<span class="i">Subject</span>, <span class="i property">User</span>.<a href="../OpenIdExtensions.cs.html#c3726489e98efd27" class="i method">GetUserIdentifier</a>()));
+                    }
+ 
+                    <span class="r22 r">principal</span>.<span class="i">SetScopes</span>(<span class="r18 r">request</span>.<span class="i">GetScopes</span>());
+                    <span class="r22 r">principal</span>.<span class="i">SetResources</span>(<b>await</b> <span class="i">GetResourcesAsync</span>(<span class="r18 r">request</span>.<span class="i">GetScopes</span>()));
+ 
+                    <span class="c">// Automatically create a permanent authorization to avoid requiring explicit consent</span>
+                    <span class="c">// for future authorization or token requests containing the same scopes.</span>
+                    <b>var</b> <span id="r23 rd" class="r23 r">authorization</span> = <span class="r20 r">authorizations</span>.<span class="i">LastOrDefault</span>();
+                    <b>if</b> (<span class="r23 r">authorization</span> == <b>null</b>)
+                    {
+                        <span class="r23 r">authorization</span> = <b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">CreateAsync</span>(
+                            <span class="i">principal</span>: <span class="r22 r">principal</span>,
+                            <span class="i">subject</span>: <span class="r22 r">principal</span>.<a href="../OpenIdExtensions.cs.html#c3726489e98efd27" class="i method">GetUserIdentifier</a>(),
+                            <span class="i">client</span>: <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetIdAsync</span>(<span class="r19 r">application</span>),
+                            <span class="i">type</span>: <span class="i">AuthorizationTypes</span>.<span class="i">Permanent</span>,
+                            <span class="i">scopes</span>: <span class="r22 r">principal</span>.<span class="i">GetScopes</span>());
+                    }
+ 
+                    <span class="r22 r">principal</span>.<span class="i">SetAuthorizationId</span>(<b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">GetIdAsync</span>(<span class="r23 r">authorization</span>));
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r24 rd" class="r24 r">claim</span> <b>in</b> <span class="r22 r">principal</span>.<span class="i property">Claims</span>)
+                    {
+                        <span class="r24 r">claim</span>.<span class="i">SetDestinations</span>(<a href="#67869caaac783e89" class="i method">GetDestinations</a>(<span class="r24 r">claim</span>, <span class="r22 r">principal</span>));
+                    }
+ 
+                    <b>return</b> <span class="i">SignIn</span>(<span class="r22 r">principal</span>, <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+            }
+        }
+ 
+        [<span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Authorize</span>))]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Deny&quot;</span>), <span class="t constructor">HttpPost</span>]
+        <b>public</b> <span class="t t">IActionResult</span> <a id="08973025b4897dcf" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AuthorizeDeny</a>()
+        {
+            <b>var</b> <span id="r25 rd" class="r25 r">response</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerResponse</span>();
+            <b>if</b> (<span class="r25 r">response</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="s">&quot;Error&quot;</span>, <b>new</b> <a href="../ViewModels/ErrorViewModel.cs.html#38f9467266584217" class="t constructor">ErrorViewModel</a>
+                {
+                    <a href="../ViewModels/ErrorViewModel.cs.html#42df366f2e6286c5" class="i property">Error</a> = <span class="r25 r">response</span>.<span class="i">Error</span>,
+                    <a href="../ViewModels/ErrorViewModel.cs.html#76d3908fd425002a" class="i property">ErrorDescription</a> = <span class="r25 r">response</span>.<span class="i">ErrorDescription</span>
+                });
+            }
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r26 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>return</b> <span class="i">Forbid</span>(<span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+        }
+ 
+        [<span class="t constructor">AllowAnonymous</span>, <span class="t constructor">HttpGet</span>, <span class="t constructor">HttpPost</span>, <span class="t constructor">IgnoreAntiforgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="b4ba53219f125de5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Logout</a>()
+        {
+            <b>var</b> <span id="r27 rd" class="r27 r">response</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerResponse</span>();
+            <b>if</b> (<span class="r27 r">response</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="s">&quot;Error&quot;</span>, <b>new</b> <a href="../ViewModels/ErrorViewModel.cs.html#38f9467266584217" class="t constructor">ErrorViewModel</a>
+                {
+                    <a href="../ViewModels/ErrorViewModel.cs.html#42df366f2e6286c5" class="i property">Error</a> = <span class="r27 r">response</span>.<span class="i">Error</span>,
+                    <a href="../ViewModels/ErrorViewModel.cs.html#76d3908fd425002a" class="i property">ErrorDescription</a> = <span class="r27 r">response</span>.<span class="i">ErrorDescription</span>
+                });
+            }
+ 
+            <b>var</b> <span id="r28 rd" class="r28 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r28 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r28 r">request</span>.<span class="i">PostLogoutRedirectUri</span>))
+            {
+                <span class="c">// If the user is not logged in, allow redirecting the user agent back to the</span>
+                <span class="c">// specified post_logout_redirect_uri without rendering a confirmation form.</span>
+                <b>var</b> <span id="r29 rd" class="r29 r">result</span> = <b>await</b> <span class="i property">HttpContext</span>.<span class="i method">AuthenticateAsync</span>();
+                <b>if</b> (<span class="r29 r">result</span> == <b>null</b> || !<span class="r29 r">result</span>.<span class="i property">Succeeded</span>)
+                {
+                    <b>return</b> <span class="i">SignOut</span>(<span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+                }
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="../ViewModels/LogoutViewModel.cs.html#1a037bb11714b706" class="t constructor">LogoutViewModel</a>
+            {
+                <a href="../ViewModels/LogoutViewModel.cs.html#c04e314340e80572" class="i property">RequestId</a> = <span class="r28 r">request</span>.<span class="i">RequestId</span>
+            });
+        }
+ 
+        [<span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Logout</span>)), <span class="t constructor">AllowAnonymous</span>]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Accept&quot;</span>), <span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="ac3d28d83e543211" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LogoutAccept</a>()
+        {
+            <b>var</b> <span id="r30 rd" class="r30 r">response</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerResponse</span>();
+            <b>if</b> (<span class="r30 r">response</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="s">&quot;Error&quot;</span>, <b>new</b> <a href="../ViewModels/ErrorViewModel.cs.html#38f9467266584217" class="t constructor">ErrorViewModel</a>
+                {
+                    <a href="../ViewModels/ErrorViewModel.cs.html#42df366f2e6286c5" class="i property">Error</a> = <span class="r30 r">response</span>.<span class="i">Error</span>,
+                    <a href="../ViewModels/ErrorViewModel.cs.html#76d3908fd425002a" class="i property">ErrorDescription</a> = <span class="r30 r">response</span>.<span class="i">ErrorDescription</span>
+                });
+            }
+ 
+            <b>var</b> <span id="r31 rd" class="r31 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r31 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Warning: unlike the main Logout method, this method MUST NOT be decorated with</span>
+            <span class="c">// [IgnoreAntiforgeryToken] as we must be able to reject end session requests</span>
+            <span class="c">// sent by a malicious client that could abuse this interactive endpoint to silently</span>
+            <span class="c">// log the user out without the user explicitly approving the log out operation.</span>
+ 
+            <b>await</b> <span class="i property">HttpContext</span>.<span class="i method">SignOutAsync</span>();
+ 
+            <span class="c">// If no post_logout_redirect_uri was specified, redirect the user agent</span>
+            <span class="c">// to the root page, that should correspond to the home page in most cases.</span>
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r31 r">request</span>.<span class="i">PostLogoutRedirectUri</span>))
+            {
+                <b>return</b> <span class="i method">Redirect</span>(<span class="s">&quot;~/&quot;</span>);
+            }
+ 
+            <b>return</b> <span class="i">SignOut</span>(<span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+        }
+ 
+        [<span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Logout</span>)), <span class="t constructor">AllowAnonymous</span>]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Deny&quot;</span>), <span class="t constructor">HttpPost</span>]
+        <b>public</b> <span class="t t">IActionResult</span> <a id="62beac556e7a99f4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LogoutDeny</a>()
+        {
+            <b>var</b> <span id="r32 rd" class="r32 r">response</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerResponse</span>();
+            <b>if</b> (<span class="r32 r">response</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="s">&quot;Error&quot;</span>, <b>new</b> <a href="../ViewModels/ErrorViewModel.cs.html#38f9467266584217" class="t constructor">ErrorViewModel</a>
+                {
+                    <a href="../ViewModels/ErrorViewModel.cs.html#42df366f2e6286c5" class="i property">Error</a> = <span class="r32 r">response</span>.<span class="i">Error</span>,
+                    <a href="../ViewModels/ErrorViewModel.cs.html#76d3908fd425002a" class="i property">ErrorDescription</a> = <span class="r32 r">response</span>.<span class="i">ErrorDescription</span>
+                });
+            }
+ 
+            <b>var</b> <span id="r33 rd" class="r33 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r33 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>return</b> <span class="i method">Redirect</span>(<span class="s">&quot;~/&quot;</span>);
+        }
+ 
+        [<span class="t constructor">AllowAnonymous</span>, <span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">IgnoreAntiforgeryToken</span>]
+        [<span class="t constructor">Produces</span>(<span class="s">&quot;application/json&quot;</span>)]
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="6a7373f930f0866c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Token</a>()
+        {
+            <span class="c">// Warning: this action is decorated with IgnoreAntiforgeryTokenAttribute to override</span>
+            <span class="c">// the global antiforgery token validation policy applied by the MVC modules stack,</span>
+            <span class="c">// which is required for this stateless OAuth2/OIDC token endpoint to work correctly.</span>
+            <span class="c">// To prevent effective CSRF/session fixation attacks, this action MUST NOT return</span>
+            <span class="c">// an authentication cookie or try to establish an ASP.NET Core user session.</span>
+ 
+            <b>var</b> <span id="r34 rd" class="r34 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r34 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="t t">IActionResult</span>)<span class="i method">NotFound</span>());
+            }
+ 
+            <b>if</b> (<span class="r34 r">request</span>.<span class="i">IsPasswordGrantType</span>())
+            {
+                <b>return</b> <span class="i">ExchangePasswordGrantType</span>(<span class="r34 r">request</span>);
+            }
+ 
+            <b>if</b> (<span class="r34 r">request</span>.<span class="i">IsClientCredentialsGrantType</span>())
+            {
+                <b>return</b> <span class="i">ExchangeClientCredentialsGrantType</span>(<span class="r34 r">request</span>);
+            }
+ 
+            <b>if</b> (<span class="r34 r">request</span>.<span class="i">IsAuthorizationCodeGrantType</span>() || <span class="r34 r">request</span>.<span class="i">IsRefreshTokenGrantType</span>())
+            {
+                <b>return</b> <span class="i">ExchangeAuthorizationCodeOrRefreshTokenGrantType</span>(<span class="r34 r">request</span>);
+            }
+ 
+            <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#3d3c2c03118be4f8" class="t constructor">NotSupportedException</a>(<span class="s">&quot;The specified grant type is not supported.&quot;</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="6b5b586c63358006" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ExchangeClientCredentialsGrantType</a>(<span class="i">OpenIddictRequest</span> <span id="r35 rd" class="r35 r">request</span>)
+        {
+            <span class="c">// Note: client authentication is always enforced by OpenIddict before this action is invoked.</span>
+            <b>var</b> <span id="r36 rd" class="r36 r">application</span> = <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">FindByClientIdAsync</span>(<span class="r35 r">request</span>.<span class="i">ClientId</span>) ??
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;The application details cannot be found.&quot;</span>);
+ 
+            <b>var</b> <span id="r37 rd" class="r37 r">identity</span> = <b>new</b> <span class="t">ClaimsIdentity</span>(
+                <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>,
+                <span class="i">Claims</span>.<span class="i">Name</span>, <span class="i">Claims</span>.<span class="i">Role</span>);
+ 
+            <span class="r37 r">identity</span>.<span class="i">AddClaim</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>, <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#f93f39d86a7bd580" class="t t">EntityTypes</a>.<a href="/OrchardCore.OpenId.Core/A.html#ebb4c7bee492edc0" class="i field">Application</a>,
+                <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+            <span class="r37 r">identity</span>.<span class="i">AddClaim</span>(<span class="i">Claims</span>.<span class="i">Subject</span>, <span class="r35 r">request</span>.<span class="i">ClientId</span>,
+                <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+            <span class="r37 r">identity</span>.<span class="i">AddClaim</span>(<span class="i">Claims</span>.<span class="i">Name</span>,
+                <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetDisplayNameAsync</span>(<span class="r36 r">application</span>),
+                <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+            <span class="c">// If the role service is available, add all the role claims</span>
+            <span class="c">// associated with the application roles in the database.</span>
+            <b>var</b> <span id="r38 rd" class="r38 r">roleService</span> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<span class="i">IRoleService</span>&gt;();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r39 rd" class="r39 r">role</span> <b>in</b> <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetRolesAsync</span>(<span class="r36 r">application</span>))
+            {
+                <span class="r37 r">identity</span>.<span class="i">AddClaim</span>(<span class="r37 r">identity</span>.<span class="i property">RoleClaimType</span>, <span class="r39 r">role</span>,
+                    <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+                <b>if</b> (<span class="r38 r">roleService</span> != <b>null</b>)
+                {
+                    <b>foreach</b> (<b>var</b> <span id="r40 rd" class="r40 r">claim</span> <b>in</b> <b>await</b> <span class="r38 r">roleService</span>.<span class="i">GetRoleClaimsAsync</span>(<span class="r39 r">role</span>))
+                    {
+                        <span class="r37 r">identity</span>.<span class="i">AddClaim</span>(<span class="r40 r">claim</span>.<span class="i">SetDestinations</span>(<span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>));
+                    }
+                }
+            }
+ 
+            <b>var</b> <span id="r41 rd" class="r41 r">principal</span> = <b>new</b> <span class="t constructor">ClaimsPrincipal</span>(<span class="r37 r">identity</span>);
+            <span class="r41 r">principal</span>.<span class="i">SetResources</span>(<b>await</b> <span class="i">GetResourcesAsync</span>(<span class="r35 r">request</span>.<span class="i">GetScopes</span>()));
+ 
+            <b>return</b> <span class="i">SignIn</span>(<span class="r41 r">principal</span>, <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="5bcd2add627d0db0" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ExchangePasswordGrantType</a>(<span class="i">OpenIddictRequest</span> <span id="r42 rd" class="r42 r">request</span>)
+        {
+            <b>var</b> <span id="r43 rd" class="r43 r">application</span> = <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">FindByClientIdAsync</span>(<span class="r42 r">request</span>.<span class="i">ClientId</span>) ??
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;The application details cannot be found.&quot;</span>);
+ 
+            <span class="c">// By design, the password flow requires direct username/password validation, which is performed by</span>
+            <span class="c">// the user service. If this service is not registered, prevent the password flow from being used.</span>
+            <a href="/OrchardCore.Users.Abstractions/A.html#d84ab7475688c376" class="k">var</a> <span id="r44 rd" class="r44 r">service</span> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#d84ab7475688c376" class="t t">IUserService</a>&gt;();
+            <b>if</b> (<span class="r44 r">service</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                {
+                    [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">UnsupportedGrantType</span>,
+                    [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] =
+                        <span class="s">&quot;The resource owner password credentials grant is not supported.&quot;</span>
+                }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">error</span> = <b>null</b>;
+            <b>var</b> <span id="r46 rd" class="r46 r">user</span> = <b>await</b> <span class="r44 r">service</span>.<span class="i">AuthenticateAsync</span>(<span class="r42 r">request</span>.<span class="i">Username</span>, <span class="r42 r">request</span>.<span class="i">Password</span>, (<span id="r47 rd" class="r47 r">key</span>, <span id="r48 rd" class="r48 r">message</span>) =&gt; <span class="r45 r">error</span> = <span class="r48 r">message</span>);
+            <b>if</b> (<span class="r46 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                {
+                    [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">InvalidGrant</span>,
+                    [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] = <span class="r45 r">error</span>
+                }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+            }
+ 
+            <b>var</b> <span id="r49 rd" class="r49 r">principal</span> = <b>await</b> <span class="r44 r">service</span>.<span class="i">CreatePrincipalAsync</span>(<span class="r46 r">user</span>);
+ 
+            <b>var</b> <span id="r50 rd" class="r50 r">authorizations</span> = <b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">FindAsync</span>(
+                <span class="i">subject</span>: <span class="r49 r">principal</span>.<span class="i">GetUserIdentifier</span>(),
+                <span class="i">client</span>: <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetIdAsync</span>(<span class="r43 r">application</span>),
+                <span class="i">status</span>: <span class="i">Statuses</span>.<span class="i">Valid</span>,
+                <span class="i">type</span>: <span class="i">AuthorizationTypes</span>.<span class="i">Permanent</span>,
+                <span class="i">scopes</span>: <span class="r42 r">request</span>.<span class="i">GetScopes</span>()).<span class="i">ToListAsync</span>();
+ 
+            <span class="c">// If the application is configured to use external consent,</span>
+            <span class="c">// reject the request if no existing authorization can be found.</span>
+            <b>switch</b> (<b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetConsentTypeAsync</span>(<span class="r43 r">application</span>))
+            {
+                <b>case</b> <span class="i">ConsentTypes</span>.<span class="i">External</span> <b>when</b> !<span class="r50 r">authorizations</span>.<span class="i">Any</span>():
+                    <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                    {
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">ConsentRequired</span>,
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] =
+                            <span class="s">&quot;The logged in user is not allowed to access this client application.&quot;</span>
+                    }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+            }
+ 
+            <b>var</b> <span id="r51 rd" class="r51 r">identity</span> = (<span class="t t">ClaimsIdentity</span>)<span class="r49 r">principal</span>.<span class="i">Identity</span>;
+ 
+            <span class="r51 r">identity</span>.<span class="i">AddClaim</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>, <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#f93f39d86a7bd580" class="t t">EntityTypes</a>.<a href="/OrchardCore.OpenId.Core/A.html#39730dd96577994d" class="i field">User</a>,
+                <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+            <span class="c">// Note: while ASP.NET Core Identity uses the legacy WS-Federation claims (exposed by the ClaimTypes class),</span>
+            <span class="c">// OpenIddict uses the newer JWT claims defined by the OpenID Connect specification. To ensure the mandatory</span>
+            <span class="c">// subject claim is correctly populated (and avoid an InvalidOperationException), it&#39;s manually added here.</span>
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r49 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">Subject</span>)?.<span class="i">Value</span>))
+            {
+                <span class="r51 r">identity</span>.<span class="i method">AddClaim</span>(<b>new</b> <span class="t">Claim</span>(<span class="i">Claims</span>.<span class="i">Subject</span>, <span class="r49 r">principal</span>.<span class="i">GetUserIdentifier</span>()));
+            }
+ 
+            <span class="r49 r">principal</span>.<span class="i">SetScopes</span>(<span class="r42 r">request</span>.<span class="i">GetScopes</span>());
+            <span class="r49 r">principal</span>.<span class="i">SetResources</span>(<b>await</b> <span class="i">GetResourcesAsync</span>(<span class="r42 r">request</span>.<span class="i">GetScopes</span>()));
+ 
+            <span class="c">// Automatically create a permanent authorization to avoid requiring explicit consent</span>
+            <span class="c">// for future authorization or token requests containing the same scopes.</span>
+            <b>var</b> <span id="r52 rd" class="r52 r">authorization</span> = <span class="r50 r">authorizations</span>.<span class="i">FirstOrDefault</span>();
+            <b>if</b> (<span class="r52 r">authorization</span> == <b>null</b>)
+            {
+                <span class="r52 r">authorization</span> = <b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">CreateAsync</span>(
+                    <span class="i">principal</span>: <span class="r49 r">principal</span>,
+                    <span class="i">subject</span>: <span class="r49 r">principal</span>.<span class="i">GetUserIdentifier</span>(),
+                    <span class="i">client</span>: <b>await</b> <a href="#5bcaa14748defca6" class="i field">_applicationManager</a>.<span class="i">GetIdAsync</span>(<span class="r43 r">application</span>),
+                    <span class="i">type</span>: <span class="i">AuthorizationTypes</span>.<span class="i">Permanent</span>,
+                    <span class="i">scopes</span>: <span class="r49 r">principal</span>.<span class="i">GetScopes</span>());
+            }
+ 
+            <span class="r49 r">principal</span>.<span class="i">SetAuthorizationId</span>(<b>await</b> <a href="#caafd90c618671cf" class="i field">_authorizationManager</a>.<span class="i">GetIdAsync</span>(<span class="r52 r">authorization</span>));
+ 
+            <b>foreach</b> (<b>var</b> <span id="r53 rd" class="r53 r">claim</span> <b>in</b> <span class="r49 r">principal</span>.<span class="i">Claims</span>)
+            {
+                <span class="r53 r">claim</span>.<span class="i">SetDestinations</span>(<span class="i">GetDestinations</span>(<span class="r53 r">claim</span>, <span class="r49 r">principal</span>));
+            }
+ 
+            <b>return</b> <span class="i">SignIn</span>(<span class="r49 r">principal</span>, <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="14e12657dc5b6937" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ExchangeAuthorizationCodeOrRefreshTokenGrantType</a>(<span class="i">OpenIddictRequest</span> <span id="r54 rd" class="r54 r">request</span>)
+        {
+            <span class="c">// Retrieve the claims principal stored in the authorization code/refresh token.</span>
+            <b>var</b> <span id="r55 rd" class="r55 r">info</span> = <b>await</b> <span class="i property">HttpContext</span>.<span class="i">AuthenticateAsync</span>(<span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>) ??
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;The user principal cannot be resolved.&quot;</span>);
+ 
+            <b>if</b> (<span class="r54 r">request</span>.<span class="i">IsRefreshTokenGrantType</span>())
+            {
+                <b>var</b> <span id="r56 rd" class="r56 r">type</span> = <span class="r55 r">info</span>.<span class="i">Principal</span>.<span class="i">FindFirst</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(<span class="r56 r">type</span>, <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#f93f39d86a7bd580" class="t t">EntityTypes</a>.<a href="/OrchardCore.OpenId.Core/A.html#39730dd96577994d" class="i field">User</a>))
+                {
+                    <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                    {
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">UnauthorizedClient</span>,
+                        [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] =
+                            <span class="s">&quot;The refresh token grant type is not allowed for refresh tokens retrieved using the client credentials flow.&quot;</span>
+                    }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+                }
+            }
+ 
+            <span class="c">// By default, re-use the principal stored in the authorization code/refresh token.</span>
+            <b>var</b> <span id="r57 rd" class="r57 r">principal</span> = <span class="r55 r">info</span>.<span class="i">Principal</span>;
+ 
+            <span class="c">// If the user service is available, try to refresh the principal by retrieving</span>
+            <span class="c">// the user object from the database and creating a new claims-based principal.</span>
+            <a href="/OrchardCore.Users.Abstractions/A.html#d84ab7475688c376" class="k">var</a> <span id="r58 rd" class="r58 r">service</span> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#d84ab7475688c376" class="t t">IUserService</a>&gt;();
+            <b>if</b> (<span class="r58 r">service</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r59 rd" class="r59 r">user</span> = <b>await</b> <span class="r58 r">service</span>.<a href="/OrchardCore.Users.Abstractions/A.html#5a5655d87ced9272" class="i method">GetUserByUniqueIdAsync</a>(<span class="r57 r">principal</span>.<span class="i">GetUserIdentifier</span>());
+                <b>if</b> (<span class="r59 r">user</span> != <b>null</b>)
+                {
+                    <span class="r57 r">principal</span> = <b>await</b> <span class="r58 r">service</span>.<span class="i">CreatePrincipalAsync</span>(<span class="r59 r">user</span>);
+                }
+            }
+ 
+            <b>var</b> <span id="r60 rd" class="r60 r">identity</span> = (<span class="t t">ClaimsIdentity</span>)<span class="r57 r">principal</span>.<span class="i">Identity</span>;
+ 
+            <span class="r60 r">identity</span>.<span class="i">AddClaim</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>, <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#f93f39d86a7bd580" class="t t">EntityTypes</a>.<a href="/OrchardCore.OpenId.Core/A.html#39730dd96577994d" class="i field">User</a>,
+                <span class="i">Destinations</span>.<span class="i">AccessToken</span>, <span class="i">Destinations</span>.<span class="i">IdentityToken</span>);
+ 
+            <span class="c">// Note: while ASP.NET Core Identity uses the legacy WS-Federation claims (exposed by the ClaimTypes class),</span>
+            <span class="c">// OpenIddict uses the newer JWT claims defined by the OpenID Connect specification. To ensure the mandatory</span>
+            <span class="c">// subject claim is correctly populated (and avoid an InvalidOperationException), it&#39;s manually added here.</span>
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r57 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">Subject</span>)?.<span class="i">Value</span>))
+            {
+                <span class="r60 r">identity</span>.<span class="i method">AddClaim</span>(<b>new</b> <span class="t">Claim</span>(<span class="i">Claims</span>.<span class="i">Subject</span>, <span class="r57 r">principal</span>.<span class="i">GetUserIdentifier</span>()));
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r61 rd" class="r61 r">claim</span> <b>in</b> <span class="r57 r">principal</span>.<span class="i">Claims</span>)
+            {
+                <span class="r61 r">claim</span>.<span class="i">SetDestinations</span>(<span class="i">GetDestinations</span>(<span class="r61 r">claim</span>, <span class="r57 r">principal</span>));
+            }
+ 
+            <b>return</b> <span class="i">SignIn</span>(<span class="r57 r">principal</span>, <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="67869caaac783e89" href="../R/67869caaac783e89.html" target="n" data-glyph="76,1" class="i method">GetDestinations</a>(<span class="t t">Claim</span> <span id="r62 rd" class="r62 r">claim</span>, <span class="t t">ClaimsPrincipal</span> <span id="r63 rd" class="r63 r">principal</span>)
+        {
+            <span class="c">// Note: by default, claims are NOT automatically included in the access and identity tokens.</span>
+            <span class="c">// To allow OpenIddict to serialize them, you must attach them a destination, that specifies</span>
+            <span class="c">// whether they should be included in access tokens, in identity tokens or in both.</span>
+ 
+            <b>switch</b> (<span class="r62 r">claim</span>.<span class="i property">Type</span>)
+            {
+                <span class="c">// Never include the security stamp in the access and identity tokens, as it&#39;s a secret value.</span>
+                <b>case</b> <span class="s">&quot;AspNet.Identity.SecurityStamp&quot;</span>:
+                    <b>break</b>;
+ 
+                <span class="c">// Only add the claim to the id_token if the corresponding scope was granted.</span>
+                <span class="c">// The other claims will only be added to the access_token.</span>
+                <b>case</b> <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>:
+                <b>case</b> <span class="i">Claims</span>.<span class="i">Name</span> <b>when</b> <span class="r63 r">principal</span>.<span class="i">HasScope</span>(<span class="i">Scopes</span>.<span class="i">Profile</span>):
+                <b>case</b> <span class="i">Claims</span>.<span class="i">Email</span> <b>when</b> <span class="r63 r">principal</span>.<span class="i">HasScope</span>(<span class="i">Scopes</span>.<span class="i">Email</span>):
+                <b>case</b> <span class="i">Claims</span>.<span class="i">Role</span> <b>when</b> <span class="r63 r">principal</span>.<span class="i">HasScope</span>(<span class="i">Scopes</span>.<span class="i">Roles</span>):
+                    <b>yield</b> <b>return</b> <span class="i">Destinations</span>.<span class="i">AccessToken</span>;
+                    <b>yield</b> <b>return</b> <span class="i">Destinations</span>.<span class="i">IdentityToken</span>;
+                    <b>break</b>;
+ 
+                <b>default</b>:
+                    <b>yield</b> <b>return</b> <span class="i">Destinations</span>.<span class="i">AccessToken</span>;
+                    <b>break</b>;
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="70de295af777793f" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">GetResourcesAsync</a>(<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r64 rd" class="r64 r">scopes</span>)
+        {
+            <span class="c">// Note: the current tenant name is always added as a valid resource/audience,</span>
+            <span class="c">// which allows the end user to use the corresponding tokens with the APIs</span>
+            <span class="c">// located in the current tenant without having to explicitly register a scope.</span>
+            <b>var</b> <span id="r65 rd" class="r65 r">resources</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(1)
+            {
+                <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#70a05db26ae04a93" class="t t">Prefixes</a>.<a href="/OrchardCore.OpenId.Core/A.html#03c10ba0056de799" class="i field">Tenant</a> + <a href="#1e9e757066a5a8e0" class="i field">_shellSettings</a>.<span class="i">Name</span>
+            };
+ 
+            <b>await</b> <b>foreach</b> (<b>var</b> <span id="r66 rd" class="r66 r">resource</span> <b>in</b> <a href="#31f7149a7b06d803" class="i field">_scopeManager</a>.<span class="i">ListResourcesAsync</span>(<span class="r64 r">scopes</span>))
+            {
+                <span class="r65 r">resources</span>.<span class="i">Add</span>(<span class="r66 r">resource</span>);
+            }
+ 
+            <b>return</b> <span class="r65 r">resources</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

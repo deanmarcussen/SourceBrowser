@@ -1,0 +1,486 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellHost.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(477);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Shell/ShellHost.cs" target="_top">Shell\ShellHost.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Descriptor</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Events</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Scope</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> All </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> are pre-created when </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#cbede40734af295c" class="i method">InitializeAsync</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> is called on startup and where we first load</span>
+    <span class="c">///</span><span class="c"> all </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> that we also need to register in the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#99578f81a6193ddf" class="t t">IRunningShellTable</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> to serve incoming requests.</span>
+    <span class="c">///</span><span class="c"> For each </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> a service container and then a request pipeline are only built on the first matching request.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="382ad2ce6c3b3aa0" href="../R/382ad2ce6c3b3aa0.html" target="n" data-glyph="0,0" class="t t">ShellHost</a> : <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a>, <a href="@1@System.Runtime/A.html#1f55292c3174123d" class="t t">IDisposable</a>
+    {
+        <b>private const int</b> <a id="02578db7e54b0dbb" href="../R/02578db7e54b0dbb.html" target="n" data-glyph="10,1" class="i field">ReloadShellMaxRetriesCount</a> = 9;
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#b384cb770bdec8af" class="t t">IShellSettingsManager</a> <a id="5882ccbd648dcb15" href="../R/5882ccbd648dcb15.html" target="n" data-glyph="46,1" class="i field">_shellSettingsManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#14204d876fb7026c" class="t t">IShellContextFactory</a> <a id="25d7e93a9115f2c3" href="../R/25d7e93a9115f2c3.html" target="n" data-glyph="46,1" class="i field">_shellContextFactory</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#99578f81a6193ddf" class="t t">IRunningShellTable</a> <a id="c38addf7807752e8" href="../R/c38addf7807752e8.html" target="n" data-glyph="46,1" class="i field">_runningShellTable</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <a id="1945e3a1b5c5463d" href="../R/1945e3a1b5c5463d.html" target="n" data-glyph="46,1" class="i field">_extensionManager</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="9575bb25b79f3cec" href="../R/9575bb25b79f3cec.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private bool</b> <a id="71f3b71a06671e59" href="../R/71f3b71a06671e59.html" target="n" data-glyph="46,1" class="i field">_initialized</a>;
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="1df67ad1bfdce770" href="../R/1df67ad1bfdce770.html" target="n" data-glyph="46,1" class="i field">_shellContexts</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt;();
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt; <a id="6cd2fb292b5a54fa" href="../R/6cd2fb292b5a54fa.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt;();
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">SemaphoreSlim</span>&gt; <a id="ae49f6d88c6be73f" href="../R/ae49f6d88c6be73f.html" target="n" data-glyph="46,1" class="i field">_shellSemaphores</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">SemaphoreSlim</span>&gt;();
+        <b>private</b> <span class="t t">SemaphoreSlim</span> <a id="71711bacd1543abc" href="../R/71711bacd1543abc.html" target="n" data-glyph="46,1" class="i field">_initializingSemaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>public</b> <a id="f8ff0d251e73e570" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShellHost</a>(
+            <a href="/OrchardCore.Abstractions/A.html#b384cb770bdec8af" class="t t">IShellSettingsManager</a> <span id="r0 rd" class="r0 r">shellSettingsManager</span>,
+            <a href="/OrchardCore.Abstractions/A.html#14204d876fb7026c" class="t t">IShellContextFactory</a> <span id="r1 rd" class="r1 r">shellContextFactory</span>,
+            <a href="/OrchardCore.Abstractions/A.html#99578f81a6193ddf" class="t t">IRunningShellTable</a> <span id="r2 rd" class="r2 r">runningShellTable</span>,
+            <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <span id="r3 rd" class="r3 r">extensionManager</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#382ad2ce6c3b3aa0" class="t t">ShellHost</a>&gt; <span id="r4 rd" class="r4 r">logger</span>)
+        {
+            <a href="#5882ccbd648dcb15" class="i field">_shellSettingsManager</a> = <span class="r0 r">shellSettingsManager</span>;
+            <a href="#25d7e93a9115f2c3" class="i field">_shellContextFactory</a> = <span class="r1 r">shellContextFactory</span>;
+            <a href="#c38addf7807752e8" class="i field">_runningShellTable</a> = <span class="r2 r">runningShellTable</span>;
+            <a href="#1945e3a1b5c5463d" class="i field">_extensionManager</a> = <span class="r3 r">extensionManager</span>;
+            <a href="#9575bb25b79f3cec" class="i field">_logger</a> = <span class="r4 r">logger</span>;
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#751ab8b0376ad7dd" class="t t">ShellsEvent</a> <a id="9d7c67c758234490" href="../R/9d7c67c758234490.html" target="n" data-glyph="102,1" class="i property">LoadingAsync</a> { <b>get</b>; <b>set</b>; }
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#6813a5385df96e8b" class="t t">ShellEvent</a> <a id="e8f651e44b253345" href="../R/e8f651e44b253345.html" target="n" data-glyph="102,1" class="i property">ReleasingAsync</a> { <b>get</b>; <b>set</b>; }
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#6813a5385df96e8b" class="t t">ShellEvent</a> <a id="b5318ace65478c0e" href="../R/b5318ace65478c0e.html" target="n" data-glyph="102,1" class="i property">ReloadingAsync</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="cbede40734af295c" href="../R/cbede40734af295c.html" target="n" data-glyph="72,1" class="i method">InitializeAsync</a>()
+        {
+            <b>if</b> (!<a href="#71f3b71a06671e59" class="i field">_initialized</a>)
+            {
+                <span class="c">// Prevent concurrent requests from creating all shells multiple times</span>
+                <b>await</b> <a href="#71711bacd1543abc" class="i field">_initializingSemaphore</a>.<span class="i method">WaitAsync</span>();
+                <b>try</b>
+                {
+                    <b>if</b> (!<a href="#71f3b71a06671e59" class="i field">_initialized</a>)
+                    {
+                        <b>await</b> <a href="#7f594753b34fcf4d" class="i method">PreCreateAndRegisterShellsAsync</a>();
+                    }
+                }
+                <b>finally</b>
+                {
+                    <a href="#71f3b71a06671e59" class="i field">_initialized</a> = <b>true</b>;
+                    <a href="#71711bacd1543abc" class="i field">_initializingSemaphore</a>.<span class="i method">Release</span>();
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="12d322aae953da14" href="../R/12d322aae953da14.html" target="n" data-glyph="72,1" class="i method">GetOrCreateShellContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r5 rd" class="r5 r">settings</span>)
+        {
+            <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r6 rd" class="r6 r">shell</span> = <b>null</b>;
+ 
+            <b>while</b> (<span class="r6 r">shell</span> == <b>null</b>)
+            {
+                <b>if</b> (!<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryGetValue</span>(<span class="r5 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out</b> <span class="r6 r">shell</span>))
+                {
+                    <b>var</b> <span id="r7 rd" class="r7 r">semaphore</span> = <a href="#ae49f6d88c6be73f" class="i field">_shellSemaphores</a>.<span class="i method">GetOrAdd</span>(<span class="r5 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, (<span id="r8 rd" class="r8 r">name</span>) =&gt; <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1));
+ 
+                    <b>await</b> <span class="r7 r">semaphore</span>.<span class="i method">WaitAsync</span>();
+ 
+                    <b>try</b>
+                    {
+                        <b>if</b> (!<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryGetValue</span>(<span class="r5 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out</b> <span class="r6 r">shell</span>))
+                        {
+                            <span class="r6 r">shell</span> = <b>await</b> <a href="#879aee667b1fa7c7" class="i method">CreateShellContextAsync</a>(<span class="r5 r">settings</span>);
+                            <a href="#ebd1b9522a34ece6" class="i method">AddAndRegisterShell</a>(<span class="r6 r">shell</span>);
+                        }
+                    }
+                    <b>finally</b>
+                    {
+                        <span class="r7 r">semaphore</span>.<span class="i method">Release</span>();
+                    }
+                }
+ 
+                <b>if</b> (<span class="r6 r">shell</span>.<a href="/OrchardCore.Abstractions/A.html#fb03a9b2428f332c" class="i property">Released</a>)
+                {
+                    <span class="c">// If the context is released, it is removed from the dictionary so that the next iteration</span>
+                    <span class="c">// or a new call on &#39;GetOrCreateShellContextAsync()&#39; will recreate a new shell context.</span>
+                    <a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryRemove</span>(<span class="r5 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out _</b>);
+                    <span class="r6 r">shell</span> = <b>null</b>;
+                }
+            }
+ 
+            <b>return</b> <span class="r6 r">shell</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>&gt; <a id="17c6c40ec351ebc8" href="../R/17c6c40ec351ebc8.html" target="n" data-glyph="72,1" class="i method">GetScopeAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r9 rd" class="r9 r">settings</span>)
+        {
+            <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a> <span id="r10 rd" class="r10 r">scope</span> = <b>null</b>;
+ 
+            <b>while</b> (<span class="r10 r">scope</span> == <b>null</b>)
+            {
+                <b>if</b> (!<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryGetValue</span>(<span class="r9 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r11 rd" class="r11 r">shellContext</span>))
+                {
+                    <span class="r11 r">shellContext</span> = <b>await</b> <a href="#12d322aae953da14" class="i method">GetOrCreateShellContextAsync</a>(<span class="r9 r">settings</span>);
+                }
+ 
+                <span class="c">// We create a scope before checking if the shell has been released.</span>
+                <span class="r10 r">scope</span> = <span class="r11 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#1b416e9497f78ec4" class="i method">CreateScope</a>();
+ 
+                <span class="c">// If CreateScope() returned null, the shell is released. We then remove it and</span>
+                <span class="c">// retry with the hope to get one that won&#39;t be released before we create a scope.</span>
+                <b>if</b> (<span class="r10 r">scope</span> == <b>null</b>)
+                {
+                    <span class="c">// If the context is released, it is removed from the dictionary so that the next</span>
+                    <span class="c">// iteration or a new call on &#39;GetScopeAsync()&#39; will recreate a new shell context.</span>
+                    <a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryRemove</span>(<span class="r9 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out _</b>);
+                }
+            }
+ 
+            <b>return</b> <span class="r10 r">scope</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a4e2abac966835f7" href="../R/a4e2abac966835f7.html" target="n" data-glyph="72,1" class="i method">UpdateShellSettingsAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r12 rd" class="r12 r">settings</span>)
+        {
+            <span class="r12 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#fa9cb2e377f8aab0" class="i property">VersionId</a> = <a href="/OrchardCore.Abstractions/A.html#fc17a63255d71caa" class="t t">IdGenerator</a>.<a href="/OrchardCore.Abstractions/A.html#6a7df9aaa5734cc9" class="i method">GenerateId</a>();
+            <b>await</b> <a href="#5882ccbd648dcb15" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#46d871a8b78acd73" class="i method">SaveSettingsAsync</a>(<span class="r12 r">settings</span>);
+            <b>await</b> <a href="#a038c495aa06b08a" class="i method">ReloadShellContextAsync</a>(<span class="r12 r">settings</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> A feature is enabled / disabled, the tenant needs to be released so that a new shell will be built.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b60045701cbf9bd0" href="../R/b60045701cbf9bd0.html" target="n" data-glyph="72,1" class="i method">ChangedAsync</a>(<a href="/OrchardCore.Abstractions/A.html#0d18542e8e03ab41" class="t t">ShellDescriptor</a> <span id="r13 rd" class="r13 r">descriptor</span>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r14 rd" class="r14 r">settings</span>)
+            =&gt; <a href="#4c236556df82aa3c" class="i method">ReleaseShellContextAsync</a>(<span class="r14 r">settings</span>);
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Reloads the settings and releases the shell so that a new one will be</span>
+        <span class="c">///</span><span class="c"> built for subsequent requests, while existing requests get flushed.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r15 r">settings</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> to reload.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r16 r">eventSource</span><span class="c">&quot;</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether the related </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#6813a5385df96e8b" class="t t">ShellEvent</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> is invoked.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a038c495aa06b08a" href="../R/a038c495aa06b08a.html" target="n" data-glyph="72,1" class="i method">ReloadShellContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r15 rd" class="r15 r">settings</span>, <b>bool</b> <span id="r16 rd" class="r16 r">eventSource</span> = <b>true</b>)
+        {
+            <b>if</b> (<a href="#b5318ace65478c0e" class="i property">ReloadingAsync</a> != <b>null</b> &amp;&amp; <span class="r16 r">eventSource</span> &amp;&amp; <span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>)
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#0dd8585ba1833ad7" class="k">var</a> <span id="r17 rd" class="r17 r">d</span> <b>in</b> <a href="#b5318ace65478c0e" class="i property">ReloadingAsync</a>.<a href="@1@System.Runtime/A.html#4f8502d733f4bb5d" class="i method">GetInvocationList</a>())
+                {
+                    <b>await</b> ((<a href="/OrchardCore.Abstractions/A.html#6813a5385df96e8b" class="t t">ShellEvent</a>)<span class="r17 r">d</span>)(<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+                }
+            }
+ 
+            <span class="c">// A disabled shell still in use will be released by its last scope.</span>
+            <b>if</b> (!<a href="#d4ccb3117ee6f19e" class="i method">CanReleaseShell</a>(<span class="r15 r">settings</span>))
+            {
+                <a href="#c38addf7807752e8" class="i field">_runningShellTable</a>.<a href="/OrchardCore.Abstractions/A.html#efa1d16ada6f06fb" class="i method">Remove</a>(<span class="r15 r">settings</span>);
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>)
+            {
+                <span class="r15 r">settings</span> = <b>await</b> <a href="#5882ccbd648dcb15" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#ddc1f5336bdabce7" class="i method">LoadSettingsAsync</a>(<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r18 rd" class="r18 r">count</span> = 0;
+            <b>while</b> (<span class="r18 r">count</span> &lt; <a href="#02578db7e54b0dbb" class="i field">ReloadShellMaxRetriesCount</a>)
+            {
+                <span class="r18 r">count</span>++;
+ 
+                <b>if</b> (<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryRemove</span>(<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r19 rd" class="r19 r">context</span>))
+                {
+                    <a href="#c38addf7807752e8" class="i field">_runningShellTable</a>.<a href="/OrchardCore.Abstractions/A.html#efa1d16ada6f06fb" class="i method">Remove</a>(<span class="r15 r">settings</span>);
+                    <span class="r19 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9447d373011960c3" class="i method">Release</a>();
+                }
+ 
+                <span class="c">// Add a &#39;PlaceHolder&#39; allowing to retrieve the settings until the shell will be rebuilt.</span>
+                <b>if</b> (!<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryAdd</span>(<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>new</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>.<a href="/OrchardCore.Abstractions/A.html#5103611c442362a9" class="t constructor">PlaceHolder</a> { <a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a> = <span class="r15 r">settings</span> }))
+                {
+                    <span class="c">// Atomicity: We may have been the last to load the settings but unable to add the shell.</span>
+                    <b>continue</b>;
+                }
+ 
+                <a href="#6cd2fb292b5a54fa" class="i field">_shellSettings</a>[<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>] = <span class="r15 r">settings</span>;
+ 
+                <b>if</b> (<a href="#dc66a8694cf4cffb" class="i method">CanRegisterShell</a>(<span class="r15 r">settings</span>))
+                {
+                    <a href="#c38addf7807752e8" class="i field">_runningShellTable</a>.<a href="/OrchardCore.Abstractions/A.html#0d80a1052a6559d1" class="i method">Add</a>(<span class="r15 r">settings</span>);
+                }
+ 
+                <b>if</b> (<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">currentVersionId</span> = <span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#fa9cb2e377f8aab0" class="i property">VersionId</a>;
+ 
+                <span class="r15 r">settings</span> = <b>await</b> <a href="#5882ccbd648dcb15" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#ddc1f5336bdabce7" class="i method">LoadSettingsAsync</a>(<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+ 
+                <span class="c">// Consistency: We may have been the last to add the shell but not with the last settings.</span>
+                <b>if</b> (<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#fa9cb2e377f8aab0" class="i property">VersionId</a> == <span class="r20 r">currentVersionId</span>)
+                {
+                    <b>return</b>;
+                }
+            }
+ 
+            <b>throw</b> <b>new</b> <a href="/OrchardCore.Abstractions/A.html#b51fc0b371919bd0" class="t constructor">ShellHostReloadException</a>(
+                <span class="s">$&quot;</span><span class="s">Unable to reload the tenant &#39;</span>{<span class="r15 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>}<span class="s">&#39; as too many concurrent processes are trying to do so.</span><span class="s">&quot;</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Releases a shell so that a new one will be built for subsequent requests.</span>
+        <span class="c">///</span><span class="c"> Note: Can be used to free up resources after a given time of inactivity.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r21 r">settings</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> to reload.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r22 r">eventSource</span><span class="c">&quot;</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether the related </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#6813a5385df96e8b" class="t t">ShellEvent</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> is invoked.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4c236556df82aa3c" href="../R/4c236556df82aa3c.html" target="n" data-glyph="72,1" class="i method">ReleaseShellContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r21 rd" class="r21 r">settings</span>, <b>bool</b> <span id="r22 rd" class="r22 r">eventSource</span> = <b>true</b>)
+        {
+            <b>if</b> (<a href="#e8f651e44b253345" class="i property">ReleasingAsync</a> != <b>null</b> &amp;&amp; <span class="r22 r">eventSource</span> &amp;&amp; <span class="r21 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>)
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#0dd8585ba1833ad7" class="k">var</a> <span id="r23 rd" class="r23 r">d</span> <b>in</b> <a href="#e8f651e44b253345" class="i property">ReleasingAsync</a>.<a href="@1@System.Runtime/A.html#4f8502d733f4bb5d" class="i method">GetInvocationList</a>())
+                {
+                    <b>await</b> ((<a href="/OrchardCore.Abstractions/A.html#6813a5385df96e8b" class="t t">ShellEvent</a>)<span class="r23 r">d</span>)(<span class="r21 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+                }
+            }
+ 
+            <span class="c">// A disabled shell still in use will be released by its last scope.</span>
+            <b>if</b> (!<a href="#d4ccb3117ee6f19e" class="i method">CanReleaseShell</a>(<span class="r21 r">settings</span>))
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryRemove</span>(<span class="r21 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r24 rd" class="r24 r">context</span>))
+            {
+                <span class="r24 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9447d373011960c3" class="i method">Release</a>();
+            }
+ 
+            <span class="c">// Add a &#39;PlaceHolder&#39; allowing to retrieve the settings until the shell will be rebuilt.</span>
+            <b>if</b> (<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryAdd</span>(<span class="r21 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>new</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>.<a href="/OrchardCore.Abstractions/A.html#5103611c442362a9" class="t constructor">PlaceHolder</a> { <a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a> = <span class="r21 r">settings</span> }))
+            {
+                <a href="#6cd2fb292b5a54fa" class="i field">_shellSettings</a>[<span class="r21 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>] = <span class="r21 r">settings</span>;
+            }
+ 
+            <b>return</b>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="490b43eee095a073" href="../R/490b43eee095a073.html" target="n" data-glyph="72,1" class="i method">ListShellContexts</a>() =&gt; <a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i property">Values</span>.<span class="i method">ToArray</span>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to retrieve the shell context associated with the specified tenant.</span>
+        <span class="c">///</span><span class="c"> The shell may have been temporarily removed while releasing or reloading.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public bool</b> <a id="9304227f110c0f48" href="../R/9304227f110c0f48.html" target="n" data-glyph="72,1" class="i method">TryGetShellContext</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">name</span>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r26 rd" class="r26 r">shellContext</span>) =&gt; <a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryGetValue</span>(<span class="r25 r">name</span>, <b>out</b> <span class="r26 r">shellContext</span>);
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to retrieve the shell settings associated with the specified tenant.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public bool</b> <a id="f951348ff7038979" href="../R/f951348ff7038979.html" target="n" data-glyph="72,1" class="i method">TryGetSettings</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">name</span>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r28 rd" class="r28 r">settings</span>) =&gt; <a href="#6cd2fb292b5a54fa" class="i field">_shellSettings</a>.<span class="i method">TryGetValue</span>(<span class="r27 r">name</span>, <b>out</b> <span class="r28 r">settings</span>);
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Retrieves all shell settings.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt; <a id="2c14ee4fffe188be" href="../R/2c14ee4fffe188be.html" target="n" data-glyph="72,1" class="i method">GetAllSettings</a>() =&gt; <a href="#6cd2fb292b5a54fa" class="i field">_shellSettings</a>.<span class="i property">Values</span>.<span class="i method">ToArray</span>();
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="7f594753b34fcf4d" href="../R/7f594753b34fcf4d.html" target="n" data-glyph="76,1" class="i method">PreCreateAndRegisterShellsAsync</a>()
+        {
+            <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Start creation of shells&quot;</span>);
+            }
+ 
+            <span class="c">// Load all extensions and features so that the controllers are registered in</span>
+            <span class="c">// &#39;ITypeFeatureProvider&#39; and their areas defined in the application conventions.</span>
+            <b>await</b> <a href="#1945e3a1b5c5463d" class="i field">_extensionManager</a>.<a href="/OrchardCore.Abstractions/A.html#2938b05452bc31f6" class="i method">LoadFeaturesAsync</a>();
+ 
+            <b>if</b> (<a href="#9d7c67c758234490" class="i property">LoadingAsync</a> != <b>null</b>)
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#0dd8585ba1833ad7" class="k">var</a> <span id="r29 rd" class="r29 r">d</span> <b>in</b> <a href="#9d7c67c758234490" class="i property">LoadingAsync</a>.<a href="@1@System.Runtime/A.html#4f8502d733f4bb5d" class="i method">GetInvocationList</a>())
+                {
+                    <b>await</b> ((<a href="/OrchardCore.Abstractions/A.html#751ab8b0376ad7dd" class="t t">ShellsEvent</a>)<span class="r29 r">d</span>)();
+                }
+            }
+ 
+            <span class="c">// Is there any tenant right now?</span>
+            <b>var</b> <span id="r30 rd" class="r30 r">allSettings</span> = (<b>await</b> <a href="#5882ccbd648dcb15" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#dd8394a106554ed7" class="i method">LoadSettingsAsync</a>()).<span class="i method">Where</span>(<a href="#56cc89c719e673af" class="i method">CanCreateShell</a>).<span class="i method">ToArray</span>();
+            <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r31 rd" class="r31 r">defaultSettings</span> = <span class="r30 r">allSettings</span>.<span class="i method">FirstOrDefault</span>(<span id="r32 rd" class="r32 r">s</span> =&gt; <span class="r32 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> == <a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a>);
+ 
+            <span class="c">// The &#39;Default&#39; tenant is not running, run the Setup.</span>
+            <b>if</b> (<span class="r31 r">defaultSettings</span>?.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a>)
+            {
+                <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r33 rd" class="r33 r">setupContext</span> = <b>await</b> <a href="#c3b7ea4ab360124e" class="i method">CreateSetupContextAsync</a>(<span class="r31 r">defaultSettings</span>);
+                <a href="#ebd1b9522a34ece6" class="i method">AddAndRegisterShell</a>(<span class="r33 r">setupContext</span>);
+            }
+ 
+            <span class="c">// Pre-create and register all tenant shells.</span>
+            <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r34 rd" class="r34 r">settings</span> <b>in</b> <span class="r30 r">allSettings</span>)
+            {
+                <a href="#ebd1b9522a34ece6" class="i method">AddAndRegisterShell</a>(<b>new</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>.<a href="/OrchardCore.Abstractions/A.html#5103611c442362a9" class="t constructor">PlaceHolder</a> { <a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a> = <span class="r34 r">settings</span> });
+            };
+ 
+            <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Done pre-creating and registering shells&quot;</span>);
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a shell context based on shell settings</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="879aee667b1fa7c7" href="../R/879aee667b1fa7c7.html" target="n" data-glyph="76,1" class="i method">CreateShellContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r35 rd" class="r35 r">settings</span>)
+        {
+            <b>if</b> (<span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#75039d899725f387" class="i field">Uninitialized</a>)
+            {
+                <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                {
+                    <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Creating shell context for tenant &#39;{TenantName}&#39; setup&quot;</span>, <span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+                }
+ 
+                <b>return</b> <a href="#25d7e93a9115f2c3" class="i field">_shellContextFactory</a>.<a href="/OrchardCore.Abstractions/A.html#89619e869b325847" class="i method">CreateSetupContextAsync</a>(<span class="r35 r">settings</span>);
+            }
+            <b>else</b> <b>if</b> (<span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#2196b7a2790a7b9b" class="i field">Disabled</a>)
+            {
+                <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                {
+                    <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Creating disabled shell context for tenant &#39;{TenantName}&#39;&quot;</span>, <span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+                }
+ 
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>new</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t constructor">ShellContext</a> { <a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a> = <span class="r35 r">settings</span> });
+            }
+            <b>else</b> <b>if</b> (<span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a> || <span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>)
+            {
+                <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                {
+                    <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Creating shell context for tenant &#39;{TenantName}&#39;&quot;</span>, <span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+                }
+ 
+                <b>return</b> <a href="#25d7e93a9115f2c3" class="i field">_shellContextFactory</a>.<a href="/OrchardCore.Abstractions/A.html#5c46615574139abf" class="i method">CreateShellContextAsync</a>(<span class="r35 r">settings</span>);
+            }
+            <b>else</b>
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Unexpected shell state for &quot;</span> + <span class="r35 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a transient shell for the default tenant&#39;s setup.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="c3b7ea4ab360124e" href="../R/c3b7ea4ab360124e.html" target="n" data-glyph="76,1" class="i method">CreateSetupContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r36 rd" class="r36 r">defaultSettings</span>)
+        {
+            <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+            {
+                <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Creating shell context for root setup.&quot;</span>);
+            }
+ 
+            <b>if</b> (<span class="r36 r">defaultSettings</span> == <b>null</b>)
+            {
+                <span class="c">// Creates a default shell settings based on the configuration.</span>
+                <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r37 rd" class="r37 r">shellSettings</span> = <a href="#5882ccbd648dcb15" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#0fd6f52d82e2dba8" class="i method">CreateDefaultSettings</a>();
+                <span class="r37 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> = <a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a>;
+                <span class="r37 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> = <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#75039d899725f387" class="i field">Uninitialized</a>;
+                <span class="r36 r">defaultSettings</span> = <span class="r37 r">shellSettings</span>;
+            }
+ 
+            <b>return</b> <a href="#25d7e93a9115f2c3" class="i field">_shellContextFactory</a>.<a href="/OrchardCore.Abstractions/A.html#89619e869b325847" class="i method">CreateSetupContextAsync</a>(<span class="r36 r">defaultSettings</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Adds the shell and registers its settings in RunningShellTable</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private void</b> <a id="ebd1b9522a34ece6" href="../R/ebd1b9522a34ece6.html" target="n" data-glyph="76,1" class="i method">AddAndRegisterShell</a>(<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r38 rd" class="r38 r">context</span>)
+        {
+            <b>if</b> (<a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryAdd</span>(<span class="r38 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <span class="r38 r">context</span>))
+            {
+                <a href="#6cd2fb292b5a54fa" class="i field">_shellSettings</a>[<span class="r38 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>] = <span class="r38 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>;
+ 
+                <b>if</b> (<a href="#5758eaf841d152b9" class="i method">CanRegisterShell</a>(<span class="r38 r">context</span>))
+                {
+                    <a href="#911b0d43a16d40c4" class="i method">RegisterShellSettings</a>(<span class="r38 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>);
+                }
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether or not a shell can be activated and added to the running shells.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private bool</b> <a id="5758eaf841d152b9" href="../R/5758eaf841d152b9.html" target="n" data-glyph="76,1" class="i method">CanRegisterShell</a>(<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r39 rd" class="r39 r">context</span>)
+        {
+            <b>if</b> (!<a href="#dc66a8694cf4cffb" class="i method">CanRegisterShell</a>(<span class="r39 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>))
+            {
+                <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                {
+                    <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Skipping shell context registration for tenant &#39;{TenantName}&#39;&quot;</span>, <span class="r39 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+                }
+ 
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Registers the shell settings in RunningShellTable</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private void</b> <a id="911b0d43a16d40c4" href="../R/911b0d43a16d40c4.html" target="n" data-glyph="76,1" class="i method">RegisterShellSettings</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r40 rd" class="r40 r">settings</span>)
+        {
+            <b>if</b> (<a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+            {
+                <a href="#9575bb25b79f3cec" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Registering shell context for tenant &#39;{TenantName}&#39;&quot;</span>, <span class="r40 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+            }
+ 
+            <a href="#c38addf7807752e8" class="i field">_runningShellTable</a>.<a href="/OrchardCore.Abstractions/A.html#0d80a1052a6559d1" class="i method">Add</a>(<span class="r40 r">settings</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether or not a shell can be added to the list of available shells.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private bool</b> <a id="56cc89c719e673af" href="../R/56cc89c719e673af.html" target="n" data-glyph="76,1" class="i method">CanCreateShell</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r41 rd" class="r41 r">shellSettings</span>)
+        {
+            <b>return</b>
+                <span class="r41 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a> ||
+                <span class="r41 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#75039d899725f387" class="i field">Uninitialized</a> ||
+                <span class="r41 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a> ||
+                <span class="r41 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#2196b7a2790a7b9b" class="i field">Disabled</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether or not a shell can be activated and added to the running shells.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private bool</b> <a id="dc66a8694cf4cffb" href="../R/dc66a8694cf4cffb.html" target="n" data-glyph="76,1" class="i method">CanRegisterShell</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r42 rd" class="r42 r">shellSettings</span>)
+        {
+            <b>return</b>
+                <span class="r42 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a> ||
+                <span class="r42 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#75039d899725f387" class="i field">Uninitialized</a> ||
+                <span class="r42 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Whether or not a shell can be released and removed from the list, false if disabled and still in use.</span>
+        <span class="c">///</span><span class="c"> Note: A disabled shell still in use will be released by its last scope, and keeping it in the list</span>
+        <span class="c">///</span><span class="c"> prevents a consumer from creating a new one that would have a null service provider.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private bool</b> <a id="d4ccb3117ee6f19e" href="../R/d4ccb3117ee6f19e.html" target="n" data-glyph="76,1" class="i method">CanReleaseShell</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r43 rd" class="r43 r">settings</span>)
+        {
+            <b>return</b> <span class="r43 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#2196b7a2790a7b9b" class="i field">Disabled</a> || <a href="#1df67ad1bfdce770" class="i field">_shellContexts</a>.<span class="i method">TryGetValue</span>(<span class="r43 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r44 rd" class="r44 r">value</span>) &amp;&amp; <span class="r44 r">value</span>.<a href="/OrchardCore.Abstractions/A.html#61facb238f3b2ed2" class="i property">ActiveScopes</a> == 0;
+        }
+ 
+        <b>public void</b> <a id="529f33a7debb5504" href="../R/529f33a7debb5504.html" target="n" data-glyph="72,1" class="i method">Dispose</a>()
+        {
+            <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r45 rd" class="r45 r">shell</span> <b>in</b> <a href="#490b43eee095a073" class="i method">ListShellContexts</a>())
+            {
+                <span class="r45 r">shell</span>.<a href="/OrchardCore.Abstractions/A.html#cfc101cbffaed525" class="i method">Dispose</a>();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

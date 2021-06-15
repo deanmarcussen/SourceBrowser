@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html><head><title>MarkdownFieldDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(118);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Markdown/Drivers/MarkdownFieldDriver.cs" target="_top">Drivers\MarkdownFieldDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Markdown" target="_top">src\OrchardCore.Modules\OrchardCore.Markdown\OrchardCore.Markdown.csproj</a> (OrchardCore.Markdown)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Infrastructure</span>.<span class="i">Html</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Fields</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shortcodes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i">Shortcodes</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="c065e19cc6ac35a9" href="../R/c065e19cc6ac35a9.html" target="n" data-glyph="0,0" class="t t">MarkdownFieldDisplayDriver</a> : <a href="/OrchardCore.ContentManagement.Display/A.html#6a2163837f2072da" class="t t">ContentFieldDisplayDriver</a>&lt;<a href="../Fields/MarkdownField.cs.html#a455114e469738a0" class="t t">MarkdownField</a>&gt;
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <a id="55368684ef0ea771" href="../R/55368684ef0ea771.html" target="n" data-glyph="46,1" class="i field">_liquidTemplateManager</a>;
+        <b>private readonly</b> <span class="t t">HtmlEncoder</span> <a id="60762b063cd00ace" href="../R/60762b063cd00ace.html" target="n" data-glyph="46,1" class="i field">_htmlEncoder</a>;
+        <b>private readonly</b> <span class="i">IHtmlSanitizerService</span> <a id="431a183d39886c9d" href="../R/431a183d39886c9d.html" target="n" data-glyph="46,1" class="i field">_htmlSanitizerService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Shortcodes.Abstractions/A.html#64b53c8dd4d3feab" class="t t">IShortcodeService</a> <a id="2dd497c07b7346d0" href="../R/2dd497c07b7346d0.html" target="n" data-glyph="46,1" class="i field">_shortcodeService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Markdown.Abstractions/A.html#7a3b9265014ecf70" class="t t">IMarkdownService</a> <a id="59f8a57b4f747be8" href="../R/59f8a57b4f747be8.html" target="n" data-glyph="46,1" class="i field">_markdownService</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="9674d46a78d0d9bc" href="../R/9674d46a78d0d9bc.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="e826c95022e43b34" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">MarkdownFieldDisplayDriver</a>(<a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <span id="r0 rd" class="r0 r">liquidTemplateManager</span>,
+            <span class="t t">HtmlEncoder</span> <span id="r1 rd" class="r1 r">htmlEncoder</span>,
+            <span class="i">IHtmlSanitizerService</span> <span id="r2 rd" class="r2 r">htmlSanitizerService</span>,
+            <a href="/OrchardCore.Shortcodes.Abstractions/A.html#64b53c8dd4d3feab" class="t t">IShortcodeService</a> <span id="r3 rd" class="r3 r">shortcodeService</span>,
+            <a href="/OrchardCore.Markdown.Abstractions/A.html#7a3b9265014ecf70" class="t t">IMarkdownService</a> <span id="r4 rd" class="r4 r">markdownService</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#c065e19cc6ac35a9" class="t t">MarkdownFieldDisplayDriver</a>&gt; <span id="r5 rd" class="r5 r">localizer</span>)
+        {
+            <a href="#55368684ef0ea771" class="i field">_liquidTemplateManager</a> = <span class="r0 r">liquidTemplateManager</span>;
+            <a href="#60762b063cd00ace" class="i field">_htmlEncoder</a> = <span class="r1 r">htmlEncoder</span>;
+            <a href="#431a183d39886c9d" class="i field">_htmlSanitizerService</a> = <span class="r2 r">htmlSanitizerService</span>;
+            <a href="#2dd497c07b7346d0" class="i field">_shortcodeService</a> = <span class="r3 r">shortcodeService</span>;
+            <a href="#59f8a57b4f747be8" class="i field">_markdownService</a> = <span class="r4 r">markdownService</span>;
+            <a href="#9674d46a78d0d9bc" class="i field">S</a> = <span class="r5 r">localizer</span>;
+        }
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="b8773de7663d8f41" href="../R/b8773de7663d8f41.html" target="n" data-glyph="72,1" class="i method">Display</a>(<a href="../Fields/MarkdownField.cs.html#a455114e469738a0" class="t t">MarkdownField</a> <span id="r6 rd" class="r6 r">field</span>, <a href="/OrchardCore.ContentManagement.Display/A.html#325f8ad6765863ab" class="t t">BuildFieldDisplayContext</a> <span id="r7 rd" class="r7 r">context</span>)
+        {
+            <b>return</b> <span class="i">Initialize</span>&lt;<a href="../ViewModels/MarkdownFieldViewModel.cs.html#49acb8fc295ef2ab" class="t t">MarkdownFieldViewModel</a>&gt;(<a href="/OrchardCore.ContentManagement.Display/A.html#b94e459085e8d09f" class="i method">GetDisplayShapeType</a>(<span class="r7 r">context</span>), <b>async</b> <span id="r8 rd" class="r8 r">model</span> =&gt;
+            {
+ 
+                <a href="../Settings/MarkdownFieldSettings.cs.html#19a2a966736ac973" class="k">var</a> <span id="r9 rd" class="r9 r">settings</span> = <span class="r7 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#7f37dd4b6f70ad9c" class="i property">PartFieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="../Settings/MarkdownFieldSettings.cs.html#19a2a966736ac973" class="t t">MarkdownFieldSettings</a>&gt;();
+                <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#4c3b8726c8c9e86b" class="i property">Markdown</a> = <span class="r6 r">field</span>.<a href="../Fields/MarkdownField.cs.html#4803c71dfa30ef35" class="i property">Markdown</a>;
+                <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#6cb4513f4e646fb1" class="i property">Field</a> = <span class="r6 r">field</span>;
+                <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#aa4ac48f98f42749" class="i property">Part</a> = <span class="r7 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#c6b5a38ed69ad8fc" class="i property">ContentPart</a>;
+                <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#0676f51fe3d3b0c6" class="i property">PartFieldDefinition</a> = <span class="r7 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#7f37dd4b6f70ad9c" class="i property">PartFieldDefinition</a>;
+ 
+                <span class="c">// The default Markdown option is to entity escape html</span>
+                <span class="c">// so filters must be run after the markdown has been processed.</span>
+                <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#e68444540c80bed6" class="i property">Html</a> = <a href="#59f8a57b4f747be8" class="i field">_markdownService</a>.<a href="/OrchardCore.Markdown.Abstractions/A.html#fee2a16da52f66f5" class="i method">ToHtml</a>(<span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#4c3b8726c8c9e86b" class="i property">Markdown</a> ?? <span class="s">&quot;&quot;</span>);
+ 
+                <span class="c">// The liquid rendering is for backwards compatability and can be removed in a future version.</span>
+                <b>if</b> (!<span class="r9 r">settings</span>.<a href="../Settings/MarkdownFieldSettings.cs.html#b452cb3514c27ddd" class="i property">SanitizeHtml</a>)
+                {
+                    <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#4c3b8726c8c9e86b" class="i property">Markdown</a> = <b>await</b> <a href="#55368684ef0ea771" class="i field">_liquidTemplateManager</a>.<span class="i">RenderStringAsync</span>(<span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#e68444540c80bed6" class="i property">Html</a>, <a href="#60762b063cd00ace" class="i field">_htmlEncoder</a>, <span class="r8 r">model</span>,
+                        <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;() { [<span class="s">&quot;ContentItem&quot;</span>] = <b>new</b> <span class="i">ObjectValue</span>(<span class="r6 r">field</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>) });
+                }
+ 
+                <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#e68444540c80bed6" class="i property">Html</a> = <b>await</b> <a href="#2dd497c07b7346d0" class="i field">_shortcodeService</a>.<span class="i">ProcessAsync</span>(<span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#e68444540c80bed6" class="i property">Html</a>,
+                    <b>new</b> <span class="i">Context</span>
+                    {
+                        [<span class="s">&quot;ContentItem&quot;</span>] = <span class="r6 r">field</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>,
+                        [<span class="s">&quot;PartFieldDefinition&quot;</span>] = <span class="r7 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#7f37dd4b6f70ad9c" class="i property">PartFieldDefinition</a>
+                    });
+ 
+                <b>if</b> (<span class="r9 r">settings</span>.<a href="../Settings/MarkdownFieldSettings.cs.html#b452cb3514c27ddd" class="i property">SanitizeHtml</a>)
+                {
+                    <span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#e68444540c80bed6" class="i property">Html</a> = <a href="#431a183d39886c9d" class="i field">_htmlSanitizerService</a>.<span class="i">Sanitize</span>(<span class="r8 r">model</span>.<a href="../ViewModels/MarkdownFieldViewModel.cs.html#e68444540c80bed6" class="i property">Html</a> ?? <span class="s">&quot;&quot;</span>);
+                }
+            })
+            .<a href="/OrchardCore.DisplayManagement/A.html#69203efb6f458dc2" class="i method">Location</a>(<span class="s">&quot;Detail&quot;</span>, <span class="s">&quot;Content&quot;</span>)
+            .<a href="/OrchardCore.DisplayManagement/A.html#69203efb6f458dc2" class="i method">Location</a>(<span class="s">&quot;Summary&quot;</span>, <span class="s">&quot;Content&quot;</span>);
+        }
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="e54229fa7edd13e0" href="../R/e54229fa7edd13e0.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="../Fields/MarkdownField.cs.html#a455114e469738a0" class="t t">MarkdownField</a> <span id="r10 rd" class="r10 r">field</span>, <a href="/OrchardCore.ContentManagement.Display/A.html#e6f5f76a9c1a9fa9" class="t t">BuildFieldEditorContext</a> <span id="r11 rd" class="r11 r">context</span>)
+        {
+            <b>return</b> <a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#f1349d3cda81e826" class="t t">EditMarkdownFieldViewModel</a>&gt;(<a href="/OrchardCore.ContentManagement.Display/A.html#fdc4b59cfa32924d" class="i method">GetEditorShapeType</a>(<span class="r11 r">context</span>), <span id="r12 rd" class="r12 r">model</span> =&gt;
+            {
+                <span class="r12 r">model</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#2ecfc1c6831e1aa1" class="i property">Markdown</a> = <span class="r10 r">field</span>.<a href="../Fields/MarkdownField.cs.html#4803c71dfa30ef35" class="i property">Markdown</a>;
+                <span class="r12 r">model</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#61995f882c331d5f" class="i property">Field</a> = <span class="r10 r">field</span>;
+                <span class="r12 r">model</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#8536d52c321b6f54" class="i property">Part</a> = <span class="r11 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#4b903b7fe10189a5" class="i property">ContentPart</a>;
+                <span class="r12 r">model</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#774c25a9e3f80a69" class="i property">PartFieldDefinition</a> = <span class="r11 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#329b9c0f1f82fec3" class="i property">PartFieldDefinition</a>;
+            });
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="100ccd10f9f568c5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="../Fields/MarkdownField.cs.html#a455114e469738a0" class="t t">MarkdownField</a> <span id="r13 rd" class="r13 r">field</span>, <span class="i">IUpdateModel</span> <span id="r14 rd" class="r14 r">updater</span>, <a href="/OrchardCore.ContentManagement.Display/A.html#d6075fcdf3b6738b" class="t t">UpdateFieldEditorContext</a> <span id="r15 rd" class="r15 r">context</span>)
+        {
+            <a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#f1349d3cda81e826" class="k">var</a> <span id="r16 rd" class="r16 r">viewModel</span> = <b>new</b> <a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#f1349d3cda81e826" class="t constructor">EditMarkdownFieldViewModel</a>();
+ 
+            <b>if</b> (<b>await</b> <span class="r14 r">updater</span>.<span class="i">TryUpdateModelAsync</span>(<span class="r16 r">viewModel</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>, <span id="r17 rd" class="r17 r">vm</span> =&gt; <span class="r17 r">vm</span>.<span class="i">Markdown</span>))
+            {
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r16 r">viewModel</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#2ecfc1c6831e1aa1" class="i property">Markdown</a>) &amp;&amp; !<a href="#55368684ef0ea771" class="i field">_liquidTemplateManager</a>.<a href="/OrchardCore.Liquid.Abstractions/A.html#a81d1b8de159c639" class="i method">Validate</a>(<span class="r16 r">viewModel</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#2ecfc1c6831e1aa1" class="i property">Markdown</a>, <b>out</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r18 rd" class="r18 r">errors</span>))
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">fieldName</span> = <span class="r15 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#329b9c0f1f82fec3" class="i property">PartFieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0e6884aff618354d" class="i method">DisplayName</a>();
+                    <span class="r14 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>, <b>nameof</b>(<span class="r16 r">viewModel</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#2ecfc1c6831e1aa1" class="i property">Markdown</a>), <a href="#9674d46a78d0d9bc" class="i field">S</a>[<span class="s">&quot;{0} field doesn&#39;t contain a valid Liquid expression. Details: {1}&quot;</span>, <span class="r19 r">fieldName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot; &quot;</span>, <span class="r18 r">errors</span>)]);
+                }
+                <b>else</b>
+                {
+                    <span class="r13 r">field</span>.<a href="../Fields/MarkdownField.cs.html#4803c71dfa30ef35" class="i property">Markdown</a> = <span class="r16 r">viewModel</span>.<a href="../ViewModels/EditMarkdownFieldViewModel.cs.html#2ecfc1c6831e1aa1" class="i property">Markdown</a>;
+                }
+            }
+ 
+            <b>return</b> <a href="#e54229fa7edd13e0" class="i method">Edit</a>(<span class="r13 r">field</span>, <span class="r15 r">context</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

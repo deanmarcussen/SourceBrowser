@@ -1,0 +1,62 @@
+﻿<!DOCTYPE html>
+<html><head><title>PoolingJsonSerializer.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(53);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Pooling/PoolingJsonSerializer.cs" target="_top">Pooling\PoolingJsonSerializer.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Buffers</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Abstractions</span>.<span class="i n">Pooling</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Handles JSON.NET serialization utilizing pooled array buffers and string builders.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>internal sealed class</b> <a id="15b0e4a382d42fee" href="../R/15b0e4a382d42fee.html" target="n" data-glyph="2,0" class="t t">PoolingJsonSerializer</a>
+    {
+        <b>private readonly</b> <a href="JsonArrayPool.cs.html#e9d033c4b6cba948" class="t t">JsonArrayPool</a>&lt;<b>char</b>&gt; <a id="8359cf99e1b40333" href="../R/8359cf99e1b40333.html" target="n" data-glyph="46,1" class="i field">_arrayPool</a>;
+        <b>private readonly</b> <span class="i">JsonSerializerSettings</span> <a id="3bdd25d3a43eb04f" href="../R/3bdd25d3a43eb04f.html" target="n" data-glyph="46,1" class="i field">_jsonSettings</a>;
+ 
+        <b>public</b> <a id="404beeb4adcee483" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">PoolingJsonSerializer</a>(<a href="@1@System.Runtime/A.html#87992df74cbf00ad" class="t t">ArrayPool</a>&lt;<b>char</b>&gt; <span id="r0 rd" class="r0 r">arrayPool</span>) : <a href="#c7e14c7d608f419e" class="k">this</a>(<span class="r0 r">arrayPool</span>, <b>null</b>)
+        {
+        }
+ 
+        <b>public</b> <a id="c7e14c7d608f419e" href="../R/c7e14c7d608f419e.html" target="n" data-glyph="72,1" class="t constructor">PoolingJsonSerializer</a>(<a href="@1@System.Runtime/A.html#87992df74cbf00ad" class="t t">ArrayPool</a>&lt;<b>char</b>&gt; <span id="r1 rd" class="r1 r">arrayPool</span>, <span class="i">JsonSerializerSettings</span> <span id="r2 rd" class="r2 r">serializerSettings</span>)
+        {
+            <a href="#8359cf99e1b40333" class="i field">_arrayPool</a> = <b>new</b> <a href="JsonArrayPool.cs.html#b1a3d301e0c7e397" class="t constructor">JsonArrayPool</a>&lt;<b>char</b>&gt;(<span class="r1 r">arrayPool</span> ?? <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;Array pool is required&quot;</span>, <b>nameof</b>(<span class="r1 r">arrayPool</span>)));
+            <a href="#3bdd25d3a43eb04f" class="i field">_jsonSettings</a> = <span class="r2 r">serializerSettings</span>;
+        }
+ 
+        <b>public</b> <span class="r3 r t">T</span> <a id="353f584b3e49fee9" href="../R/353f584b3e49fee9.html" target="n" data-glyph="72,1" class="i method">Deserialize</a>&lt;<span id="r3 rd t" class="r3 r t">T</span>&gt;(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">content</span>) =&gt; (<span class="r3 r t">T</span>) <a href="#4f4346be25d3381a" class="i method">Deserialize</a>(<span class="r4 r">content</span>, <b>typeof</b>(<span class="r3 r t">T</span>));
+ 
+        <b>public object</b> <a id="4f4346be25d3381a" href="../R/4f4346be25d3381a.html" target="n" data-glyph="72,1" class="i method">Deserialize</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">content</span>, <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a> <span id="r6 rd" class="r6 r">type</span>)
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">jsonSerializer</span> = <span class="i">JsonSerializer</span>.<span class="i">CreateDefault</span>(<a href="#3bdd25d3a43eb04f" class="i field">_jsonSettings</a>);
+            <b>using</b> <b>var</b> <span id="r8 rd" class="r8 r">reader</span> = <b>new</b> <span class="i">JsonTextReader</span>(<b>new</b> <a href="@1@System.Runtime/A.html#4d3b5652006f956d" class="t constructor">StringReader</a>(<span class="r5 r">content</span>))
+            {
+                <span class="i">ArrayPool</span> = <a href="#8359cf99e1b40333" class="i field">_arrayPool</a>
+            };
+            <b>return</b> <span class="r7 r">jsonSerializer</span>.<span class="i">Deserialize</span>(<span class="r8 r">reader</span>, <span class="r6 r">type</span>);
+        }
+ 
+        <b>public string</b> <a id="b97e6e5f31631dff" href="../R/b97e6e5f31631dff.html" target="n" data-glyph="72,1" class="i method">Serialize</a>(<b>object</b> <span id="r9 rd" class="r9 r">item</span>)
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">jsonSerializer</span> = <span class="i">JsonSerializer</span>.<span class="i">CreateDefault</span>(<a href="#3bdd25d3a43eb04f" class="i field">_jsonSettings</a>);
+            <b>using</b> <a href="ZStringWriter.cs.html#96048688a1df87ef" class="k">var</a> <span id="r11 rd" class="r11 r">sw</span> = <b>new</b> <a href="ZStringWriter.cs.html#3cd15be76116d266" class="t constructor">ZStringWriter</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>);
+            <b>using</b> <b>var</b> <span id="r12 rd" class="r12 r">jsonWriter</span> = <b>new</b> <span class="i">JsonTextWriter</span>(<span class="r11 r">sw</span>)
+            {
+                <span class="i">ArrayPool</span> = <a href="#8359cf99e1b40333" class="i field">_arrayPool</a>,
+                <span class="i">Formatting</span> = <span class="r10 r">jsonSerializer</span>.<span class="i">Formatting</span>
+            };
+            <span class="r10 r">jsonSerializer</span>.<span class="i">Serialize</span>(<span class="r12 r">jsonWriter</span>, <span class="r9 r">item</span>, <b>null</b>);
+            <b>return</b> <span class="r11 r">sw</span>.<a href="ZStringWriter.cs.html#bece8ffcfa7af676" class="i method">ToString</a>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

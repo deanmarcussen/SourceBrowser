@@ -1,0 +1,374 @@
+﻿<!DOCTYPE html>
+<html><head><title>ExtensionManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(365);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Extensions/ExtensionManager.cs" target="_top">Extensions\ExtensionManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>.<span class="i n">Features</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>.<span class="i n">Manifests</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>.<span class="i n">Utility</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>
+{
+    <b>public class</b> <a id="ff52be532b96583e" href="../R/ff52be532b96583e.html" target="n" data-glyph="0,0" class="t t">ExtensionManager</a> : <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <a id="ae2a7aa780f9bc96" href="../R/ae2a7aa780f9bc96.html" target="n" data-glyph="46,1" class="i field">_applicationContext</a>;
+ 
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#121ad0190a3754ca" class="t t">IExtensionDependencyStrategy</a>&gt; <a id="a4f99bab965cd7c2" href="../R/a4f99bab965cd7c2.html" target="n" data-glyph="46,1" class="i field">_extensionDependencyStrategies</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#16205f04b92a0ec8" class="t t">IExtensionPriorityStrategy</a>&gt; <a id="4d50770b045b01a7" href="../R/4d50770b045b01a7.html" target="n" data-glyph="46,1" class="i field">_extensionPriorityStrategies</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#1a9a5e92836c8867" class="t t">ITypeFeatureProvider</a> <a id="0e5954f372f42cf7" href="../R/0e5954f372f42cf7.html" target="n" data-glyph="46,1" class="i field">_typeFeatureProvider</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#74100ca0c6e91ad5" class="t t">IFeaturesProvider</a> <a id="d5e887fa0c982762" href="../R/d5e887fa0c982762.html" target="n" data-glyph="46,1" class="i field">_featuresProvider</a>;
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="t t">ExtensionEntry</a>&gt; <a id="1f817bd491de12d1" href="../R/1f817bd491de12d1.html" target="n" data-glyph="46,1" class="i field">_extensions</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a>&gt; <a id="954e7da71633a4fd" href="../R/954e7da71633a4fd.html" target="n" data-glyph="46,1" class="i field">_extensionsInfos</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#204e84183184dcda" class="t t">FeatureEntry</a>&gt; <a id="0bf12de87c26f0b0" href="../R/0bf12de87c26f0b0.html" target="n" data-glyph="46,1" class="i field">_features</a>;
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[] <a id="4c9bcf760ac2a1a1" href="../R/4c9bcf760ac2a1a1.html" target="n" data-glyph="46,1" class="i field">_featureInfos</a>;
+ 
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="t t">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;&gt;&gt; <a id="fd3cefcfc991d3e8" href="../R/fd3cefcfc991d3e8.html" target="n" data-glyph="46,1" class="i field">_featureDependencies</a>
+            = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="t t">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;&gt;&gt;();
+ 
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="t t">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;&gt;&gt; <a id="4eb66b89e747c57d" href="../R/4eb66b89e747c57d.html" target="n" data-glyph="46,1" class="i field">_dependentFeatures</a>
+            = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="t t">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;&gt;&gt;();
+ 
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>, <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[], <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[]&gt; <a id="e0543c433bfe5bc6" href="../R/e0543c433bfe5bc6.html" target="n" data-glyph="46,1" class="i field">GetDependentFeaturesFunc</a> =
+            <b>new</b> <span class="t">Func</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>, <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[], <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[]&gt;(
+                (<span id="r0 rd" class="r0 r">currentFeature</span>, <span id="r1 rd" class="r1 r">fs</span>) =&gt; <span class="r1 r">fs</span>
+                    .<span class="i method">Where</span>(<span id="r2 rd" class="r2 r">f</span> =&gt; <span class="r2 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#1d60ff719fadf556" class="i property">Dependencies</a>.<span class="i method">Any</span>(<span id="r3 rd" class="r3 r">dep</span> =&gt; <span class="r3 r">dep</span> == <span class="r0 r">currentFeature</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>))
+                    .<span class="i method">ToArray</span>());
+ 
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>, <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[], <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[]&gt; <a id="e45a4ee6b9f20ee3" href="../R/e45a4ee6b9f20ee3.html" target="n" data-glyph="46,1" class="i field">GetFeatureDependenciesFunc</a> =
+            <b>new</b> <span class="t">Func</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>, <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[], <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[]&gt;(
+                (<span id="r4 rd" class="r4 r">currentFeature</span>, <span id="r5 rd" class="r5 r">fs</span>) =&gt; <span class="r5 r">fs</span>
+                    .<span class="i method">Where</span>(<span id="r6 rd" class="r6 r">f</span> =&gt; <span class="r4 r">currentFeature</span>.<a href="/OrchardCore.Abstractions/A.html#1d60ff719fadf556" class="i property">Dependencies</a>.<span class="i method">Any</span>(<span id="r7 rd" class="r7 r">dep</span> =&gt; <span class="r7 r">dep</span> == <span class="r6 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>))
+                    .<span class="i method">ToArray</span>());
+ 
+        <b>private bool</b> <a id="70568353b539d1fd" href="../R/70568353b539d1fd.html" target="n" data-glyph="46,1" class="i field">_isInitialized</a> = <b>false</b>;
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="043219b92a23f106" href="../R/043219b92a23f106.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>public</b> <a id="4323a6428de7bfdd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ExtensionManager</a>(
+            <a href="/OrchardCore.Abstractions/A.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <span id="r8 rd" class="r8 r">applicationContext</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#121ad0190a3754ca" class="t t">IExtensionDependencyStrategy</a>&gt; <span id="r9 rd" class="r9 r">extensionDependencyStrategies</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#16205f04b92a0ec8" class="t t">IExtensionPriorityStrategy</a>&gt; <span id="r10 rd" class="r10 r">extensionPriorityStrategies</span>,
+            <a href="/OrchardCore.Abstractions/A.html#1a9a5e92836c8867" class="t t">ITypeFeatureProvider</a> <span id="r11 rd" class="r11 r">typeFeatureProvider</span>,
+            <a href="/OrchardCore.Abstractions/A.html#74100ca0c6e91ad5" class="t t">IFeaturesProvider</a> <span id="r12 rd" class="r12 r">featuresProvider</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#ff52be532b96583e" class="t t">ExtensionManager</a>&gt; <span id="r13 rd" class="r13 r">logger</span>)
+        {
+            <a href="#ae2a7aa780f9bc96" class="i field">_applicationContext</a> = <span class="r8 r">applicationContext</span>;
+            <a href="#a4f99bab965cd7c2" class="i field">_extensionDependencyStrategies</a> = <span class="r9 r">extensionDependencyStrategies</span>;
+            <a href="#4d50770b045b01a7" class="i field">_extensionPriorityStrategies</a> = <span class="r10 r">extensionPriorityStrategies</span>;
+            <a href="#0e5954f372f42cf7" class="i field">_typeFeatureProvider</a> = <span class="r11 r">typeFeatureProvider</span>;
+            <a href="#d5e887fa0c982762" class="i field">_featuresProvider</a> = <span class="r12 r">featuresProvider</span>;
+            <a href="#0d6aa6e77656b9d8" class="i property">L</a> = <span class="r13 r">logger</span>;
+        }
+ 
+        <b>public</b> <span class="t t">ILogger</span> <a id="0d6aa6e77656b9d8" href="../R/0d6aa6e77656b9d8.html" target="n" data-glyph="102,1" class="i property">L</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a> <a id="f7aabea3e34dda08" href="../R/f7aabea3e34dda08.html" target="n" data-glyph="72,1" class="i method">GetExtension</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">extensionId</span>)
+        {
+            <a href="#f580389756690671" class="i method">EnsureInitialized</a>();
+ 
+            <a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="t t">ExtensionEntry</a> <span id="r15 rd" class="r15 r">extension</span>;
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">extensionId</span>) &amp;&amp; <a href="#1f817bd491de12d1" class="i field">_extensions</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r14 r">extensionId</span>, <b>out</b> <span class="r15 r">extension</span>))
+            {
+                <b>return</b> <span class="r15 r">extension</span>.<a href="/OrchardCore.Abstractions/A.html#ccb864d7faca1cce" class="i property">ExtensionInfo</a>;
+            }
+ 
+            <b>return</b> <b>new</b> <a href="/OrchardCore.Abstractions/A.html#0aefcd6e4e2260d3" class="t constructor">NotFoundExtensionInfo</a>(<span class="r14 r">extensionId</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a>&gt; <a id="c24464199be4ec68" href="../R/c24464199be4ec68.html" target="n" data-glyph="72,1" class="i method">GetExtensions</a>()
+        {
+            <a href="#f580389756690671" class="i method">EnsureInitialized</a>();
+ 
+            <b>return</b> <a href="#954e7da71633a4fd" class="i field">_extensionsInfos</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt; <a id="5896219538fe28bb" href="../R/5896219538fe28bb.html" target="n" data-glyph="72,1" class="i method">GetFeatures</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r16 rd" class="r16 r">featureIdsToLoad</span>)
+        {
+            <a href="#f580389756690671" class="i method">EnsureInitialized</a>();
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r17 rd" class="r17 r">allDependencies</span> = <span class="r16 r">featureIdsToLoad</span>
+                .<span class="i method">SelectMany</span>(<span id="r18 rd" class="r18 r">featureId</span> =&gt; <a href="#3f55f3956f2cfaf9" class="i method">GetFeatureDependencies</a>(<span class="r18 r">featureId</span>))
+                .<span class="i method">Distinct</span>();
+ 
+            <b>return</b> <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>
+                .<span class="i method">Where</span>(<span id="r19 rd" class="r19 r">f</span> =&gt; <span class="r17 r">allDependencies</span>.<span class="i method">Any</span>(<span id="r20 rd" class="r20 r">d</span> =&gt; <span class="r20 r">d</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <span class="r19 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>));
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="t t">ExtensionEntry</a>&gt; <a id="0616f869262234af" href="../R/0616f869262234af.html" target="n" data-glyph="72,1" class="i method">LoadExtensionAsync</a>(<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a> <span id="r21 rd" class="r21 r">extensionInfo</span>)
+        {
+            <a href="#f580389756690671" class="i method">EnsureInitialized</a>();
+ 
+            <a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="t t">ExtensionEntry</a> <span id="r22 rd" class="r22 r">extension</span>;
+            <b>if</b> (<a href="#1f817bd491de12d1" class="i field">_extensions</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r21 r">extensionInfo</span>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>, <b>out</b> <span class="r22 r">extension</span>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r22 r">extension</span>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="t t">ExtensionEntry</a>&gt;(<b>null</b>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#204e84183184dcda" class="t t">FeatureEntry</a>&gt;&gt; <a id="809751522eeafeab" href="../R/809751522eeafeab.html" target="n" data-glyph="72,1" class="i method">LoadFeaturesAsync</a>()
+        {
+            <b>await</b> <a href="#8441003f3a2a9f3b" class="i method">EnsureInitializedAsync</a>();
+            <b>return</b> <a href="#0bf12de87c26f0b0" class="i field">_features</a>.<a href="@1@System.Runtime/A.html#81fedd966b885f90" class="i property">Values</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#204e84183184dcda" class="t t">FeatureEntry</a>&gt;&gt; <a id="47f59e980185a1bd" href="../R/47f59e980185a1bd.html" target="n" data-glyph="72,1" class="i method">LoadFeaturesAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r23 rd" class="r23 r">featureIdsToLoad</span>)
+        {
+            <b>await</b> <a href="#8441003f3a2a9f3b" class="i method">EnsureInitializedAsync</a>();
+ 
+            <b>var</b> <span id="r24 rd" class="r24 r">features</span> = <a href="#5896219538fe28bb" class="i method">GetFeatures</a>(<span class="r23 r">featureIdsToLoad</span>).<span class="i method">Select</span>(<span id="r25 rd" class="r25 r">f</span> =&gt; <span class="r25 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>).<span class="i method">ToList</span>();
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r26 rd" class="r26 r">loadedFeatures</span> = <a href="#0bf12de87c26f0b0" class="i field">_features</a>.<a href="@1@System.Runtime/A.html#81fedd966b885f90" class="i property">Values</a>
+                .<span class="i method">Where</span>(<span id="r27 rd" class="r27 r">f</span> =&gt; <span class="r24 r">features</span>.<span class="i method">Contains</span>(<span class="r27 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#5744eb14f49d4d46" class="i property">FeatureInfo</a>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>));
+ 
+            <b>return</b> <span class="r26 r">loadedFeatures</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt; <a id="3f55f3956f2cfaf9" href="../R/3f55f3956f2cfaf9.html" target="n" data-glyph="72,1" class="i method">GetFeatureDependencies</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">featureId</span>)
+        {
+            <a href="#f580389756690671" class="i method">EnsureInitialized</a>();
+ 
+            <b>return</b> <a href="#fd3cefcfc991d3e8" class="i field">_featureDependencies</a>.<span class="i method">GetOrAdd</span>(<span class="r28 r">featureId</span>, (<span id="r29 rd" class="r29 r">key</span>) =&gt; <b>new</b> <a href="@1@System.Runtime/A.html#c0f7b98bacad370a" class="t constructor">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;&gt;(() =&gt;
+            {
+                <b>if</b> (!<a href="#0bf12de87c26f0b0" class="i field">_features</a>.<a href="@1@System.Runtime/A.html#6105ae1e7c0835eb" class="i method">ContainsKey</a>(<span class="r29 r">key</span>))
+                {
+                    <b>return</b> <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;();
+                }
+ 
+                <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="k">var</a> <span id="r30 rd" class="r30 r">feature</span> = <a href="#0bf12de87c26f0b0" class="i field">_features</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r29 r">key</span>].<a href="/OrchardCore.Abstractions/A.html#5744eb14f49d4d46" class="i property">FeatureInfo</a>;
+ 
+                <b>return</b> <a href="#79b084dea0617ab8" class="i method">GetFeatureDependencies</a>(<span class="r30 r">feature</span>, <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>);
+            })).<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt; <a id="e9a675988c6a553e" href="../R/e9a675988c6a553e.html" target="n" data-glyph="72,1" class="i method">GetDependentFeatures</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">featureId</span>)
+        {
+            <a href="#f580389756690671" class="i method">EnsureInitialized</a>();
+ 
+            <b>return</b> <a href="#4eb66b89e747c57d" class="i field">_dependentFeatures</a>.<span class="i method">GetOrAdd</span>(<span class="r31 r">featureId</span>, (<span id="r32 rd" class="r32 r">key</span>) =&gt; <b>new</b> <a href="@1@System.Runtime/A.html#c0f7b98bacad370a" class="t constructor">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;&gt;(() =&gt;
+            {
+                <b>if</b> (!<a href="#0bf12de87c26f0b0" class="i field">_features</a>.<a href="@1@System.Runtime/A.html#6105ae1e7c0835eb" class="i method">ContainsKey</a>(<span class="r32 r">key</span>))
+                {
+                    <b>return</b> <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;();
+                }
+ 
+                <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="k">var</a> <span id="r33 rd" class="r33 r">feature</span> = <a href="#0bf12de87c26f0b0" class="i field">_features</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r32 r">key</span>].<a href="/OrchardCore.Abstractions/A.html#5744eb14f49d4d46" class="i property">FeatureInfo</a>;
+ 
+                <b>return</b> <a href="#5cb681f1ca1d1d7f" class="i method">GetDependentFeatures</a>(<span class="r33 r">feature</span>, <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>);
+            })).<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>;
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt; <a id="79b084dea0617ab8" href="../R/79b084dea0617ab8.html" target="n" data-glyph="76,1" class="i method">GetFeatureDependencies</a>(
+            <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a> <span id="r34 rd" class="r34 r">feature</span>,
+            <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[] <span id="r35 rd" class="r35 r">features</span>)
+        {
+            <b>var</b> <span id="r36 rd" class="r36 r">dependencies</span> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;() { <span class="r34 r">feature</span> };
+            <b>var</b> <span id="r37 rd" class="r37 r">stack</span> = <b>new</b> <span class="t constructor">Stack</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[]&gt;();
+ 
+            <span class="r37 r">stack</span>.<span class="i method">Push</span>(<a href="#e45a4ee6b9f20ee3" class="i field">GetFeatureDependenciesFunc</a>(<span class="r34 r">feature</span>, <span class="r35 r">features</span>));
+ 
+            <b>while</b> (<span class="r37 r">stack</span>.<span class="i property">Count</span> &gt; 0)
+            {
+                <b>var</b> <span id="r38 rd" class="r38 r">next</span> = <span class="r37 r">stack</span>.<span class="i method">Pop</span>();
+                <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="k">var</a> <span id="r39 rd" class="r39 r">dependency</span> <b>in</b> <span class="r38 r">next</span>.<span class="i method">Where</span>(<span id="r40 rd" class="r40 r">dependency</span> =&gt; !<span class="r36 r">dependencies</span>.<span class="i method">Contains</span>(<span class="r40 r">dependency</span>)))
+                {
+                    <span class="r36 r">dependencies</span>.<span class="i method">Add</span>(<span class="r39 r">dependency</span>);
+                    <span class="r37 r">stack</span>.<span class="i method">Push</span>(<a href="#e45a4ee6b9f20ee3" class="i field">GetFeatureDependenciesFunc</a>(<span class="r39 r">dependency</span>, <span class="r35 r">features</span>));
+                }
+            }
+ 
+            <span class="c">// Preserve the underlying order of feature infos.</span>
+            <b>return</b> <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>.<span class="i method">Where</span>(<span id="r41 rd" class="r41 r">f</span> =&gt; <span class="r36 r">dependencies</span>.<span class="i method">Any</span>(<span id="r42 rd" class="r42 r">d</span> =&gt; <span class="r42 r">d</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <span class="r41 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>));
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt; <a id="5cb681f1ca1d1d7f" href="../R/5cb681f1ca1d1d7f.html" target="n" data-glyph="76,1" class="i method">GetDependentFeatures</a>(
+            <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a> <span id="r43 rd" class="r43 r">feature</span>,
+            <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[] <span id="r44 rd" class="r44 r">features</span>)
+        {
+            <b>var</b> <span id="r45 rd" class="r45 r">dependencies</span> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt;() { <span class="r43 r">feature</span> };
+            <b>var</b> <span id="r46 rd" class="r46 r">stack</span> = <b>new</b> <span class="t constructor">Stack</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[]&gt;();
+ 
+            <span class="r46 r">stack</span>.<span class="i method">Push</span>(<a href="#e0543c433bfe5bc6" class="i field">GetDependentFeaturesFunc</a>(<span class="r43 r">feature</span>, <span class="r44 r">features</span>));
+ 
+            <b>while</b> (<span class="r46 r">stack</span>.<span class="i property">Count</span> &gt; 0)
+            {
+                <b>var</b> <span id="r47 rd" class="r47 r">next</span> = <span class="r46 r">stack</span>.<span class="i method">Pop</span>();
+                <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="k">var</a> <span id="r48 rd" class="r48 r">dependency</span> <b>in</b> <span class="r47 r">next</span>.<span class="i method">Where</span>(<span id="r49 rd" class="r49 r">dependency</span> =&gt; !<span class="r45 r">dependencies</span>.<span class="i method">Contains</span>(<span class="r49 r">dependency</span>)))
+                {
+                    <span class="r45 r">dependencies</span>.<span class="i method">Add</span>(<span class="r48 r">dependency</span>);
+                    <span class="r46 r">stack</span>.<span class="i method">Push</span>(<a href="#e0543c433bfe5bc6" class="i field">GetDependentFeaturesFunc</a>(<span class="r48 r">dependency</span>, <span class="r44 r">features</span>));
+                }
+            }
+ 
+            <span class="c">// Preserve the underlying order of feature infos.</span>
+            <b>return</b> <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>.<span class="i method">Where</span>(<span id="r50 rd" class="r50 r">f</span> =&gt; <span class="r45 r">dependencies</span>.<span class="i method">Any</span>(<span id="r51 rd" class="r51 r">d</span> =&gt; <span class="r51 r">d</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <span class="r50 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>));
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt; <a id="6e18967adc5c4523" href="../R/6e18967adc5c4523.html" target="n" data-glyph="72,1" class="i method">GetFeatures</a>()
+        {
+            <a href="#f580389756690671" class="i method">EnsureInitialized</a>();
+ 
+            <b>return</b> <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>;
+        }
+ 
+        <b>private static string</b> <a id="5cd5ffb745379482" href="../R/5cd5ffb745379482.html" target="n" data-glyph="76,1" class="i method">GetSourceFeatureNameForType</a>(<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a> <span id="r52 rd" class="r52 r">type</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r53 rd" class="r53 r">extensionId</span>)
+        {
+            <a href="/OrchardCore.Abstractions/A.html#defb48b164943d7d" class="k">var</a> <span id="r54 rd" class="r54 r">attribute</span> = <span class="r52 r">type</span>.<a href="@1@System.Runtime/A.html#a461242e0c3f3b72" class="i method">GetCustomAttributes</a>&lt;<a href="/OrchardCore.Abstractions/A.html#defb48b164943d7d" class="t t">FeatureAttribute</a>&gt;(<b>false</b>).<span class="i method">FirstOrDefault</span>();
+ 
+            <b>return</b> <span class="r54 r">attribute</span>?.<a href="/OrchardCore.Abstractions/A.html#68907cc4d83a4b7e" class="i property">FeatureName</a> ?? <span class="r53 r">extensionId</span>;
+        }
+ 
+        <b>private void</b> <a id="f580389756690671" href="../R/f580389756690671.html" target="n" data-glyph="76,1" class="i method">EnsureInitialized</a>()
+        {
+            <b>if</b> (<a href="#70568353b539d1fd" class="i field">_isInitialized</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#8441003f3a2a9f3b" class="i method">EnsureInitializedAsync</a>().<a href="@1@System.Runtime/A.html#9865ec4fb8abca74" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#fac5be2731353aa8" class="i method">GetResult</a>();
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="8441003f3a2a9f3b" href="../R/8441003f3a2a9f3b.html" target="n" data-glyph="76,1" class="i method">EnsureInitializedAsync</a>()
+        {
+            <b>if</b> (<a href="#70568353b539d1fd" class="i field">_isInitialized</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#043219b92a23f106" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+ 
+            <b>try</b>
+            {
+                <b>if</b> (<a href="#70568353b539d1fd" class="i field">_isInitialized</a>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r55 rd" class="r55 r">modules</span> = <a href="#ae2a7aa780f9bc96" class="i field">_applicationContext</a>.<a href="/OrchardCore.Abstractions/A.html#99a608bfb7e2ccd2" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#a705dc00e756f50a" class="i property">Modules</a>;
+                <b>var</b> <span id="r56 rd" class="r56 r">loadedExtensions</span> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="t t">ExtensionEntry</a>&gt;();
+ 
+                <span class="c">// Load all extensions in parallel</span>
+                <b>await</b> <span class="r55 r">modules</span>.<a href="/OrchardCore.Abstractions/A.html#73922e65b7e3b27a" class="i method">ForEachAsync</a>((<span id="r57 rd" class="r57 r">module</span>) =&gt;
+                {
+                    <b>if</b> (!<span class="r57 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#a8c12d7f3340fcfb" class="i property">ModuleInfo</a>.<a href="/OrchardCore.Abstractions/A.html#25811a341625b3f9" class="i property">Exists</a>)
+                    {
+                        <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+                    }
+ 
+                    <a href="Manifests/ManifestInfo.cs.html#a97624093a00b34c" class="k">var</a> <span id="r58 rd" class="r58 r">manifestInfo</span> = <b>new</b> <a href="Manifests/ManifestInfo.cs.html#4e2344d43c07bdb2" class="t constructor">ManifestInfo</a>(<span class="r57 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#a8c12d7f3340fcfb" class="i property">ModuleInfo</a>);
+                    <a href="ExtensionInfo.cs.html#cb7886044919d46c" class="k">var</a> <span id="r59 rd" class="r59 r">extensionInfo</span> = <b>new</b> <a href="ExtensionInfo.cs.html#7e5d1740003adc07" class="t constructor">ExtensionInfo</a>(<span class="r57 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#b09fcb1190176a98" class="i property">SubPath</a>, <span class="r58 r">manifestInfo</span>, (<span id="r60 rd" class="r60 r">mi</span>, <span id="r61 rd" class="r61 r">ei</span>) =&gt;
+                    {
+                        <b>return</b> <a href="#d5e887fa0c982762" class="i field">_featuresProvider</a>.<a href="/OrchardCore.Abstractions/A.html#9fc062efb8dc7f06" class="i method">GetFeatures</a>(<span class="r61 r">ei</span>, <span class="r60 r">mi</span>);
+                    });
+ 
+                    <a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="k">var</a> <span id="r62 rd" class="r62 r">entry</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="t constructor">ExtensionEntry</a>
+                    {
+                        <a href="/OrchardCore.Abstractions/A.html#ccb864d7faca1cce" class="i property">ExtensionInfo</a> = <span class="r59 r">extensionInfo</span>,
+                        <a href="/OrchardCore.Abstractions/A.html#c50e4263cbbf31db" class="i property">Assembly</a> = <span class="r57 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#e190252504a904bf" class="i property">Assembly</a>,
+                        <a href="/OrchardCore.Abstractions/A.html#7ca753f9c652cb9f" class="i property">ExportedTypes</a> = <span class="r57 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#e190252504a904bf" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#78a08cc14a7d626a" class="i property">ExportedTypes</a>
+                    };
+ 
+                    <span class="r56 r">loadedExtensions</span>.<span class="i method">TryAdd</span>(<span class="r57 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#147ef2ed9f2da85c" class="i property">Name</a>, <span class="r62 r">entry</span>);
+ 
+                    <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+                });
+ 
+                <b>var</b> <span id="r63 rd" class="r63 r">loadedFeatures</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.Abstractions/A.html#204e84183184dcda" class="t t">FeatureEntry</a>&gt;();
+ 
+                <span class="c">// Get all valid types from any extension</span>
+                <b>var</b> <span id="r64 rd" class="r64 r">allTypesByExtension</span> = <span class="r56 r">loadedExtensions</span>.<span class="i method">SelectMany</span>(<span id="r65 rd" class="r65 r">extension</span> =&gt;
+                    <span class="r65 r">extension</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="/OrchardCore.Abstractions/A.html#7ca753f9c652cb9f" class="i property">ExportedTypes</a>.<span class="i method">Where</span>(<a href="#e647125fb056279b" class="i method">IsComponentType</a>)
+                    .<span class="i method">Select</span>(<span id="r66 rd" class="r66 r">type</span> =&gt; <b>new</b>
+                    {
+                        <a href="#4c040eb20a7b6999" class="i property">ExtensionEntry</a> = <span class="r65 r">extension</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>,
+                        <a href="#32b3e9d53a6e4af0" class="i property">Type</a> = <span class="r66 r">type</span>
+                    })).<span class="i method">ToArray</span>();
+ 
+                <b>var</b> <span id="r67 rd" class="r67 r">typesByFeature</span> = <span class="r64 r">allTypesByExtension</span>
+                    .<span class="i method">GroupBy</span>(<span id="r68 rd" class="r68 r">typeByExtension</span> =&gt; <a href="#5cd5ffb745379482" class="i method">GetSourceFeatureNameForType</a>(
+                        <span class="r68 r">typeByExtension</span>.<a href="#32b3e9d53a6e4af0" class="i property">Type</a>,
+                        <span class="r68 r">typeByExtension</span>.<a href="#4c040eb20a7b6999" class="i property">ExtensionEntry</a>.<a href="/OrchardCore.Abstractions/A.html#ccb864d7faca1cce" class="i property">ExtensionInfo</a>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>))
+                    .<span class="i method">ToDictionary</span>(
+                        <span id="r69 rd" class="r69 r">group</span> =&gt; <span class="r69 r">group</span>.<span class="i property">Key</span>,
+                        <span id="r70 rd" class="r70 r">group</span> =&gt; <span class="r70 r">group</span>.<span class="i method">Select</span>(<span id="r71 rd" class="r71 r">typesByExtension</span> =&gt; <span class="r71 r">typesByExtension</span>.<a href="#32b3e9d53a6e4af0" class="i property">Type</a>).<span class="i method">ToArray</span>());
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r72 rd" class="r72 r">loadedExtension</span> <b>in</b> <span class="r56 r">loadedExtensions</span>)
+                {
+                    <a href="/OrchardCore.Abstractions/A.html#7193b1538a296ca8" class="k">var</a> <span id="r73 rd" class="r73 r">extension</span> = <span class="r72 r">loadedExtension</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>;
+ 
+                    <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="k">var</a> <span id="r74 rd" class="r74 r">feature</span> <b>in</b> <span class="r73 r">extension</span>.<a href="/OrchardCore.Abstractions/A.html#ccb864d7faca1cce" class="i property">ExtensionInfo</a>.<a href="/OrchardCore.Abstractions/A.html#e2b90b6b8dc616b4" class="i property">Features</a>)
+                    {
+                        <span class="c">// Features can have no types</span>
+                        <b>if</b> (<span class="r67 r">typesByFeature</span>.<span class="i method">TryGetValue</span>(<span class="r74 r">feature</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>, <b>out</b> <b>var</b> <span id="r75 rd" class="r75 r">featureTypes</span>))
+                        {
+                            <b>foreach</b> (<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r76 rd" class="r76 r">type</span> <b>in</b> <span class="r75 r">featureTypes</span>)
+                            {
+                                <a href="#0e5954f372f42cf7" class="i field">_typeFeatureProvider</a>.<a href="/OrchardCore.Abstractions/A.html#69b556e3c39c3e6e" class="i method">TryAdd</a>(<span class="r76 r">type</span>, <span class="r74 r">feature</span>);
+                            }
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r75 r">featureTypes</span> = <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>&gt;();
+                        }
+ 
+                        <span class="r63 r">loadedFeatures</span>.<span class="i method">Add</span>(<span class="r74 r">feature</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>, <b>new</b> <a href="/OrchardCore.Abstractions/A.html#72671bd5caa1be14" class="t constructor">FeatureEntry</a>(<span class="r74 r">feature</span>, <span class="r75 r">featureTypes</span>));
+                    }
+                };
+ 
+                <span class="c">// Feature infos and entries are ordered by priority and dependencies.</span>
+                <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a> = <a href="#e752d29d6500b2ee" class="i method">Order</a>(<span class="r63 r">loadedFeatures</span>.<span class="i property">Values</span>.<span class="i method">Select</span>(<span id="r77 rd" class="r77 r">f</span> =&gt; <span class="r77 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#5744eb14f49d4d46" class="i property">FeatureInfo</a>));
+                <a href="#0bf12de87c26f0b0" class="i field">_features</a> = <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>.<span class="i method">ToDictionary</span>(<span id="r78 rd" class="r78 r">f</span> =&gt; <span class="r78 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>, <span id="r79 rd" class="r79 r">f</span> =&gt; <span class="r63 r">loadedFeatures</span>[<span class="r79 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>]);
+ 
+                <span class="c">// Extensions are also ordered according to the weight of their first features.</span>
+                <a href="#954e7da71633a4fd" class="i field">_extensionsInfos</a> = <a href="#4c9bcf760ac2a1a1" class="i field">_featureInfos</a>.<span class="i method">Where</span>(<span id="r80 rd" class="r80 r">f</span> =&gt; <span class="r80 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <span class="r80 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#76f75a213f3562d3" class="i property">Extension</a>.<a href="/OrchardCore.Abstractions/A.html#e2b90b6b8dc616b4" class="i property">Features</a>.<span class="i method">First</span>().<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>)
+                    .<span class="i method">Select</span>(<span id="r81 rd" class="r81 r">f</span> =&gt; <span class="r81 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#76f75a213f3562d3" class="i property">Extension</a>);
+ 
+                <a href="#1f817bd491de12d1" class="i field">_extensions</a> = <a href="#954e7da71633a4fd" class="i field">_extensionsInfos</a>.<span class="i method">ToDictionary</span>(<span id="r82 rd" class="r82 r">e</span> =&gt; <span class="r82 r">e</span>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>, <span id="r83 rd" class="r83 r">e</span> =&gt; <span class="r56 r">loadedExtensions</span>[<span class="r83 r">e</span>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>]);
+ 
+                <a href="#70568353b539d1fd" class="i field">_isInitialized</a> = <b>true</b>;
+            }
+            <b>finally</b>
+            {
+                <a href="#043219b92a23f106" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>private bool</b> <a id="e647125fb056279b" href="../R/e647125fb056279b.html" target="n" data-glyph="76,1" class="i method">IsComponentType</a>(<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a> <span id="r84 rd" class="r84 r">type</span>)
+        {
+            <b>return</b> <span class="r84 r">type</span>.<a href="@1@System.Runtime/A.html#93bc0a0c8e79e4ff" class="i property">IsClass</a> &amp;&amp; !<span class="r84 r">type</span>.<a href="@1@System.Runtime/A.html#1dc5004043b9f91e" class="i property">IsAbstract</a> &amp;&amp; <span class="r84 r">type</span>.<a href="@1@System.Runtime/A.html#228f748052ca1575" class="i property">IsPublic</a>;
+        }
+ 
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>[] <a id="e752d29d6500b2ee" href="../R/e752d29d6500b2ee.html" target="n" data-glyph="76,1" class="i method">Order</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>&gt; <span id="r85 rd" class="r85 r">featuresToOrder</span>)
+        {
+            <b>return</b> <span class="r85 r">featuresToOrder</span>
+                .<span class="i method">OrderBy</span>(<span id="r86 rd" class="r86 r">x</span> =&gt; <span class="r86 r">x</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>)
+                .<a href="/OrchardCore.Abstractions/A.html#e88c9479eb629477" class="i method">OrderByDependenciesAndPriorities</a>(<a href="#25364e1fc74fb638" class="i method">HasDependency</a>, <a href="#abb85cca8b2ac896" class="i method">GetPriority</a>)
+                .<span class="i method">ToArray</span>();
+        }
+ 
+        <b>private bool</b> <a id="25364e1fc74fb638" href="../R/25364e1fc74fb638.html" target="n" data-glyph="76,1" class="i method">HasDependency</a>(<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a> <span id="r87 rd" class="r87 r">f1</span>, <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a> <span id="r88 rd" class="r88 r">f2</span>)
+        {
+            <b>return</b> <a href="#a4f99bab965cd7c2" class="i field">_extensionDependencyStrategies</a>.<span class="i method">Any</span>(<span id="r89 rd" class="r89 r">s</span> =&gt; <span class="r89 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#1d2736923dfe2160" class="i method">HasDependency</a>(<span class="r87 r">f1</span>, <span class="r88 r">f2</span>));
+        }
+ 
+        <b>private int</b> <a id="abb85cca8b2ac896" href="../R/abb85cca8b2ac896.html" target="n" data-glyph="76,1" class="i method">GetPriority</a>(<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a> <span id="r90 rd" class="r90 r">feature</span>)
+        {
+            <b>return</b> <a href="#4d50770b045b01a7" class="i field">_extensionPriorityStrategies</a>.<span class="i method">Sum</span>(<span id="r91 rd" class="r91 r">s</span> =&gt; <span class="r91 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#a58335655a3eca97" class="i method">GetPriority</a>(<span class="r90 r">feature</span>));
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

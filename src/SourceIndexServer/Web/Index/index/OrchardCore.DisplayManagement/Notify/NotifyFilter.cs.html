@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html><head><title>NotifyFilter.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(183);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/Notify/NotifyFilter.cs" target="_top">Notify\NotifyFilter.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Filters</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">RazorPages</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Layout</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>
+{
+    <b>public class</b> <a id="c3c8e49dce3cafd1" href="../R/c3c8e49dce3cafd1.html" target="n" data-glyph="0,0" class="t t">NotifyFilter</a> : <span class="t t">IActionFilter</span>, <span class="t t">IAsyncResultFilter</span>
+    {
+        <b>public const string</b> <a id="6ec837687bf48fae" href="../R/6ec837687bf48fae.html" target="n" data-glyph="6,1" class="i field">CookiePrefix</a> = <span class="s">&quot;orch_notify&quot;</span>;
+        <b>private readonly</b> <a href="INotifier.cs.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="560965ca7a5dcbc4" href="../R/560965ca7a5dcbc4.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <a href="../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a> <a id="9f3dc36498816de3" href="../R/9f3dc36498816de3.html" target="n" data-glyph="46,1" class="i field">_shapeFactory</a>;
+        <b>private readonly</b> <a href="../Layout/ILayoutAccessor.cs.html#1db760e65443bcbe" class="t t">ILayoutAccessor</a> <a id="314dafcbf48d4c22" href="../R/314dafcbf48d4c22.html" target="n" data-glyph="46,1" class="i field">_layoutAccessor</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="d8da5232e663a840" href="../R/d8da5232e663a840.html" target="n" data-glyph="46,1" class="i field">_dataProtectionProvider</a>;
+ 
+        <b>private</b> <a href="NotifyEntry.cs.html#28e4f958ebd284d1" class="t t">NotifyEntry</a>[] <a id="4b93df9561349fc3" href="../R/4b93df9561349fc3.html" target="n" data-glyph="46,1" class="i field">_existingEntries</a> = <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<a href="NotifyEntry.cs.html#28e4f958ebd284d1" class="t t">NotifyEntry</a>&gt;();
+        <b>private bool</b> <a id="f022762f53980db6" href="../R/f022762f53980db6.html" target="n" data-glyph="46,1" class="i field">_shouldDeleteCookie</a>;
+        <b>private string</b> <a id="219ef70b4028cf04" href="../R/219ef70b4028cf04.html" target="n" data-glyph="46,1" class="i field">_tenantPath</a>;
+        <b>private readonly</b> <span class="t t">HtmlEncoder</span> <a id="734ee20750524532" href="../R/734ee20750524532.html" target="n" data-glyph="46,1" class="i field">_htmlEncoder</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="ec496457295bc9e3" href="../R/ec496457295bc9e3.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="c10e46c07656f964" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">NotifyFilter</a>(
+            <a href="INotifier.cs.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r0 rd" class="r0 r">notifier</span>,
+            <a href="../Layout/ILayoutAccessor.cs.html#1db760e65443bcbe" class="t t">ILayoutAccessor</a> <span id="r1 rd" class="r1 r">layoutAccessor</span>,
+            <a href="../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r2 rd" class="r2 r">shapeFactory</span>,
+            <span class="i">ShellSettings</span> <span id="r3 rd" class="r3 r">shellSettings</span>,
+            <span class="t t">IDataProtectionProvider</span> <span id="r4 rd" class="r4 r">dataProtectionProvider</span>,
+            <span class="t t">HtmlEncoder</span> <span id="r5 rd" class="r5 r">htmlEncoder</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#c3c8e49dce3cafd1" class="t t">NotifyFilter</a>&gt; <span id="r6 rd" class="r6 r">logger</span>)
+        {
+            <a href="#734ee20750524532" class="i field">_htmlEncoder</a> = <span class="r5 r">htmlEncoder</span>;
+            <a href="#ec496457295bc9e3" class="i field">_logger</a> = <span class="r6 r">logger</span>;
+            <a href="#d8da5232e663a840" class="i field">_dataProtectionProvider</a> = <span class="r4 r">dataProtectionProvider</span>;
+ 
+            <a href="#314dafcbf48d4c22" class="i field">_layoutAccessor</a> = <span class="r1 r">layoutAccessor</span>;
+            <a href="#560965ca7a5dcbc4" class="i field">_notifier</a> = <span class="r0 r">notifier</span>;
+            <a href="#9f3dc36498816de3" class="i field">_shapeFactory</a> = <span class="r2 r">shapeFactory</span>;
+ 
+            <a href="#219ef70b4028cf04" class="i field">_tenantPath</a> = <span class="s">&quot;/&quot;</span> + <span class="r3 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>;
+        }
+ 
+        <b>public void</b> <a id="0878d07cca0f520d" href="../R/0878d07cca0f520d.html" target="n" data-glyph="72,1" class="i method">OnActionExecuting</a>(<span class="t t">ActionExecutingContext</span> <span id="r7 rd" class="r7 r">filterContext</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">messages</span> = <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#1253e190110c8dd2" class="i method">ToString</a>(<span class="r7 r">filterContext</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Cookies</span>[<a href="#6ec837687bf48fae" class="i field">CookiePrefix</a>]);
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r8 r">messages</span>))
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#d5fb88d7100db909" class="i method">DeserializeNotifyEntries</a>(<span class="r8 r">messages</span>, <b>out</b> <b>var</b> <span id="r9 rd" class="r9 r">messageEntries</span>);
+ 
+            <b>if</b> (<span class="r9 r">messageEntries</span> == <b>null</b>)
+            {
+                <span class="c">// An error occurred during deserialization</span>
+                <a href="#f022762f53980db6" class="i field">_shouldDeleteCookie</a> = <b>true</b>;
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r9 r">messageEntries</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Make the notifications available for the rest of the current request.</span>
+            <a href="#4b93df9561349fc3" class="i field">_existingEntries</a> = <span class="r9 r">messageEntries</span>;
+        }
+ 
+        <b>public void</b> <a id="b938b78f0e63a13f" href="../R/b938b78f0e63a13f.html" target="n" data-glyph="72,1" class="i method">OnActionExecuted</a>(<span class="t t">ActionExecutedContext</span> <span id="r10 rd" class="r10 r">filterContext</span>)
+        {
+            <b>var</b> <span id="r11 rd" class="r11 r">messageEntries</span> = <a href="#560965ca7a5dcbc4" class="i field">_notifier</a>.<a href="INotifier.cs.html#065a13637d4f79ee" class="i method">List</a>().<span class="i method">ToArray</span>();
+ 
+            <span class="c">// Don&#39;t touch temp data if there&#39;s no work to perform.</span>
+            <b>if</b> (<span class="r11 r">messageEntries</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 0 &amp;&amp; <a href="#4b93df9561349fc3" class="i field">_existingEntries</a>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Assign values to the Items collection instead of TempData and</span>
+            <span class="c">// combine any existing entries added by the previous request with new ones.</span>
+ 
+            <a href="#4b93df9561349fc3" class="i field">_existingEntries</a> = <span class="r11 r">messageEntries</span>.<span class="i method">Concat</span>(<a href="#4b93df9561349fc3" class="i field">_existingEntries</a>).<span class="i method">Distinct</span>(<b>new</b> <a href="NotifyEntryComparer.cs.html#62f416217812c5ce" class="t constructor">NotifyEntryComparer</a>(<a href="#734ee20750524532" class="i field">_htmlEncoder</a>)).<span class="i method">ToArray</span>();
+ 
+            <span class="c">// Result is not a view, so assume a redirect and assign values to TemData.</span>
+            <span class="c">// String data type used instead of complex array to be session-friendly.</span>
+            <b>if</b> (!(<span class="r10 r">filterContext</span>.<span class="i property">Result</span> <b>is</b> <span class="t t">ViewResult</span> || <span class="r10 r">filterContext</span>.<span class="i property">Result</span> <b>is</b> <span class="t t">PageResult</span>) &amp;&amp; <a href="#4b93df9561349fc3" class="i field">_existingEntries</a>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> &gt; 0)
+            {
+                <span class="r10 r">filterContext</span>.<span class="i property">HttpContext</span>.<span class="i property">Response</span>.<span class="i property">Cookies</span>.<span class="i method">Append</span>(<a href="#6ec837687bf48fae" class="i field">CookiePrefix</a>, <a href="#26659c91505bb78f" class="i method">SerializeNotifyEntry</a>(<a href="#4b93df9561349fc3" class="i field">_existingEntries</a>), <b>new</b> <span class="t constructor">CookieOptions</span> { <span class="i property">HttpOnly</span> = <b>true</b>, <span class="i property">Path</span> = <a href="#219ef70b4028cf04" class="i field">_tenantPath</a> });
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="7fe49a071bb6bb20" href="../R/7fe49a071bb6bb20.html" target="n" data-glyph="72,1" class="i method">OnResultExecutionAsync</a>(<span class="t t">ResultExecutingContext</span> <span id="r12 rd" class="r12 r">filterContext</span>, <span class="t t">ResultExecutionDelegate</span> <span id="r13 rd" class="r13 r">next</span>)
+        {
+            <b>if</b> (<a href="#f022762f53980db6" class="i field">_shouldDeleteCookie</a>)
+            {
+                <a href="#a807390196165ab7" class="i method">DeleteCookies</a>(<span class="r12 r">filterContext</span>);
+ 
+                <b>await</b> <span class="r13 r">next</span>();
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (!(<span class="r12 r">filterContext</span>.<span class="i property">Result</span> <b>is</b> <span class="t t">ViewResult</span> || <span class="r12 r">filterContext</span>.<span class="i property">Result</span> <b>is</b> <span class="t t">PageResult</span>))
+            {
+                <b>await</b> <span class="r13 r">next</span>();
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<a href="#4b93df9561349fc3" class="i field">_existingEntries</a>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 0)
+            {
+                <b>await</b> <span class="r13 r">next</span>();
+                <b>return</b>;
+            }
+ 
+            <a href="../Zones/ZoneHoldingBehavior.cs.html#d5c0b8db92fbeb7b" class="k">var</a> <span id="r14 rd" class="r14 r">layout</span> = <b>await</b> <a href="#314dafcbf48d4c22" class="i field">_layoutAccessor</a>.<a href="../Layout/ILayoutAccessor.cs.html#eda786ce061efb69" class="i method">GetLayoutAsync</a>();
+ 
+            <a href="../IShape.cs.html#1b6ae4719962ce25" class="k">var</a> <span id="r15 rd" class="r15 r">messagesZone</span> = <span class="r14 r">layout</span>.<a href="../Zones/ZoneHoldingBehavior.cs.html#43d22e96543b7e25" class="i property">Zones</a><a href="../Zones/ZoneHoldingBehavior.cs.html#26d913ee76532e50">[</a><span class="s">&quot;Messages&quot;</span>];
+ 
+            <b>if</b> (<span class="r15 r">messagesZone</span> <b>is</b> <a href="../IShape.cs.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r16 rd" class="r16 r">zone</span>)
+            {
+                <b>foreach</b> (<a href="NotifyEntry.cs.html#28e4f958ebd284d1" class="k">var</a> <span id="r17 rd" class="r17 r">messageEntry</span> <b>in</b> <a href="#4b93df9561349fc3" class="i field">_existingEntries</a>)
+                {
+                    <span class="c">// Also retrieve the actual zone in case it was only a temporary empty zone created on demand.</span>
+                    <span class="r16 r">zone</span> = <b>await</b> <span class="r16 r">zone</span>.<a href="../IShape.cs.html#1e6178ba3901dbff" class="i method">AddAsync</a>(<b>await</b> <a href="#9f3dc36498816de3" class="i field">_shapeFactory</a>.<a href="../IShapeFactory.cs.html#5d82b79f2c9ed613" class="i method">CreateAsync</a>(<span class="s">&quot;Message&quot;</span>, <a href="../Arguments.cs.html#96479571e815da42" class="t t">Arguments</a>.<a href="../Arguments.cs.html#0b49774a5cab4e4f" class="i method">From</a>(<span class="r17 r">messageEntry</span>)));
+                }
+            }
+ 
+            <a href="#a807390196165ab7" class="i method">DeleteCookies</a>(<span class="r12 r">filterContext</span>);
+ 
+            <b>await</b> <span class="r13 r">next</span>();
+        }
+ 
+        <b>private void</b> <a id="a807390196165ab7" href="../R/a807390196165ab7.html" target="n" data-glyph="76,1" class="i method">DeleteCookies</a>(<span class="t t">ResultExecutingContext</span> <span id="r18 rd" class="r18 r">filterContext</span>)
+        {
+            <span class="r18 r">filterContext</span>.<span class="i property">HttpContext</span>.<span class="i property">Response</span>.<span class="i property">Cookies</span>.<span class="i method">Delete</span>(<a href="#6ec837687bf48fae" class="i field">CookiePrefix</a>, <b>new</b> <span class="t constructor">CookieOptions</span> { <span class="i property">Path</span> = <a href="#219ef70b4028cf04" class="i field">_tenantPath</a> });
+        }
+ 
+        <b>private string</b> <a id="26659c91505bb78f" href="../R/26659c91505bb78f.html" target="n" data-glyph="76,1" class="i method">SerializeNotifyEntry</a>(<a href="NotifyEntry.cs.html#28e4f958ebd284d1" class="t t">NotifyEntry</a>[] <span id="r19 rd" class="r19 r">notifyEntries</span>)
+        {
+            <b>var</b> <span id="r20 rd" class="r20 r">settings</span> = <b>new</b> <span class="i">JsonSerializerSettings</span>();
+            <span class="r20 r">settings</span>.<span class="i">Converters</span>.<span class="i">Add</span>(<b>new</b> <a href="NotifyEntryConverter.cs.html#39dda7b7da58db1d" class="t constructor">NotifyEntryConverter</a>(<a href="#734ee20750524532" class="i field">_htmlEncoder</a>));
+ 
+            <b>try</b>
+            {
+                <b>var</b> <span id="r21 rd" class="r21 r">protector</span> = <a href="#d8da5232e663a840" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<b>nameof</b>(<a href="#c3c8e49dce3cafd1" class="t t">NotifyFilter</a>));
+                <b>var</b> <span id="r22 rd" class="r22 r">signed</span> = <span class="r21 r">protector</span>.<span class="i">Protect</span>(<span class="i">JsonConvert</span>.<span class="i">SerializeObject</span>(<span class="r19 r">notifyEntries</span>, <span class="r20 r">settings</span>));
+                <b>return</b> <a href="@1@System.Runtime/A.html#be62bd8978189a87" class="t t">WebUtility</a>.<span class="i">UrlEncode</span>(<span class="r22 r">signed</span>);
+            }
+            <b>catch</b>
+            {
+                <b>return</b> <b>null</b>;
+            }
+        }
+ 
+        <b>private void</b> <a id="d5fb88d7100db909" href="../R/d5fb88d7100db909.html" target="n" data-glyph="76,1" class="i method">DeserializeNotifyEntries</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r23 rd" class="r23 r">value</span>, <b>out</b> <a href="NotifyEntry.cs.html#28e4f958ebd284d1" class="t t">NotifyEntry</a>[] <span id="r24 rd" class="r24 r">messageEntries</span>)
+        {
+            <b>var</b> <span id="r25 rd" class="r25 r">settings</span> = <b>new</b> <span class="i">JsonSerializerSettings</span>();
+            <span class="r25 r">settings</span>.<span class="i">Converters</span>.<span class="i">Add</span>(<b>new</b> <a href="NotifyEntryConverter.cs.html#39dda7b7da58db1d" class="t constructor">NotifyEntryConverter</a>(<a href="#734ee20750524532" class="i field">_htmlEncoder</a>));
+ 
+            <b>try</b>
+            {
+                <b>var</b> <span id="r26 rd" class="r26 r">protector</span> = <a href="#d8da5232e663a840" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<b>nameof</b>(<a href="#c3c8e49dce3cafd1" class="t t">NotifyFilter</a>));
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r27 rd" class="r27 r">decoded</span> = <span class="r26 r">protector</span>.<span class="i method">Unprotect</span>(<a href="@1@System.Runtime/A.html#be62bd8978189a87" class="t t">WebUtility</a>.<a href="@1@System.Runtime/A.html#73c04b8a4fde5039" class="i method">UrlDecode</a>(<span class="r23 r">value</span>));
+                <span class="r24 r">messageEntries</span> = <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<a href="NotifyEntry.cs.html#28e4f958ebd284d1" class="t t">NotifyEntry</a>[]&gt;(<span class="r27 r">decoded</span>, <span class="r25 r">settings</span>);
+            }
+            <b>catch</b>
+            {
+                <span class="r24 r">messageEntries</span> = <b>null</b>;
+ 
+                <a href="#ec496457295bc9e3" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The notification entries could not be decrypted&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

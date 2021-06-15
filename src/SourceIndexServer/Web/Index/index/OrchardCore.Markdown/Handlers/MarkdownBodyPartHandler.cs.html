@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html><head><title>MarkdownBodyPartHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(98);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Markdown/Handlers/MarkdownBodyPartHandler.cs" target="_top">Handlers\MarkdownBodyPartHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Markdown" target="_top">src\OrchardCore.Modules\OrchardCore.Markdown\OrchardCore.Markdown.csproj</a> (OrchardCore.Markdown)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Infrastructure</span>.<span class="i">Html</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shortcodes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i">Shortcodes</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Markdown</span>.<span class="i n">Handlers</span>
+{
+    <b>public class</b> <a id="c874dd9a39210ab1" href="../R/c874dd9a39210ab1.html" target="n" data-glyph="0,0" class="t t">MarkdownBodyPartHandler</a> : <a href="/OrchardCore.ContentManagement.Abstractions/A.html#9cc9a13837ba1c7a" class="t t">ContentPartHandler</a>&lt;<a href="../Models/MarkdownBodyPart.cs.html#530a39ade44d769d" class="t t">MarkdownBodyPart</a>&gt;
+    {
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="5f75f01ea9661684" href="../R/5f75f01ea9661684.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Shortcodes.Abstractions/A.html#64b53c8dd4d3feab" class="t t">IShortcodeService</a> <a id="abe6f49da84739d4" href="../R/abe6f49da84739d4.html" target="n" data-glyph="46,1" class="i field">_shortcodeService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Markdown.Abstractions/A.html#7a3b9265014ecf70" class="t t">IMarkdownService</a> <a id="dd5b34fb60fcadbf" href="../R/dd5b34fb60fcadbf.html" target="n" data-glyph="46,1" class="i field">_markdownService</a>;
+        <b>private readonly</b> <span class="i">IHtmlSanitizerService</span> <a id="1c59f90e3e8f6fb1" href="../R/1c59f90e3e8f6fb1.html" target="n" data-glyph="46,1" class="i field">_htmlSanitizerService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <a id="e1f02a4e0c4f0196" href="../R/e1f02a4e0c4f0196.html" target="n" data-glyph="46,1" class="i field">_liquidTemplateManager</a>;
+        <b>private readonly</b> <span class="t t">HtmlEncoder</span> <a id="091114251640130e" href="../R/091114251640130e.html" target="n" data-glyph="46,1" class="i field">_htmlEncoder</a>;
+ 
+        <b>public</b> <a id="a021e3b566e33ca2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">MarkdownBodyPartHandler</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r0 rd" class="r0 r">contentDefinitionManager</span>,
+            <a href="/OrchardCore.Shortcodes.Abstractions/A.html#64b53c8dd4d3feab" class="t t">IShortcodeService</a> <span id="r1 rd" class="r1 r">shortcodeService</span>,
+            <a href="/OrchardCore.Markdown.Abstractions/A.html#7a3b9265014ecf70" class="t t">IMarkdownService</a> <span id="r2 rd" class="r2 r">markdownService</span>,
+            <span class="i">IHtmlSanitizerService</span> <span id="r3 rd" class="r3 r">htmlSanitizerService</span>,
+            <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <span id="r4 rd" class="r4 r">liquidTemplateManager</span>,
+            <span class="t t">HtmlEncoder</span> <span id="r5 rd" class="r5 r">htmlEncoder</span>)
+        {
+            <a href="#5f75f01ea9661684" class="i field">_contentDefinitionManager</a> = <span class="r0 r">contentDefinitionManager</span>;
+            <a href="#abe6f49da84739d4" class="i field">_shortcodeService</a> = <span class="r1 r">shortcodeService</span>;
+            <a href="#dd5b34fb60fcadbf" class="i field">_markdownService</a> = <span class="r2 r">markdownService</span>;
+            <a href="#1c59f90e3e8f6fb1" class="i field">_htmlSanitizerService</a> = <span class="r3 r">htmlSanitizerService</span>;
+            <a href="#e1f02a4e0c4f0196" class="i field">_liquidTemplateManager</a> = <span class="r4 r">liquidTemplateManager</span>;
+            <a href="#091114251640130e" class="i field">_htmlEncoder</a> = <span class="r5 r">htmlEncoder</span>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9ab4ae6405e9e8ba" href="../R/9ab4ae6405e9e8ba.html" target="n" data-glyph="72,1" class="i method">GetContentItemAspectAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a7f068870ae3c460" class="t t">ContentItemAspectContext</a> <span id="r6 rd" class="r6 r">context</span>, <a href="../Models/MarkdownBodyPart.cs.html#530a39ade44d769d" class="t t">MarkdownBodyPart</a> <span id="r7 rd" class="r7 r">part</span>)
+        {
+            <b>return</b> <span class="r6 r">context</span>.<span class="i">ForAsync</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#abb76a32371be329" class="t t">BodyAspect</a>&gt;(<b>async</b> <span id="r8 rd" class="r8 r">bodyAspect</span> =&gt;
+            {
+                <b>try</b>
+                {
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r9 rd" class="r9 r">contentTypeDefinition</span> = <a href="#5f75f01ea9661684" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r7 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="k">var</a> <span id="r10 rd" class="r10 r">contentTypePartDefinition</span> = <span class="r9 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">FirstOrDefault</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#372d790ddae4cbb4" class="i method">Equals</a>(<span class="r11 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <span class="s">&quot;MarkdownBodyPart&quot;</span>));
+                    <a href="../Settings/MarkdownBodyPartSettings.cs.html#51e62cd7a1c76444" class="k">var</a> <span id="r12 rd" class="r12 r">settings</span> = <span class="r10 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="../Settings/MarkdownBodyPartSettings.cs.html#51e62cd7a1c76444" class="t t">MarkdownBodyPartSettings</a>&gt;();
+ 
+                    <span class="c">// The default Markdown option is to entity escape html</span>
+                    <span class="c">// so filters must be run after the markdown has been processed.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">html</span> = <a href="#dd5b34fb60fcadbf" class="i field">_markdownService</a>.<a href="/OrchardCore.Markdown.Abstractions/A.html#fee2a16da52f66f5" class="i method">ToHtml</a>(<span class="r7 r">part</span>.<a href="../Models/MarkdownBodyPart.cs.html#014b5b9be2e6c8f8" class="i property">Markdown</a>);
+ 
+                    <span class="c">// The liquid rendering is for backwards compatability and can be removed in a future version.</span>
+                    <b>if</b> (!<span class="r12 r">settings</span>.<a href="../Settings/MarkdownBodyPartSettings.cs.html#12cacdc4d2c07511" class="i property">SanitizeHtml</a>)
+                    {
+                        <a href="../ViewModels/MarkdownBodyPartViewModel.cs.html#5c7768e720d6a385" class="k">var</a> <span id="r14 rd" class="r14 r">model</span> = <b>new</b> <a href="../ViewModels/MarkdownBodyPartViewModel.cs.html#5c7768e720d6a385" class="t constructor">MarkdownBodyPartViewModel</a>()
+                        {
+                            <a href="../ViewModels/MarkdownBodyPartViewModel.cs.html#9fc4ad2e77456356" class="i property">Markdown</a> = <span class="r7 r">part</span>.<a href="../Models/MarkdownBodyPart.cs.html#014b5b9be2e6c8f8" class="i property">Markdown</a>,
+                            <a href="../ViewModels/MarkdownBodyPartViewModel.cs.html#2bdebd6ba45baf43" class="i property">Html</a> = <span class="r13 r">html</span>,
+                            <a href="../ViewModels/MarkdownBodyPartViewModel.cs.html#27e2e9f729f7e386" class="i property">MarkdownBodyPart</a> = <span class="r7 r">part</span>,
+                            <a href="../ViewModels/MarkdownBodyPartViewModel.cs.html#241466dbaa11ae5b" class="i property">ContentItem</a> = <span class="r7 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>
+                        };
+ 
+                        <span class="r13 r">html</span> = <b>await</b> <a href="#e1f02a4e0c4f0196" class="i field">_liquidTemplateManager</a>.<span class="i">RenderStringAsync</span>(<span class="r13 r">html</span>, <a href="#091114251640130e" class="i field">_htmlEncoder</a>, <span class="r14 r">model</span>,
+                            <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;() { [<span class="s">&quot;ContentItem&quot;</span>] = <b>new</b> <span class="i">ObjectValue</span>(<span class="r14 r">model</span>.<a href="../ViewModels/MarkdownBodyPartViewModel.cs.html#241466dbaa11ae5b" class="i property">ContentItem</a>) });
+                    }
+ 
+                    <span class="r13 r">html</span> = <b>await</b> <a href="#abe6f49da84739d4" class="i field">_shortcodeService</a>.<span class="i">ProcessAsync</span>(<span class="r13 r">html</span>,
+                        <b>new</b> <span class="i">Context</span>
+                        {
+                            [<span class="s">&quot;ContentItem&quot;</span>] = <span class="r7 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>,
+                            [<span class="s">&quot;TypePartDefinition&quot;</span>] = <span class="r10 r">contentTypePartDefinition</span>
+                        });
+ 
+                    <b>if</b> (<span class="r12 r">settings</span>.<a href="../Settings/MarkdownBodyPartSettings.cs.html#12cacdc4d2c07511" class="i property">SanitizeHtml</a>)
+                    {
+                        <span class="r13 r">html</span> = <a href="#1c59f90e3e8f6fb1" class="i field">_htmlSanitizerService</a>.<span class="i">Sanitize</span>(<span class="r13 r">html</span>);
+                    }
+ 
+                    <span class="r8 r">bodyAspect</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e4bb45b2991fdccd" class="i property">Body</a> = <b>new</b> <span class="t constructor">HtmlString</span>(<span class="r13 r">html</span>);
+                }
+                <b>catch</b>
+                {
+                    <span class="r8 r">bodyAspect</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e4bb45b2991fdccd" class="i property">Body</a> = <span class="t t">HtmlString</span>.<span class="i field">Empty</span>;
+                }
+            });
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

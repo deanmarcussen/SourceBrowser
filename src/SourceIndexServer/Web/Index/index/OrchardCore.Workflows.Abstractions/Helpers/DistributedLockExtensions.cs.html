@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html><head><title>DistributedLockExtensions.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(51);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Workflows.Abstractions/Helpers/DistributedLockExtensions.cs" target="_top">Helpers\DistributedLockExtensions.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Workflows.Abstractions" target="_top">src\OrchardCore\OrchardCore.Workflows.Abstractions\OrchardCore.Workflows.Abstractions.csproj</a> (OrchardCore.Workflows.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Helpers</span>
+{
+    <b>public static class</b> <a id="1eba5e5195caf5fb" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">DistributedLockExtensions</a>
+    {
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to acquire a lock before resuming this workflow instance, but only</span>
+        <span class="c">///</span><span class="c"> if it is an atomic workflow, otherwise returns true with a null locker.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public static</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<span class="i">ILocker</span> <a id="cff4b6d19473fe14" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">locker</a>, <b>bool</b> <a id="9c07d038adc0e56b" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">locked</a>)&gt; <a id="d7ceef09320f587e" href="../R/../../0000000000.html" target="n" data-glyph="220,1" class="i method">TryAcquireWorkflowLockAsync</a>(
+            <b>this</b> <span class="i">IDistributedLock</span> <span id="r0 rd" class="r0 r">distributedLock</span>,
+            <a href="../Models/Workflow.cs.html#9d11fe1821b79f9c" class="t t">Workflow</a> <span id="r1 rd" class="r1 r">workflow</span>)
+        {
+            <b>if</b> (<span class="r1 r">workflow</span>.<a href="../Models/Workflow.cs.html#678545e611b58287" class="i property">IsAtomic</a>)
+            {
+                <b>return</b> <span class="r0 r">distributedLock</span>.<span class="i">TryAcquireLockAsync</span>(
+                    <span class="s">&quot;WFI_&quot;</span> + <span class="r1 r">workflow</span>.<a href="../Models/Workflow.cs.html#508f217c03b9c081" class="i property">WorkflowId</a> + <span class="s">&quot;_LOCK&quot;</span>,
+                    <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(<span class="r1 r">workflow</span>.<a href="../Models/Workflow.cs.html#5bd103b4c5fef23d" class="i property">LockTimeout</a>),
+                    <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(<span class="r1 r">workflow</span>.<a href="../Models/Workflow.cs.html#3f767354aad2e117" class="i property">LockExpiration</a>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;(<span class="i">ILocker</span>, <b>bool</b>)&gt;((<b>null</b>, <b>true</b>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to acquire a lock before starting an instance of this workflow type, if it is</span>
+        <span class="c">///</span><span class="c"> a singleton or if the event is exclusive, otherwise returns true with a null locker.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public static</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<span class="i">ILocker</span> <span class="i field">locker</span>, <b>bool</b> <span class="i field">locked</span>)&gt; <a id="851b60b27304013e" href="../R/../../0000000000.html" target="n" data-glyph="220,1" class="i method">TryAcquireWorkflowTypeLockAsync</a>(
+            <b>this</b> <span class="i">IDistributedLock</span> <span id="r2 rd" class="r2 r">distributedLock</span>,
+            <a href="../Models/WorkflowType.cs.html#0d529cb8d2493970" class="t t">WorkflowType</a> <span id="r3 rd" class="r3 r">workflowType</span>,
+            <b>bool</b> <span id="r4 rd" class="r4 r">isExclusiveEvent</span> = <b>false</b>)
+        {
+            <b>if</b> (<span class="r3 r">workflowType</span>.<a href="../Models/WorkflowType.cs.html#fbd5c7be4f8b593b" class="i property">IsSingleton</a> || <span class="r4 r">isExclusiveEvent</span>)
+            {
+                <b>return</b> <span class="r2 r">distributedLock</span>.<span class="i">TryAcquireLockAsync</span>(
+                    <span class="s">&quot;WFT_&quot;</span> + <span class="r3 r">workflowType</span>.<a href="../Models/WorkflowType.cs.html#4ffab8ec8cea46bc" class="i property">WorkflowTypeId</a> + <span class="s">&quot;_LOCK&quot;</span>,
+                    <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(20_000),
+                    <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(20_000));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;(<span class="i">ILocker</span>, <b>bool</b>)&gt;((<b>null</b>, <b>true</b>));
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

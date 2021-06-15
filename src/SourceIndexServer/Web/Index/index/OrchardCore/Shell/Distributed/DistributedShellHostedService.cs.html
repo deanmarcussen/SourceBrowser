@@ -1,0 +1,554 @@
+﻿<!DOCTYPE html>
+<html><head><title>DistributedShellHostedService.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(545);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Shell/Distributed/DistributedShellHostedService.cs" target="_top">Shell\Distributed\DistributedShellHostedService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Distributed</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Keep in sync tenants by sharing shell identifiers through an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IDistributedCache</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>internal class</b> <a id="a79194d51951c05b" href="../../R/a79194d51951c05b.html" target="n" data-glyph="2,0" class="t t">DistributedShellHostedService</a> : <span class="t t">BackgroundService</span>
+    {
+        <b>private const string</b> <a id="744d82f0fb66ef48" href="../../R/744d82f0fb66ef48.html" target="n" data-glyph="10,1" class="i field">ShellChangedIdKey</a> = <span class="s">&quot;SHELL_CHANGED_ID&quot;</span>;
+        <b>private const string</b> <a id="a4ca5b3c4d84bb49" href="../../R/a4ca5b3c4d84bb49.html" target="n" data-glyph="10,1" class="i field">ShellCreatedIdKey</a> = <span class="s">&quot;SHELL_CREATED_ID&quot;</span>;
+        <b>private const string</b> <a id="19316c0647ebd67d" href="../../R/19316c0647ebd67d.html" target="n" data-glyph="10,1" class="i field">ReleaseIdKeySuffix</a> = <span class="s">&quot;_RELEASE_ID&quot;</span>;
+        <b>private const string</b> <a id="8a19b4d390933a98" href="../../R/8a19b4d390933a98.html" target="n" data-glyph="10,1" class="i field">ReloadIdKeySuffix</a> = <span class="s">&quot;_RELOAD_ID&quot;</span>;
+ 
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="0fef9391bdf8e530" href="../../R/0fef9391bdf8e530.html" target="n" data-glyph="46,1" class="i field">MinIdleTime</a> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#c24437e069f958f9" class="i method">FromSeconds</a>(1);
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="d857f51f123ed259" href="../../R/d857f51f123ed259.html" target="n" data-glyph="46,1" class="i field">MaxRetryTime</a> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#ae74be5264df78d8" class="i method">FromMinutes</a>(1);
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="a249b8b2036a77e9" href="../../R/a249b8b2036a77e9.html" target="n" data-glyph="46,1" class="i field">MaxBusyTime</a> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#c24437e069f958f9" class="i method">FromSeconds</a>(2);
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <a id="406eba4a180cfd89" href="../../R/406eba4a180cfd89.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#14204d876fb7026c" class="t t">IShellContextFactory</a> <a id="2b3b2246dd3b774f" href="../../R/2b3b2246dd3b774f.html" target="n" data-glyph="46,1" class="i field">_shellContextFactory</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#b384cb770bdec8af" class="t t">IShellSettingsManager</a> <a id="065e49baef7e257a" href="../../R/065e49baef7e257a.html" target="n" data-glyph="46,1" class="i field">_shellSettingsManager</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="6b1aa05f6c3a7181" href="../../R/6b1aa05f6c3a7181.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t t">ShellIdentifier</a>&gt; <a id="809bba3cb14239eb" href="../../R/809bba3cb14239eb.html" target="n" data-glyph="46,1" class="i field">_identifiers</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t t">ShellIdentifier</a>&gt;();
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">SemaphoreSlim</span>&gt; <a id="afcfd51851c16b2e" href="../../R/afcfd51851c16b2e.html" target="n" data-glyph="46,1" class="i field">_semaphores</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">SemaphoreSlim</span>&gt;();
+ 
+        <b>private string</b> <a id="6cdfdbf1e882732d" href="../../R/6cdfdbf1e882732d.html" target="n" data-glyph="46,1" class="i field">_shellChangedId</a>;
+        <b>private string</b> <a id="91efd3211be3e2c5" href="../../R/91efd3211be3e2c5.html" target="n" data-glyph="46,1" class="i field">_shellCreatedId</a>;
+ 
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <a id="22647c5bd6955fcf" href="../../R/22647c5bd6955fcf.html" target="n" data-glyph="46,1" class="i field">_defaultContext</a>;
+        <b>private</b> <a href="DistributedContext.cs.html#54169a789bab9bfb" class="t t">DistributedContext</a> <a id="e51d867959510642" href="../../R/e51d867959510642.html" target="n" data-glyph="46,1" class="i field">_context</a>;
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a> <a id="cff802c13711a208" href="../../R/cff802c13711a208.html" target="n" data-glyph="46,1" class="i field">_busyStartTime</a>;
+        <b>private bool</b> <a id="eb9fc684a93edcf9" href="../../R/eb9fc684a93edcf9.html" target="n" data-glyph="46,1" class="i field">_terminated</a>;
+ 
+        <b>public</b> <a id="100b51e1348fbc19" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DistributedShellHostedService</a>(
+            <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <a href="/OrchardCore.Abstractions/A.html#14204d876fb7026c" class="t t">IShellContextFactory</a> <span id="r1 rd" class="r1 r">shellContextFactory</span>,
+            <a href="/OrchardCore.Abstractions/A.html#b384cb770bdec8af" class="t t">IShellSettingsManager</a> <span id="r2 rd" class="r2 r">shellSettingsManager</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#a79194d51951c05b" class="t t">DistributedShellHostedService</a>&gt; <span id="r3 rd" class="r3 r">logger</span>)
+        {
+            <a href="#406eba4a180cfd89" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#2b3b2246dd3b774f" class="i field">_shellContextFactory</a> = <span class="r1 r">shellContextFactory</span>;
+            <a href="#065e49baef7e257a" class="i field">_shellSettingsManager</a> = <span class="r2 r">shellSettingsManager</span>;
+            <a href="#6b1aa05f6c3a7181" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+ 
+            <span class="r0 r">shellHost</span>.<a href="/OrchardCore.Abstractions/A.html#9e97b068dfa23d8d" class="i property">LoadingAsync</a> += <a href="#2b9f39b9625bc688" class="i method">LoadingAsync</a>;
+            <span class="r0 r">shellHost</span>.<a href="/OrchardCore.Abstractions/A.html#ac63468940b856dc" class="i property">ReleasingAsync</a> += <a href="#c36488155c05b478" class="i method">ReleasingAsync</a>;
+            <span class="r0 r">shellHost</span>.<a href="/OrchardCore.Abstractions/A.html#f939a6f9c24a5979" class="i property">ReloadingAsync</a> += <a href="#3fe81d9f572d0c86" class="i method">ReloadingAsync</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Keep in sync tenants by sharing shell identifiers through an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IDistributedCache</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c5823b52f0889a15" href="../../R/c5823b52f0889a15.html" target="n" data-glyph="75,1" class="i method">ExecuteAsync</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r4 rd" class="r4 r">stoppingToken</span>)
+        {
+            <span class="r4 r">stoppingToken</span>.<a href="@1@System.Runtime/A.html#b4627f3ac7f722a5" class="i method">Register</a>(() =&gt;
+            {
+                <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;&#39;{ServiceName}&#39; is stopping.&quot;</span>, <b>nameof</b>(<a href="#a79194d51951c05b" class="t t">DistributedShellHostedService</a>));
+            });
+ 
+            <span class="c">// Init the idle time.</span>
+            <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="k">var</a> <span id="r5 rd" class="r5 r">idleTime</span> = <a href="#0fef9391bdf8e530" class="i field">MinIdleTime</a>;
+ 
+            <b>while</b> (!<span class="r4 r">stoppingToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+            {
+                <b>try</b>
+                {
+                    <span class="c">// Wait for the current idle time on each loop.</span>
+                    <b>if</b> (!<b>await</b> <a href="#246afb091af050ad" class="i method">TryWaitAsync</a>(<span class="r5 r">idleTime</span>, <span class="r4 r">stoppingToken</span>))
+                    {
+                        <b>break</b>;
+                    }
+ 
+                    <span class="c">// If there is no default tenant or it is not running, nothing to do.</span>
+                    <b>if</b> (!<a href="#406eba4a180cfd89" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#82094d4cf41b439b" class="i method">TryGetShellContext</a>(<a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r6 rd" class="r6 r">defaultContext</span>) ||
+                        <span class="r6 r">defaultContext</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a>)
+                    {
+                        <b>continue</b>;
+                    }
+ 
+                    <span class="c">// Get or create a new distributed context if the default tenant has changed.</span>
+                    <a href="DistributedContext.cs.html#54169a789bab9bfb" class="k">var</a> <span id="r7 rd" class="r7 r">context</span> = <b>await</b> <a href="#531c6594fd8ab374" class="i method">GetOrCreateDistributedContextAsync</a>(<span class="r6 r">defaultContext</span>);
+ 
+                    <span class="c">// If the required distributed features are not enabled, nothing to do.</span>
+                    <b>var</b> <span id="r8 rd" class="r8 r">distributedCache</span> = <span class="r7 r">context</span>?.<a href="DistributedContext.cs.html#dd147d6607225ed4" class="i property">DistributedCache</a>;
+                    <b>if</b> (<span class="r8 r">distributedCache</span> == <b>null</b>)
+                    {
+                        <b>continue</b>;
+                    }
+ 
+                    <span class="c">// Try to retrieve the tenant changed global identifier from the distributed cache.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">shellChangedId</span>;
+                    <b>try</b>
+                    {
+                        <span class="r9 r">shellChangedId</span> = <b>await</b> <span class="r8 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#744d82f0fb66ef48" class="i field">ShellChangedIdKey</a>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r10 rd" class="r10 r">ex</span>) <b>when</b> (!<span class="r10 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                    {
+                        <span class="c">// Get the next idle time before retrying to read the distributed cache.</span>
+                        <span class="r5 r">idleTime</span> = <a href="#c5cd1c68f66f5b21" class="i method">NextIdleTimeBeforeRetry</a>(<span class="r5 r">idleTime</span>, <span class="r10 r">ex</span>);
+                        <b>continue</b>;
+                    }
+ 
+                    <span class="c">// Reset the idle time.</span>
+                    <span class="r5 r">idleTime</span> = <a href="#0fef9391bdf8e530" class="i field">MinIdleTime</a>;
+ 
+                    <span class="c">// Check if at least one tenant has changed.</span>
+                    <b>if</b> (<span class="r9 r">shellChangedId</span> == <b>null</b> || <a href="#6cdfdbf1e882732d" class="i field">_shellChangedId</a> == <span class="r9 r">shellChangedId</span>)
+                    {
+                        <b>continue</b>;
+                    }
+ 
+                    <span class="c">// Try to retrieve the tenant created global identifier from the distributed cache.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">shellCreatedId</span>;
+                    <b>try</b>
+                    {
+                        <span class="r11 r">shellCreatedId</span> = <b>await</b> <span class="r8 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#a4ca5b3c4d84bb49" class="i field">ShellCreatedIdKey</a>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r12 rd" class="r12 r">ex</span>) <b>when</b> (!<span class="r12 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                    {
+                        <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r12 r">ex</span>, <span class="s">&quot;Unable to read the distributed cache before checking if a tenant has been created.&quot;</span>);
+                        <b>continue</b>;
+                    }
+ 
+                    <span class="c">// Retrieve all tenant settings that are already loaded.</span>
+                    <b>var</b> <span id="r13 rd" class="r13 r">allSettings</span> = <a href="#406eba4a180cfd89" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#a83fba7e6fa6e333" class="i method">GetAllSettings</a>().<span class="i method">ToList</span>();
+ 
+                    <span class="c">// Check if at least one tenant has been created.</span>
+                    <b>if</b> (<span class="r11 r">shellCreatedId</span> != <b>null</b> &amp;&amp; <a href="#91efd3211be3e2c5" class="i field">_shellCreatedId</a> != <span class="r11 r">shellCreatedId</span>)
+                    {
+                        <span class="c">// Retrieve all new created tenants that are not already loaded.</span>
+                        <b>var</b> <span id="r14 rd" class="r14 r">names</span> = (<b>await</b> <a href="#065e49baef7e257a" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#c4574b34eef1609b" class="i method">LoadSettingsNamesAsync</a>())
+                            .<span class="i method">Except</span>(<span class="r13 r">allSettings</span>.<span class="i method">Select</span>(<span id="r15 rd" class="r15 r">s</span> =&gt; <span class="r15 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>))
+                            .<span class="i method">ToArray</span>();
+ 
+                        <span class="c">// Load and enlist the settings of all new created tenant.</span>
+                        <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">name</span> <b>in</b> <span class="r14 r">names</span>)
+                        {
+                            <span class="r13 r">allSettings</span>.<span class="i method">Add</span>(<b>await</b> <a href="#065e49baef7e257a" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#ddc1f5336bdabce7" class="i method">LoadSettingsAsync</a>(<span class="r16 r">name</span>));
+                        }
+                    }
+ 
+                    <span class="c">// Init the busy start time.</span>
+                    <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="k">var</a> <span id="r17 rd" class="r17 r">_busyStartTime</span> = <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a>;
+                    <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r18 rd" class="r18 r">syncingSuccess</span> = <b>true</b>;
+ 
+                    <span class="c">// Keep in sync all tenants by checking their specific identifiers.</span>
+                    <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r19 rd" class="r19 r">settings</span> <b>in</b> <span class="r13 r">allSettings</span>)
+                    {
+                        <span class="c">// Wait for the min idle time after the max busy time.</span>
+                        <b>if</b> (!<b>await</b> <a href="#92e09ef5c9086d96" class="i method">TryWaitAfterBusyTime</a>(<span class="r4 r">stoppingToken</span>))
+                        {
+                            <b>break</b>;
+                        }
+ 
+                        <b>var</b> <span id="r20 rd" class="r20 r">semaphore</span> = <a href="#afcfd51851c16b2e" class="i field">_semaphores</a>.<span class="i method">GetOrAdd</span>(<span class="r19 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <span id="r21 rd" class="r21 r">name</span> =&gt; <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1));
+                        <b>await</b> <span class="r20 r">semaphore</span>.<span class="i method">WaitAsync</span>();
+                        <b>try</b>
+                        {
+                            <span class="c">// Try to retrieve the release identifier of this tenant from the distributed cache.</span>
+                            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">releaseId</span> = <b>await</b> <span class="r8 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#ed5c07e1ae452a36" class="i method">ReleaseIdKey</a>(<span class="r19 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>));
+                            <b>if</b> (<span class="r22 r">releaseId</span> != <b>null</b>)
+                            {
+                                <span class="c">// Check if the release identifier of this tenant has changed.</span>
+                                <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="k">var</a> <span id="r23 rd" class="r23 r">identifier</span> = <a href="#809bba3cb14239eb" class="i field">_identifiers</a>.<span class="i method">GetOrAdd</span>(<span class="r19 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <span id="r24 rd" class="r24 r">name</span> =&gt; <b>new</b> <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t constructor">ShellIdentifier</a>());
+                                <b>if</b> (<span class="r23 r">identifier</span>.<a href="ShellIdentifier.cs.html#04b22d294d548853" class="i property">ReleaseId</a> != <span class="r22 r">releaseId</span>)
+                                {
+                                    <span class="c">// Upate the local identifier.</span>
+                                    <span class="r23 r">identifier</span>.<a href="ShellIdentifier.cs.html#04b22d294d548853" class="i property">ReleaseId</a> = <span class="r22 r">releaseId</span>;
+ 
+                                    <span class="c">// Keep in sync this tenant by releasing it locally.</span>
+                                    <b>await</b> <a href="#406eba4a180cfd89" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#08d6076ef9d0689e" class="i method">ReleaseShellContextAsync</a>(<span class="r19 r">settings</span>, <span class="r25 r">eventSource</span>: <b>false</b>);
+                                }
+                            }
+ 
+                            <span class="c">// Try to retrieve the reload identifier of this tenant from the distributed cache.</span>
+                            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r26 rd" class="r26 r">reloadId</span> = <b>await</b> <span class="r8 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#7d2e06c1741627b9" class="i method">ReloadIdKey</a>(<span class="r19 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>));
+                            <b>if</b> (<span class="r26 r">reloadId</span> != <b>null</b>)
+                            {
+                                <span class="c">// Check if the reload identifier of this tenant has changed.</span>
+                                <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="k">var</a> <span id="r27 rd" class="r27 r">identifier</span> = <a href="#809bba3cb14239eb" class="i field">_identifiers</a>.<span class="i method">GetOrAdd</span>(<span class="r19 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <span id="r28 rd" class="r28 r">name</span> =&gt; <b>new</b> <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t constructor">ShellIdentifier</a>());
+                                <b>if</b> (<span class="r27 r">identifier</span>.<a href="ShellIdentifier.cs.html#81991de57205eeae" class="i property">ReloadId</a> != <span class="r26 r">reloadId</span>)
+                                {
+                                    <span class="c">// Upate the local identifier.</span>
+                                    <span class="r27 r">identifier</span>.<a href="ShellIdentifier.cs.html#81991de57205eeae" class="i property">ReloadId</a> = <span class="r26 r">reloadId</span>;
+ 
+                                    <span class="c">// Keep in sync this tenant by reloading it locally.</span>
+                                    <b>await</b> <a href="#406eba4a180cfd89" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#abd1c42d9201998c" class="i method">ReloadShellContextAsync</a>(<span class="r19 r">settings</span>, <span class="r29 r">eventSource</span>: <b>false</b>);
+                                }
+                            }
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r30 rd" class="r30 r">ex</span>) <b>when</b> (!<span class="r30 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                        {
+                            <span class="r18 r">syncingSuccess</span> = <b>false</b>;
+                            <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r30 r">ex</span>, <span class="s">&quot;Unable to read the distributed cache while syncing the tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r19 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+                            <b>break</b>;
+                        }
+                        <b>finally</b>
+                        {
+                            <span class="r20 r">semaphore</span>.<span class="i method">Release</span>();
+                        }
+                    }
+ 
+                    <span class="c">// Keep in sync the tenant global identifiers.</span>
+                    <b>if</b> (<span class="r18 r">syncingSuccess</span>)
+                    {
+                        <a href="#6cdfdbf1e882732d" class="i field">_shellChangedId</a> = <span class="r9 r">shellChangedId</span>;
+                        <a href="#91efd3211be3e2c5" class="i field">_shellCreatedId</a> = <span class="r11 r">shellCreatedId</span>;
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r31 rd" class="r31 r">ex</span>) <b>when</b> (!<span class="r31 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                {
+                    <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r31 r">ex</span>, <span class="s">&quot;Error while executing &#39;{ServiceName}&#39;&quot;</span>, <b>nameof</b>(<a href="#a79194d51951c05b" class="t t">DistributedShellHostedService</a>));
+                }
+            }
+ 
+            <a href="#eb9fc684a93edcf9" class="i field">_terminated</a> = <b>true</b>;
+            <a href="#e51d867959510642" class="i field">_context</a>?.<a href="DistributedContext.cs.html#3d03cc903d32cafd" class="i method">Release</a>();
+            <a href="#22647c5bd6955fcf" class="i field">_defaultContext</a> = <b>null</b>;
+            <a href="#e51d867959510642" class="i field">_context</a> = <b>null</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Called before loading all tenants to initialize the local shell identifiers from the distributed cache.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="2b9f39b9625bc688" href="../../R/2b9f39b9625bc688.html" target="n" data-glyph="72,1" class="i method">LoadingAsync</a>()
+        {
+            <b>if</b> (<a href="#eb9fc684a93edcf9" class="i field">_terminated</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If there is no default tenant or it is not running, nothing to do.</span>
+            <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r32 rd" class="r32 r">defautSettings</span> = <b>await</b> <a href="#065e49baef7e257a" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#ddc1f5336bdabce7" class="i method">LoadSettingsAsync</a>(<a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a>);
+            <b>if</b> (<span class="r32 r">defautSettings</span>?.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Create a local distributed context because it is not yet initialized.</span>
+            <b>using</b> <a href="DistributedContext.cs.html#54169a789bab9bfb" class="k">var</a> <span id="r33 rd" class="r33 r">context</span> = <b>await</b> <a href="#1445f0e4cf068636" class="i method">CreateDistributedContextAsync</a>(<span class="r32 r">defautSettings</span>);
+ 
+            <span class="c">// If the required distributed features are not enabled, nothing to do.</span>
+            <b>var</b> <span id="r34 rd" class="r34 r">distributedCache</span> = <span class="r33 r">context</span>?.<a href="DistributedContext.cs.html#dd147d6607225ed4" class="i property">DistributedCache</a>;
+            <b>if</b> (<span class="r34 r">distributedCache</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>try</b>
+            {
+                <span class="c">// Retrieve the tenant global identifiers from the distributed cache.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r35 rd" class="r35 r">shellChangedId</span> = <b>await</b> <span class="r34 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#744d82f0fb66ef48" class="i field">ShellChangedIdKey</a>);
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r36 rd" class="r36 r">shellCreatedId</span> = <b>await</b> <span class="r34 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#a4ca5b3c4d84bb49" class="i field">ShellCreatedIdKey</a>);
+ 
+                <span class="c">// Retrieve the names of all the tenants.</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r37 rd" class="r37 r">names</span> = <b>await</b> <a href="#065e49baef7e257a" class="i field">_shellSettingsManager</a>.<a href="/OrchardCore.Abstractions/A.html#c4574b34eef1609b" class="i method">LoadSettingsNamesAsync</a>();
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r38 rd" class="r38 r">name</span> <b>in</b> <span class="r37 r">names</span>)
+                {
+                    <span class="c">// Retrieve the release identifier of this tenant from the distributed cache.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r39 rd" class="r39 r">releaseId</span> = <b>await</b> <span class="r34 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#ed5c07e1ae452a36" class="i method">ReleaseIdKey</a>(<span class="r38 r">name</span>));
+                    <b>if</b> (<span class="r39 r">releaseId</span> != <b>null</b>)
+                    {
+                        <span class="c">// Initialize the release identifier of this tenant in the local collection.</span>
+                        <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="k">var</a> <span id="r40 rd" class="r40 r">identifier</span> = <a href="#809bba3cb14239eb" class="i field">_identifiers</a>.<span class="i method">GetOrAdd</span>(<span class="r38 r">name</span>, <span id="r41 rd" class="r41 r">name</span> =&gt; <b>new</b> <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t constructor">ShellIdentifier</a>());
+                        <span class="r40 r">identifier</span>.<a href="ShellIdentifier.cs.html#04b22d294d548853" class="i property">ReleaseId</a> = <span class="r39 r">releaseId</span>;
+                    }
+ 
+                    <span class="c">// Retrieve the reload identifier of this tenant from the distributed cache.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r42 rd" class="r42 r">reloadId</span> = <b>await</b> <span class="r34 r">distributedCache</span>.<span class="i method">GetStringAsync</span>(<a href="#7d2e06c1741627b9" class="i method">ReloadIdKey</a>(<span class="r38 r">name</span>));
+                    <b>if</b> (<span class="r42 r">reloadId</span> != <b>null</b>)
+                    {
+                        <span class="c">// Initialize the reload identifier of this tenant in the local collection.</span>
+                        <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="k">var</a> <span id="r43 rd" class="r43 r">identifier</span> = <a href="#809bba3cb14239eb" class="i field">_identifiers</a>.<span class="i method">GetOrAdd</span>(<span class="r38 r">name</span>, <span id="r44 rd" class="r44 r">name</span> =&gt; <b>new</b> <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t constructor">ShellIdentifier</a>());
+                        <span class="r43 r">identifier</span>.<a href="ShellIdentifier.cs.html#81991de57205eeae" class="i property">ReloadId</a> = <span class="r42 r">reloadId</span>;
+                    }
+                }
+ 
+                <span class="c">// Keep in sync the tenant global identifiers.</span>
+                <a href="#6cdfdbf1e882732d" class="i field">_shellChangedId</a> = <span class="r35 r">shellChangedId</span>;
+                <a href="#91efd3211be3e2c5" class="i field">_shellCreatedId</a> = <span class="r36 r">shellCreatedId</span>;
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r45 rd" class="r45 r">ex</span>) <b>when</b> (!<span class="r45 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+            {
+                <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r45 r">ex</span>, <span class="s">&quot;Unable to read the distributed cache before loading all tenants.&quot;</span>);
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Called before releasing a tenant to update the related shell identifiers, locally and in the distributed cache.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c36488155c05b478" href="../../R/c36488155c05b478.html" target="n" data-glyph="72,1" class="i method">ReleasingAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r46 rd" class="r46 r">name</span>)
+        {
+            <b>if</b> (<a href="#eb9fc684a93edcf9" class="i field">_terminated</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If there is no default tenant or it is not running, nothing to do.</span>
+            <b>if</b> (!<a href="#406eba4a180cfd89" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#82094d4cf41b439b" class="i method">TryGetShellContext</a>(<a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r47 rd" class="r47 r">defaultContext</span>) ||
+                <span class="r47 r">defaultContext</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Acquire the distributed context or create a new one if not yet built.</span>
+            <b>using</b> <a href="DistributedContext.cs.html#54169a789bab9bfb" class="k">var</a> <span id="r48 rd" class="r48 r">context</span> = <b>await</b> <a href="#d06e08189e50c7fc" class="i method">AcquireOrCreateDistributedContextAsync</a>(<span class="r47 r">defaultContext</span>);
+ 
+            <span class="c">// If the required distributed features are not enabled, nothing to do.</span>
+            <b>var</b> <span id="r49 rd" class="r49 r">distributedCache</span> = <span class="r48 r">context</span>?.<a href="DistributedContext.cs.html#dd147d6607225ed4" class="i property">DistributedCache</a>;
+            <b>if</b> (<span class="r49 r">distributedCache</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r50 rd" class="r50 r">semaphore</span> = <a href="#afcfd51851c16b2e" class="i field">_semaphores</a>.<span class="i method">GetOrAdd</span>(<span class="r46 r">name</span>, <span id="r51 rd" class="r51 r">name</span> =&gt; <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1));
+            <b>await</b> <span class="r50 r">semaphore</span>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <span class="c">// Update this tenant in the local collection with a new release identifier.</span>
+                <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="k">var</a> <span id="r52 rd" class="r52 r">identifier</span> = <a href="#809bba3cb14239eb" class="i field">_identifiers</a>.<span class="i method">GetOrAdd</span>(<span class="r46 r">name</span>, <span id="r53 rd" class="r53 r">name</span> =&gt; <b>new</b> <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t constructor">ShellIdentifier</a>());
+                <span class="r52 r">identifier</span>.<a href="ShellIdentifier.cs.html#04b22d294d548853" class="i property">ReleaseId</a> = <a href="/OrchardCore.Abstractions/A.html#fc17a63255d71caa" class="t t">IdGenerator</a>.<a href="/OrchardCore.Abstractions/A.html#6a7df9aaa5734cc9" class="i method">GenerateId</a>();
+ 
+                <span class="c">// Update the release identifier of this tenant in the distributed cache.</span>
+                <b>await</b> <span class="r49 r">distributedCache</span>.<span class="i method">SetStringAsync</span>(<a href="#ed5c07e1ae452a36" class="i method">ReleaseIdKey</a>(<span class="r46 r">name</span>), <span class="r52 r">identifier</span>.<a href="ShellIdentifier.cs.html#04b22d294d548853" class="i property">ReleaseId</a>);
+ 
+                <span class="c">// Also update the global identifier specifying that a tenant has changed.</span>
+                <b>await</b> <span class="r49 r">distributedCache</span>.<span class="i method">SetStringAsync</span>(<a href="#744d82f0fb66ef48" class="i field">ShellChangedIdKey</a>, <span class="r52 r">identifier</span>.<a href="ShellIdentifier.cs.html#04b22d294d548853" class="i property">ReleaseId</a>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r54 rd" class="r54 r">ex</span>) <b>when</b> (!<span class="r54 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+            {
+                <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r54 r">ex</span>, <span class="s">&quot;Unable to update the distributed cache before releasing the tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r46 r">name</span>);
+            }
+            <b>finally</b>
+            {
+                <span class="r50 r">semaphore</span>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Called before reloading a tenant to update the related shell identifiers, locally and in the distributed cache.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="3fe81d9f572d0c86" href="../../R/3fe81d9f572d0c86.html" target="n" data-glyph="72,1" class="i method">ReloadingAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r55 rd" class="r55 r">name</span>)
+        {
+            <b>if</b> (<a href="#eb9fc684a93edcf9" class="i field">_terminated</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If there is no default tenant or it is not running, nothing to do.</span>
+            <b>if</b> (!<a href="#406eba4a180cfd89" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#82094d4cf41b439b" class="i method">TryGetShellContext</a>(<a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r56 rd" class="r56 r">defaultContext</span>) ||
+                <span class="r56 r">defaultContext</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> != <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Acquire the distributed context or create a new one if not yet built.</span>
+            <b>using</b> <a href="DistributedContext.cs.html#54169a789bab9bfb" class="k">var</a> <span id="r57 rd" class="r57 r">context</span> = <b>await</b> <a href="#d06e08189e50c7fc" class="i method">AcquireOrCreateDistributedContextAsync</a>(<span class="r56 r">defaultContext</span>);
+ 
+            <span class="c">// If the required distributed features are not enabled, nothing to do.</span>
+            <b>var</b> <span id="r58 rd" class="r58 r">distributedCache</span> = <span class="r57 r">context</span>?.<a href="DistributedContext.cs.html#dd147d6607225ed4" class="i property">DistributedCache</a>;
+            <b>if</b> (<span class="r58 r">distributedCache</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r59 rd" class="r59 r">semaphore</span> = <a href="#afcfd51851c16b2e" class="i field">_semaphores</a>.<span class="i method">GetOrAdd</span>(<span class="r55 r">name</span>, <span id="r60 rd" class="r60 r">name</span> =&gt; <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1));
+            <b>await</b> <span class="r59 r">semaphore</span>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <span class="c">// Update this tenant in the local collection with a new reload identifier.</span>
+                <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="k">var</a> <span id="r61 rd" class="r61 r">identifier</span> = <a href="#809bba3cb14239eb" class="i field">_identifiers</a>.<span class="i method">GetOrAdd</span>(<span class="r55 r">name</span>, <span id="r62 rd" class="r62 r">name</span> =&gt; <b>new</b> <a href="ShellIdentifier.cs.html#3cc96d8de944c0f2" class="t constructor">ShellIdentifier</a>());
+                <span class="r61 r">identifier</span>.<a href="ShellIdentifier.cs.html#81991de57205eeae" class="i property">ReloadId</a> = <a href="/OrchardCore.Abstractions/A.html#fc17a63255d71caa" class="t t">IdGenerator</a>.<a href="/OrchardCore.Abstractions/A.html#6a7df9aaa5734cc9" class="i method">GenerateId</a>();
+ 
+                <span class="c">// Update the reload identifier of this tenant in the distributed cache.</span>
+                <b>await</b> <span class="r58 r">distributedCache</span>.<span class="i method">SetStringAsync</span>(<a href="#7d2e06c1741627b9" class="i method">ReloadIdKey</a>(<span class="r55 r">name</span>), <span class="r61 r">identifier</span>.<a href="ShellIdentifier.cs.html#81991de57205eeae" class="i property">ReloadId</a>);
+ 
+                <span class="c">// Check if it is a new created tenant that has not been already loaded.</span>
+                <b>if</b> (<span class="r55 r">name</span> != <a href="/OrchardCore.Abstractions/A.html#0a6bfbfb1121aad0" class="t t">ShellHelper</a>.<a href="/OrchardCore.Abstractions/A.html#6c4a5cce7eecd8cd" class="i field">DefaultShellName</a> &amp;&amp; !<a href="#406eba4a180cfd89" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#548801334e1a8212" class="i method">TryGetSettings</a>(<span class="r55 r">name</span>, <b>out _</b>))
+                {
+                    <span class="c">// Also update the global identifier specifying that a tenant has been created.</span>
+                    <b>await</b> <span class="r58 r">distributedCache</span>.<span class="i method">SetStringAsync</span>(<a href="#a4ca5b3c4d84bb49" class="i field">ShellCreatedIdKey</a>, <span class="r61 r">identifier</span>.<a href="ShellIdentifier.cs.html#81991de57205eeae" class="i property">ReloadId</a>);
+                }
+ 
+                <span class="c">// Also update the global identifier specifying that a tenant has changed.</span>
+                <b>await</b> <span class="r58 r">distributedCache</span>.<span class="i method">SetStringAsync</span>(<a href="#744d82f0fb66ef48" class="i field">ShellChangedIdKey</a>, <span class="r61 r">identifier</span>.<a href="ShellIdentifier.cs.html#81991de57205eeae" class="i property">ReloadId</a>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r63 rd" class="r63 r">ex</span>) <b>when</b> (!<span class="r63 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+            {
+                <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r63 r">ex</span>, <span class="s">&quot;Unable to update the distributed cache before reloading the tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r55 r">name</span>);
+            }
+            <b>finally</b>
+            {
+                <span class="r59 r">semaphore</span>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>private string</b> <a id="ed5c07e1ae452a36" href="../../R/ed5c07e1ae452a36.html" target="n" data-glyph="76,1" class="i method">ReleaseIdKey</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r64 rd" class="r64 r">name</span>) =&gt; <span class="r64 r">name</span> + <a href="#19316c0647ebd67d" class="i field">ReleaseIdKeySuffix</a>;
+        <b>private string</b> <a id="7d2e06c1741627b9" href="../../R/7d2e06c1741627b9.html" target="n" data-glyph="76,1" class="i method">ReloadIdKey</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r65 rd" class="r65 r">name</span>) =&gt; <span class="r65 r">name</span> + <a href="#8a19b4d390933a98" class="i field">ReloadIdKeySuffix</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a distributed context based on the default tenant settings and descriptor.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="DistributedContext.cs.html#54169a789bab9bfb" class="t t">DistributedContext</a>&gt; <a id="225b2e8b2a06b304" href="../../R/225b2e8b2a06b304.html" target="n" data-glyph="76,1" class="i method">CreateDistributedContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r66 rd" class="r66 r">defaultShell</span>)
+        {
+            <span class="c">// Capture the descriptor as the blueprint may be set to null right after.</span>
+            <a href="/OrchardCore.Abstractions/A.html#0d18542e8e03ab41" class="k">var</a> <span id="r67 rd" class="r67 r">descriptor</span> = <span class="r66 r">defaultShell</span>.<a href="/OrchardCore.Abstractions/A.html#d014653d2e38149a" class="i property">Blueprint</a>?.<a href="/OrchardCore.Abstractions/A.html#32f59a878ccc4927" class="i property">Descriptor</a>;
+            <b>if</b> (<span class="r67 r">descriptor</span> != <b>null</b>)
+            {
+                <span class="c">// Using the current shell descritor prevents a database access, and a race condition</span>
+                <span class="c">// when resolving `IStore` while the default tenant is activating and does migrations.</span>
+                <b>try</b>
+                {
+                    <b>return</b> <b>new</b> <a href="DistributedContext.cs.html#1c546169ee458018" class="t constructor">DistributedContext</a>(<b>await</b> <a href="#2b3b2246dd3b774f" class="i field">_shellContextFactory</a>.<a href="/OrchardCore.Abstractions/A.html#536eeeb67b467c33" class="i method">CreateDescribedContextAsync</a>(<span class="r66 r">defaultShell</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>, <span class="r67 r">descriptor</span>));
+                }
+                <b>catch</b>
+                {
+                    <b>return</b> <b>null</b>;
+                }
+            }
+ 
+            <b>return</b> <b>await</b> <a href="#1445f0e4cf068636" class="i method">CreateDistributedContextAsync</a>(<span class="r66 r">defaultShell</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a distributed context based on the default tenant settings.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="DistributedContext.cs.html#54169a789bab9bfb" class="t t">DistributedContext</a>&gt; <a id="1445f0e4cf068636" href="../../R/1445f0e4cf068636.html" target="n" data-glyph="76,1" class="i method">CreateDistributedContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r68 rd" class="r68 r">defaultSettings</span>)
+        {
+            <b>try</b>
+            {
+                <b>return</b> <b>new</b> <a href="DistributedContext.cs.html#1c546169ee458018" class="t constructor">DistributedContext</a>(<b>await</b> <a href="#2b3b2246dd3b774f" class="i field">_shellContextFactory</a>.<a href="/OrchardCore.Abstractions/A.html#5c46615574139abf" class="i method">CreateShellContextAsync</a>(<span class="r68 r">defaultSettings</span>));
+            }
+            <b>catch</b>
+            {
+                <b>return</b> <b>null</b>;
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets the distributed context or creates a new one if the default tenant has changed.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="DistributedContext.cs.html#54169a789bab9bfb" class="t t">DistributedContext</a>&gt; <a id="531c6594fd8ab374" href="../../R/531c6594fd8ab374.html" target="n" data-glyph="76,1" class="i method">GetOrCreateDistributedContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r69 rd" class="r69 r">defaultContext</span>)
+        {
+            <span class="c">// Check if the default tenant has changed.</span>
+            <b>if</b> (<a href="#22647c5bd6955fcf" class="i field">_defaultContext</a> != <span class="r69 r">defaultContext</span>)
+            {
+                <a href="DistributedContext.cs.html#54169a789bab9bfb" class="k">var</a> <span id="r70 rd" class="r70 r">previousContext</span> = <a href="#e51d867959510642" class="i field">_context</a>;
+ 
+                <span class="c">// Create a new distributed context based on the default tenant.</span>
+                <a href="#e51d867959510642" class="i field">_context</a> = <b>await</b> <a href="#225b2e8b2a06b304" class="i method">CreateDistributedContextAsync</a>(<span class="r69 r">defaultContext</span>);
+ 
+                <b>if</b> (<a href="#e51d867959510642" class="i field">_context</a> != <b>null</b>)
+                {
+                    <a href="#22647c5bd6955fcf" class="i field">_defaultContext</a> = <span class="r69 r">defaultContext</span>;
+                }
+ 
+                <span class="c">// Release the previous one.</span>
+                <span class="r70 r">previousContext</span>?.<a href="DistributedContext.cs.html#3d03cc903d32cafd" class="i method">Release</a>();
+            }
+ 
+            <b>return</b> <a href="#e51d867959510642" class="i field">_context</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Acquires the distributed context or creates a new one if not yet initialized.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="DistributedContext.cs.html#54169a789bab9bfb" class="t t">DistributedContext</a>&gt; <a id="d06e08189e50c7fc" href="../../R/d06e08189e50c7fc.html" target="n" data-glyph="76,1" class="i method">AcquireOrCreateDistributedContextAsync</a>(<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r71 rd" class="r71 r">defaultContext</span>)
+        {
+            <a href="DistributedContext.cs.html#54169a789bab9bfb" class="k">var</a> <span id="r72 rd" class="r72 r">distributedContext</span> = <a href="#e51d867959510642" class="i field">_context</a>?.<a href="DistributedContext.cs.html#2152af8307454904" class="i method">Acquire</a>();
+            <b>if</b> (<span class="r72 r">distributedContext</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="#225b2e8b2a06b304" class="i method">CreateDistributedContextAsync</a>(<span class="r71 r">defaultContext</span>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r72 r">distributedContext</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets the next idle time before retrying to read the distributed cache.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="c5cd1c68f66f5b21" href="../../R/c5cd1c68f66f5b21.html" target="n" data-glyph="76,1" class="i method">NextIdleTimeBeforeRetry</a>(<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <span id="r73 rd" class="r73 r">idleTime</span>, <a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r74 rd" class="r74 r">ex</span>)
+        {
+            <b>if</b> (<span class="r73 r">idleTime</span> &lt; <a href="#d857f51f123ed259" class="i field">MaxRetryTime</a>)
+            {
+                <span class="c">// Log an error on each retry, but only before reaching the &#39;MaxRetryTime&#39;, to not fill out the log.</span>
+                <a href="#6b1aa05f6c3a7181" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r74 r">ex</span>, <span class="s">&quot;Unable to read the distributed cache before checking if a tenant has changed.&quot;</span>);
+ 
+                <span class="r73 r">idleTime</span> *= 2;
+                <b>if</b> (<span class="r73 r">idleTime</span> &gt; <a href="#d857f51f123ed259" class="i field">MaxRetryTime</a>)
+                {
+                    <span class="r73 r">idleTime</span> = <a href="#d857f51f123ed259" class="i field">MaxRetryTime</a>;
+                }
+            }
+ 
+            <b>return</b> <span class="r73 r">idleTime</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to wait for the min idle time after the max busy time, returns false if it was cancelled.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="92e09ef5c9086d96" href="../../R/92e09ef5c9086d96.html" target="n" data-glyph="76,1" class="i method">TryWaitAfterBusyTime</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r75 rd" class="r75 r">stoppingToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a> - <a href="#cff802c13711a208" class="i field">_busyStartTime</a> &gt; <a href="#a249b8b2036a77e9" class="i field">MaxBusyTime</a>)
+            {
+                <b>if</b> (!<b>await</b> <a href="#246afb091af050ad" class="i method">TryWaitAsync</a>(<a href="#0fef9391bdf8e530" class="i field">MinIdleTime</a>, <span class="r75 r">stoppingToken</span>))
+                {
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <a href="#cff802c13711a208" class="i field">_busyStartTime</a> = <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a>;
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to wait for a given delay, returns false if it was cancelled.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="246afb091af050ad" href="../../R/246afb091af050ad.html" target="n" data-glyph="76,1" class="i method">TryWaitAsync</a>(<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <span id="r76 rd" class="r76 r">delay</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r77 rd" class="r77 r">stoppingToken</span>)
+        {
+            <b>try</b>
+            {
+                <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b070ae859dd3f7b7" class="i method">Delay</a>(<span class="r76 r">delay</span>, <span class="r77 r">stoppingToken</span>);
+                <b>return</b> <b>true</b>;
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#30edb7a318d221fa" class="t t">TaskCanceledException</a>)
+            {
+                <b>return</b> <b>false</b>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

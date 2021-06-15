@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html><head><title>ExportFileController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(84);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Deployment/Controllers/ExportFileController.cs" target="_top">Controllers\ExportFileController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Deployment" target="_top">src\OrchardCore.Modules\OrchardCore.Deployment\OrchardCore.Deployment.csproj</a> (OrchardCore.Deployment)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>.<span class="i n">Compression</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Core</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Core</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Steps</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Recipes</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Controllers</span>
+{
+    [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>]
+    <b>public class</b> <a id="00ff99d5b400a6a8" href="../R/00ff99d5b400a6a8.html" target="n" data-glyph="0,0" class="t t">ExportFileController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">IDeploymentManager</span> <a id="a7250769e453f373" href="../R/a7250769e453f373.html" target="n" data-glyph="46,1" class="i field">_deploymentManager</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="13d19135d2f13988" href="../R/13d19135d2f13988.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="ae8464fd698fc975" href="../R/ae8464fd698fc975.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+ 
+        <b>public</b> <a id="6a8eab26594fc441" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ExportFileController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <span class="i">ISession</span> <span id="r1 rd" class="r1 r">session</span>,
+            <span class="i">IDeploymentManager</span> <span id="r2 rd" class="r2 r">deploymentManager</span>)
+        {
+            <a href="#13d19135d2f13988" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#a7250769e453f373" class="i field">_deploymentManager</a> = <span class="r2 r">deploymentManager</span>;
+            <a href="#ae8464fd698fc975" class="i field">_session</a> = <span class="r1 r">session</span>;
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<a href="/OrchardCore.Deployment.Core/A.html#85ba6b7d9524df39" class="t constructor">DeleteFileResultFilter</a>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="36f9ebcd7110c7ed" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Execute</a>(<b>int</b> <span id="r3 rd" class="r3 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#13d19135d2f13988" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#92dcaa8219c33682" class="i field">Export</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">deploymentPlan</span> = <b>await</b> <a href="#ae8464fd698fc975" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="i">DeploymentPlan</span>&gt;(<span class="r3 r">id</span>);
+ 
+            <b>if</b> (<span class="r4 r">deploymentPlan</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">archiveFileName</span>;
+            <b>var</b> <span id="r6 rd" class="r6 r">filename</span> = <span class="r4 r">deploymentPlan</span>.<span class="i">Name</span>.<span class="i">ToSafeName</span>() + <span class="s">&quot;.zip&quot;</span>;
+ 
+            <b>using</b> (<a href="/OrchardCore.Deployment.Core/A.html#b6ec81a933f40d3c" class="k">var</a> <span id="r7 rd" class="r7 r">fileBuilder</span> = <b>new</b> <a href="/OrchardCore.Deployment.Core/A.html#a238a8f98eb467ec" class="t constructor">TemporaryFileBuilder</a>())
+            {
+                <span class="r5 r">archiveFileName</span> = <span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3a7a8c72321c6e1d" class="i method">GetTempPath</a>(), <span class="r6 r">filename</span>);
+ 
+                <b>var</b> <span id="r8 rd" class="r8 r">recipeDescriptor</span> = <b>new</b> <span class="i">RecipeDescriptor</span>();
+                <a href="../Steps/RecipeFileDeploymentStep.cs.html#e18cd1f403a1c13e" class="k">var</a> <span id="r9 rd" class="r9 r">recipeFileDeploymentStep</span> = <span class="r4 r">deploymentPlan</span>.<span class="i">DeploymentSteps</span>.<span class="i">FirstOrDefault</span>(<span id="r10 rd" class="r10 r">ds</span> =&gt; <span class="r10 r">ds</span>.<span class="i">Name</span> == <b>nameof</b>(<a href="../Steps/RecipeFileDeploymentStep.cs.html#e18cd1f403a1c13e" class="t t">RecipeFileDeploymentStep</a>)) <b>as</b> <a href="../Steps/RecipeFileDeploymentStep.cs.html#e18cd1f403a1c13e" class="t t">RecipeFileDeploymentStep</a>;
+ 
+                <b>if</b> (<span class="r9 r">recipeFileDeploymentStep</span> != <b>null</b>)
+                {
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">Name</span> = <span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#0593de0b532b47a4" class="i property">RecipeName</a>;
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">DisplayName</span> = <span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#92c0b0aa6fb453a0" class="i property">DisplayName</a>;
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">Description</span> = <span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#167a9ecd6b123bdb" class="i property">Description</a>;
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">Author</span> = <span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#b606db384c0229bd" class="i property">Author</a>;
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">WebSite</span> = <span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#226129d636ef5794" class="i property">WebSite</a>;
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">Version</span> = <span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#3b18a30a6e191120" class="i property">Version</a>;
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">IsSetupRecipe</span> = <span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#8d37681a8711352b" class="i property">IsSetupRecipe</a>;
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">Categories</span> = (<span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#9f99437b227432f9" class="i property">Categories</a> ?? <span class="s">&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;,&#39;</span>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>);
+                    <span class="r8 r">recipeDescriptor</span>.<span class="i">Tags</span> = (<span class="r9 r">recipeFileDeploymentStep</span>.<a href="../Steps/RecipeFileDeploymentStep.cs.html#3e01d14fe24e88ce" class="i property">Tags</a> ?? <span class="s">&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;,&#39;</span>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>);
+                }
+ 
+                <b>var</b> <span id="r11 rd" class="r11 r">deploymentPlanResult</span> = <b>new</b> <span class="i">DeploymentPlanResult</span>(<span class="r7 r">fileBuilder</span>, <span class="r8 r">recipeDescriptor</span>);
+                <b>await</b> <a href="#a7250769e453f373" class="i field">_deploymentManager</a>.<span class="i">ExecuteDeploymentPlanAsync</span>(<span class="r4 r">deploymentPlan</span>, <span class="r11 r">deploymentPlanResult</span>);
+                <span class="t t">ZipFile</span>.<span class="i method">CreateFromDirectory</span>(<span class="r7 r">fileBuilder</span>.<a href="/OrchardCore.Deployment.Core/A.html#b569fa7e8934ce85" class="i property">Folder</a>, <span class="r5 r">archiveFileName</span>);
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">PhysicalFileResult</span>(<span class="r5 r">archiveFileName</span>, <span class="s">&quot;application/zip&quot;</span>) { <span class="i property">FileDownloadName</span> = <span class="r6 r">filename</span> };
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

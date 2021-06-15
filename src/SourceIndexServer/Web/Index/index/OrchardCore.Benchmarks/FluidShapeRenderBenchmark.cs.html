@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html><head><title>FluidShapeRenderBenchmark.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(180);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Benchmarks/FluidShapeRenderBenchmark.cs" target="_top">FluidShapeRenderBenchmark.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Benchmarks" target="_top">test\OrchardCore.Benchmarks\OrchardCore.Benchmarks.csproj</a> (OrchardCore.Benchmarks)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Runtime</span>.<span class="i n">CompilerServices</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">BenchmarkDotNet</span>.<span class="i">Attributes</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Implementation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>.<span class="i n">Filters</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Benchmark</span>
+{
+    [<span class="i">MemoryDiagnoser</span>]
+    <b>public class</b> <a id="9b571a8515172af3" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="438aedec99d64c14">FluidShapeRenderBenchmark</span></a>
+    {
+        <b>private static readonly</b> <span class="i">FilterArguments</span> <a id="fc74bd0b39a91a7c" href="R/fc74bd0b39a91a7c.html" target="n" data-glyph="46,1" class="i field">_filterArguments</a> = <b>new</b> <span class="i">FilterArguments</span>().<span class="i">Add</span>(<span class="s">&quot;utc&quot;</span>, <b>new</b> <span class="i">DateTimeValue</span>(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a>)).<span class="i">Add</span>(<span class="s">&quot;format&quot;</span>, <span class="i">StringValue</span>.<span class="i">Create</span>(<span class="s">&quot;MMMM dd, yyyy&quot;</span>));
+        <b>private static readonly</b> <span class="i">FluidValue</span> <a id="b6f4938fa302ef5d" href="R/b6f4938fa302ef5d.html" target="n" data-glyph="46,1" class="i field">_input</a> = <span class="i">ObjectValue</span>.<span class="i">Create</span>(<span class="t t">HtmlString</span>.<span class="i field">Empty</span>, <b>new</b> <span class="i">TemplateOptions</span>());
+        <b>private static readonly</b> <span class="i">LiquidFilterDelegateResolver</span>&lt;<a href="/OrchardCore.DisplayManagement.Liquid/A.html#d24ad9c87ca509b9" class="t t">ShapeRenderFilter</a>&gt; <a id="759060e8f2bad4ca" href="R/759060e8f2bad4ca.html" target="n" data-glyph="46,1" class="i field">_liquidFilterDelegateResolver</a>;
+        <b>private static readonly</b> <span class="t t">IServiceProvider</span> <a id="5d1d7551ce2e741a" href="R/5d1d7551ce2e741a.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+ 
+        <b>static</b> <a id="2c252d684f2631c5" href="R/../../0000000000.html" target="n" data-glyph="76,1" class="t method">FluidShapeRenderBenchmark</a>()
+        {
+            <a href="/OrchardCore.DisplayManagement/A.html#31e602367b81f430" class="k">var</a> <span id="r0 rd" class="r0 r">htmlDisplay</span> = <b>new</b> <a href="/OrchardCore.DisplayManagement/A.html#a0d0f024061cd7f3" class="t constructor">DefaultHtmlDisplay</a>(<b>null</b>, <b>null</b>, <b>null</b>, <b>null</b>, <b>null</b>, <b>null</b>);
+ 
+            <a href="#5d1d7551ce2e741a" class="i field">_serviceProvider</a> = <b>new</b> <span class="t constructor">ServiceCollection</span>()
+                .<span class="i method">AddScoped</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="t t">IDisplayHelper</a>&gt;(<span id="r1 rd" class="r1 r">sp</span> =&gt; <b>new</b> <a href="/OrchardCore.DisplayManagement/A.html#d56765bc7bf2529d" class="t constructor">DisplayHelper</a>(<span class="r0 r">htmlDisplay</span>, <b>null</b>, <b>null</b>))
+                .<span class="i method">AddTransient</span>(<b>typeof</b>(<a href="/OrchardCore.DisplayManagement.Liquid/A.html#d24ad9c87ca509b9" class="t t">ShapeRenderFilter</a>))
+                .<span class="i method">BuildServiceProvider</span>();
+ 
+            <a href="#759060e8f2bad4ca" class="i field">_liquidFilterDelegateResolver</a> = <b>new</b> <span class="i">LiquidFilterDelegateResolver</span>&lt;<a href="/OrchardCore.DisplayManagement.Liquid/A.html#d24ad9c87ca509b9" class="t t">ShapeRenderFilter</a>&gt;();
+        }
+ 
+        <span class="c">// Summary 19th May 2021: dotnet run -c Release --filter *FluidShapeRenderBenchmark* --framework netcoreapp3.1 --job short</span>
+ 
+        <span class="c">//BenchmarkDotNet=v0.13.0, OS=Windows 10.0.19043.985 (21H1/May2021Update)</span>
+        <span class="c">//Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores</span>
+        <span class="c">//.NET SDK= 6.0.100-preview.3.21202.5</span>
+        <span class="c">//  [Host]   : .NET Core 3.1.15 (CoreCLR 4.700.21.21202, CoreFX 4.700.21.21402), X64 RyuJIT</span>
+        <span class="c">//  ShortRun : .NET Core 3.1.15 (CoreCLR 4.700.21.21202, CoreFX 4.700.21.21402), X64 RyuJIT</span>
+ 
+        <span class="c">//Job=ShortRun IterationCount = 3  LaunchCount=1</span>
+        <span class="c">//WarmupCount=3</span>
+ 
+        <span class="c">//|                       Method |     Mean |    Error |    StdDev | Ratio | RatioSD |  Gen 0 |  Gen 1 | Gen 2 | Allocated |</span>
+        <span class="c">//|----------------------------- |---------:|---------:|----------:|------:|--------:|-------:|-------:|------:|----------:|</span>
+        <span class="c">//|   OriginalShapeRenderDynamic | 6.211 us | 5.331 us | 0.2922 us |  1.00 |    0.00 | 1.1292 | 0.0153 |     - |      9 KB |</span>
+        <span class="c">//| ShapeRenderWithAmbientValues | 5.441 us | 3.280 us | 0.1798 us |  0.88 |    0.04 | 1.0910 | 0.0229 |     - |      9 KB |</span>
+        <span class="c">//|            ShapeRenderStatic | 4.498 us | 3.363 us | 0.1844 us |  0.72 |    0.02 | 1.0757 | 0.0229 |     - |      9 KB |</span>
+        <span class="c">//|      ShapeRenderWithResolver | 4.442 us | 5.901 us | 0.3235 us |  0.71 |    0.03 | 1.0834 | 0.0229 |     - |      9 KB |</span>
+ 
+ 
+        <span class="c">// Summary 19th May 2021: dotnet run -c Release --filter *FluidShapeRenderBenchmark* --framework net5.0 --job short</span>
+ 
+        <span class="c">//BenchmarkDotNet=v0.13.0, OS=Windows 10.0.19043.985 (21H1/May2021Update)</span>
+        <span class="c">//Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores</span>
+        <span class="c">//.NET SDK= 6.0.100-preview.3.21202.5</span>
+        <span class="c">//  [Host]   : .NET 5.0.6 (5.0.621.22011), X64 RyuJIT</span>
+        <span class="c">//  ShortRun : .NET 5.0.6 (5.0.621.22011), X64 RyuJIT</span>
+ 
+        <span class="c">//Job=ShortRun IterationCount = 3  LaunchCount=1</span>
+        <span class="c">//WarmupCount=3</span>
+ 
+        <span class="c">//|                       Method |     Mean |     Error |    StdDev | Ratio | RatioSD |  Gen 0 |  Gen 1 | Gen 2 | Allocated |</span>
+        <span class="c">//|----------------------------- |---------:|----------:|----------:|------:|--------:|-------:|-------:|------:|----------:|</span>
+        <span class="c">//|   OriginalShapeRenderDynamic | 5.391 us | 4.1445 us | 0.2272 us |  1.00 |    0.00 | 1.1444 | 0.0153 |     - |      9 KB |</span>
+        <span class="c">//| ShapeRenderWithAmbientValues | 4.954 us | 2.2463 us | 0.1231 us |  0.92 |    0.02 | 1.0986 |      - |     - |      9 KB |</span>
+        <span class="c">//|            ShapeRenderStatic | 3.999 us | 2.2435 us | 0.1230 us |  0.74 |    0.03 | 1.0834 | 0.0153 |     - |      9 KB |</span>
+        <span class="c">//|      ShapeRenderWithResolver | 3.701 us | 0.2977 us | 0.0163 us |  0.69 |    0.03 | 1.0910 | 0.0229 |     - |      9 KB |</span>
+ 
+        [<span class="i">Benchmark</span>(<span class="i">Baseline</span> = <b>true</b>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="e572ffecd33b50b3" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">OriginalShapeRenderDynamic</a>()
+        {
+            <b>var</b> <span id="r2 rd" class="r2 r">templateContext</span> = <b>new</b> <span class="i">LiquidTemplateContext</span>(<a href="#5d1d7551ce2e741a" class="i field">_serviceProvider</a>, <b>new</b> <span class="i">TemplateOptions</span>());
+            <a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="k">var</a> <span id="r3 rd" class="r3 r">displayHelper</span> = <a href="#5d1d7551ce2e741a" class="i field">_serviceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="t t">IDisplayHelper</a>&gt;();
+            <span class="r2 r">templateContext</span>.<span class="i">AmbientValues</span>[<span class="s">&quot;DisplayHelper&quot;</span>] = <span class="r3 r">displayHelper</span>;
+            <b>await</b> <span class="i">OriginalShapeRenderDynamic</span>(<a href="#b6f4938fa302ef5d" class="i field">_input</a>, <a href="#fc74bd0b39a91a7c" class="i field">_filterArguments</a>, <span class="r2 r">templateContext</span>);
+        }
+ 
+        [<span class="i">Benchmark</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a83605bb633fefa8" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShapeRenderWithAmbientValues</a>()
+        {
+            <b>var</b> <span id="r4 rd" class="r4 r">templateContext</span> = <b>new</b> <span class="i">LiquidTemplateContext</span>(<a href="#5d1d7551ce2e741a" class="i field">_serviceProvider</a>, <b>new</b> <span class="i">TemplateOptions</span>());
+            <a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="k">var</a> <span id="r5 rd" class="r5 r">displayHelper</span> = <a href="#5d1d7551ce2e741a" class="i field">_serviceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="t t">IDisplayHelper</a>&gt;();
+            <span class="r4 r">templateContext</span>.<span class="i">AmbientValues</span>[<span class="s">&quot;DisplayHelper&quot;</span>] = <span class="r5 r">displayHelper</span>;
+            <b>await</b> <span class="i">ShapeRenderWithAmbientValues</span>(<a href="#b6f4938fa302ef5d" class="i field">_input</a>, <a href="#fc74bd0b39a91a7c" class="i field">_filterArguments</a>, <span class="r4 r">templateContext</span>);
+        }
+ 
+        [<span class="i">Benchmark</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="1e549612fec64ee7" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShapeRenderStatic</a>()
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">templateContext</span> = <b>new</b> <span class="i">LiquidTemplateContext</span>(<a href="#5d1d7551ce2e741a" class="i field">_serviceProvider</a>, <b>new</b> <span class="i">TemplateOptions</span>());
+            <b>await</b> <span class="i">ShapeRenderStatic</span>(<a href="#b6f4938fa302ef5d" class="i field">_input</a>, <a href="#fc74bd0b39a91a7c" class="i field">_filterArguments</a>, <span class="r6 r">templateContext</span>);
+        }
+ 
+        [<span class="i">Benchmark</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a872af47fae30a26" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShapeRenderWithResolver</a>()
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">templateContext</span> = <b>new</b> <span class="i">LiquidTemplateContext</span>(<a href="#5d1d7551ce2e741a" class="i field">_serviceProvider</a>, <b>new</b> <span class="i">TemplateOptions</span>());
+            <b>await</b> <a href="#759060e8f2bad4ca" class="i field">_liquidFilterDelegateResolver</a>.<span class="i">ResolveAsync</span>(<a href="#b6f4938fa302ef5d" class="i field">_input</a>, <a href="#fc74bd0b39a91a7c" class="i field">_filterArguments</a>, <span class="r7 r">templateContext</span>);
+        }
+ 
+        <b>private static async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="72a10f4096913bfc" href="R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">OriginalShapeRenderDynamic</a>(<span class="i">FluidValue</span> <span id="r8 rd" class="r8 r">input</span>, <span class="i">FilterArguments</span> <span id="r9 rd" class="r9 r">arguments</span>, <span class="i">TemplateContext</span> <span id="r10 rd" class="r10 r">context</span>)
+        {
+            <b>if</b> (!<span class="r10 r">context</span>.<span class="i">AmbientValues</span>.<span class="i">TryGetValue</span>(<span class="s">&quot;DisplayHelper&quot;</span>, <b>out dynamic</b> <span id="r11 rd" class="r11 r">displayHelper</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;DisplayHelper missing while invoking &#39;shape_render&#39;&quot;</span>);
+            }
+ 
+            <span class="c">// This is marginally different than the exact original as we currently pass any non null object to the display helper.</span>
+            <span class="c">// And the original benchmark was if (input.ToObjectValue() is IShape shape) where input was never IShape.</span>
+            <span class="c">// The original benchmark noop&#39;d here and didn&#39;t hit the dynamic display helper.</span>
+            <b>if</b> (<span class="r8 r">input</span> != <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#7a732e3fccdcc9c8" class="t constructor">HtmlContentValue</a>(<b>await</b> (<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt;)<span class="r11 r">displayHelper</span>(<span class="r8 r">input</span>));
+            }
+ 
+            <b>return</b> <span class="i">NilValue</span>.<span class="i">Instance</span>;
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="989045567ef2c169" href="R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ShapeRenderWithAmbientValues</a>(<span class="i">FluidValue</span> <span id="r12 rd" class="r12 r">input</span>, <span class="i">FilterArguments</span> <span id="r13 rd" class="r13 r">arguments</span>, <span class="i">TemplateContext</span> <span id="r14 rd" class="r14 r">context</span>)
+        {
+            <b>static async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="b9c5aa62fe1bace5" href="R/b9c5aa62fe1bace5.html" target="n" data-glyph="76,2" class="i method">Awaited</a>(<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <span id="r15 rd" class="r15 r">task</span>)
+            {
+                <b>return</b> <b>new</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#7a732e3fccdcc9c8" class="t constructor">HtmlContentValue</a>(<b>await</b> <span class="r15 r">task</span>);
+            }
+ 
+            <b>if</b> (<span class="r12 r">input</span>.<span class="i">ToObjectValue</span>() <b>is</b> <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r16 rd" class="r16 r">shape</span>)
+            {
+                <b>if</b> (!<span class="r14 r">context</span>.<span class="i">AmbientValues</span>.<span class="i">TryGetValue</span>(<span class="s">&quot;DisplayHelper&quot;</span>, <b>out</b> <b>var</b> <span id="r17 rd" class="r17 r">item</span>) || !(<span class="r17 r">item</span> <b>is</b> <a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="t t">IDisplayHelper</a> <span id="r18 rd" class="r18 r">displayHelper</span>))
+                {
+                    <b>return</b> <a href="#55df40fc1a79042e" class="i method">ThrowArgumentException</a>&lt;<a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt;&gt;(<span class="s">&quot;DisplayHelper missing while invoking &#39;shape_render&#39;&quot;</span>);
+                }
+ 
+                <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="k">var</a> <span id="r19 rd" class="r19 r">task</span> = <span class="r18 r">displayHelper</span>.<a href="/OrchardCore.DisplayManagement/A.html#b675a7627587e254" class="i method">ShapeExecuteAsync</a>(<span class="r16 r">shape</span>);
+                <b>if</b> (!<span class="r19 r">task</span>.<a href="@1@System.Runtime/A.html#6a5dbf3b29faed67" class="i property">IsCompletedSuccessfully</a>)
+                {
+                    <b>return</b> <a href="#b9c5aa62fe1bace5" class="i method">Awaited</a>(<span class="r19 r">task</span>);
+                }
+                <b>return</b> <b>new</b> <span class="t">ValueTask</span>&lt;<span class="i">FluidValue</span>&gt;(<b>new</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#7a732e3fccdcc9c8" class="t constructor">HtmlContentValue</a>(<span class="r19 r">task</span>.<a href="@1@System.Runtime/A.html#826690b09f24e719" class="i property">Result</a>));
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t">ValueTask</span>&lt;<span class="i">FluidValue</span>&gt;(<span class="i">NilValue</span>.<span class="i">Instance</span>);
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="4cc0a39e073cb533" href="R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ShapeRenderStatic</a>(<span class="i">FluidValue</span> <span id="r20 rd" class="r20 r">input</span>, <span class="i">FilterArguments</span> <span id="r21 rd" class="r21 r">arguments</span>, <span class="i">TemplateContext</span> <span id="r22 rd" class="r22 r">context</span>)
+        {
+            <b>static async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="b9c5aa62fe1bace5" href="R/b9c5aa62fe1bace5.html" target="n" data-glyph="76,2" class="i method">Awaited</a>(<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <span id="r23 rd" class="r23 r">task</span>)
+            {
+                <b>return</b> <b>new</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#7a732e3fccdcc9c8" class="t constructor">HtmlContentValue</a>(<b>await</b> <span class="r23 r">task</span>);
+            }
+ 
+            <b>if</b> (<span class="r20 r">input</span>.<span class="i">ToObjectValue</span>() <b>is</b> <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r24 rd" class="r24 r">shape</span>)
+            {
+                <b>var</b> <span id="r25 rd" class="r25 r">services</span> = ((<span class="i">LiquidTemplateContext</span>)<span class="r22 r">context</span>).<span class="i">Services</span>;
+ 
+                <a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="k">var</a> <span id="r26 rd" class="r26 r">displayHelper</span> = <span class="r25 r">services</span>.<span class="i">GetRequiredService</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#873b3e4bef8a4bdf" class="t t">IDisplayHelper</a>&gt;();
+ 
+                <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="k">var</a> <span id="r27 rd" class="r27 r">task</span> = <span class="r26 r">displayHelper</span>.<a href="/OrchardCore.DisplayManagement/A.html#b675a7627587e254" class="i method">ShapeExecuteAsync</a>(<span class="r24 r">shape</span>);
+                <b>if</b> (!<span class="r27 r">task</span>.<a href="@1@System.Runtime/A.html#6a5dbf3b29faed67" class="i property">IsCompletedSuccessfully</a>)
+                {
+                    <b>return</b> <a href="#b9c5aa62fe1bace5" class="i method">Awaited</a>(<span class="r27 r">task</span>);
+                }
+                <b>return</b> <b>new</b> <span class="t">ValueTask</span>&lt;<span class="i">FluidValue</span>&gt;(<b>new</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#7a732e3fccdcc9c8" class="t constructor">HtmlContentValue</a>(<span class="r27 r">task</span>.<a href="@1@System.Runtime/A.html#826690b09f24e719" class="i property">Result</a>));
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t">ValueTask</span>&lt;<span class="i">FluidValue</span>&gt;(<span class="i">NilValue</span>.<span class="i">Instance</span>);
+        }
+ 
+        [<a href="@1@System.Runtime/A.html#b2f5af2558f436d5" class="t constructor">MethodImpl</a>(<a href="@1@System.Runtime/A.html#4159f5c528de6ee8" class="t t">MethodImplOptions</a>.<a href="@1@System.Runtime/A.html#f7d69d229fb17be2" class="i field">NoInlining</a>)]
+        <b>private static</b> <span class="r28 r t">T</span> <a id="55df40fc1a79042e" href="R/55df40fc1a79042e.html" target="n" data-glyph="76,1" class="i method">ThrowArgumentException</a>&lt;<span id="r28 rd t" class="r28 r t">T</span>&gt;(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r29 rd" class="r29 r">message</span>)
+        {
+            <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="r29 r">message</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

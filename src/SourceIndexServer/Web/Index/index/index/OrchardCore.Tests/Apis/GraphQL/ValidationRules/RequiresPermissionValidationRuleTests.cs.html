@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html><head><title>RequiresPermissionValidationRuleTests.cs</title><link rel="stylesheet" href="../../../../styles.css"><script src="../../../../scripts.js"></script></head>
+<body class="cB" onload="i(183);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Apis/GraphQL/ValidationRules/RequiresPermissionValidationRuleTests.cs" target="_top">Apis\GraphQL\ValidationRules\RequiresPermissionValidationRuleTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">GraphQL</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Conversion</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Types</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Validation</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>.<span class="i">ValidationRules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>.<span class="i">Permissions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Apis</span>.<span class="i n">Context</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>.<span class="i n">ValidationRules</span>
+{
+    <b>public class</b> <a id="9804f1e8733c5b2e" href="../../../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="0b6668880a287587">RequiresPermissionValidationRuleTests</span></a>
+    {
+        <b>internal readonly static</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">Permission</span>&gt; <a id="f4fb91d9ce6799c0" href="../../../R/f4fb91d9ce6799c0.html" target="n" data-glyph="44,1" class="i field">_permissions</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">Permission</span>&gt; {
+            { <span class="s">&quot;permissionOne&quot;</span>,  <b>new</b> <span class="i">Permission</span>(<span class="s">&quot;TestPermissionOne&quot;</span>, <span class="s">&quot;TestPermissionOne&quot;</span>) },
+            { <span class="s">&quot;permissionTwo&quot;</span>,  <b>new</b> <span class="i">Permission</span>(<span class="s">&quot;TestPermissionTwo&quot;</span>, <span class="s">&quot;TestPermissionTwo&quot;</span>) }
+        };
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="7bed9add6dac768c" href="../../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FieldsWithNoRequirePermissionsShouldResolve</a>()
+        {
+            <b>var</b> <span id="r0 rd" class="r0 r">options</span> = <a href="#db08e0d182529c39" class="i method">BuildExecutionOptions</a>(<span class="s">&quot;query { test { noPermissions } }&quot;</span>,
+                            <b>new</b> <a href="../../Context/AuthenticationContext.cs.html#63987e9ae4c41091" class="t constructor">PermissionsContext</a>
+                            {
+                                <a href="../../Context/AuthenticationContext.cs.html#70786fc0f9963548" class="i property">UsePermissionsContext</a> = <b>true</b>
+                            });
+ 
+            <b>var</b> <span id="r1 rd" class="r1 r">executer</span> = <b>new</b> <span class="i">DocumentExecuter</span>();
+ 
+            <b>var</b> <span id="r2 rd" class="r2 r">executionResult</span> = <b>await</b> <span class="r1 r">executer</span>.<span class="i">ExecuteAsync</span>(<span class="r0 r">options</span>);
+ 
+            <span class="i">Assert</span>.<span class="i">Null</span>(<span class="r2 r">executionResult</span>.<span class="i">Errors</span>);
+            <b>var</b> <span id="r3 rd" class="r3 r">result</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r2 r">executionResult</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Fantastic Fox Hates Permissions&quot;</span>, <span class="r3 r">result</span>[<span class="s">&quot;data&quot;</span>][<span class="s">&quot;test&quot;</span>][<span class="s">&quot;noPermissions&quot;</span>].<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;permissionOne&quot;</span>, <span class="s">&quot;Fantastic Fox Loves Permission One&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;permissionTwo&quot;</span>, <span class="s">&quot;Fantastic Fox Loves Permission Two&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="d187832b82c2a0cf" href="../../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FieldsWithRequirePermissionsShouldResolveWhenUserHasPermissions</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">fieldName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">expectedFieldValue</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">options</span> = <a href="#db08e0d182529c39" class="i method">BuildExecutionOptions</a>(<span class="s">$&quot;</span><span class="s">query {{ test {{</span>{ <span class="r4 r">fieldName</span> }<span class="s">}} }}</span><span class="s">&quot;</span>,
+                            <b>new</b> <a href="../../Context/AuthenticationContext.cs.html#63987e9ae4c41091" class="t constructor">PermissionsContext</a>
+                            {
+                                <a href="../../Context/AuthenticationContext.cs.html#70786fc0f9963548" class="i property">UsePermissionsContext</a> = <b>true</b>,
+                                <a href="../../Context/AuthenticationContext.cs.html#9e06b4123787a4f4" class="i property">AuthorizedPermissions</a> = <b>new</b>[] { <a href="#f4fb91d9ce6799c0" class="i field">_permissions</a>[<span class="r4 r">fieldName</span>] }
+                            });
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">executer</span> = <b>new</b> <span class="i">DocumentExecuter</span>();
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">executionResult</span> = <b>await</b> <span class="r7 r">executer</span>.<span class="i">ExecuteAsync</span>(<span class="r6 r">options</span>);
+ 
+            <span class="i">Assert</span>.<span class="i">Null</span>(<span class="r8 r">executionResult</span>.<span class="i">Errors</span>);
+            <b>var</b> <span id="r9 rd" class="r9 r">result</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r8 r">executionResult</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r5 r">expectedFieldValue</span>, <span class="r9 r">result</span>[<span class="s">&quot;data&quot;</span>][<span class="s">&quot;test&quot;</span>][<span class="r4 r">fieldName</span>].<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4e5fd4fb11434b6b" href="../../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FieldsWithRequirePermissionsShouldNotResolveWhenUserDoesntHavePermissions</a>()
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">options</span> = <a href="#db08e0d182529c39" class="i method">BuildExecutionOptions</a>(<span class="s">&quot;query { test { permissionOne } }&quot;</span>,
+                <b>new</b> <a href="../../Context/AuthenticationContext.cs.html#63987e9ae4c41091" class="t constructor">PermissionsContext</a>
+                {
+                    <a href="../../Context/AuthenticationContext.cs.html#70786fc0f9963548" class="i property">UsePermissionsContext</a> = <b>true</b>
+                });
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">executer</span> = <b>new</b> <span class="i">DocumentExecuter</span>();
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">executionResult</span> = <b>await</b> <span class="r11 r">executer</span>.<span class="i">ExecuteAsync</span>(<span class="r10 r">options</span>);
+ 
+            <span class="i">Assert</span>.<span class="i">NotEmpty</span>(<span class="r12 r">executionResult</span>.<span class="i">Errors</span>);
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b55def55c21995a0" href="../../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FieldsWithMultipleRequirePermissionsShouldResolveWhenUserHasAllPermissions</a>()
+        {
+            <b>var</b> <span id="r13 rd" class="r13 r">options</span> = <a href="#db08e0d182529c39" class="i method">BuildExecutionOptions</a>(<span class="s">&quot;query { test { permissionMultiple  } }&quot;</span>,
+                            <b>new</b> <a href="../../Context/AuthenticationContext.cs.html#63987e9ae4c41091" class="t constructor">PermissionsContext</a>
+                            {
+                                <a href="../../Context/AuthenticationContext.cs.html#70786fc0f9963548" class="i property">UsePermissionsContext</a> = <b>true</b>,
+                                <a href="../../Context/AuthenticationContext.cs.html#9e06b4123787a4f4" class="i property">AuthorizedPermissions</a> = <a href="#f4fb91d9ce6799c0" class="i field">_permissions</a>.<span class="i property">Values</span>
+                            });
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">executer</span> = <b>new</b> <span class="i">DocumentExecuter</span>();
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">executionResult</span> = <b>await</b> <span class="r14 r">executer</span>.<span class="i">ExecuteAsync</span>(<span class="r13 r">options</span>);
+ 
+            <span class="i">Assert</span>.<span class="i">Null</span>(<span class="r15 r">executionResult</span>.<span class="i">Errors</span>);
+            <b>var</b> <span id="r16 rd" class="r16 r">result</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r15 r">executionResult</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Fantastic Fox Loves Multiple Permissions&quot;</span>, <span class="r16 r">result</span>[<span class="s">&quot;data&quot;</span>][<span class="s">&quot;test&quot;</span>][<span class="s">&quot;permissionMultiple&quot;</span>].<span class="i">ToString</span>());
+        }
+ 
+        <b>private</b> <span class="i">ExecutionOptions</span> <a id="db08e0d182529c39" href="../../../R/db08e0d182529c39.html" target="n" data-glyph="76,1" class="i method">BuildExecutionOptions</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">query</span>, <a href="../../Context/AuthenticationContext.cs.html#63987e9ae4c41091" class="t t">PermissionsContext</a> <span id="r18 rd" class="r18 r">permissionsContext</span>)
+        {
+            <b>var</b> <span id="r19 rd" class="r19 r">services</span> = <b>new</b> <span class="t constructor">ServiceCollection</span>();
+ 
+            <span class="r19 r">services</span>.<span class="i method">AddAuthorization</span>();
+            <span class="r19 r">services</span>.<span class="i method">AddLogging</span>();
+            <span class="r19 r">services</span>.<span class="i method">AddOptions</span>();
+ 
+            <span class="r19 r">services</span>.<span class="i method">AddScoped</span>&lt;<span class="t t">IAuthorizationHandler</span>, <a href="../../Context/AuthenticationContext.cs.html#5b4fd6dba128e204" class="t t">PermissionContextAuthorizationHandler</a>&gt;(<span id="r20 rd" class="r20 r">x</span> =&gt;
+            {
+                <b>return</b> <b>new</b> <a href="../../Context/AuthenticationContext.cs.html#200ae13b17a0d6b8" class="t constructor">PermissionContextAuthorizationHandler</a>(<span class="r18 r">permissionsContext</span>);
+            });
+ 
+            <span class="r19 r">services</span>.<span class="i method">AddScoped</span>&lt;<span class="i">IValidationRule</span>, <span class="i">RequiresPermissionValidationRule</span>&gt;();
+ 
+            <b>var</b> <span id="r21 rd" class="r21 r">serviceProvider</span> = <span class="r19 r">services</span>.<span class="i method">BuildServiceProvider</span>();
+ 
+            <b>return</b> <b>new</b> <span class="i">ExecutionOptions</span>
+            {
+                <span class="i">Query</span> = <span class="r17 r">query</span>,
+                <span class="i">Schema</span> = <b>new</b> <a href="#dd8d9560a6520b19" class="t constructor">ValidationSchema</a>(),
+                <span class="i">UserContext</span> = <b>new</b> <span class="i">GraphQLContext</span>
+                {
+                    <span class="i">ServiceProvider</span> = <span class="r21 r">serviceProvider</span>,
+                    <span class="i">User</span> = <b>new</b> <span class="t constructor">ClaimsPrincipal</span>(<b>new</b> <a href="../../Context/AuthenticationContext.cs.html#a48b84e892fae6b1" class="t constructor">StubIdentity</a>())
+                },
+                <span class="i">ValidationRules</span> = <span class="i">DocumentValidator</span>.<span class="i">CoreRules</span>().<span class="i">Concat</span>(<span class="r21 r">serviceProvider</span>.<span class="i method">GetServices</span>&lt;<span class="i">IValidationRule</span>&gt;())
+            };
+        }
+ 
+        <b>private class</b> <a id="de4c839698e8fccd" href="../../../R/de4c839698e8fccd.html" target="n" data-glyph="4,1" class="t t">ValidationSchema</a> : <span class="i">Schema</span>
+        {
+            <b>public</b> <a id="dd8d9560a6520b19" href="../../../R/dd8d9560a6520b19.html" target="n" data-glyph="72,2" class="t constructor">ValidationSchema</a>()
+            {
+                <span class="i">RegisterType</span>&lt;<a href="#f26a8dcbb49fb3a1" class="t t">TestField</a>&gt;();
+                <span class="i">Query</span> = <b>new</b> <a href="#feee105ba4e26bb5" class="t constructor">ValidationQueryRoot</a> { <span class="i">Name</span> = <span class="s">&quot;Query&quot;</span> };
+                <span class="i">FieldNameConverter</span> = <b>new</b> <span class="i">CamelCaseFieldNameConverter</span>();
+            }
+        }
+ 
+        <b>private class</b> <a id="8f017f30b44bd833" href="../../../R/8f017f30b44bd833.html" target="n" data-glyph="4,1" class="t t">ValidationQueryRoot</a> : <span class="i">ObjectGraphType</span>
+        {
+            <b>public</b> <a id="feee105ba4e26bb5" href="../../../R/feee105ba4e26bb5.html" target="n" data-glyph="72,2" class="t constructor">ValidationQueryRoot</a>()
+            {
+                <span class="i">Field</span>&lt;<a href="#f26a8dcbb49fb3a1" class="t t">TestField</a>&gt;()
+                    .<span class="i">Name</span>(<span class="s">&quot;test&quot;</span>)
+                    .<span class="i">Returns</span>&lt;<b>object</b>&gt;()
+                    .<span class="i">Resolve</span>(<span id="r22 rd" class="r22 r">_</span> =&gt; <b>new</b> <b>object</b>());
+            }
+        }
+ 
+        <b>private class</b> <a id="f26a8dcbb49fb3a1" href="../../../R/f26a8dcbb49fb3a1.html" target="n" data-glyph="4,1" class="t t">TestField</a> : <span class="i">ObjectGraphType</span>
+        {
+            <b>public</b> <a id="a2fd2a772f60f259" href="../../../R/../../0000000000.html" target="n" data-glyph="72,2" class="t constructor">TestField</a>()
+            {
+                <span class="i">Field</span>&lt;<span class="i">StringGraphType</span>&gt;()
+                     .<span class="i">Name</span>(<span class="s">&quot;NoPermissions&quot;</span>)
+                     .<span class="i">Returns</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;()
+                     .<span class="i">Resolve</span>(<span id="r23 rd" class="r23 r">_</span> =&gt; <span class="s">&quot;Fantastic Fox Hates Permissions&quot;</span>);
+ 
+                <span class="i">Field</span>&lt;<span class="i">StringGraphType</span>&gt;()
+                    .<span class="i">Name</span>(<span class="s">&quot;PermissionOne&quot;</span>)
+                    .<span class="i">Returns</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;()
+                    .<span class="i">RequirePermission</span>(<a href="#f4fb91d9ce6799c0" class="i field">_permissions</a>[<span class="s">&quot;permissionOne&quot;</span>])
+                    .<span class="i">Resolve</span>(<span id="r24 rd" class="r24 r">_</span> =&gt; <span class="s">&quot;Fantastic Fox Loves Permission One&quot;</span>);
+ 
+                <span class="i">Field</span>&lt;<span class="i">StringGraphType</span>&gt;()
+                     .<span class="i">Name</span>(<span class="s">&quot;PermissionTwo&quot;</span>)
+                     .<span class="i">Returns</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;()
+                     .<span class="i">RequirePermission</span>(<a href="#f4fb91d9ce6799c0" class="i field">_permissions</a>[<span class="s">&quot;permissionTwo&quot;</span>])
+                     .<span class="i">Resolve</span>(<span id="r25 rd" class="r25 r">_</span> =&gt; <span class="s">&quot;Fantastic Fox Loves Permission Two&quot;</span>);
+ 
+                <span class="i">Field</span>&lt;<span class="i">StringGraphType</span>&gt;()
+                     .<span class="i">Name</span>(<span class="s">&quot;PermissionMultiple&quot;</span>)
+                     .<span class="i">Returns</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;()
+                     .<span class="i">RequirePermission</span>(<a href="#f4fb91d9ce6799c0" class="i field">_permissions</a>[<span class="s">&quot;permissionOne&quot;</span>])
+                     .<span class="i">RequirePermission</span>(<a href="#f4fb91d9ce6799c0" class="i field">_permissions</a>[<span class="s">&quot;permissionTwo&quot;</span>])
+                     .<span class="i">Resolve</span>(<span id="r26 rd" class="r26 r">_</span> =&gt; <span class="s">&quot;Fantastic Fox Loves Multiple Permissions&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

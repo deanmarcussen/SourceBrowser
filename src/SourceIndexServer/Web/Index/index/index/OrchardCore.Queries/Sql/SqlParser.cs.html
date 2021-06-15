@@ -1,0 +1,775 @@
+﻿<!DOCTYPE html>
+<html><head><title>SqlParser.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(766);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Queries/Sql/SqlParser.cs" target="_top">Sql\SqlParser.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Queries" target="_top">src\OrchardCore.Modules\OrchardCore.Queries\OrchardCore.Queries.csproj</a> (OrchardCore.Queries)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i">Irony</span>.<span class="i">Parsing</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Queries</span>.<span class="i n">Sql</span>
+{
+    <b>public class</b> <a id="7d5af5ea475a937e" href="../R/7d5af5ea475a937e.html" target="n" data-glyph="0,0" class="t t">SqlParser</a>
+    {
+        <b>private</b> <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="t t">StringBuilder</a> <a id="6408d05d765759a6" href="../R/6408d05d765759a6.html" target="n" data-glyph="46,1" class="i field">_builder</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; <a id="2bb75c43277c58c5" href="../R/2bb75c43277c58c5.html" target="n" data-glyph="46,1" class="i field">_parameters</a>;
+        <b>private</b> <span class="i">ISqlDialect</span> <a id="185c2bf8d39ed888" href="../R/185c2bf8d39ed888.html" target="n" data-glyph="46,1" class="i field">_dialect</a>;
+        <b>private string</b> <a id="b6af8d803b5903ec" href="../R/b6af8d803b5903ec.html" target="n" data-glyph="46,1" class="i field">_tablePrefix</a>;
+        <b>private</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="b1fc449ec806bf04" href="../R/b1fc449ec806bf04.html" target="n" data-glyph="46,1" class="i field">_aliases</a>;
+        <b>private</b> <span class="i">ParseTree</span> <a id="3c1193b8494106fd" href="../R/3c1193b8494106fd.html" target="n" data-glyph="46,1" class="i field">_tree</a>;
+        <b>private static</b> <span class="i">LanguageData</span> <a id="3bf8411589da76d0" href="../R/3bf8411589da76d0.html" target="n" data-glyph="46,1" class="i field">language</a> = <b>new</b> <span class="i">LanguageData</span>(<b>new</b> <a href="SqlGrammar.cs.html#b99fe287ab97e52f" class="t constructor">SqlGrammar</a>());
+        <b>private</b> <span class="t t">Stack</span>&lt;<a href="#ad048c05335e521f" class="t t">FormattingModes</a>&gt; <a id="310aedba72a9728a" href="../R/310aedba72a9728a.html" target="n" data-glyph="46,1" class="i field">_modes</a>;
+ 
+        <b>private string</b> <a id="f2b7db0692afe511" href="../R/f2b7db0692afe511.html" target="n" data-glyph="46,1" class="i field">_limit</a>;
+        <b>private string</b> <a id="9d7b973583782c24" href="../R/9d7b973583782c24.html" target="n" data-glyph="46,1" class="i field">_offset</a>;
+        <b>private string</b> <a id="223e0ed6d894ace8" href="../R/223e0ed6d894ace8.html" target="n" data-glyph="46,1" class="i field">_select</a>;
+        <b>private string</b> <a id="4b7b1f9759690ccd" href="../R/4b7b1f9759690ccd.html" target="n" data-glyph="46,1" class="i field">_from</a>;
+        <b>private string</b> <a id="3b0c8a58cf36810a" href="../R/3b0c8a58cf36810a.html" target="n" data-glyph="46,1" class="i field">_where</a>;
+        <b>private string</b> <a id="2bce5757e5a0d29a" href="../R/2bce5757e5a0d29a.html" target="n" data-glyph="46,1" class="i field">_having</a>;
+        <b>private string</b> <a id="ff651f8c292e35e3" href="../R/ff651f8c292e35e3.html" target="n" data-glyph="46,1" class="i field">_groupBy</a>;
+        <b>private string</b> <a id="0623488ce82dd568" href="../R/0623488ce82dd568.html" target="n" data-glyph="46,1" class="i field">_orderBy</a>;
+ 
+        <b>private</b> <a id="dd4d3664d0a08055" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="t constructor">SqlParser</a>(<span class="i">ParseTree</span> <span id="r0 rd" class="r0 r">tree</span>, <span class="i">ISqlDialect</span> <span id="r1 rd" class="r1 r">dialect</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">tablePrefix</span>, <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; <span id="r3 rd" class="r3 r">parameters</span>)
+        {
+            <a href="#3c1193b8494106fd" class="i field">_tree</a> = <span class="r0 r">tree</span>;
+            <a href="#185c2bf8d39ed888" class="i field">_dialect</a> = <span class="r1 r">dialect</span>;
+            <a href="#b6af8d803b5903ec" class="i field">_tablePrefix</a> = <span class="r2 r">tablePrefix</span>;
+            <a href="#2bb75c43277c58c5" class="i field">_parameters</a> = <span class="r3 r">parameters</span>;
+            <a href="#6408d05d765759a6" class="i field">_builder</a> = <b>new</b> <span class="t">StringBuilder</span>(<span class="r0 r">tree</span>.<span class="i">SourceText</span>.<span class="i">Length</span>);
+            <a href="#310aedba72a9728a" class="i field">_modes</a> = <b>new</b> <span class="t constructor">Stack</span>&lt;<a href="#ad048c05335e521f" class="t t">FormattingModes</a>&gt;();
+        }
+ 
+        <b>public static bool</b> <a id="6845b43bd2498cee" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">TryParse</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">sql</span>, <span class="i">ISqlDialect</span> <span id="r5 rd" class="r5 r">dialect</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">tablePrefix</span>, <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; <span id="r7 rd" class="r7 r">parameters</span>, <b>out string</b> <span id="r8 rd" class="r8 r">query</span>, <b>out</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r9 rd" class="r9 r">messages</span>)
+        {
+            <b>try</b>
+            {
+                <b>var</b> <span id="r10 rd" class="r10 r">tree</span> = <b>new</b> <span class="i">Parser</span>(<a href="#3bf8411589da76d0" class="i field">language</a>).<span class="i">Parse</span>(<span class="r4 r">sql</span>);
+ 
+                <b>if</b> (<span class="r10 r">tree</span>.<span class="i">HasErrors</span>())
+                {
+                    <span class="r8 r">query</span> = <b>null</b>;
+ 
+                    <span class="r9 r">messages</span> = <span class="r10 r">tree</span>
+                        .<span class="i">ParserMessages</span>
+                        .<span class="i">Select</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <span class="s">$&quot;</span>{<span class="r11 r">x</span>.<span class="i">Message</span>}<span class="s"> at line:</span>{<span class="r11 r">x</span>.<span class="i">Location</span>.<span class="i">Line</span>}<span class="s">, col:</span>{<span class="r11 r">x</span>.<span class="i">Location</span>.<span class="i">Column</span>}<span class="s">&quot;</span>)
+                        .<span class="i">ToArray</span>();
+ 
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <a href="#7d5af5ea475a937e" class="k">var</a> <span id="r12 rd" class="r12 r">sqlParser</span> = <b>new</b> <span class="t">SqlParser</span>(<span class="r10 r">tree</span>, <span class="r5 r">dialect</span>, <span class="r6 r">tablePrefix</span>, <span class="r7 r">parameters</span>);
+                <span class="r8 r">query</span> = <span class="r12 r">sqlParser</span>.<a href="#cbc5c73844bb28bb" class="i method">Evaluate</a>();
+ 
+                <span class="r9 r">messages</span> = <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+                <b>return</b> <b>true</b>;
+            }
+            <b>catch</b> (<a href="SqlParserException.cs.html#17068fa117767ea1" class="t t">SqlParserException</a> <span id="r13 rd" class="r13 r">se</span>)
+            {
+                <span class="r8 r">query</span> = <b>null</b>;
+                <span class="r9 r">messages</span> = <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="r13 r">se</span>.<a href="@1@System.Runtime/A.html#5fba0e16215b42a3" class="i property">Message</a> };
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r14 rd" class="r14 r">e</span>)
+            {
+                <span class="r8 r">query</span> = <b>null</b>;
+                <span class="r9 r">messages</span> = <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="s">&quot;Unexpected error: &quot;</span> + <span class="r14 r">e</span>.<a href="@1@System.Runtime/A.html#5fba0e16215b42a3" class="i property">Message</a> };
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>private string</b> <a id="cbc5c73844bb28bb" href="../R/cbc5c73844bb28bb.html" target="n" data-glyph="76,1" class="i method">Evaluate</a>()
+        {
+            <a href="#0c1274b4042e4433" class="i method">PopulateAliases</a>(<a href="#3c1193b8494106fd" class="i field">_tree</a>);
+            <b>var</b> <span id="r15 rd" class="r15 r">statementList</span> = <a href="#3c1193b8494106fd" class="i field">_tree</a>.<span class="i">Root</span>;
+ 
+            <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="k">var</a> <span id="r16 rd" class="r16 r">statementsBuilder</span> = <b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r17 rd" class="r17 r">selectStatement</span> <b>in</b> <span class="r15 r">statementList</span>.<span class="i">ChildNodes</span>)
+            {
+                <span class="r16 r">statementsBuilder</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="i">EvaluateSelectStatement</span>(<span class="r17 r">selectStatement</span>)).<a href="@1@System.Runtime/A.html#a2e7c78d85807da5" class="i method">Append</a>(<span class="s">&#39;;&#39;</span>);
+            }
+ 
+            <b>return</b> <span class="r16 r">statementsBuilder</span>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+        }
+ 
+        <b>private void</b> <a id="0c1274b4042e4433" href="../R/0c1274b4042e4433.html" target="n" data-glyph="76,1" class="i method">PopulateAliases</a>(<span class="i">ParseTree</span> <span id="r18 rd" class="r18 r">tree</span>)
+        {
+            <span class="c">// In order to determine if an Id is a table name or an alias, we</span>
+            <span class="c">// analyze every Alias and store the value.</span>
+ 
+            <a href="#b1fc449ec806bf04" class="i field">_aliases</a> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r19 rd" class="r19 r">i</span> = 0; <span class="r19 r">i</span> &lt; <span class="r18 r">tree</span>.<span class="i">Tokens</span>.<span class="i">Count</span>; <span class="r19 r">i</span>++)
+            {
+                <b>if</b> (<span class="r18 r">tree</span>.<span class="i">Tokens</span>[<span class="r19 r">i</span>].<span class="i">Terminal</span>.<span class="i">Name</span> == <span class="s">&quot;AS&quot;</span>)
+                {
+                    <a href="#b1fc449ec806bf04" class="i field">_aliases</a>.<span class="i">Add</span>(<span class="r18 r">tree</span>.<span class="i">Tokens</span>[<span class="r19 r">i</span> + 1].<span class="i">ValueString</span>);
+                }
+            }
+        }
+ 
+        <b>private string</b> <a id="7bbe01aa62f14e1c" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateSelectStatement</a>(<span class="i">ParseTreeNode</span> <span id="r20 rd" class="r20 r">selectStatement</span>)
+        {
+            <a href="#f2b7db0692afe511" class="i field">_limit</a> = <b>null</b>;
+            <a href="#9d7b973583782c24" class="i field">_offset</a> = <b>null</b>;
+            <a href="#223e0ed6d894ace8" class="i field">_select</a> = <b>null</b>;
+            <a href="#4b7b1f9759690ccd" class="i field">_from</a> = <b>null</b>;
+            <a href="#3b0c8a58cf36810a" class="i field">_where</a> = <b>null</b>;
+            <a href="#2bce5757e5a0d29a" class="i field">_having</a> = <b>null</b>;
+            <a href="#ff651f8c292e35e3" class="i field">_groupBy</a> = <b>null</b>;
+            <a href="#0623488ce82dd568" class="i field">_orderBy</a> = <b>null</b>;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">previousContent</span> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#7d7729bd88adac53" class="i property">Length</a> &gt; 0 ? <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>() : <b>null</b>;
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">sqlBuilder</span> = <a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">CreateBuilder</span>(<a href="#b6af8d803b5903ec" class="i field">_tablePrefix</a>);
+ 
+            <span class="i">EvaluateSelectRestriction</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[1]);
+            <span class="i">EvaluateSelectorList</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[2]);
+ 
+            <span class="r22 r">sqlBuilder</span>.<span class="i">Select</span>();
+            <span class="r22 r">sqlBuilder</span>.<span class="i">Selector</span>(<a href="#223e0ed6d894ace8" class="i field">_select</a>);
+ 
+            <span class="i">EvaluateFromClause</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[3]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#4b7b1f9759690ccd" class="i field">_from</a>))
+            {
+                <span class="r22 r">sqlBuilder</span>.<span class="i">From</span>(<a href="#4b7b1f9759690ccd" class="i field">_from</a>);
+            }
+ 
+            <span class="i">EvaluateWhereClause</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[4]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#3b0c8a58cf36810a" class="i field">_where</a>))
+            {
+                <span class="r22 r">sqlBuilder</span>.<span class="i">WhereAnd</span>(<a href="#3b0c8a58cf36810a" class="i field">_where</a>);
+            }
+ 
+            <span class="i">EvaluateGroupClause</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[5]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#ff651f8c292e35e3" class="i field">_groupBy</a>))
+            {
+                <span class="r22 r">sqlBuilder</span>.<span class="i">GroupBy</span>(<a href="#ff651f8c292e35e3" class="i field">_groupBy</a>);
+            }
+ 
+            <span class="i">EvaluateHavingClause</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[6]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#2bce5757e5a0d29a" class="i field">_having</a>))
+            {
+                <span class="r22 r">sqlBuilder</span>.<span class="i">Having</span>(<a href="#2bce5757e5a0d29a" class="i field">_having</a>);
+            }
+ 
+            <span class="i">EvaluateOrderClause</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[7]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#0623488ce82dd568" class="i field">_orderBy</a>))
+            {
+                <span class="r22 r">sqlBuilder</span>.<span class="i">OrderBy</span>(<a href="#0623488ce82dd568" class="i field">_orderBy</a>);
+            }
+ 
+            <span class="i">EvaluateLimitClause</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[8]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#f2b7db0692afe511" class="i field">_limit</a>))
+            {
+                <span class="r22 r">sqlBuilder</span>.<span class="i">Take</span>(<a href="#f2b7db0692afe511" class="i field">_limit</a>);
+            }
+ 
+            <span class="i">EvaluateOffsetClause</span>(<span class="r20 r">selectStatement</span>.<span class="i">ChildNodes</span>[9]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#9d7b973583782c24" class="i field">_offset</a>))
+            {
+                <span class="r22 r">sqlBuilder</span>.<span class="i">Skip</span>(<a href="#9d7b973583782c24" class="i field">_offset</a>);
+            }
+ 
+            <b>if</b> (<span class="r21 r">previousContent</span> != <b>null</b>)
+            {
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e3dc4902e1ad6d8f" class="i method">Append</a>(<b>new</b> <a href="@1@System.Runtime/A.html#57b9d3a70c2aba34" class="t constructor">StringBuilder</a>(<span class="r21 r">previousContent</span>));
+            }
+ 
+            <b>return</b> <span class="r22 r">sqlBuilder</span>.<span class="i">ToSqlString</span>();
+        }
+ 
+        <b>private void</b> <a id="73a74555e797208d" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateLimitClause</a>(<span class="i">ParseTreeNode</span> <span id="r23 rd" class="r23 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r23 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <span class="c">// Evaluating so that the value can be transformed as a parameter</span>
+            <span class="i">EvaluateExpression</span>(<span class="r23 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1]);
+ 
+            <a href="#f2b7db0692afe511" class="i field">_limit</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+        }
+ 
+        <b>private void</b> <a id="54aa6b1f64d732e0" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateOffsetClause</a>(<span class="i">ParseTreeNode</span> <span id="r24 rd" class="r24 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r24 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <span class="c">// Evaluating so that the value can be transformed as a parameter</span>
+            <span class="i">EvaluateExpression</span>(<span class="r24 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1]);
+ 
+            <a href="#9d7b973583782c24" class="i field">_offset</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+        }
+ 
+        <b>private void</b> <a id="654898f79a161630" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateOrderClause</a>(<span class="i">ParseTreeNode</span> <span id="r25 rd" class="r25 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r25 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">idList</span> = <span class="r25 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[2];
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#d049b31a756bfff6" class="i field">SelectClause</a>);
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r27 rd" class="r27 r">i</span> = 0; <span class="r27 r">i</span> &lt; <span class="r26 r">idList</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r27 r">i</span>++)
+            {
+                <b>var</b> <span id="r28 rd" class="r28 r">id</span> = <span class="r26 r">idList</span>.<span class="i">ChildNodes</span>[<span class="r27 r">i</span>].<span class="i">ChildNodes</span>[0];
+ 
+                <b>if</b> (<span class="r27 r">i</span> &gt; 0)
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;, &quot;</span>);
+                }
+ 
+                <span class="i">EvaluateId</span>(<span class="r28 r">id</span>);
+ 
+                <b>if</b> (<span class="r26 r">idList</span>.<span class="i">ChildNodes</span>[<span class="r27 r">i</span>].<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0)
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>).<span class="i">Append</span>(<span class="r26 r">idList</span>.<span class="i">ChildNodes</span>[<span class="r27 r">i</span>].<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span>);
+                }
+            }
+ 
+            <a href="#0623488ce82dd568" class="i field">_orderBy</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Pop</span>();
+        }
+ 
+        <b>private void</b> <a id="fe1f0aaf0d683aaa" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateHavingClause</a>(<span class="i">ParseTreeNode</span> <span id="r29 rd" class="r29 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r29 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#d049b31a756bfff6" class="i field">SelectClause</a>);
+            <span class="i">EvaluateExpression</span>(<span class="r29 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1]);
+ 
+            <a href="#2bce5757e5a0d29a" class="i field">_having</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Pop</span>();
+        }
+ 
+        <b>private void</b> <a id="022ea854993aed33" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateGroupClause</a>(<span class="i">ParseTreeNode</span> <span id="r30 rd" class="r30 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r30 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <b>var</b> <span id="r31 rd" class="r31 r">idList</span> = <span class="r30 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[2];
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#d049b31a756bfff6" class="i field">SelectClause</a>);
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r32 rd" class="r32 r">i</span> = 0; <span class="r32 r">i</span> &lt; <span class="r31 r">idList</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r32 r">i</span>++)
+            {
+                <b>var</b> <span id="r33 rd" class="r33 r">columnSource</span> = <span class="r31 r">idList</span>.<span class="i">ChildNodes</span>[<span class="r32 r">i</span>];
+ 
+                <b>if</b> (<span class="r32 r">i</span> &gt; 0)
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;, &quot;</span>);
+                }
+ 
+                <b>if</b> (<span class="r33 r">columnSource</span>.<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span> == <span class="s">&quot;Id&quot;</span>)
+                {
+                    <span class="i">EvaluateId</span>(<span class="r33 r">columnSource</span>.<span class="i">ChildNodes</span>[0]);
+                }
+                <b>else</b>
+                {
+                    <span class="i">EvaluateFunCall</span>(<span class="r33 r">columnSource</span>.<span class="i">ChildNodes</span>[0]);
+                }
+            }
+ 
+            <a href="#ff651f8c292e35e3" class="i field">_groupBy</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Pop</span>();
+        }
+ 
+        <b>private void</b> <a id="d8f5cba088d7ca36" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateWhereClause</a>(<span class="i">ParseTreeNode</span> <span id="r34 rd" class="r34 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r34 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <span class="c">// EMPTY</span>
+                <b>return</b>;
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#d049b31a756bfff6" class="i field">SelectClause</a>);
+            <span class="i">EvaluateExpression</span>(<span class="r34 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1]);
+ 
+            <a href="#3b0c8a58cf36810a" class="i field">_where</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Pop</span>();
+        }
+ 
+        <b>private void</b> <a id="a44fd7f33bd1b175" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateExpression</a>(<span class="i">ParseTreeNode</span> <span id="r35 rd" class="r35 r">parseTreeNode</span>)
+        {
+            <b>switch</b> (<span class="r35 r">parseTreeNode</span>.<span class="i">Term</span>.<span class="i">Name</span>)
+            {
+                <b>case</b> <span class="s">&quot;unExpr&quot;</span>:
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span>);
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1]);
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;binExpr&quot;</span>:
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0]);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>);
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[2]);
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;betweenExpr&quot;</span>:
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0]);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>);
+                    <b>if</b> (<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0)
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;NOT &quot;</span>);
+                    }
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;BETWEEN &quot;</span>);
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[3]);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;AND &quot;</span>);
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[5]);
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;inExpr&quot;</span>:
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0]);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>);
+                    <b>if</b> (<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0)
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;NOT &quot;</span>);
+                    }
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;IN (&quot;</span>);
+                    <span class="i">EvaluateInArgs</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[3]);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;)&quot;</span>);
+                    <b>break</b>;
+                <span class="c">// Term and Tuple are transient, to they appear directly</span>
+                <b>case</b> <span class="s">&quot;Id&quot;</span>:
+                    <a href="#78689b70aaa6a102" class="i method">EvaluateId</a>(<span class="r35 r">parseTreeNode</span>);
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;boolean&quot;</span>:
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">GetSqlValue</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span> == <span class="s">&quot;TRUE&quot;</span>));
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;string&quot;</span>:
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">GetSqlValue</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">Token</span>.<span class="i">ValueString</span>));
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;number&quot;</span>:
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">GetSqlValue</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">Token</span>.<span class="i">Value</span>));
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;funCall&quot;</span>:
+                    <a href="#b6fb2625445c6e6c" class="i method">EvaluateFunCall</a>(<span class="r35 r">parseTreeNode</span>);
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;exprList&quot;</span>:
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;(&quot;</span>);
+                    <span class="i">EvaluateExpression</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0]);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;)&quot;</span>);
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;parSelectStmt&quot;</span>:
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;(&quot;</span>);
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="i">EvaluateSelectStatement</span>(<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0]));
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;)&quot;</span>);
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;parameter&quot;</span>:
+                    <b>var</b> <span id="r36 rd" class="r36 r">name</span> = <span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0].<span class="i">Token</span>.<span class="i">ValueString</span>;
+ 
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<span class="s">&quot;@&quot;</span> + <span class="r36 r">name</span>);
+ 
+                    <b>if</b> (<a href="#2bb75c43277c58c5" class="i field">_parameters</a> != <b>null</b> &amp;&amp; !<a href="#2bb75c43277c58c5" class="i field">_parameters</a>.<span class="i">ContainsKey</span>(<span class="r36 r">name</span>))
+                    {
+                        <span class="c">// If a parameter is not set and there is no default value, report it</span>
+                        <b>if</b> (<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &lt; 3)
+                        {
+                            <b>throw</b> <b>new</b> <span class="t">SqlParserException</span>(<span class="s">&quot;Missing parameters: &quot;</span> + <span class="r36 r">name</span>);
+                        }
+                        <b>else</b>
+                        {
+                            <b>if</b> (<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[3].<span class="i">Token</span> != <b>null</b>)
+                            {
+                                <a href="#2bb75c43277c58c5" class="i field">_parameters</a>[<span class="r36 r">name</span>] = <span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[3].<span class="i">Token</span>.<span class="i">Value</span>;
+                            }
+                            <b>else</b>
+                            {
+                                <span class="c">// example: true</span>
+                                <b>if</b> (<span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[3].<span class="i">ChildNodes</span>[0].<span class="i">Token</span> != <b>null</b>)
+                                {
+                                    <a href="#2bb75c43277c58c5" class="i field">_parameters</a>[<span class="r36 r">name</span>] = <span class="r35 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[3].<span class="i">ChildNodes</span>[0].<span class="i">Token</span>.<span class="i">Value</span>;
+                                }
+                                <b>else</b>
+                                {
+                                    <b>throw</b> <b>new</b> <span class="t">SqlParserException</span>(<span class="s">&quot;Unsupported syntax for parameter: &quot;</span> + <span class="r36 r">name</span>);
+                                }
+                            }
+                        }
+                    }
+ 
+                    <b>break</b>;
+                <b>case</b> <span class="s">&quot;*&quot;</span>:
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;*&quot;</span>);
+                    <b>break</b>;
+            }
+        }
+ 
+        <b>private void</b> <a id="f146e26392d88dea" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateInArgs</a>(<span class="i">ParseTreeNode</span> <span id="r37 rd" class="r37 r">inArgs</span>)
+        {
+            <b>if</b> (<span class="r37 r">inArgs</span>.<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span> == <span class="s">&quot;selectStatement&quot;</span>)
+            {
+                <span class="c">// selectStatement</span>
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="i">EvaluateSelectStatement</span>(<span class="r37 r">inArgs</span>.<span class="i">ChildNodes</span>[0]));
+            }
+            <b>else</b>
+            {
+                <span class="c">// expressionList</span>
+                <span class="i">EvaluateExpressionList</span>(<span class="r37 r">inArgs</span>.<span class="i">ChildNodes</span>[0]);
+            }
+        }
+ 
+        <b>private void</b> <a id="b6fb2625445c6e6c" href="../R/b6fb2625445c6e6c.html" target="n" data-glyph="76,1" class="i method">EvaluateFunCall</a>(<span class="i">ParseTreeNode</span> <span id="r38 rd" class="r38 r">funCall</span>)
+        {
+            <b>var</b> <span id="r39 rd" class="r39 r">funcName</span> = <span class="r38 r">funCall</span>.<span class="i">ChildNodes</span>[0].<span class="i">ChildNodes</span>[0].<span class="i">Token</span>.<span class="i">ValueString</span>;
+            <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r40 rd" class="r40 r">arguments</span>;
+            <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="k">var</a> <span id="r41 rd" class="r41 r">tempBuilder</span> = <a href="#6408d05d765759a6" class="i field">_builder</a>;
+ 
+            <b>if</b> (<span class="r38 r">funCall</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0) 
+            {
+                <span class="r40 r">arguments</span> = <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            }
+            <b>else</b> <b>if</b> (<span class="r38 r">funCall</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span> == <span class="s">&quot;selectStatement&quot;</span>)
+            {
+                <span class="c">// selectStatement</span>
+                <a href="#6408d05d765759a6" class="i field">_builder</a> = <b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>();
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="i">EvaluateSelectStatement</span>(<span class="r38 r">funCall</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0]));
+                <span class="r40 r">arguments</span> = <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>() };
+                <a href="#6408d05d765759a6" class="i field">_builder</a> = <span class="r41 r">tempBuilder</span>;
+            }
+            <b>else</b> <b>if</b> (<span class="r38 r">funCall</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span> == <span class="s">&quot;*&quot;</span>)
+            {
+                <span class="r40 r">arguments</span> = <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="s">&quot;*&quot;</span> };
+            }
+            <b>else</b>
+            {
+                <span class="c">// expressionList</span>
+                <span class="r40 r">arguments</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r42 rd" class="r42 r">i</span> = 0; <span class="r42 r">i</span> &lt; <span class="r38 r">funCall</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0].<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r42 r">i</span>++)
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a> = <b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>();
+                    <span class="i">EvaluateExpression</span>(<span class="r38 r">funCall</span>.<span class="i">ChildNodes</span>[1].<span class="i">ChildNodes</span>[0].<span class="i">ChildNodes</span>[<span class="r42 r">i</span>]);
+                    <span class="r40 r">arguments</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>());
+                    <a href="#6408d05d765759a6" class="i field">_builder</a> = <span class="r41 r">tempBuilder</span>;
+                }
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">RenderMethod</span>(<span class="r39 r">funcName</span>, <span class="r40 r">arguments</span>.<span class="i method">ToArray</span>()));
+        }
+ 
+        <b>private void</b> <a id="ea86db6fefb34ee0" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateExpressionList</a>(<span class="i">ParseTreeNode</span> <span id="r43 rd" class="r43 r">expressionList</span>)
+        {
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r44 rd" class="r44 r">i</span> = 0; <span class="r44 r">i</span> &lt; <span class="r43 r">expressionList</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r44 r">i</span>++)
+            {
+                <b>if</b> (<span class="r44 r">i</span> &gt; 0)
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;, &quot;</span>);
+                }
+ 
+                <span class="i">EvaluateExpression</span>(<span class="r43 r">expressionList</span>.<span class="i">ChildNodes</span>[<span class="r44 r">i</span>]);
+            }
+        }
+ 
+        <b>private void</b> <a id="30f0e763c2bd1c75" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateFromClause</a>(<span class="i">ParseTreeNode</span> <span id="r45 rd" class="r45 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r45 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <span class="c">// EMPTY</span>
+                <b>return</b>;
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <b>var</b> <span id="r46 rd" class="r46 r">aliasList</span> = <span class="r45 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[1];
+ 
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#e65da63da928ee2b" class="i field">FromClause</a>);
+            <span class="i">EvaluateAliasList</span>(<span class="r46 r">aliasList</span>);
+            <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Pop</span>();
+ 
+            <b>var</b> <span id="r47 rd" class="r47 r">joins</span> = <span class="r45 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[2];
+ 
+            <span class="c">// process join statements</span>
+            <b>if</b> (<span class="r47 r">joins</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> != 0)
+            {
+                <b>foreach</b> (<b>var</b> <span id="r48 rd" class="r48 r">joinStatement</span> <b>in</b> <span class="r47 r">joins</span>.<span class="i">ChildNodes</span>)
+                {
+                    <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#e65da63da928ee2b" class="i field">FromClause</a>);
+ 
+                    <b>var</b> <span id="r49 rd" class="r49 r">jointKindOpt</span> = <span class="r48 r">joinStatement</span>.<span class="i">ChildNodes</span>[0];
+ 
+                    <b>if</b> (<span class="r49 r">jointKindOpt</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0)
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>).<span class="i">Append</span>(<span class="r49 r">jointKindOpt</span>.<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span>);
+                    }
+ 
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; JOIN &quot;</span>);
+ 
+                    <span class="i">EvaluateAliasList</span>(<span class="r48 r">joinStatement</span>.<span class="i">ChildNodes</span>[2]);
+ 
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; ON &quot;</span>);
+ 
+                    <b>var</b> <span id="r50 rd" class="r50 r">joinConditions</span> = <span class="r48 r">joinStatement</span>.<span class="i">ChildNodes</span>[4].<span class="i">ChildNodes</span>;
+ 
+                    <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r51 rd" class="r51 r">i</span> = 0; <span class="r51 r">i</span> &lt; <span class="r50 r">joinConditions</span>.<span class="i">Count</span>; <span class="r51 r">i</span>++)
+                    {
+                        <b>if</b> (<span class="r51 r">i</span> &gt; 0)
+                        {
+                            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; AND &quot;</span>);
+                        }
+                        <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#d049b31a756bfff6" class="i field">SelectClause</a>);
+                        <b>var</b> <span id="r52 rd" class="r52 r">joinCondition</span> = <span class="r50 r">joinConditions</span>[<span class="r51 r">i</span>];
+                        <span class="i">EvaluateExpression</span>(<span class="r52 r">joinCondition</span>.<span class="i">ChildNodes</span>[0].<span class="i">ChildNodes</span>[0]);
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; = &quot;</span>);
+                        <span class="i">EvaluateExpression</span>(<span class="r52 r">joinCondition</span>.<span class="i">ChildNodes</span>[2].<span class="i">ChildNodes</span>[0]);
+                        <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Pop</span>();
+                    }
+                }
+            }
+ 
+            <a href="#4b7b1f9759690ccd" class="i field">_from</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+        }
+ 
+        <b>private void</b> <a id="975c9d63cd682b7c" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateAliasList</a>(<span class="i">ParseTreeNode</span> <span id="r53 rd" class="r53 r">aliasList</span>)
+        {
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r54 rd" class="r54 r">i</span> = 0; <span class="r54 r">i</span> &lt; <span class="r53 r">aliasList</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r54 r">i</span>++)
+            {
+                <b>var</b> <span id="r55 rd" class="r55 r">aliasItem</span> = <span class="r53 r">aliasList</span>.<span class="i">ChildNodes</span>[<span class="r54 r">i</span>];
+ 
+                <b>if</b> (<span class="r54 r">i</span> &gt; 0)
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;, &quot;</span>);
+                }
+ 
+                <span class="i">EvaluateId</span>(<span class="r55 r">aliasItem</span>.<span class="i">ChildNodes</span>[0]);
+ 
+                <b>if</b> (<span class="r55 r">aliasItem</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 1)
+                {
+                    <span class="i">EvaluateAliasOptional</span>(<span class="r55 r">aliasItem</span>.<span class="i">ChildNodes</span>[1]);
+                }
+            }
+        }
+ 
+        <b>private void</b> <a id="f2ddce8cf8ba94c3" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateSelectorList</a>(<span class="i">ParseTreeNode</span> <span id="r56 rd" class="r56 r">parseTreeNode</span>)
+        {
+            <b>var</b> <span id="r57 rd" class="r57 r">selectorList</span> = <span class="r56 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0];
+ 
+            <b>if</b> (<span class="r57 r">selectorList</span>.<span class="i">Term</span>.<span class="i">Name</span> == <span class="s">&quot;*&quot;</span>)
+            {
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;*&quot;</span>);
+            }
+            <b>else</b>
+            {
+                <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Push</span>(<a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#d049b31a756bfff6" class="i field">SelectClause</a>);
+ 
+                <span class="c">// columnItemList</span>
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r58 rd" class="r58 r">i</span> = 0; <span class="r58 r">i</span> &lt; <span class="r57 r">selectorList</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r58 r">i</span>++)
+                {
+                    <b>if</b> (<span class="r58 r">i</span> &gt; 0)
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;, &quot;</span>);
+                    }
+ 
+                    <b>var</b> <span id="r59 rd" class="r59 r">columnItem</span> = <span class="r57 r">selectorList</span>.<span class="i">ChildNodes</span>[<span class="r58 r">i</span>];
+ 
+                    <span class="c">// columnItem</span>
+                    <b>var</b> <span id="r60 rd" class="r60 r">columnSource</span> = <span class="r59 r">columnItem</span>.<span class="i">ChildNodes</span>[0];
+                    <b>var</b> <span id="r61 rd" class="r61 r">funCallOrId</span> = <span class="r60 r">columnSource</span>.<span class="i">ChildNodes</span>[0];
+                    <b>if</b> (<span class="r61 r">funCallOrId</span>.<span class="i">Term</span>.<span class="i">Name</span> == <span class="s">&quot;Id&quot;</span>)
+                    {
+                        <span class="i">EvaluateId</span>(<span class="r61 r">funCallOrId</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <span class="i">EvaluateFunCall</span>(<span class="r61 r">funCallOrId</span>);
+                        <b>var</b> <span id="r62 rd" class="r62 r">overClauseOpt</span> = <span class="r60 r">columnSource</span>.<span class="i">ChildNodes</span>[1];
+                        <b>if</b> (<span class="r62 r">overClauseOpt</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0) {
+                            <span class="i">EvaluateOverClauseOptional</span>(<span class="r62 r">overClauseOpt</span>);
+                        }
+                    }
+ 
+                    <b>if</b> (<span class="r59 r">columnItem</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 1)
+                    {
+                        <span class="c">// AS</span>
+                        <span class="i">EvaluateAliasOptional</span>(<span class="r59 r">columnItem</span>.<span class="i">ChildNodes</span>[1]);
+                    }
+                }
+ 
+                <a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Pop</span>();
+            }
+ 
+            <a href="#223e0ed6d894ace8" class="i field">_select</a> = <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+        }
+ 
+        <b>private void</b> <a id="78689b70aaa6a102" href="../R/78689b70aaa6a102.html" target="n" data-glyph="76,1" class="i method">EvaluateId</a>(<span class="i">ParseTreeNode</span> <span id="r63 rd" class="r63 r">id</span>)
+        {
+            <b>switch</b> (<a href="#310aedba72a9728a" class="i field">_modes</a>.<span class="i method">Peek</span>())
+            {
+                <b>case</b> <a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#d049b31a756bfff6" class="i field">SelectClause</a>:
+                    <a href="#3abdc3c601a01ef9" class="i method">EvaluateSelectId</a>(<span class="r63 r">id</span>);
+                    <b>break</b>;
+                <b>case</b> <a href="#ad048c05335e521f" class="t t">FormattingModes</a>.<a href="#e65da63da928ee2b" class="i field">FromClause</a>:
+                    <a href="#28f32a10b2e3f9e0" class="i method">EvaluateFromId</a>(<span class="r63 r">id</span>);
+                    <b>break</b>;
+            }
+        }
+ 
+        <b>private void</b> <a id="3abdc3c601a01ef9" href="../R/3abdc3c601a01ef9.html" target="n" data-glyph="76,1" class="i method">EvaluateSelectId</a>(<span class="i">ParseTreeNode</span> <span id="r64 rd" class="r64 r">id</span>)
+        {
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r65 rd" class="r65 r">i</span> = 0; <span class="r65 r">i</span> &lt; <span class="r64 r">id</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r65 r">i</span>++)
+            {
+                <b>if</b> (<span class="r65 r">i</span> == 0 &amp;&amp; <span class="r64 r">id</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 1 &amp;&amp; !<a href="#b1fc449ec806bf04" class="i field">_aliases</a>.<span class="i">Contains</span>(<span class="r64 r">id</span>.<span class="i">ChildNodes</span>[<span class="r65 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>))
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">QuoteForTableName</span>(<a href="#b6af8d803b5903ec" class="i field">_tablePrefix</a> + <span class="r64 r">id</span>.<span class="i">ChildNodes</span>[<span class="r65 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>));
+                }
+                <b>else</b>
+                {
+                    <b>if</b> (<span class="r65 r">i</span> &gt; 0)
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;.&quot;</span>);
+                    }
+ 
+                    <b>if</b> (<a href="#b1fc449ec806bf04" class="i field">_aliases</a>.<span class="i">Contains</span>(<span class="r64 r">id</span>.<span class="i">ChildNodes</span>[<span class="r65 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>))
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<span class="r64 r">id</span>.<span class="i">ChildNodes</span>[<span class="r65 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">QuoteForColumnName</span>(<span class="r64 r">id</span>.<span class="i">ChildNodes</span>[<span class="r65 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>));
+                    }
+                }
+            }
+        }
+ 
+        <b>private void</b> <a id="28f32a10b2e3f9e0" href="../R/28f32a10b2e3f9e0.html" target="n" data-glyph="76,1" class="i method">EvaluateFromId</a>(<span class="i">ParseTreeNode</span> <span id="r66 rd" class="r66 r">id</span>)
+        {
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r67 rd" class="r67 r">i</span> = 0; <span class="r67 r">i</span> &lt; <span class="r66 r">id</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r67 r">i</span>++)
+            {
+                <b>if</b> (<span class="r67 r">i</span> == 0 &amp;&amp; !<a href="#b1fc449ec806bf04" class="i field">_aliases</a>.<span class="i">Contains</span>(<span class="r66 r">id</span>.<span class="i">ChildNodes</span>[<span class="r67 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>))
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">QuoteForTableName</span>(<a href="#b6af8d803b5903ec" class="i field">_tablePrefix</a> + <span class="r66 r">id</span>.<span class="i">ChildNodes</span>[<span class="r67 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>));
+                }
+                <b>else</b>
+                {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<a href="#185c2bf8d39ed888" class="i field">_dialect</a>.<span class="i">QuoteForColumnName</span>(<span class="r66 r">id</span>.<span class="i">ChildNodes</span>[<span class="r67 r">i</span>].<span class="i">Token</span>.<span class="i">ValueString</span>));
+                }
+            }
+        }
+ 
+        <b>private void</b> <a id="1a2de430c7f7fdeb" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateAliasOptional</a>(<span class="i">ParseTreeNode</span> <span id="r68 rd" class="r68 r">parseTreeNode</span>)
+        {
+            <b>if</b> (<span class="r68 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0)
+            {
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; AS &quot;</span>);
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<span class="r68 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0].<span class="i">Token</span>.<span class="i">ValueString</span>);
+            }
+        }
+ 
+        <b>private void</b> <a id="3c0d9f73d22cf069" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateSelectRestriction</a>(<span class="i">ParseTreeNode</span> <span id="r69 rd" class="r69 r">parseTreeNode</span>)
+        {
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+ 
+            <b>if</b> (<span class="r69 r">parseTreeNode</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0)
+            {
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<span class="i">Append</span>(<span class="r69 r">parseTreeNode</span>.<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>);
+            }
+        }
+ 
+        <b>private void</b> <a id="004dc64a5d2fc2b1" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateOverClauseOptional</a>(<span class="i">ParseTreeNode</span> <span id="r70 rd" class="r70 r">overClauseOpt</span>)
+        {
+            <b>var</b> <span id="r71 rd" class="r71 r">overArgumentsOpt</span> = <span class="r70 r">overClauseOpt</span>.<span class="i">ChildNodes</span>[1];
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; OVER &quot;</span>);
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;(&quot;</span>);
+ 
+            <b>if</b> (<span class="r71 r">overArgumentsOpt</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> == 0)
+            {
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;)&quot;</span>);
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r72 rd" class="r72 r">overPartitionByClauseOpt</span> = <span class="r71 r">overArgumentsOpt</span>.<span class="i">ChildNodes</span>[0];
+            <b>var</b> <span id="r73 rd" class="r73 r">overOrderByClauseOpt</span> = <span class="r71 r">overArgumentsOpt</span>.<span class="i">ChildNodes</span>[1];
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r74 rd" class="r74 r">hasOverPartitionByClause</span> = <span class="r72 r">overPartitionByClauseOpt</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0;
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r75 rd" class="r75 r">hasOverOrderByClause</span> = <span class="r73 r">overOrderByClauseOpt</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0;
+ 
+            <b>if</b> (<span class="r74 r">hasOverPartitionByClause</span>) {
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;PARTITION BY &quot;</span>);
+                <b>var</b> <span id="r76 rd" class="r76 r">columnItemList</span> = <span class="r72 r">overPartitionByClauseOpt</span>.<span class="i">ChildNodes</span>[2];
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r77 rd" class="r77 r">i</span> = 0; <span class="r77 r">i</span> &lt; <span class="r76 r">columnItemList</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r77 r">i</span>++) {
+                    <b>if</b> (<span class="r77 r">i</span> &gt; 0)
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;, &quot;</span>);
+                    }
+                    <b>var</b> <span id="r78 rd" class="r78 r">columnItem</span> = <span class="r76 r">columnItemList</span>.<span class="i">ChildNodes</span>[<span class="r77 r">i</span>];
+                    <b>var</b> <span id="r79 rd" class="r79 r">id</span> = <span class="r78 r">columnItem</span>.<span class="i">ChildNodes</span>[0].<span class="i">ChildNodes</span>[0];
+                    <span class="i">EvaluateSelectId</span>(<span class="r79 r">id</span>);
+                }
+            }
+ 
+            <b>if</b> (<span class="r75 r">hasOverOrderByClause</span>)
+            {
+                <b>if</b> (<span class="r74 r">hasOverPartitionByClause</span>) {
+                    <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>);
+                }
+ 
+                <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;ORDER BY &quot;</span>);
+ 
+                <b>var</b> <span id="r80 rd" class="r80 r">orderList</span> = <span class="r73 r">overOrderByClauseOpt</span>.<span class="i">ChildNodes</span>[2];
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r81 rd" class="r81 r">i</span> = 0; <span class="r81 r">i</span> &lt; <span class="r80 r">orderList</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span>; <span class="r81 r">i</span>++)
+                {
+                    <b>if</b> (<span class="r81 r">i</span> &gt; 0)
+                    {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;, &quot;</span>);
+                    }
+                    <b>var</b> <span id="r82 rd" class="r82 r">orderMember</span> = <span class="r80 r">orderList</span>.<span class="i">ChildNodes</span>[<span class="r81 r">i</span>];
+                    <b>var</b> <span id="r83 rd" class="r83 r">id</span> = <span class="r82 r">orderMember</span>.<span class="i">ChildNodes</span>[0];
+                    <span class="i">EvaluateSelectId</span>(<span class="r83 r">id</span>);
+                    <b>var</b> <span id="r84 rd" class="r84 r">orderDirOpt</span> = <span class="r82 r">orderMember</span>.<span class="i">ChildNodes</span>[1];
+                    <b>if</b> (<span class="r84 r">orderDirOpt</span>.<span class="i">ChildNodes</span>.<span class="i">Count</span> &gt; 0) {
+                        <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot; &quot;</span>).<span class="i">Append</span>(<span class="r84 r">orderDirOpt</span>.<span class="i">ChildNodes</span>[0].<span class="i">Term</span>.<span class="i">Name</span>);
+                    }
+                }
+            }
+ 
+            <a href="#6408d05d765759a6" class="i field">_builder</a>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;)&quot;</span>);
+        }
+ 
+        <b>private enum</b> <a id="ad048c05335e521f" href="../R/ad048c05335e521f.html" target="n" data-glyph="22,1" class="t t"><span id="64861b769e81457a">FormattingModes</span></a>
+        {
+            <a id="d049b31a756bfff6" href="../R/d049b31a756bfff6.html" target="n" data-glyph="24,2" class="i field">SelectClause</a>,
+            <a id="e65da63da928ee2b" href="../R/e65da63da928ee2b.html" target="n" data-glyph="24,2" class="i field">FromClause</a>
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

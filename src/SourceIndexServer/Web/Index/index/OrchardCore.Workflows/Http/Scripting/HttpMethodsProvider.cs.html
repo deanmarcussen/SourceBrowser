@@ -1,0 +1,265 @@
+﻿<!DOCTYPE html>
+<html><head><title>HttpMethodsProvider.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(256);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Workflows/Http/Scripting/HttpMethodsProvider.cs" target="_top">Http\Scripting\HttpMethodsProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Workflows" target="_top">src\OrchardCore.Modules\OrchardCore.Workflows\OrchardCore.Workflows.csproj</a> (OrchardCore.Workflows)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Abstractions</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Net</span>.<span class="i n">Http</span>.<span class="i n">Headers</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Core</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Http</span>.<span class="i n">Scripting</span>
+{
+    <span class="c">// TODO: Consider moving this to a more common package so that it&#39;s available without a dependency on Workflows.</span>
+    <b>public class</b> <a id="c9cf58a782f7a4e6" href="../../R/c9cf58a782f7a4e6.html" target="n" data-glyph="0,0" class="t t">HttpMethodsProvider</a> : <span class="i">IGlobalMethodProvider</span>
+    {
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="686de017a2930621" href="../../R/686de017a2930621.html" target="n" data-glyph="46,1" class="i field">_httpContextMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="ca7388b839eb2944" href="../../R/ca7388b839eb2944.html" target="n" data-glyph="46,1" class="i field">_queryStringMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="1e06a921b5d06b5f" href="../../R/1e06a921b5d06b5f.html" target="n" data-glyph="46,1" class="i field">_responseWriteMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="bc26e22ec9f14f86" href="../../R/bc26e22ec9f14f86.html" target="n" data-glyph="46,1" class="i field">_absoluteUrlMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="a8567474c8e80661" href="../../R/a8567474c8e80661.html" target="n" data-glyph="46,1" class="i field">_readBodyMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="09f6e8faf8a7198a" href="../../R/09f6e8faf8a7198a.html" target="n" data-glyph="46,1" class="i field">_requestFormMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="df7777fb9945ac84" href="../../R/df7777fb9945ac84.html" target="n" data-glyph="46,1" class="i field">_queryStringAsJsonMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="106eeaeee7a8ea90" href="../../R/106eeaeee7a8ea90.html" target="n" data-glyph="46,1" class="i field">_requestFormAsJsonMethod</a>;
+        <b>private readonly</b> <span class="i">GlobalMethod</span> <a id="2e3cc04b493861fc" href="../../R/2e3cc04b493861fc.html" target="n" data-glyph="46,1" class="i field">_deserializeRequestDataMethod</a>;
+ 
+        <b>public</b> <a id="089ab40a4e7eb632" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">HttpMethodsProvider</a>(<span class="t t">IHttpContextAccessor</span> <span id="r0 rd" class="r0 r">httpContextAccessor</span>)
+        {
+            <a href="#686de017a2930621" class="i field">_httpContextMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;httpContext&quot;</span>,
+                <span class="i">Method</span> = <span id="r1 rd" class="r1 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<span class="t t">HttpContext</span>&gt;)(() =&gt; <span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>)
+            };
+ 
+            <a href="#ca7388b839eb2944" class="i field">_queryStringMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;queryString&quot;</span>,
+                <span class="i">Method</span> = <span id="r2 rd" class="r2 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;)(<span id="r3 rd" class="r3 r">name</span> =&gt;
+                {
+                    <b>if</b> (<span class="r3 r">name</span> == <b>null</b>)
+                    {
+                        <b>return</b> <span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">QueryString</span>.<span class="i method">ToString</span>();
+                    }
+                    <b>object</b> <span id="r4 rd" class="r4 r">result</span>;
+                    <b>if</b> (<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Query</span>.<span class="i method">TryGetValue</span>(<span class="r3 r">name</span>, <b>out</b> <b>var</b> <span id="r5 rd" class="r5 r">values</span>))
+                    {
+                        <b>if</b> (<span class="r5 r">values</span>.<span class="i property">Count</span> == 0)
+                        {
+                            <span class="r4 r">result</span> = <b>null</b>;
+                        }
+                        <b>else</b> <b>if</b> (<span class="r5 r">values</span>.<span class="i property">Count</span> == 1)
+                        {
+                            <span class="r4 r">result</span> = <span class="r5 r">values</span>[0];
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r4 r">result</span> = <span class="r5 r">values</span>.<span class="i method">ToArray</span>();
+                        }
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r4 r">result</span> = <b>null</b>;
+                    }
+                    <b>return</b> <span class="r4 r">result</span>;
+                })
+            };
+ 
+            <a href="#1e06a921b5d06b5f" class="i field">_responseWriteMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;responseWrite&quot;</span>,
+                <span class="i">Method</span> = <span id="r6 rd" class="r6 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#486d58da4553e12d" class="t t">Action</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;)(<span id="r7 rd" class="r7 r">text</span> =&gt; <span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Response</span>.<span class="i method">WriteAsync</span>(<span class="r7 r">text</span>).<a href="@1@System.Runtime/A.html#9865ec4fb8abca74" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#fac5be2731353aa8" class="i method">GetResult</a>())
+            };
+ 
+            <a href="#bc26e22ec9f14f86" class="i field">_absoluteUrlMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;absoluteUrl&quot;</span>,
+                <span class="i">Method</span> = <span id="r8 rd" class="r8 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;)(<span id="r9 rd" class="r9 r">relativePath</span> =&gt;
+                {
+                    <b>var</b> <span id="r10 rd" class="r10 r">urlHelperFactory</span> = <span class="r8 r">serviceProvider</span>.<span class="i">GetRequiredService</span>&lt;<span class="t t">IUrlHelperFactory</span>&gt;();
+                    <b>var</b> <span id="r11 rd" class="r11 r">urlHelper</span> = <span class="r10 r">urlHelperFactory</span>.<span class="i method">GetUrlHelper</span>(<b>new</b> <span class="t constructor">ActionContext</span>(<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>, <b>new</b> <span class="t constructor">RouteData</span>(), <b>new</b> <span class="t constructor">ActionDescriptor</span>()));
+                    <b>return</b> <span class="r11 r">urlHelper</span>.<span class="i">ToAbsoluteUrl</span>(<span class="r9 r">relativePath</span>);
+                })
+            };
+ 
+            <a href="#a8567474c8e80661" class="i field">_readBodyMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;readBody&quot;</span>,
+                <span class="i">Method</span> = <span id="r12 rd" class="r12 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;)(() =&gt;
+                {
+                    <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r13 rd" class="r13 r">sr</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Body</span>))
+                    {
+                        <span class="c">// Async read of the request body is mandatory.</span>
+                        <b>return</b> <span class="r13 r">sr</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>().<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>();
+                    }
+                })
+            };
+ 
+            <a href="#09f6e8faf8a7198a" class="i field">_requestFormMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;requestForm&quot;</span>,
+                <span class="i">Method</span> = <span id="r14 rd" class="r14 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;)(<span id="r15 rd" class="r15 r">field</span> =&gt;
+                {
+                    <b>object</b> <span id="r16 rd" class="r16 r">result</span>;
+                    <b>if</b> (<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Form</span>.<span class="i method">TryGetValue</span>(<span class="r15 r">field</span>, <b>out</b> <b>var</b> <span id="r17 rd" class="r17 r">values</span>))
+                    {
+                        <b>if</b> (<span class="r17 r">values</span>.<span class="i property">Count</span> == 0)
+                        {
+                            <span class="r16 r">result</span> = <b>null</b>;
+                        }
+                        <b>else</b> <b>if</b> (<span class="r17 r">values</span>.<span class="i property">Count</span> == 1)
+                        {
+                            <span class="r16 r">result</span> = <span class="r17 r">values</span>[0];
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r16 r">result</span> = <span class="r17 r">values</span>.<span class="i method">ToArray</span>();
+                        }
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r16 r">result</span> = <b>null</b>;
+                    }
+                    <b>return</b> <span class="r16 r">result</span>;
+                })
+            };
+ 
+            <a href="#df7777fb9945ac84" class="i field">_queryStringAsJsonMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;queryStringAsJson&quot;</span>,
+                <span class="i">Method</span> = <span id="r18 rd" class="r18 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<span class="i">JObject</span>&gt;)(() =&gt;
+                    <b>new</b> <span class="i">JObject</span>((<b>from</b> <span class="i">param</span> <b>in</b> <span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Query</span>
+                                 <b>select</b> <b>new</b> <span class="i">JProperty</span>(<span class="i">param</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="i">JArray</span>.<span class="i">FromObject</span>(<span class="i">param</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<span class="i method">ToArray</span>()))).<span class="i">ToArray</span>()))
+            };
+ 
+            <span class="c">// This should be deprecated</span>
+            <a href="#106eeaeee7a8ea90" class="i field">_requestFormAsJsonMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;requestFormAsJson&quot;</span>,
+                <span class="i">Method</span> = <span id="r19 rd" class="r19 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<span class="i">JObject</span>&gt;)(() =&gt;
+                    <b>new</b> <span class="i">JObject</span>((<b>from</b> <span class="i">field</span> <b>in</b> <span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Form</span>
+                                 <b>select</b> <b>new</b> <span class="i">JProperty</span>(<span class="i">field</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="i">JArray</span>.<span class="i">FromObject</span>(<span class="i">field</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<span class="i method">ToArray</span>()))).<span class="i">ToArray</span>()))
+            };
+ 
+            <a href="#2e3cc04b493861fc" class="i field">_deserializeRequestDataMethod</a> = <b>new</b> <span class="i">GlobalMethod</span>
+            {
+                <span class="i">Name</span> = <span class="s">&quot;deserializeRequestData&quot;</span>,
+                <span class="i">Method</span> = <span id="r20 rd" class="r20 r">serviceProvider</span> =&gt; (<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;&gt;)(() =&gt;
+                {
+                    <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; <span id="r21 rd" class="r21 r">result</span> = <b>null</b>;
+ 
+                    <b>if</b>(<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span> != <b>null</b>)
+                    {
+                        <b>if</b> (<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">HasFormContentType</span>)
+                        {
+                            <b>var</b> <span id="r22 rd" class="r22 r">formData</span> = <span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Form</span>;
+ 
+                            <span class="c">// If we can parse first request form element key as JSON then we throw</span>
+                            <b>if</b>(<a href="#69a4201be8077eba" class="i method">isValidJSON</a>(<span class="r22 r">formData</span>.<span class="i method">First</span>().<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>.<a href="@1@System.Runtime/A.html#efa5e6c14683e022" class="i method">ToString</a>()))
+                            {
+                                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#df2d82d91ca29e40" class="t constructor">Exception</a>(<span class="s">&quot;Invalid form data passed in the request. The data passed was JSON while it should be form data.&quot;</span>);
+                            }
+ 
+                            <b>try</b>
+                            {
+                                <span class="r21 r">result</span> = <span class="r22 r">formData</span>.<span class="i method">ToDictionary</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span id="r24 rd" class="r24 r">x</span> =&gt; (<b>object</b>) <span class="r24 r">x</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                            }
+                            <b>catch</b>
+                            {
+                                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#df2d82d91ca29e40" class="t constructor">Exception</a>(<span class="s">&quot;Invalid form data passed in the request.&quot;</span>);
+                            }
+                        }
+                        <b>else</b> <b>if</b> (<a href="#421ba88c74c466bf" class="i method">HasJsonContentType</a>(<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>))
+                        {
+                            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">json</span>;
+                            <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r26 rd" class="r26 r">sr</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Body</span>))
+                            {
+                                <span class="c">// Async read of the request body is mandatory.</span>
+                                <span class="r25 r">json</span> = <span class="r26 r">sr</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>().<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>();
+                            }
+ 
+                            <b>try</b>
+                            {
+                                <span class="r21 r">result</span> = <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;&gt;(<span class="r25 r">json</span>);
+                            }
+                            <b>catch</b>
+                            {
+                                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#df2d82d91ca29e40" class="t constructor">Exception</a>(<span class="s">&quot;Invalid JSON passed in the request.&quot;</span>);
+                            }
+                        }
+                    }
+ 
+                    <b>return</b> <span class="r21 r">result</span>;
+                })
+            };
+        }
+ 
+        <b>private static bool</b> <a id="69a4201be8077eba" href="../../R/69a4201be8077eba.html" target="n" data-glyph="76,1" class="i method">isValidJSON</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">json</span>)
+        {
+            <b>try</b>
+            {
+                <span class="i">JToken</span> <span id="r28 rd" class="r28 r">token</span> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r27 r">json</span>);
+                <b>return</b> <b>true</b>;
+            }
+            <b>catch</b>
+            {
+                <b>return</b> <b>false</b>;
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Checks the Content-Type header for JSON types.</span>
+        <span class="c">///</span><span class="c"> This method needs to be removed after we drop support for netcoreapp3.1</span>
+        <span class="c">///</span><span class="c"> It is now part of net5.0 see :</span>
+        <span class="c">///</span><span class="c"> https://docs.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.httprequestjsonextensions.hasjsoncontenttype?view=aspnetcore-5.0</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r29 r">request</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>private static bool</b> <a id="421ba88c74c466bf" href="../../R/421ba88c74c466bf.html" target="n" data-glyph="76,1" class="i method">HasJsonContentType</a>(<span class="t t">HttpRequest</span> <span id="r29 rd" class="r29 r">request</span>)
+        {
+            <b>if</b> (<span class="r29 r">request</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r29 r">request</span>));
+            }
+ 
+            <b>if</b> (!<span class="t t">MediaTypeHeaderValue</span>.<span class="i method">TryParse</span>(<span class="r29 r">request</span>.<span class="i property">ContentType</span>, <b>out</b> <b>var</b> <span id="r30 rd" class="r30 r">mt</span>))
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <span class="c">// Matches application/json</span>
+            <b>if</b> (<span class="r30 r">mt</span>.<span class="i property">MediaType</span>.<span class="i method">Equals</span>(<span class="s">&quot;application/json&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <span class="c">// Matches +json, e.g. application/ld+json</span>
+            <b>if</b> (<span class="r30 r">mt</span>.<span class="i property">Suffix</span>.<span class="i method">Equals</span>(<span class="s">&quot;json&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">GlobalMethod</span>&gt; <a id="63cc5acb3139590f" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetMethods</a>()
+        {
+            <b>return</b> <b>new</b>[] { <a href="#686de017a2930621" class="i field">_httpContextMethod</a>, <a href="#ca7388b839eb2944" class="i field">_queryStringMethod</a>, <a href="#1e06a921b5d06b5f" class="i field">_responseWriteMethod</a>, <a href="#bc26e22ec9f14f86" class="i field">_absoluteUrlMethod</a>, <a href="#a8567474c8e80661" class="i field">_readBodyMethod</a>, <a href="#09f6e8faf8a7198a" class="i field">_requestFormMethod</a>, <a href="#df7777fb9945ac84" class="i field">_queryStringAsJsonMethod</a>, <a href="#106eeaeee7a8ea90" class="i field">_requestFormAsJsonMethod</a>, <a href="#2e3cc04b493861fc" class="i field">_deserializeRequestDataMethod</a> };
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

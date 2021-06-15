@@ -1,0 +1,278 @@
+﻿<!DOCTYPE html>
+<html><head><title>OpenIdApplicationManager.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(269);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId.Core/Services/Managers/OpenIdApplicationManager.cs" target="_top">Services\Managers\OpenIdApplicationManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId.Core" target="_top">src\OrchardCore\OrchardCore.OpenId.Core\OrchardCore.OpenId.Core.csproj</a> (OrchardCore.OpenId.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">ComponentModel</span>.<span class="i n">DataAnnotations</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Json</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Core</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Descriptors</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Managers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Stores</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Services</span>.<span class="i n">Managers</span>
+{
+    <b>public class</b> <a id="2fadbb4b0d442d46" href="../../R/2fadbb4b0d442d46.html" target="n" data-glyph="0,0" class="t t">OpenIdApplicationManager</a>&lt;<span id="r0 rd t" class="r0 r t">TApplication</span>&gt; : <span class="i">OpenIddictApplicationManager</span>&lt;<span class="r0 r t">TApplication</span>&gt;,
+        <a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a> <b>where</b> <span class="r0 r t">TApplication</span> : <b>class</b>
+    {
+        <b>public</b> <a id="e410605b49e70f23" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">OpenIdApplicationManager</a>(
+            <span class="i">IOpenIddictApplicationCache</span>&lt;<span class="r0 r t">TApplication</span>&gt; <span id="r1 rd" class="r1 r">cache</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#2fadbb4b0d442d46" class="t t">OpenIdApplicationManager</a>&lt;<span class="r0 r t">TApplication</span>&gt;&gt; <span id="r2 rd" class="r2 r">logger</span>,
+            <span class="t t">IOptionsMonitor</span>&lt;<span class="i">OpenIddictCoreOptions</span>&gt; <span id="r3 rd" class="r3 r">options</span>,
+            <span class="i">IOpenIddictApplicationStoreResolver</span> <span id="r4 rd" class="r4 r">resolver</span>)
+            : <b>base</b>(<span class="r1 r">cache</span>, <span class="r2 r">logger</span>, <span class="r3 r">options</span>, <span class="r4 r">resolver</span>)
+        {
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Retrieves an application using its physical identifier.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r5 r">identifier</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The unique identifier associated with the application.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r6 r">cancellationToken</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> that can be used to abort the operation.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> A </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>{<span class="r7 r t">TResult</span>}<span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> that can be used to monitor the asynchronous operation,</span>
+        <span class="c">///</span><span class="c"> whose result returns the client application corresponding to the identifier.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TApplication</span>&gt; <a id="43328bb3c9576086" href="../../R/43328bb3c9576086.html" target="n" data-glyph="72,1" class="i method">FindByPhysicalIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r6 rd" class="r6 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r5 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r5 r">identifier</span>));
+            }
+ 
+            <b>return</b> <span class="i">Store</span> <b>is</b> <a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#171c16eda977db57" class="t t">IOpenIdApplicationStore</a>&lt;<span class="r0 r t">TApplication</span>&gt; <span id="r8 rd" class="r8 r">store</span> ?
+                <span class="r8 r">store</span>.<a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#12847a14c33a242c" class="i method">FindByPhysicalIdAsync</a>(<span class="r5 r">identifier</span>, <span class="r6 r">cancellationToken</span>) :
+                <span class="i">Store</span>.<span class="i">FindByIdAsync</span>(<span class="r5 r">identifier</span>, <span class="r6 r">cancellationToken</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Retrieves the physical identifier associated with an application.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r9 r">application</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The application.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r10 r">cancellationToken</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> that can be used to abort the operation.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> A </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>{<span class="r11 r t">TResult</span>}<span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> that can be used to monitor the asynchronous operation,</span>
+        <span class="c">///</span><span class="c"> whose result returns the physical identifier associated with the application.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="b4138721228ae782" href="../../R/b4138721228ae782.html" target="n" data-glyph="72,1" class="i method">GetPhysicalIdAsync</a>(<span class="r0 r t">TApplication</span> <span id="r9 rd" class="r9 r">application</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r10 rd" class="r10 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r9 r">application</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r9 r">application</span>));
+            }
+ 
+            <b>return</b> <span class="i">Store</span> <b>is</b> <a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#171c16eda977db57" class="t t">IOpenIdApplicationStore</a>&lt;<span class="r0 r t">TApplication</span>&gt; <span id="r12 rd" class="r12 r">store</span> ?
+                <span class="r12 r">store</span>.<a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#00a9c25982d31bfc" class="i method">GetPhysicalIdAsync</a>(<span class="r9 r">application</span>, <span class="r10 r">cancellationToken</span>) :
+                <span class="i">Store</span>.<span class="i">GetIdAsync</span>(<span class="r9 r">application</span>, <span class="r10 r">cancellationToken</span>);
+        }
+ 
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="02eddfe7b9fd9644" href="../../R/02eddfe7b9fd9644.html" target="n" data-glyph="72,1" class="i method">GetRolesAsync</a>(
+            <span class="r0 r t">TApplication</span> <span id="r13 rd" class="r13 r">application</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r14 rd" class="r14 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r13 r">application</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r13 r">application</span>));
+            }
+ 
+            <b>if</b> (<span class="i">Store</span> <b>is</b> <a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#171c16eda977db57" class="t t">IOpenIdApplicationStore</a>&lt;<span class="r0 r t">TApplication</span>&gt; <span id="r15 rd" class="r15 r">store</span>)
+            {
+                <b>return</b> <b>await</b> <span class="r15 r">store</span>.<a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#7b1e814de6732f3e" class="i method">GetRolesAsync</a>(<span class="r13 r">application</span>, <span class="r14 r">cancellationToken</span>);
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r16 rd" class="r16 r">properties</span> = <b>await</b> <span class="i">Store</span>.<span class="i">GetPropertiesAsync</span>(<span class="r13 r">application</span>, <span class="r14 r">cancellationToken</span>);
+                <b>if</b> (<span class="r16 r">properties</span>.<span class="i">TryGetValue</span>(<a href="../../OpenIdConstants.cs.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="../../OpenIdConstants.cs.html#9018ffc7302fa429" class="t t">Properties</a>.<a href="../../OpenIdConstants.cs.html#4d4b557e6794b7bb" class="i field">Roles</a>, <b>out</b> <span class="t t">JsonElement</span> <span id="r17 rd" class="r17 r">value</span>))
+                {
+                    <a href="@1@System.Collections.Immutable/A.html#968c2c9d4c98cffc" class="k">var</a> <span id="r18 rd" class="r18 r">builder</span> = <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<a href="@1@System.Collections.Immutable/A.html#2e949e9c389ba669" class="i method">CreateBuilder</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r19 rd" class="r19 r">item</span> <b>in</b> <span class="r17 r">value</span>.<span class="i method">EnumerateArray</span>())
+                    {
+                        <span class="r18 r">builder</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<span class="r19 r">item</span>.<span class="i method">GetString</span>());
+                    }
+ 
+                    <b>return</b> <span class="r18 r">builder</span>.<a href="@1@System.Collections.Immutable/A.html#3c787852a7bdb751" class="i method">ToImmutable</a>();
+                }
+ 
+                <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<a href="@1@System.Collections.Immutable/A.html#387ef10675e18940" class="i method">Create</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            }
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TApplication</span>&gt; <a id="3c1f149387e26e88" href="../../R/3c1f149387e26e88.html" target="n" data-glyph="72,1" class="i method">ListInRoleAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r21 rd" class="r21 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r20 r">role</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The role name cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r20 r">role</span>));
+            }
+ 
+            <b>if</b> (<span class="i">Store</span> <b>is</b> <a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#171c16eda977db57" class="t t">IOpenIdApplicationStore</a>&lt;<span class="r0 r t">TApplication</span>&gt; <span id="r22 rd" class="r22 r">store</span>)
+            {
+                <b>return</b> <span class="r22 r">store</span>.<a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#48be568c9bbf37b0" class="i method">ListInRoleAsync</a>(<span class="r20 r">role</span>, <span class="r21 r">cancellationToken</span>);
+            }
+ 
+            <b>return</b> <a href="#23b0c87cd6f3591d" class="i method">ExecuteAsync</a>();
+ 
+            <b>async</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TApplication</span>&gt; <a id="23b0c87cd6f3591d" href="../../R/23b0c87cd6f3591d.html" target="n" data-glyph="76,2" class="i method">ExecuteAsync</a>()
+            {
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r23 rd" class="r23 r">offset</span> = 0; ; <span class="r23 r">offset</span> += 1_000)
+                {
+                    <b>await</b> <b>foreach</b> (<b>var</b> <span id="r24 rd" class="r24 r">application</span> <b>in</b> <span class="i">Store</span>.<span class="i">ListAsync</span>(1_000, <span class="r23 r">offset</span>, <span class="r21 r">cancellationToken</span>))
+                    {
+                        <b>var</b> <span id="r25 rd" class="r25 r">roles</span> = <b>await</b> <span class="i">GetRolesAsync</span>(<span class="r24 r">application</span>, <span class="r21 r">cancellationToken</span>);
+                        <b>if</b> (<span class="r25 r">roles</span>.<span class="i">Contains</span>(<span class="r20 r">role</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>))
+                        {
+                            <b>yield</b> <b>return</b> <span class="r24 r">application</span>;
+                        }
+                    }
+                }
+            }
+        }
+ 
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="0477d70292487c09" href="../../R/0477d70292487c09.html" target="n" data-glyph="72,1" class="i method">SetRolesAsync</a>(<span class="r0 r t">TApplication</span> <span id="r26 rd" class="r26 r">application</span>,
+            <a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r27 rd" class="r27 r">roles</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r28 rd" class="r28 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r26 r">application</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r26 r">application</span>));
+            }
+ 
+            <b>if</b> (<span class="r27 r">roles</span>.<a href="@1@System.Collections.Immutable/A.html#bf86338597b2e4ec" class="i method">Any</a>(<span id="r29 rd" class="r29 r">role</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r29 r">role</span>)))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;Role names cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r27 r">roles</span>));
+            }
+ 
+            <b>if</b> (<span class="i">Store</span> <b>is</b> <a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#171c16eda977db57" class="t t">IOpenIdApplicationStore</a>&lt;<span class="r0 r t">TApplication</span>&gt; <span id="r30 rd" class="r30 r">store</span>)
+            {
+                <b>await</b> <span class="r30 r">store</span>.<a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#924857b4652a632e" class="i method">SetRolesAsync</a>(<span class="r26 r">application</span>, <span class="r27 r">roles</span>, <span class="r28 r">cancellationToken</span>);
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r31 rd" class="r31 r">properties</span> = <b>await</b> <span class="i">Store</span>.<span class="i">GetPropertiesAsync</span>(<span class="r26 r">application</span>, <span class="r28 r">cancellationToken</span>);
+                <span class="r31 r">properties</span> = <span class="r31 r">properties</span>.<span class="i">SetItem</span>(<a href="../../OpenIdConstants.cs.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="../../OpenIdConstants.cs.html#9018ffc7302fa429" class="t t">Properties</a>.<a href="../../OpenIdConstants.cs.html#4d4b557e6794b7bb" class="i field">Roles</a>, <span class="t t">JsonSerializer</span>.<span class="i method">Deserialize</span>&lt;<span class="t t">JsonElement</span>&gt;(
+                    <span class="t t">JsonSerializer</span>.<span class="i method">Serialize</span>(<span class="r27 r">roles</span>, <b>new</b> <span class="t constructor">JsonSerializerOptions</span>
+                    {
+                        <span class="i property">Encoder</span> = <span class="t t">JavaScriptEncoder</span>.<span class="i property">UnsafeRelaxedJsonEscaping</span>
+                    })));
+ 
+                <b>await</b> <span class="i">Store</span>.<span class="i">SetPropertiesAsync</span>(<span class="r26 r">application</span>, <span class="r31 r">properties</span>, <span class="r28 r">cancellationToken</span>);
+            }
+ 
+            <b>await</b> <span class="i">UpdateAsync</span>(<span class="r26 r">application</span>, <span class="r28 r">cancellationToken</span>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="9366cf45ac200a72" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">PopulateAsync</a>(<span class="r0 r t">TApplication</span> <span id="r32 rd" class="r32 r">application</span>,
+            <span class="i">OpenIddictApplicationDescriptor</span> <span id="r33 rd" class="r33 r">descriptor</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r34 rd" class="r34 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r32 r">application</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r32 r">application</span>));
+            }
+ 
+            <b>if</b> (<span class="r33 r">descriptor</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r33 r">descriptor</span>));
+            }
+ 
+            <b>if</b> (<span class="r33 r">descriptor</span> <b>is</b> <a href="../../Abstractions/Descriptors/OpenIdApplicationDescriptor.cs.html#a24a12e0a5adc28d" class="t t">OpenIdApplicationDescriptor</a> <span id="r35 rd" class="r35 r">model</span>)
+            {
+                <b>if</b> (<span class="i">Store</span> <b>is</b> <a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#171c16eda977db57" class="t t">IOpenIdApplicationStore</a>&lt;<span class="r0 r t">TApplication</span>&gt; <span id="r36 rd" class="r36 r">store</span>)
+                {
+                    <b>await</b> <span class="r36 r">store</span>.<a href="../../Abstractions/Stores/IOpenIdApplicationStore.cs.html#924857b4652a632e" class="i method">SetRolesAsync</a>(<span class="r32 r">application</span>, <span class="r35 r">model</span>.<a href="../../Abstractions/Descriptors/OpenIdApplicationDescriptor.cs.html#5d5fe0968c8807d9" class="i property">Roles</a>.<a href="@1@System.Collections.Immutable/A.html#7ec519665e45a686" class="i method">ToImmutableArray</a>(), <span class="r34 r">cancellationToken</span>);
+                }
+                <b>else</b>
+                {
+                    <b>var</b> <span id="r37 rd" class="r37 r">properties</span> = <b>await</b> <span class="i">Store</span>.<span class="i">GetPropertiesAsync</span>(<span class="r32 r">application</span>, <span class="r34 r">cancellationToken</span>);
+                    <span class="r37 r">properties</span> = <span class="r37 r">properties</span>.<span class="i">SetItem</span>(<a href="../../OpenIdConstants.cs.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="../../OpenIdConstants.cs.html#9018ffc7302fa429" class="t t">Properties</a>.<a href="../../OpenIdConstants.cs.html#4d4b557e6794b7bb" class="i field">Roles</a>, <span class="t t">JsonSerializer</span>.<span class="i method">Deserialize</span>&lt;<span class="t t">JsonElement</span>&gt;(
+                        <span class="t t">JsonSerializer</span>.<span class="i method">Serialize</span>(<span class="r35 r">model</span>.<a href="../../Abstractions/Descriptors/OpenIdApplicationDescriptor.cs.html#5d5fe0968c8807d9" class="i property">Roles</a>, <b>new</b> <span class="t constructor">JsonSerializerOptions</span>
+                        {
+                            <span class="i property">Encoder</span> = <span class="t t">JavaScriptEncoder</span>.<span class="i property">UnsafeRelaxedJsonEscaping</span>
+                        })));
+ 
+                    <b>await</b> <span class="i">Store</span>.<span class="i">SetPropertiesAsync</span>(<span class="r32 r">application</span>, <span class="r37 r">properties</span>, <span class="r34 r">cancellationToken</span>);
+                }
+            }
+ 
+            <b>await</b> <b>base</b>.<span class="i">PopulateAsync</span>(<span class="r32 r">application</span>, <span class="r33 r">descriptor</span>, <span class="r34 r">cancellationToken</span>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="9685d55474210676" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">PopulateAsync</a>(<span class="i">OpenIddictApplicationDescriptor</span> <span id="r38 rd" class="r38 r">descriptor</span>,
+            <span class="r0 r t">TApplication</span> <span id="r39 rd" class="r39 r">application</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r40 rd" class="r40 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r38 r">descriptor</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r38 r">descriptor</span>));
+            }
+ 
+            <b>if</b> (<span class="r39 r">application</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r39 r">application</span>));
+            }
+ 
+            <b>if</b> (<span class="r38 r">descriptor</span> <b>is</b> <a href="../../Abstractions/Descriptors/OpenIdApplicationDescriptor.cs.html#a24a12e0a5adc28d" class="t t">OpenIdApplicationDescriptor</a> <span id="r41 rd" class="r41 r">model</span>)
+            {
+                <span class="r41 r">model</span>.<a href="../../Abstractions/Descriptors/OpenIdApplicationDescriptor.cs.html#5d5fe0968c8807d9" class="i property">Roles</a>.<a href="@1@System.Runtime/A.html#7a6ea45d937f2d69" class="i method">UnionWith</a>(<b>await</b> <a href="#02eddfe7b9fd9644" class="i method">GetRolesAsync</a>(<span class="r39 r">application</span>, <span class="r40 r">cancellationToken</span>));
+            }
+ 
+            <b>await</b> <b>base</b>.<span class="i">PopulateAsync</span>(<span class="r38 r">descriptor</span>, <span class="r39 r">application</span>, <span class="r40 r">cancellationToken</span>);
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="t t">ValidationResult</span>&gt; <a id="02e2be897709c68c" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ValidateAsync</a>(
+            <span class="r0 r t">TApplication</span> <span id="r42 rd" class="r42 r">application</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r43 rd" class="r43 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r42 r">application</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r42 r">application</span>));
+            }
+ 
+            <b>return</b> <a href="#23b0c87cd6f3591d" class="i method">ExecuteAsync</a>();
+ 
+            <b>async</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="t t">ValidationResult</span>&gt; <a id="23b0c87cd6f3591d" href="../../R/23b0c87cd6f3591d.html" target="n" data-glyph="76,2" class="i method">ExecuteAsync</a>()
+            {
+                <b>await</b> <b>foreach</b> (<b>var</b> <span id="r44 rd" class="r44 r">result</span> <b>in</b> <b>base</b>.<span class="i">ValidateAsync</span>(<span class="r42 r">application</span>, <span class="r43 r">cancellationToken</span>))
+                {
+                    <b>yield</b> <b>return</b> <span class="r44 r">result</span>;
+                }
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r45 rd" class="r45 r">role</span> <b>in</b> <b>await</b> <a href="#02eddfe7b9fd9644" class="i method">GetRolesAsync</a>(<span class="r42 r">application</span>, <span class="r43 r">cancellationToken</span>))
+                {
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r45 r">role</span>))
+                    {
+                        <b>yield</b> <b>return</b> <b>new</b> <span class="t constructor">ValidationResult</span>(<span class="s">&quot;Roles cannot be null or empty.&quot;</span>);
+ 
+                        <b>break</b>;
+                    }
+                }
+            }
+        }
+ 
+        <b>async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<b>object</b>&gt; <a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a>.<a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#c8d837f6d6bedd8f" class="i method">FindByPhysicalIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r46 rd" class="r46 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r47 rd" class="r47 r">cancellationToken</span>)
+            =&gt; <b>await</b> <a href="#43328bb3c9576086" class="i method">FindByPhysicalIdAsync</a>(<span class="r46 r">identifier</span>, <span class="r47 r">cancellationToken</span>);
+ 
+        <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a>.<a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#b3706a619535e0f8" class="i method">GetPhysicalIdAsync</a>(<b>object</b> <span id="r48 rd" class="r48 r">application</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r49 rd" class="r49 r">cancellationToken</span>)
+            =&gt; <a href="#b4138721228ae782" class="i method">GetPhysicalIdAsync</a>((<span class="r0 r t">TApplication</span>)<span class="r48 r">application</span>, <span class="r49 r">cancellationToken</span>);
+ 
+        <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a>.<a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#2d4ab25b28f94c65" class="i method">GetRolesAsync</a>(<b>object</b> <span id="r50 rd" class="r50 r">application</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r51 rd" class="r51 r">cancellationToken</span>)
+            =&gt; <a href="#02eddfe7b9fd9644" class="i method">GetRolesAsync</a>((<span class="r0 r t">TApplication</span>)<span class="r50 r">application</span>, <span class="r51 r">cancellationToken</span>);
+ 
+        <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<b>object</b>&gt; <a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a>.<a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#224713730c4f7341" class="i method">ListInRoleAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r52 rd" class="r52 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r53 rd" class="r53 r">cancellationToken</span>)
+            =&gt; <a href="#3c1f149387e26e88" class="i method">ListInRoleAsync</a>(<span class="r52 r">role</span>, <span class="r53 r">cancellationToken</span>);
+ 
+        <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#84e53f42abf07cd0" class="t t">IOpenIdApplicationManager</a>.<a href="../../Abstractions/Managers/IOpenIdApplicationManager.cs.html#f995d3390ddaa533" class="i method">SetRolesAsync</a>(<b>object</b> <span id="r54 rd" class="r54 r">application</span>, <a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r55 rd" class="r55 r">roles</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r56 rd" class="r56 r">cancellationToken</span>)
+            =&gt; <a href="#0477d70292487c09" class="i method">SetRolesAsync</a>((<span class="r0 r t">TApplication</span>)<span class="r54 r">application</span>, <span class="r55 r">roles</span>, <span class="r56 r">cancellationToken</span>);
+    }
+}
+</pre></td></tr></table></div></body></html>

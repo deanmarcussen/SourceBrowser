@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html><head><title>CommonFeedItemBuilder.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(88);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Feeds/CommonFeedItemBuilder.cs" target="_top">Feeds\CommonFeedItemBuilder.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Xml</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Feeds</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Feeds</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Feeds</span>.<span class="i n">Builders</span>
+{
+    <b>public class</b> <a id="39936b6f8f28c653" href="../R/39936b6f8f28c653.html" target="n" data-glyph="0,0" class="t t">CommonFeedItemBuilder</a> : <a href="/OrchardCore.Feeds.Abstractions/A.html#dea2c99e241a179e" class="t t">IFeedItemBuilder</a>
+    {
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="08ab0c2e48ef8803" href="../R/08ab0c2e48ef8803.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+ 
+        <b>public</b> <a id="47cd1daf1d9d13ff" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">CommonFeedItemBuilder</a>(<span class="i">IContentManager</span> <span id="r0 rd" class="r0 r">contentManager</span>)
+        {
+            <a href="#08ab0c2e48ef8803" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c799ebc284cda990" href="../R/c799ebc284cda990.html" target="n" data-glyph="72,1" class="i method">PopulateAsync</a>(<a href="/OrchardCore.Feeds.Abstractions/A.html#ba64a99fd53c8551" class="t t">FeedContext</a> <span id="r1 rd" class="r1 r">context</span>)
+        {
+            <b>foreach</b> (<a href="/OrchardCore.Feeds.Abstractions/A.html#c99529be5f38352c" class="k">var</a> <span id="r2 rd" class="r2 r">feedItem</span> <b>in</b> <span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#239a39dee88edaea" class="i property">Response</a>.<a href="/OrchardCore.Feeds.Abstractions/A.html#49521d1f4041e93f" class="i property">Items</a>.<span class="i method">OfType</span>&lt;<a href="/OrchardCore.Feeds.Abstractions/A.html#c99529be5f38352c" class="t t">FeedItem</a>&lt;<span class="i">ContentItem</span>&gt;&gt;())
+            {
+                <b>var</b> <span id="r3 rd" class="r3 r">contentItem</span> = <span class="r2 r">feedItem</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#c08974567b18613a" class="i property">Item</a>;
+                <b>var</b> <span id="r4 rd" class="r4 r">contentItemMetadata</span> = <b>await</b> <a href="#08ab0c2e48ef8803" class="i field">_contentManager</a>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">ContentItemMetadata</span>&gt;(<span class="r3 r">contentItem</span>);
+                <b>var</b> <span id="r5 rd" class="r5 r">bodyAspect</span> = <b>await</b> <a href="#08ab0c2e48ef8803" class="i field">_contentManager</a>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">BodyAspect</span>&gt;(<span class="r3 r">contentItem</span>);
+                <b>var</b> <span id="r6 rd" class="r6 r">routes</span> = <span class="r4 r">contentItemMetadata</span>.<span class="i">DisplayRouteValues</span>;
+ 
+                <span class="c">// author is intentionally left empty as it could result in unwanted spam</span>
+ 
+                <span class="c">// add to known formats</span>
+                <b>if</b> (<span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#6a7027fd40050b25" class="i property">Format</a> == <span class="s">&quot;rss&quot;</span>)
+                {
+                    <b>var</b> <span id="r7 rd" class="r7 r">link</span> = <b>new</b> <span class="t constructor">XElement</span>(<span class="s">&quot;link&quot;</span>);
+                    <b>var</b> <span id="r8 rd" class="r8 r">guid</span> = <b>new</b> <span class="t constructor">XElement</span>(<span class="s">&quot;guid&quot;</span>, <b>new</b> <span class="t constructor">XAttribute</span>(<span class="s">&quot;isPermaLink&quot;</span>, <span class="s">&quot;true&quot;</span>));
+ 
+                    <span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#239a39dee88edaea" class="i property">Response</a>.<a href="/OrchardCore.Feeds.Abstractions/A.html#3b7f9c4e716219a4" class="i method">Contextualize</a>(<span id="r9 rd" class="r9 r">contextualize</span> =&gt;
+                    {
+                        <b>var</b> <span id="r10 rd" class="r10 r">request</span> = <span class="r9 r">contextualize</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#3383f5098126f17a" class="i property">Url</a>.<span class="i property">ActionContext</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>;
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">url</span> = <span class="r9 r">contextualize</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#3383f5098126f17a" class="i property">Url</a>.<span class="i">Action</span>(<span class="r6 r">routes</span>[<span class="s">&quot;action&quot;</span>].<span class="i">ToString</span>(), <span class="r6 r">routes</span>[<span class="s">&quot;controller&quot;</span>].<span class="i">ToString</span>(), <span class="r6 r">routes</span>, <span class="r10 r">request</span>.<span class="i property">Scheme</span>);
+ 
+                        <span class="r7 r">link</span>.<span class="i method">Add</span>(<span class="r11 r">url</span>);
+                        <span class="r8 r">guid</span>.<span class="i method">Add</span>(<span class="r11 r">url</span>);
+                    });
+ 
+                    <span class="r2 r">feedItem</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#aba3a8f16e20642a" class="i property">Element</a>.<span class="i">SetElementValue</span>(<span class="s">&quot;title&quot;</span>, <span class="r3 r">contentItem</span>.<span class="i">DisplayText</span>);
+                    <span class="r2 r">feedItem</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#aba3a8f16e20642a" class="i property">Element</a>.<span class="i method">Add</span>(<span class="r7 r">link</span>);
+ 
+                    <span class="r2 r">feedItem</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#aba3a8f16e20642a" class="i property">Element</a>.<span class="i method">Add</span>(<b>new</b> <span class="t constructor">XElement</span>(<span class="s">&quot;description&quot;</span>, <b>new</b> <span class="t">XCData</span>(<span class="r5 r">bodyAspect</span>.<span class="i">Body</span>?.<span class="i">ToString</span>() ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>)));
+ 
+                    <b>if</b> (<span class="r3 r">contentItem</span>.<span class="i">PublishedUtc</span> != <b>null</b>)
+                    {
+                        <span class="c">// RFC833</span>
+                        <span class="c">// The &quot;R&quot; or &quot;r&quot; standard format specifier represents a custom date and time format string that is defined by</span>
+                        <span class="c">// the DateTimeFormatInfo.RFC1123Pattern property. The pattern reflects a defined standard, and the property</span>
+                        <span class="c">// is read-only. Therefore, it is always the same, regardless of the culture used or the format provider supplied.</span>
+                        <span class="c">// The custom format string is &quot;ddd, dd MMM yyyy HH&#39;:&#39;mm&#39;:&#39;ss &#39;GMT&#39;&quot;. When this standard format specifier is used,</span>
+                        <span class="c">// the formatting or parsing operation always uses the invariant culture.</span>
+                        <span class="r2 r">feedItem</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#aba3a8f16e20642a" class="i property">Element</a>.<span class="i">SetElementValue</span>(<span class="s">&quot;pubDate&quot;</span>, <span class="r3 r">contentItem</span>.<span class="i">PublishedUtc</span>.<span class="i">Value</span>.<span class="i">ToString</span>(<span class="s">&quot;r&quot;</span>));
+                    }
+ 
+                    <span class="r2 r">feedItem</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#aba3a8f16e20642a" class="i property">Element</a>.<span class="i method">Add</span>(<span class="r8 r">guid</span>);
+                }
+                <b>else</b>
+                {
+                    <span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#239a39dee88edaea" class="i property">Response</a>.<a href="/OrchardCore.Feeds.Abstractions/A.html#3b7f9c4e716219a4" class="i method">Contextualize</a>(<span id="r12 rd" class="r12 r">contextualize</span> =&gt;
+                    {
+                        <b>var</b> <span id="r13 rd" class="r13 r">request</span> = <span class="r12 r">contextualize</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#3383f5098126f17a" class="i property">Url</a>.<span class="i property">ActionContext</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>;
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">url</span> = <span class="r12 r">contextualize</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#3383f5098126f17a" class="i property">Url</a>.<span class="i">Action</span>(<span class="r6 r">routes</span>[<span class="s">&quot;action&quot;</span>].<span class="i">ToString</span>(), <span class="r6 r">routes</span>[<span class="s">&quot;controller&quot;</span>].<span class="i">ToString</span>(), <span class="r6 r">routes</span>, <span class="r13 r">request</span>.<span class="i property">Scheme</span>);
+ 
+                        <span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#b360f83f27978e3c" class="i property">Builder</a>.<a href="/OrchardCore.Feeds.Abstractions/A.html#4b255c5fd25fd576" class="i method">AddProperty</a>(<span class="r1 r">context</span>, <span class="r2 r">feedItem</span>, <span class="s">&quot;link&quot;</span>, <span class="r14 r">url</span>);
+                    });
+ 
+                    <span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#b360f83f27978e3c" class="i property">Builder</a>.<span class="i">AddProperty</span>(<span class="r1 r">context</span>, <span class="r2 r">feedItem</span>, <span class="s">&quot;title&quot;</span>, <span class="r3 r">contentItem</span>.<span class="i">DisplayText</span>);
+                    <span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#b360f83f27978e3c" class="i property">Builder</a>.<a href="/OrchardCore.Feeds.Abstractions/A.html#6cad86414d455381" class="i method">AddProperty</a>(<span class="r1 r">context</span>, <span class="r2 r">feedItem</span>, <b>new</b> <span class="t constructor">XElement</span>(<span class="s">&quot;description&quot;</span>, <b>new</b> <span class="t">XCData</span>(<span class="r5 r">bodyAspect</span>.<span class="i">Body</span>?.<span class="i">ToString</span>() ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>)));
+ 
+                    <b>if</b> (<span class="r3 r">contentItem</span>.<span class="i">PublishedUtc</span> != <b>null</b>)
+                    {
+                        <span class="r1 r">context</span>.<a href="/OrchardCore.Feeds.Abstractions/A.html#b360f83f27978e3c" class="i property">Builder</a>.<span class="i">AddProperty</span>(<span class="r1 r">context</span>, <span class="r2 r">feedItem</span>, <span class="s">&quot;published-date&quot;</span>, <span class="r3 r">contentItem</span>.<span class="i">PublishedUtc</span>.<span class="i">Value</span>.<span class="i">ToString</span>(<span class="s">&quot;r&quot;</span>));
+                    }
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

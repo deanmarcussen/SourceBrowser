@@ -1,0 +1,128 @@
+﻿<!DOCTYPE html>
+<html><head><title>DeploymentPlanService.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(119);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Deployment/DeploymentPlanService.cs" target="_top">DeploymentPlanService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Deployment" target="_top">src\OrchardCore.Modules\OrchardCore.Deployment\OrchardCore.Deployment.csproj</a> (OrchardCore.Deployment)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>
+{
+    <b>public class</b> <a id="6e2e3a8001fb6323" href="R/6e2e3a8001fb6323.html" target="n" data-glyph="0,0" class="t t">DeploymentPlanService</a> : <span class="i">IDeploymentPlanService</span>
+    {
+        <b>private readonly</b> <span class="i">YesSql</span>.<span class="i">ISession</span> <a id="c5320855ea5a6de4" href="R/c5320855ea5a6de4.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="073eaf81377647b5" href="R/073eaf81377647b5.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="293cb536d2556028" href="R/293cb536d2556028.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">DeploymentPlan</span>&gt; <a id="999850bbdd0299f3" href="R/999850bbdd0299f3.html" target="n" data-glyph="46,1" class="i field">_deploymentPlans</a>;
+ 
+        <b>public</b> <a id="efb6696456156ce6" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DeploymentPlanService</a>(
+            <span class="i">YesSql</span>.<span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r1 rd" class="r1 r">httpContextAccessor</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r2 rd" class="r2 r">authorizationService</span>)
+        {
+            <a href="#c5320855ea5a6de4" class="i field">_session</a> = <span class="r0 r">session</span>;
+            <a href="#073eaf81377647b5" class="i field">_httpContextAccessor</a> = <span class="r1 r">httpContextAccessor</span>;
+            <a href="#293cb536d2556028" class="i field">_authorizationService</a> = <span class="r2 r">authorizationService</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">DeploymentPlan</span>&gt;&gt; <a id="5628909918196c5b" href="R/5628909918196c5b.html" target="n" data-glyph="76,1" class="i method">GetDeploymentPlans</a>()
+        {
+            <b>if</b> (<a href="#999850bbdd0299f3" class="i field">_deploymentPlans</a> == <b>null</b>)
+            {
+                <b>var</b> <span id="r3 rd" class="r3 r">deploymentPlanQuery</span> = <a href="#c5320855ea5a6de4" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">DeploymentPlan</span>, <a href="Indexes/DeploymentPlanIndex.cs.html#88f186f408db519b" class="t t">DeploymentPlanIndex</a>&gt;();
+                <b>var</b> <span id="r4 rd" class="r4 r">deploymentPlans</span> = <b>await</b> <span class="r3 r">deploymentPlanQuery</span>.<span class="i">ListAsync</span>();
+                <a href="#999850bbdd0299f3" class="i field">_deploymentPlans</a> = <span class="r4 r">deploymentPlans</span>.<span class="i">ToDictionary</span>(<span id="r5 rd" class="r5 r">x</span> =&gt; <span class="r5 r">x</span>.<span class="i">Name</span>);
+            }
+ 
+            <b>return</b> <a href="#999850bbdd0299f3" class="i field">_deploymentPlans</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="b8c0c1c3b8e9806d" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DoesUserHavePermissionsAsync</a>()
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">user</span> = <a href="#073eaf81377647b5" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>;
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">result</span> = <b>await</b> <a href="#293cb536d2556028" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r6 r">user</span>, <a href="Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>) &amp;&amp;
+                         <b>await</b> <a href="#293cb536d2556028" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r6 r">user</span>, <a href="Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="Permissions.cs.html#92dcaa8219c33682" class="i field">Export</a>);
+ 
+            <b>return</b> <span class="r7 r">result</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="32699d81c3a70c51" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DoesUserHaveExportPermissionAsync</a>()
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">user</span> = <a href="#073eaf81377647b5" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>;
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">result</span> = <b>await</b> <a href="#293cb536d2556028" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r8 r">user</span>, <a href="Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="Permissions.cs.html#92dcaa8219c33682" class="i field">Export</a>);
+ 
+            <b>return</b> <span class="r9 r">result</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="ea85068a519006fe" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetAllDeploymentPlanNamesAsync</a>()
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">deploymentPlans</span> = <b>await</b> <a href="#5628909918196c5b" class="i method">GetDeploymentPlans</a>();
+ 
+            <b>return</b> <span class="r10 r">deploymentPlans</span>.<span class="i property">Keys</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">DeploymentPlan</span>&gt;&gt; <a id="f76734552df27525" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetAllDeploymentPlansAsync</a>()
+        {
+            <b>var</b> <span id="r11 rd" class="r11 r">deploymentPlans</span> = <b>await</b> <a href="#5628909918196c5b" class="i method">GetDeploymentPlans</a>();
+ 
+            <b>return</b> <span class="r11 r">deploymentPlans</span>.<span class="i property">Values</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">DeploymentPlan</span>&gt;&gt; <a id="da481a161631968c" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetDeploymentPlansAsync</a>(<b>params string</b>[] <span id="r12 rd" class="r12 r">deploymentPlanNames</span>)
+        {
+            <b>var</b> <span id="r13 rd" class="r13 r">deploymentPlans</span> = <b>await</b> <a href="#5628909918196c5b" class="i method">GetDeploymentPlans</a>();
+ 
+            <b>return</b> <a href="#f95c5665d4a47a93" class="i method">GetDeploymentPlans</a>(<span class="r13 r">deploymentPlans</span>, <span class="r12 r">deploymentPlanNames</span>);
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">DeploymentPlan</span>&gt; <a id="f95c5665d4a47a93" href="R/f95c5665d4a47a93.html" target="n" data-glyph="76,1" class="i method">GetDeploymentPlans</a>(<a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">DeploymentPlan</span>&gt; <span id="r14 rd" class="r14 r">deploymentPlans</span>, <b>params string</b>[] <span id="r15 rd" class="r15 r">deploymentPlanNames</span>)
+        {
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">deploymentPlanName</span> <b>in</b> <span class="r15 r">deploymentPlanNames</span>)
+            {
+                <b>if</b> (<span class="r14 r">deploymentPlans</span>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r16 r">deploymentPlanName</span>, <b>out</b> <b>var</b> <span id="r17 rd" class="r17 r">deploymentPlan</span>))
+                {
+                    <b>yield</b> <b>return</b> <span class="r17 r">deploymentPlan</span>;
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="e62cf8dba2367af0" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreateOrUpdateDeploymentPlansAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">DeploymentPlan</span>&gt; <span id="r18 rd" class="r18 r">deploymentPlans</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r19 rd" class="r19 r">names</span> = <span class="r18 r">deploymentPlans</span>.<span class="i method">Select</span>(<span id="r20 rd" class="r20 r">x</span> =&gt; <span class="r20 r">x</span>.<span class="i">Name</span>);
+ 
+            <b>var</b> <span id="r21 rd" class="r21 r">existingDeploymentPlans</span> = (<b>await</b> <a href="#c5320855ea5a6de4" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">DeploymentPlan</span>, <a href="Indexes/DeploymentPlanIndex.cs.html#88f186f408db519b" class="t t">DeploymentPlanIndex</a>&gt;(<span id="r22 rd" class="r22 r">x</span> =&gt; <span class="r22 r">x</span>.<span class="i">Name</span>.<span class="i">IsIn</span>(<span class="r19 r">names</span>))
+                .<span class="i">ListAsync</span>())
+                .<span class="i">ToDictionary</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<span class="i">Name</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r24 rd" class="r24 r">deploymentPlan</span> <b>in</b> <span class="r18 r">deploymentPlans</span>)
+            {
+                <b>if</b> (<span class="r21 r">existingDeploymentPlans</span>.<span class="i">TryGetValue</span>(<span class="r24 r">deploymentPlan</span>.<span class="i">Name</span>, <b>out</b> <b>var</b> <span id="r25 rd" class="r25 r">existingDeploymentPlan</span>))
+                {
+                    <span class="r25 r">existingDeploymentPlan</span>.<span class="i">Name</span> = <span class="r24 r">deploymentPlan</span>.<span class="i">Name</span>;
+                    <span class="r25 r">existingDeploymentPlan</span>.<span class="i">DeploymentSteps</span>.<span class="i">Clear</span>();
+                    <span class="r25 r">existingDeploymentPlan</span>.<span class="i">DeploymentSteps</span>.<span class="i">AddRange</span>(<span class="r24 r">deploymentPlan</span>.<span class="i">DeploymentSteps</span>);
+ 
+                    <a href="#c5320855ea5a6de4" class="i field">_session</a>.<span class="i">Save</span>(<span class="r25 r">existingDeploymentPlan</span>);
+                }
+                <b>else</b>
+                {
+                    <a href="#c5320855ea5a6de4" class="i field">_session</a>.<span class="i">Save</span>(<span class="r24 r">deploymentPlan</span>);
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

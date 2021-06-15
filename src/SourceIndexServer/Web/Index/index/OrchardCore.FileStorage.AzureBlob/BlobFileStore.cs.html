@@ -1,0 +1,377 @@
+﻿<!DOCTYPE html>
+<html><head><title>BlobFileStore.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(368);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.FileStorage.AzureBlob/BlobFileStore.cs" target="_top">BlobFileStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.FileStorage.AzureBlob" target="_top">src\OrchardCore\OrchardCore.FileStorage.AzureBlob\OrchardCore.FileStorage.AzureBlob.csproj</a> (OrchardCore.FileStorage.AzureBlob)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Azure</span>.<span class="i">Storage</span>.<span class="i">Blobs</span>;
+<b>using</b> <span class="i">Azure</span>.<span class="i">Storage</span>.<span class="i">Blobs</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">StaticFiles</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>.<span class="i n">AzureBlob</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Provides an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.FileStorage.Abstractions/A.html#178c85b58b6d5003" class="t t">IFileStore</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> implementation that targets an underlying Azure Blob Storage account.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Azure Blob Storage has very different semantics for directories compared to a local file system, and</span>
+    <span class="c">///</span><span class="c"> some special consideration is required for make this provider conform to the semantics of the</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.FileStorage.Abstractions/A.html#178c85b58b6d5003" class="t t">IFileStore</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> interface and behave in an expected way.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> Directories have no physical manifestation in blob storage; we can obtain a reference to them, but</span>
+    <span class="c">///</span><span class="c"> that reference can be created regardless of whether the directory exists, and it can only be used</span>
+    <span class="c">///</span><span class="c"> as a scoping container to operate on blobs within that directory namespace.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> As a consequence, this provider generally behaves as if any given directory always exists. To</span>
+    <span class="c">///</span><span class="c"> simulate &quot;creating&quot; a directory (which cannot technically be done in blob storage) this provider creates</span>
+    <span class="c">///</span><span class="c"> a marker file inside the directory, which makes the directory &quot;exist&quot; and appear when listing contents</span>
+    <span class="c">///</span><span class="c"> subsequently. This marker file is ignored (excluded) when listing directory contents.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> Note that the Blob Container is not created automatically, and existence of the Container is not verified.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> Create the Blob Container before enabling a Blob File Store.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> Azure Blog Storage will create the BasePath inside the container during the upload of the first file.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="c2980b1332f06277" href="R/c2980b1332f06277.html" target="n" data-glyph="0,0" class="t t">BlobFileStore</a> : <a href="/OrchardCore.FileStorage.Abstractions/A.html#178c85b58b6d5003" class="t t">IFileStore</a>
+    {
+        <b>private const string</b> <a id="276ef28dbef97bbf" href="R/276ef28dbef97bbf.html" target="n" data-glyph="10,1" class="i field">_directoryMarkerFileName</a> = <span class="s">&quot;OrchardCore.Media.txt&quot;</span>;
+ 
+        <b>private readonly</b> <a href="BlobStorageOptions.cs.html#2eb58d106ce2a419" class="t t">BlobStorageOptions</a> <a id="acf4cfe03beb3ae7" href="R/acf4cfe03beb3ae7.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#414b029491d59841" class="t t">IClock</a> <a id="c4d1cbe3625a426e" href="R/c4d1cbe3625a426e.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <span class="i">BlobContainerClient</span> <a id="e92f248380c8588a" href="R/e92f248380c8588a.html" target="n" data-glyph="46,1" class="i field">_blobContainer</a>;
+        <b>private readonly</b> <span class="t t">IContentTypeProvider</span> <a id="220690dea1ee7b7d" href="R/220690dea1ee7b7d.html" target="n" data-glyph="46,1" class="i field">_contentTypeProvider</a>;
+        <b>private readonly string</b> <a id="e6cb4d73134fadb7" href="R/e6cb4d73134fadb7.html" target="n" data-glyph="46,1" class="i field">_basePrefix</a> = <b>null</b>;
+ 
+        <b>public</b> <a id="e31546e432d7fee7" href="R/e31546e432d7fee7.html" target="n" data-glyph="72,1" class="t constructor">BlobFileStore</a>(<a href="BlobStorageOptions.cs.html#2eb58d106ce2a419" class="t t">BlobStorageOptions</a> <span id="r0 rd" class="r0 r">options</span>, <a href="/OrchardCore.Abstractions/A.html#414b029491d59841" class="t t">IClock</a> <span id="r1 rd" class="r1 r">clock</span>, <span class="t t">IContentTypeProvider</span> <span id="r2 rd" class="r2 r">contentTypeProvider</span>)
+        {
+            <a href="#acf4cfe03beb3ae7" class="i field">_options</a> = <span class="r0 r">options</span>;
+            <a href="#c4d1cbe3625a426e" class="i field">_clock</a> = <span class="r1 r">clock</span>;
+            <a href="#220690dea1ee7b7d" class="i field">_contentTypeProvider</a> = <span class="r2 r">contentTypeProvider</span>;
+ 
+            <a href="#e92f248380c8588a" class="i field">_blobContainer</a> = <b>new</b> <span class="i">BlobContainerClient</span>(<a href="#acf4cfe03beb3ae7" class="i field">_options</a>.<a href="BlobStorageOptions.cs.html#0f57610250c30563" class="i property">ConnectionString</a>, <a href="#acf4cfe03beb3ae7" class="i field">_options</a>.<a href="BlobStorageOptions.cs.html#ca9a0d762e90aab9" class="i property">ContainerName</a>);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#acf4cfe03beb3ae7" class="i field">_options</a>.<a href="BlobStorageOptions.cs.html#2b5f347513c32f93" class="i property">BasePath</a>))
+            {
+                <a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a> = <a href="#2097052d6ecf2065" class="i method">NormalizePrefix</a>(<a href="#acf4cfe03beb3ae7" class="i field">_options</a>.<a href="BlobStorageOptions.cs.html#2b5f347513c32f93" class="i property">BasePath</a>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="cbed054d62a94091" href="R/cbed054d62a94091.html" target="n" data-glyph="72,1" class="i method">GetFileInfoAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">path</span>)
+        {
+            <b>var</b> <span id="r4 rd" class="r4 r">blob</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<span class="r3 r">path</span>);
+ 
+            <b>if</b> (!<b>await</b> <span class="r4 r">blob</span>.<span class="i">ExistsAsync</span>())
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">properties</span> = <b>await</b> <span class="r4 r">blob</span>.<span class="i">GetPropertiesAsync</span>();
+ 
+            <b>return</b> <b>new</b> <span class="t">BlobFile</span>(<span class="r3 r">path</span>, <span class="r5 r">properties</span>.<span class="i">Value</span>.<span class="i">ContentLength</span>, <span class="r5 r">properties</span>.<span class="i">Value</span>.<span class="i">LastModified</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="6216ee6b2e5237af" href="R/6216ee6b2e5237af.html" target="n" data-glyph="72,1" class="i method">GetDirectoryInfoAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">path</span>)
+        {
+            <b>if</b> (<span class="r6 r">path</span> == <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>)
+            {
+                <b>return</b> <b>new</b> <a href="BlobDirectory.cs.html#2f39bab79fc02e64" class="t constructor">BlobDirectory</a>(<span class="r6 r">path</span>, <a href="#c4d1cbe3625a426e" class="i field">_clock</a>.<a href="/OrchardCore.Abstractions/A.html#dc3664d2428c2eee" class="i property">UtcNow</a>);
+            }
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">blobDirectory</span> = <b>await</b> <a href="#cbec078db94aebf3" class="i method">GetBlobDirectoryReference</a>(<span class="r6 r">path</span>);
+ 
+            <b>if</b> (<span class="r7 r">blobDirectory</span> != <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="BlobDirectory.cs.html#2f39bab79fc02e64" class="t constructor">BlobDirectory</a>(<span class="r6 r">path</span>, <a href="#c4d1cbe3625a426e" class="i field">_clock</a>.<a href="/OrchardCore.Abstractions/A.html#dc3664d2428c2eee" class="i property">UtcNow</a>);
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+        <b>public</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="8772947a75fd0b6e" href="R/8772947a75fd0b6e.html" target="n" data-glyph="72,1" class="i method">GetDirectoryContentAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">path</span> = <b>null</b>, <b>bool</b> <span id="r9 rd" class="r9 r">includeSubDirectories</span> = <b>false</b>)
+        {
+            <b>if</b> (<span class="r9 r">includeSubDirectories</span>)
+            {
+                <b>return</b> <a href="#42598d0248924c17" class="i method">GetDirectoryContentFlatAsync</a>(<span class="r8 r">path</span>);
+            }
+            <b>else</b>
+            {
+                <b>return</b> <a href="#a1cc43442781e7fc" class="i method">GetDirectoryContentByHierarchyAsync</a>(<span class="r8 r">path</span>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="a1cc43442781e7fc" href="R/a1cc43442781e7fc.html" target="n" data-glyph="76,1" class="i method">GetDirectoryContentByHierarchyAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">path</span> = <b>null</b>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">prefix</span> = <a href="#c2980b1332f06277" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8736ae9e5c84d64b" class="i method">Combine</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>, <span class="r10 r">path</span>);
+            <span class="r11 r">prefix</span> = <a href="#2097052d6ecf2065" class="i method">NormalizePrefix</a>(<span class="r11 r">prefix</span>);
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">page</span> = <a href="#e92f248380c8588a" class="i field">_blobContainer</a>.<span class="i">GetBlobsByHierarchyAsync</span>(<span class="i">BlobTraits</span>.<span class="i">Metadata</span>, <span class="i">BlobStates</span>.<span class="i">None</span>, <span class="s">&quot;/&quot;</span>, <span class="r11 r">prefix</span>);
+ 
+            <b>await</b> <b>foreach</b> (<b>var</b> <span id="r13 rd" class="r13 r">blob</span> <b>in</b> <span class="r12 r">page</span>)
+            {
+                <b>if</b> (<span class="r13 r">blob</span>.<span class="i">IsPrefix</span>)
+                {
+                    <b>var</b> <span id="r14 rd" class="r14 r">folderPath</span> = <span class="r13 r">blob</span>.<span class="i">Prefix</span>;
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>))
+                    {
+                        <span class="r14 r">folderPath</span> = <span class="r14 r">folderPath</span>.<span class="i">Substring</span>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - 1);
+                    }
+ 
+                    <span class="r14 r">folderPath</span> = <span class="r14 r">folderPath</span>.<span class="i">Trim</span>(<span class="s">&#39;/&#39;</span>);
+                    <b>yield</b> <b>return</b> <b>new</b> <span class="t">BlobDirectory</span>(<span class="r14 r">folderPath</span>, <a href="#c4d1cbe3625a426e" class="i field">_clock</a>.<a href="/OrchardCore.Abstractions/A.html#dc3664d2428c2eee" class="i property">UtcNow</a>);
+                }
+                <b>else</b>
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">itemName</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#95facc58d06cadd0" class="i method">GetFileName</a>(<a href="@1@System.Runtime/A.html#be62bd8978189a87" class="t t">WebUtility</a>.<span class="i">UrlDecode</span>(<span class="r13 r">blob</span>.<span class="i">Blob</span>.<span class="i">Name</span>)).<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>);
+                    <span class="c">// Ignore directory marker files.</span>
+                    <b>if</b> (<span class="r15 r">itemName</span> != <a href="#276ef28dbef97bbf" class="i field">_directoryMarkerFileName</a>)
+                    {
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">itemPath</span> = <a href="#c2980b1332f06277" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8736ae9e5c84d64b" class="i method">Combine</a>(<span class="r10 r">path</span>?.<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>), <span class="r15 r">itemName</span>);
+                        <b>yield</b> <b>return</b> <b>new</b> <span class="t">BlobFile</span>(<span class="r16 r">itemPath</span>, <span class="r13 r">blob</span>.<span class="i">Blob</span>.<span class="i">Properties</span>.<span class="i">ContentLength</span>, <span class="r13 r">blob</span>.<span class="i">Blob</span>.<span class="i">Properties</span>.<span class="i">LastModified</span>);
+                    }
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="42598d0248924c17" href="R/42598d0248924c17.html" target="n" data-glyph="76,1" class="i method">GetDirectoryContentFlatAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">path</span> = <b>null</b>)
+        {
+            <span class="c">// Folders are considered case sensitive in blob storage.</span>
+            <b>var</b> <span id="r18 rd" class="r18 r">directories</span> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">prefix</span> = <a href="#c2980b1332f06277" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8736ae9e5c84d64b" class="i method">Combine</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>, <span class="r17 r">path</span>);
+            <span class="r19 r">prefix</span> = <a href="#2097052d6ecf2065" class="i method">NormalizePrefix</a>(<span class="r19 r">prefix</span>);
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">page</span> = <a href="#e92f248380c8588a" class="i field">_blobContainer</a>.<span class="i">GetBlobsAsync</span>(<span class="i">BlobTraits</span>.<span class="i">Metadata</span>, <span class="i">BlobStates</span>.<span class="i">None</span>, <span class="r19 r">prefix</span>);
+            <b>await</b> <b>foreach</b> (<b>var</b> <span id="r21 rd" class="r21 r">blob</span> <b>in</b> <span class="r20 r">page</span>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">name</span> = <a href="@1@System.Runtime/A.html#be62bd8978189a87" class="t t">WebUtility</a>.<span class="i">UrlDecode</span>(<span class="r21 r">blob</span>.<span class="i">Name</span>);
+ 
+                <span class="c">// A flat blob listing does not return a folder hierarchy.</span>
+                <span class="c">// We can infer a hierarchy by examining the paths returned for the file contents</span>
+                <span class="c">// and evaluate whether a directory exists and should be added to the results listing.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">directory</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r22 r">name</span>);
+                <span class="c">// Strip base folder from directory name.</span>
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>))
+                {
+                    <span class="r23 r">directory</span> = <span class="r23 r">directory</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - 1);
+                }
+                <span class="c">// Do not include root folder, or current path, or multiple folders in folder listing.</span>
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r23 r">directory</span>) &amp;&amp; !<span class="r18 r">directories</span>.<span class="i method">Contains</span>(<span class="r23 r">directory</span>) &amp;&amp; (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r17 r">path</span>) ? <b>true</b> : !<span class="r23 r">directory</span>.<a href="@1@System.Runtime/A.html#cb74053b3f2d03f4" class="i method">EndsWith</a>(<span class="r17 r">path</span>)))
+                {
+                    <span class="r18 r">directories</span>.<span class="i method">Add</span>(<span class="r23 r">directory</span>);
+                    <b>yield</b> <b>return</b> <b>new</b> <a href="BlobDirectory.cs.html#2f39bab79fc02e64" class="t constructor">BlobDirectory</a>(<span class="r23 r">directory</span>, <a href="#c4d1cbe3625a426e" class="i field">_clock</a>.<a href="/OrchardCore.Abstractions/A.html#dc3664d2428c2eee" class="i property">UtcNow</a>);
+                }
+ 
+                <span class="c">// Ignore directory marker files.</span>
+                <b>if</b> (!<span class="r22 r">name</span>.<a href="@1@System.Runtime/A.html#cb74053b3f2d03f4" class="i method">EndsWith</a>(<a href="#276ef28dbef97bbf" class="i field">_directoryMarkerFileName</a>))
+                {
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>))
+                    {
+                        <span class="r22 r">name</span> = <span class="r22 r">name</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - 1);
+                    }
+                    <b>yield</b> <b>return</b> <b>new</b> <span class="t">BlobFile</span>(<span class="r22 r">name</span>.<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>), <span class="r21 r">blob</span>.<span class="i">Properties</span>.<span class="i">ContentLength</span>, <span class="r21 r">blob</span>.<span class="i">Properties</span>.<span class="i">LastModified</span>);
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="0c9ded5d33a7abbb" href="R/0c9ded5d33a7abbb.html" target="n" data-glyph="72,1" class="i method">TryCreateDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r24 rd" class="r24 r">path</span>)
+        {
+            <span class="c">// Since directories are only created implicitly when creating blobs, we</span>
+            <span class="c">// simply pretend like we created the directory, unless there is already</span>
+            <span class="c">// a blob with the same path.</span>
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">blobFile</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<span class="r24 r">path</span>);
+ 
+            <b>if</b> (<b>await</b> <span class="r25 r">blobFile</span>.<span class="i">ExistsAsync</span>())
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot create directory because the path &#39;</span>{<span class="r24 r">path</span>}<span class="s">&#39; already exists and is a file.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">blobDirectory</span> = <b>await</b> <a href="#cbec078db94aebf3" class="i method">GetBlobDirectoryReference</a>(<span class="r24 r">path</span>);
+            <b>if</b> (<span class="r26 r">blobDirectory</span> == <b>null</b>)
+            {
+                <b>await</b> <a href="#f34637190ba6dd68" class="i method">CreateDirectoryAsync</a>(<span class="r24 r">path</span>);
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="8216881f921cbaa0" href="R/8216881f921cbaa0.html" target="n" data-glyph="72,1" class="i method">TryDeleteFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">path</span>)
+        {
+            <b>var</b> <span id="r28 rd" class="r28 r">blob</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<span class="r27 r">path</span>);
+ 
+            <b>return</b> <b>await</b> <span class="r28 r">blob</span>.<span class="i">DeleteIfExistsAsync</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="33e9f080f517a2ab" href="R/33e9f080f517a2ab.html" target="n" data-glyph="72,1" class="i method">TryDeleteDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r29 rd" class="r29 r">path</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r29 r">path</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">&quot;Cannot delete the root directory.&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r30 rd" class="r30 r">blobsWereDeleted</span> = <b>false</b>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r31 rd" class="r31 r">prefix</span> = <a href="#c2980b1332f06277" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8736ae9e5c84d64b" class="i method">Combine</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>, <span class="r29 r">path</span>);
+            <span class="r31 r">prefix</span> = <a href="#c2980b1332f06277" class="k">this</a>.<a href="#2097052d6ecf2065" class="i method">NormalizePrefix</a>(<span class="r31 r">prefix</span>);
+ 
+            <b>var</b> <span id="r32 rd" class="r32 r">page</span> = <a href="#e92f248380c8588a" class="i field">_blobContainer</a>.<span class="i">GetBlobsAsync</span>(<span class="i">BlobTraits</span>.<span class="i">Metadata</span>, <span class="i">BlobStates</span>.<span class="i">None</span>, <span class="r31 r">prefix</span>);
+            <b>await</b> <b>foreach</b> (<b>var</b> <span id="r33 rd" class="r33 r">blob</span> <b>in</b> <span class="r32 r">page</span>)
+            {
+                <b>var</b> <span id="r34 rd" class="r34 r">blobReference</span> = <a href="#e92f248380c8588a" class="i field">_blobContainer</a>.<span class="i">GetBlobClient</span>(<span class="r33 r">blob</span>.<span class="i">Name</span>);
+                <b>await</b> <span class="r34 r">blobReference</span>.<span class="i">DeleteIfExistsAsync</span>(<span class="i">DeleteSnapshotsOption</span>.<span class="i">IncludeSnapshots</span>);
+                <span class="r30 r">blobsWereDeleted</span> = <b>true</b>;
+            }
+ 
+            <b>return</b> <span class="r30 r">blobsWereDeleted</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9a453f4ce1ab934e" href="R/9a453f4ce1ab934e.html" target="n" data-glyph="72,1" class="i method">MoveFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">oldPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r36 rd" class="r36 r">newPath</span>)
+        {
+            <b>await</b> <a href="#75c1268235533952" class="i method">CopyFileAsync</a>(<span class="r35 r">oldPath</span>, <span class="r36 r">newPath</span>);
+            <b>await</b> <a href="#8216881f921cbaa0" class="i method">TryDeleteFileAsync</a>(<span class="r35 r">oldPath</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="75c1268235533952" href="R/75c1268235533952.html" target="n" data-glyph="72,1" class="i method">CopyFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r37 rd" class="r37 r">srcPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">dstPath</span>)
+        {
+            <b>if</b> (<span class="r37 r">srcPath</span> == <span class="r38 r">dstPath</span>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">$&quot;</span><span class="s">The values for </span>{<b>nameof</b>(<span class="r37 r">srcPath</span>)}<span class="s"> and </span>{<b>nameof</b>(<span class="r38 r">dstPath</span>)}<span class="s"> must not be the same.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r39 rd" class="r39 r">oldBlob</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<span class="r37 r">srcPath</span>);
+            <b>var</b> <span id="r40 rd" class="r40 r">newBlob</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<span class="r38 r">dstPath</span>);
+ 
+            <b>if</b> (!<b>await</b> <span class="r39 r">oldBlob</span>.<span class="i">ExistsAsync</span>())
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot copy file &#39;</span>{<span class="r37 r">srcPath</span>}<span class="s">&#39; because it does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>if</b> (<b>await</b> <span class="r40 r">newBlob</span>.<span class="i">ExistsAsync</span>())
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot copy file &#39;</span>{<span class="r37 r">srcPath</span>}<span class="s">&#39; because a file already exists in the new path &#39;</span>{<span class="r38 r">dstPath</span>}<span class="s">&#39;.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>await</b> <span class="r40 r">newBlob</span>.<span class="i">StartCopyFromUriAsync</span>(<span class="r39 r">oldBlob</span>.<span class="i">Uri</span>);
+ 
+            <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#34b191a243434f6a" class="i method">Delay</a>(250);
+            <b>var</b> <span id="r41 rd" class="r41 r">properties</span> = <b>await</b> <span class="r40 r">newBlob</span>.<span class="i">GetPropertiesAsync</span>();
+ 
+            <b>while</b> (<span class="r41 r">properties</span>.<span class="i">Value</span>.<span class="i">CopyStatus</span> == <span class="i">CopyStatus</span>.<span class="i">Pending</span>)
+            {
+                <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#34b191a243434f6a" class="i method">Delay</a>(250);
+                <span class="c">// Need to fetch properties or CopyStatus will never update.</span>
+                <span class="r41 r">properties</span> = <b>await</b> <span class="r40 r">newBlob</span>.<span class="i">GetPropertiesAsync</span>();
+            }
+ 
+            <b>if</b> (<span class="r41 r">properties</span>.<span class="i">Value</span>.<span class="i">CopyStatus</span> != <span class="i">CopyStatus</span>.<span class="i">Success</span>)
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Error while copying file &#39;</span>{<span class="r37 r">srcPath</span>}<span class="s">&#39;; copy operation failed with status </span>{<span class="r41 r">properties</span>.<span class="i">Value</span>.<span class="i">CopyStatus</span>}<span class="s"> and description </span>{<span class="r41 r">properties</span>.<span class="i">Value</span>.<span class="i">CopyStatusDescription</span>}<span class="s">.</span><span class="s">&quot;</span>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt; <a id="faa84528f65dc6a3" href="R/faa84528f65dc6a3.html" target="n" data-glyph="72,1" class="i method">GetFileStreamAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r42 rd" class="r42 r">path</span>)
+        {
+            <b>var</b> <span id="r43 rd" class="r43 r">blob</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<span class="r42 r">path</span>);
+ 
+            <b>if</b> (!<b>await</b> <span class="r43 r">blob</span>.<span class="i">ExistsAsync</span>())
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot get file stream because the file &#39;</span>{<span class="r42 r">path</span>}<span class="s">&#39; does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>return</b> (<b>await</b> <span class="r43 r">blob</span>.<span class="i">DownloadAsync</span>()).<span class="i">Value</span>.<span class="i">Content</span>;
+        }
+ 
+        <span class="c">// Reduces the need to call blob.FetchAttributes, and blob.ExistsAsync,</span>
+        <span class="c">// as Azure Storage Library will perform these actions on OpenReadAsync().</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt; <a id="d393fbedf54a15b5" href="R/d393fbedf54a15b5.html" target="n" data-glyph="72,1" class="i method">GetFileStreamAsync</a>(<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a> <span id="r44 rd" class="r44 r">fileStoreEntry</span>)
+        {
+            <b>return</b> <a href="#faa84528f65dc6a3" class="i method">GetFileStreamAsync</a>(<span class="r44 r">fileStoreEntry</span>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#87bcc81e6615fbee" class="i property">Path</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="854b90a5764f63cc" href="R/854b90a5764f63cc.html" target="n" data-glyph="72,1" class="i method">CreateFileFromStreamAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">path</span>, <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r46 rd" class="r46 r">inputStream</span>, <b>bool</b> <span id="r47 rd" class="r47 r">overwrite</span> = <b>false</b>)
+        {
+            <b>var</b> <span id="r48 rd" class="r48 r">blob</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<span class="r45 r">path</span>);
+ 
+            <b>if</b> (!<span class="r47 r">overwrite</span> &amp;&amp; <b>await</b> <span class="r48 r">blob</span>.<span class="i">ExistsAsync</span>())
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot create file &#39;</span>{<span class="r45 r">path</span>}<span class="s">&#39; because it already exists.</span><span class="s">&quot;</span>);
+            }
+ 
+            <a href="#220690dea1ee7b7d" class="i field">_contentTypeProvider</a>.<span class="i method">TryGetContentType</span>(<span class="r45 r">path</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r49 rd" class="r49 r">contentType</span>);
+ 
+            <b>var</b> <span id="r50 rd" class="r50 r">headers</span> = <b>new</b> <span class="i">BlobHttpHeaders</span>
+            {
+                <span class="i">ContentType</span> = <span class="r49 r">contentType</span> ?? <span class="s">&quot;application/octet-stream&quot;</span>
+            };
+ 
+            <b>await</b> <span class="r48 r">blob</span>.<span class="i">UploadAsync</span>(<span class="r46 r">inputStream</span>, <span class="r50 r">headers</span>);
+ 
+            <b>return</b> <span class="r45 r">path</span>;
+        }
+ 
+        <b>private</b> <span class="i">BlobClient</span> <a id="c17a40feb5c1f5d7" href="R/c17a40feb5c1f5d7.html" target="n" data-glyph="76,1" class="i method">GetBlobReference</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r51 rd" class="r51 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r52 rd" class="r52 r">blobPath</span> = <a href="#c2980b1332f06277" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8736ae9e5c84d64b" class="i method">Combine</a>(<a href="#acf4cfe03beb3ae7" class="i field">_options</a>.<a href="BlobStorageOptions.cs.html#2b5f347513c32f93" class="i property">BasePath</a>, <span class="r51 r">path</span>);
+            <b>var</b> <span id="r53 rd" class="r53 r">blob</span> = <a href="#e92f248380c8588a" class="i field">_blobContainer</a>.<span class="i">GetBlobClient</span>(<span class="r52 r">blobPath</span>);
+ 
+            <b>return</b> <span class="r53 r">blob</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">BlobHierarchyItem</span>&gt; <a id="cbec078db94aebf3" href="R/cbec078db94aebf3.html" target="n" data-glyph="76,1" class="i method">GetBlobDirectoryReference</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r54 rd" class="r54 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r55 rd" class="r55 r">prefix</span> = <a href="#c2980b1332f06277" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8736ae9e5c84d64b" class="i method">Combine</a>(<a href="#e6cb4d73134fadb7" class="i field">_basePrefix</a>, <span class="r54 r">path</span>);
+            <span class="r55 r">prefix</span> = <a href="#2097052d6ecf2065" class="i method">NormalizePrefix</a>(<span class="r55 r">prefix</span>);
+ 
+            <span class="c">// Directory exists if path contains any files.</span>
+            <b>var</b> <span id="r56 rd" class="r56 r">page</span> = <a href="#e92f248380c8588a" class="i field">_blobContainer</a>.<span class="i">GetBlobsByHierarchyAsync</span>(<span class="i">BlobTraits</span>.<span class="i">Metadata</span>, <span class="i">BlobStates</span>.<span class="i">None</span>, <span class="s">&quot;/&quot;</span>, <span class="r55 r">prefix</span>);
+ 
+            <b>var</b> <span id="r57 rd" class="r57 r">enumerator</span> = <span class="r56 r">page</span>.<span class="i">GetAsyncEnumerator</span>();
+ 
+            <b>var</b> <span id="r58 rd" class="r58 r">result</span> = <b>await</b> <span class="r57 r">enumerator</span>.<span class="i">MoveNextAsync</span>();
+            <b>if</b> (<span class="r58 r">result</span>)
+            {
+                <b>return</b> <span class="r57 r">enumerator</span>.<span class="i">Current</span>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f34637190ba6dd68" href="R/f34637190ba6dd68.html" target="n" data-glyph="76,1" class="i method">CreateDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r59 rd" class="r59 r">path</span>)
+        {
+            <b>var</b> <span id="r60 rd" class="r60 r">placeholderBlob</span> = <a href="#c17a40feb5c1f5d7" class="i method">GetBlobReference</a>(<a href="#c2980b1332f06277" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8736ae9e5c84d64b" class="i method">Combine</a>(<span class="r59 r">path</span>, <a href="#276ef28dbef97bbf" class="i field">_directoryMarkerFileName</a>));
+ 
+            <span class="c">// Create a directory marker file to make this directory appear when listing directories.</span>
+            <b>using</b> (<a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r61 rd" class="r61 r">stream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#f92fa270fda9a82b" class="t constructor">MemoryStream</a>(<a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<a href="@1@System.Runtime/A.html#83f2d2c6f22db1a9" class="i method">GetBytes</a>(<span class="s">&quot;This is a directory marker file created by Orchard Core. It is safe to delete it.&quot;</span>)))
+            {
+                <b>await</b> <span class="r60 r">placeholderBlob</span>.<span class="i">UploadAsync</span>(<span class="r61 r">stream</span>);
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Blob prefix requires a trailing slash except when loading the root of the container.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private string</b> <a id="2097052d6ecf2065" href="R/2097052d6ecf2065.html" target="n" data-glyph="76,1" class="i method">NormalizePrefix</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r62 rd" class="r62 r">prefix</span>)
+        {
+            <span class="r62 r">prefix</span> = <span class="r62 r">prefix</span>.<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>) + <span class="s">&#39;/&#39;</span>;
+            <b>if</b> (<span class="r62 r">prefix</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> == 1)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="r62 r">prefix</span>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

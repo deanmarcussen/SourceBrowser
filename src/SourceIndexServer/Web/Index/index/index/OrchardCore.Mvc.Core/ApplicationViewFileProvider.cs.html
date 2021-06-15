@@ -1,0 +1,128 @@
+﻿<!DOCTYPE html>
+<html><head><title>ApplicationViewFileProvider.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(119);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Mvc.Core/ApplicationViewFileProvider.cs" target="_top">ApplicationViewFileProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Mvc.Core" target="_top">src\OrchardCore\OrchardCore.Mvc.Core\OrchardCore.Mvc.Core.csproj</a> (OrchardCore.Mvc.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Internal</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Physical</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Mvc</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This custom </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IFileProvider</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> implementation provides the file contents of</span>
+    <span class="c">///</span><span class="c"> the Application&#39;s module view files while in a development or production environment.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="0c9dfb87ce728938" href="R/0c9dfb87ce728938.html" target="n" data-glyph="0,0" class="t t">ApplicationViewFileProvider</a> : <span class="t t">IFileProvider</span>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <a id="15f807ae24e7b210" href="R/15f807ae24e7b210.html" target="n" data-glyph="46,1" class="i field">_applicationContext</a>;
+ 
+        <b>public</b> <a id="af2eb38ea316dc2e" href="R/af2eb38ea316dc2e.html" target="n" data-glyph="72,1" class="t constructor">ApplicationViewFileProvider</a>(<a href="/OrchardCore.Abstractions/A.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <span id="r0 rd" class="r0 r">applicationContext</span>)
+        {
+            <a href="#15f807ae24e7b210" class="i field">_applicationContext</a> = <span class="r0 r">applicationContext</span>;
+        }
+ 
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#5240e78be66d0c6a" class="t t">Application</a> <a id="b5baf0866a6b9064" href="R/b5baf0866a6b9064.html" target="n" data-glyph="106,1" class="i property">Application</a> =&gt; <a href="#15f807ae24e7b210" class="i field">_applicationContext</a>.<a href="/OrchardCore.Abstractions/A.html#99a608bfb7e2ccd2" class="i property">Application</a>;
+ 
+        <b>public</b> <span class="t t">IDirectoryContents</span> <a id="35eb4b4b6171630c" href="R/35eb4b4b6171630c.html" target="n" data-glyph="72,1" class="i method">GetDirectoryContents</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">subpath</span>)
+        {
+            <span class="c">// &#39;GetDirectoryContents()&#39; is used to discover shapes templates and build fixed binding tables.</span>
+            <span class="c">// So the embedded file provider can always provide the structure under modules &quot;Views&quot; folders.</span>
+            <span class="c">// But application&#39;s module shapes are not embedded, so we need to serve the application &quot;Views&quot;.</span>
+ 
+            <span class="c">// The razor view engine also uses &#39;GetDirectoryContents()&#39; to find razor pages (not mvc views).</span>
+            <span class="c">// So here, we also need to serve the directory contents under the application &quot;Pages&quot; folder.</span>
+ 
+            <span class="c">// Note: This provider is also used in production where application views may not be precompiled.</span>
+ 
+            <b>if</b> (<span class="r1 r">subpath</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="t t">NotFoundDirectoryContents</span>.<span class="i property">Singleton</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r2 rd" class="r2 r">folder</span> = <a href="#83740d413581861c" class="i method">NormalizePath</a>(<span class="r1 r">subpath</span>);
+ 
+            <span class="c">// Under &quot;Areas/{ApplicationName}&quot;.</span>
+            <b>if</b> (<span class="r2 r">folder</span> == <a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#2ac8d667bb0436d5" class="i property">ModulePath</a>)
+            {
+                <span class="c">// Serve the contents from the file system.</span>
+                <b>return</b> <b>new</b> <span class="t constructor">PhysicalDirectoryContents</span>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#35e6abf7948a94ba" class="i property">Path</a>);
+            }
+            <span class="c">// Under &quot;Areas/{ApplicationName}/**&quot;.</span>
+            <b>else</b> <b>if</b> (<span class="r2 r">folder</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#3a0e4e278887dcb8" class="i property">ModuleRoot</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="c">// Check for a &quot;Pages&quot; or a &quot;Views&quot; segment.</span>
+                <b>var</b> <span id="r3 rd" class="r3 r">tokenizer</span> = <b>new</b> <span class="t constructor">StringTokenizer</span>(<span class="r2 r">folder</span>, <b>new</b> <b>char</b>[] { <span class="s">&#39;/&#39;</span> });
+                <b>if</b> (<span class="r3 r">tokenizer</span>.<span class="i method">Any</span>(<span id="r4 rd" class="r4 r">s</span> =&gt; <span class="r4 r">s</span> == <span class="s">&quot;Pages&quot;</span> || <span class="r4 r">s</span> == <span class="s">&quot;Views&quot;</span>))
+                {
+                    <span class="c">// Resolve the subpath relative to the application&#39;s module root.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">folderSubPath</span> = <span class="r2 r">folder</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#3a0e4e278887dcb8" class="i property">ModuleRoot</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+ 
+                    <span class="c">// And serve the contents from the physical application root folder.</span>
+                    <b>return</b> <b>new</b> <span class="t constructor">PhysicalDirectoryContents</span>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#39d5d9d0153e84eb" class="i property">Root</a> + <span class="r5 r">folderSubPath</span>);
+                }
+            }
+ 
+            <b>return</b> <span class="t t">NotFoundDirectoryContents</span>.<span class="i property">Singleton</span>;
+        }
+ 
+        <b>public</b> <span class="t t">IFileInfo</span> <a id="dbfaeb549a0043fe" href="R/dbfaeb549a0043fe.html" target="n" data-glyph="72,1" class="i method">GetFileInfo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">subpath</span>)
+        {
+            <b>if</b> (<span class="r6 r">subpath</span> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r6 r">subpath</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r7 rd" class="r7 r">path</span> = <a href="#83740d413581861c" class="i method">NormalizePath</a>(<span class="r6 r">subpath</span>);
+ 
+            <span class="c">// &quot;Areas/{ApplicationName}/**/*.*&quot;.</span>
+            <b>if</b> (<span class="r7 r">path</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#3a0e4e278887dcb8" class="i property">ModuleRoot</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="c">// Resolve the subpath relative to the application&#39;s module.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">fileSubPath</span> = <span class="r7 r">path</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#3a0e4e278887dcb8" class="i property">ModuleRoot</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+ 
+                <span class="c">// And serve the file from the physical application root folder.</span>
+                <b>return</b> <b>new</b> <span class="t constructor">PhysicalFileInfo</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#39d5d9d0153e84eb" class="i property">Root</a> + <span class="r8 r">fileSubPath</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r6 r">subpath</span>);
+        }
+ 
+        <b>public</b> <span class="t t">IChangeToken</span> <a id="84cec20270f16bef" href="R/84cec20270f16bef.html" target="n" data-glyph="72,1" class="i method">Watch</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">filter</span>)
+        {
+            <b>if</b> (<span class="r9 r">filter</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">path</span> = <a href="#83740d413581861c" class="i method">NormalizePath</a>(<span class="r9 r">filter</span>);
+ 
+            <span class="c">// &quot;Areas/{ApplicationName}/**/*.*&quot;.</span>
+            <b>if</b> (<span class="r10 r">path</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#3a0e4e278887dcb8" class="i property">ModuleRoot</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="c">// Resolve the subpath relative to the application&#39;s module.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">fileSubPath</span> = <span class="r10 r">path</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#3a0e4e278887dcb8" class="i property">ModuleRoot</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+ 
+                <span class="c">// And watch the application file from the physical application root folder.</span>
+                <b>return</b> <b>new</b> <span class="t constructor">PollingFileChangeToken</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<a href="#b5baf0866a6b9064" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#39d5d9d0153e84eb" class="i property">Root</a> + <span class="r11 r">fileSubPath</span>));
+            }
+ 
+            <b>return</b> <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+        }
+ 
+        <b>private string</b> <a id="83740d413581861c" href="R/83740d413581861c.html" target="n" data-glyph="76,1" class="i method">NormalizePath</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">path</span>)
+        {
+            <b>return</b> <span class="r12 r">path</span>.<a href="@1@System.Runtime/A.html#987da5dfb39f1927" class="i method">Replace</a>(<span class="s">&#39;\\&#39;</span>, <span class="s">&#39;/&#39;</span>).<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

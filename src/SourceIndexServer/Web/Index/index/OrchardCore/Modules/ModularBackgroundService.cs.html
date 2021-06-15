@@ -1,0 +1,420 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModularBackgroundService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(411);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Modules/ModularBackgroundService.cs" target="_top">Modules\ModularBackgroundService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">BackgroundTasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Locking</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>
+{
+    <b>internal class</b> <a id="9fc1201b6fd71a41" href="../R/9fc1201b6fd71a41.html" target="n" data-glyph="2,0" class="t t">ModularBackgroundService</a> : <span class="t t">BackgroundService</span>
+    {
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="3179541bc4733574" href="../R/3179541bc4733574.html" target="n" data-glyph="46,1" class="i field">PollingTime</a> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#ae74be5264df78d8" class="i method">FromMinutes</a>(1);
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="617f34ad13a71274" href="../R/617f34ad13a71274.html" target="n" data-glyph="46,1" class="i field">MinIdleTime</a> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#c24437e069f958f9" class="i method">FromSeconds</a>(10);
+ 
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="t t">BackgroundTaskScheduler</a>&gt; <a id="3f993f9862d940ff" href="../R/3f993f9862d940ff.html" target="n" data-glyph="46,1" class="i field">_schedulers</a> =
+            <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="t t">BackgroundTaskScheduler</a>&gt;();
+ 
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">IChangeToken</span>&gt; <a id="a58c89ae46f6c77b" href="../R/a58c89ae46f6c77b.html" target="n" data-glyph="46,1" class="i field">_changeTokens</a> =
+            <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">IChangeToken</span>&gt;();
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <a id="be7450685e86f212" href="../R/be7450685e86f212.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="9a29b55ac016f5b4" href="../R/9a29b55ac016f5b4.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="da98fcae6d3b39e3" href="../R/da98fcae6d3b39e3.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#414b029491d59841" class="t t">IClock</a> <a id="9d18ec1091bb85f6" href="../R/9d18ec1091bb85f6.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+ 
+        <b>public</b> <a id="59ea89de912b4b5d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ModularBackgroundService</a>(
+            <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r1 rd" class="r1 r">httpContextAccessor</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#9fc1201b6fd71a41" class="t t">ModularBackgroundService</a>&gt; <span id="r2 rd" class="r2 r">logger</span>,
+            <a href="/OrchardCore.Abstractions/A.html#414b029491d59841" class="t t">IClock</a> <span id="r3 rd" class="r3 r">clock</span>)
+        {
+            <a href="#be7450685e86f212" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#9a29b55ac016f5b4" class="i field">_httpContextAccessor</a> = <span class="r1 r">httpContextAccessor</span>;
+            <a href="#da98fcae6d3b39e3" class="i field">_logger</a> = <span class="r2 r">logger</span>;
+            <a href="#9d18ec1091bb85f6" class="i field">_clock</a> = <span class="r3 r">clock</span>;
+        }
+ 
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="224c1b5bba701337" href="../R/224c1b5bba701337.html" target="n" data-glyph="75,1" class="i method">ExecuteAsync</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r4 rd" class="r4 r">stoppingToken</span>)
+        {
+            <span class="r4 r">stoppingToken</span>.<a href="@1@System.Runtime/A.html#b4627f3ac7f722a5" class="i method">Register</a>(() =&gt;
+            {
+                <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;&#39;{ServiceName}&#39; is stopping.&quot;</span>, <b>nameof</b>(<a href="#9fc1201b6fd71a41" class="t t">ModularBackgroundService</a>));
+            });
+ 
+            <b>while</b> (<a href="#3f1c22abb8ef5c97" class="i method">GetRunningShells</a>().<span class="i method">Count</span>() &lt; 1)
+            {
+                <b>try</b>
+                {
+                    <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b070ae859dd3f7b7" class="i method">Delay</a>(<a href="#617f34ad13a71274" class="i field">MinIdleTime</a>, <span class="r4 r">stoppingToken</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#30edb7a318d221fa" class="t t">TaskCanceledException</a>)
+                {
+                    <b>break</b>;
+                }
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r5 rd" class="r5 r">previousShells</span> = <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt;();
+ 
+            <b>while</b> (!<span class="r4 r">stoppingToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+            {
+                <b>try</b>
+                {
+                    <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r6 rd" class="r6 r">runningShells</span> = <a href="#3f1c22abb8ef5c97" class="i method">GetRunningShells</a>();
+                    <b>await</b> <a href="#499f0e7c291a2c08" class="i method">UpdateAsync</a>(<span class="r5 r">previousShells</span>, <span class="r6 r">runningShells</span>, <span class="r4 r">stoppingToken</span>);
+                    <span class="r5 r">previousShells</span> = <span class="r6 r">runningShells</span>;
+ 
+                    <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="k">var</a> <span id="r7 rd" class="r7 r">pollingDelay</span> = <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b070ae859dd3f7b7" class="i method">Delay</a>(<a href="#3179541bc4733574" class="i field">PollingTime</a>, <span class="r4 r">stoppingToken</span>);
+ 
+                    <b>await</b> <a href="#13a7148d4b812b7a" class="i method">RunAsync</a>(<span class="r6 r">runningShells</span>, <span class="r4 r">stoppingToken</span>);
+                    <b>await</b> <a href="#daa1ebe1a132b24c" class="i method">WaitAsync</a>(<span class="r7 r">pollingDelay</span>, <span class="r4 r">stoppingToken</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r8 rd" class="r8 r">ex</span>) <b>when</b> (!<span class="r8 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                {
+                    <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r8 r">ex</span>, <span class="s">&quot;Error while executing &#39;{ServiceName}&#39;&quot;</span>, <b>nameof</b>(<a href="#9fc1201b6fd71a41" class="t t">ModularBackgroundService</a>));
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="13a7148d4b812b7a" href="../R/13a7148d4b812b7a.html" target="n" data-glyph="76,1" class="i method">RunAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <span id="r9 rd" class="r9 r">runningShells</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r10 rd" class="r10 r">stoppingToken</span>)
+        {
+            <b>await</b> <a href="#95a50b777285f6b6" class="i method">GetShellsToRun</a>(<span class="r9 r">runningShells</span>).<a href="/OrchardCore.Abstractions/A.html#73922e65b7e3b27a" class="i method">ForEachAsync</a>(<b>async</b> <span id="r11 rd" class="r11 r">shell</span> =&gt;
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">tenant</span> = <span class="r11 r">shell</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>;
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r13 rd" class="r13 r">schedulers</span> = <a href="#602c9e360a8580bc" class="i method">GetSchedulersToRun</a>(<span class="r12 r">tenant</span>);
+ 
+                <a href="#9a29b55ac016f5b4" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span> = <span class="r11 r">shell</span>.<a href="#4eec9b787ee02b17" class="i method">CreateHttpContext</a>();
+ 
+                <b>foreach</b> (<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="k">var</a> <span id="r14 rd" class="r14 r">scheduler</span> <b>in</b> <span class="r13 r">schedulers</span>)
+                {
+                    <b>if</b> (<span class="r10 r">stoppingToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+                    {
+                        <b>break</b>;
+                    }
+ 
+                    <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="k">var</a> <span id="r15 rd" class="r15 r">shellScope</span> = <b>await</b> <a href="#be7450685e86f212" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#ba40af19c73a5806" class="i method">GetScopeAsync</a>(<span class="r11 r">shell</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>);
+ 
+                    <b>if</b> (<span class="r15 r">shellScope</span>.<a href="/OrchardCore.Abstractions/A.html#e31ecdd9861b326a" class="i property">ShellContext</a>.<a href="/OrchardCore.Abstractions/A.html#83bf1f479f57ae7a" class="i property">Pipeline</a> == <b>null</b>)
+                    {
+                        <b>break</b>;
+                    }
+ 
+                    <a href="/OrchardCore.Abstractions/A.html#1b7f22cb91eb12e6" class="k">var</a> <span id="r16 rd" class="r16 r">distributedLock</span> = <span class="r15 r">shellScope</span>.<a href="/OrchardCore.Abstractions/A.html#e31ecdd9861b326a" class="i property">ShellContext</a>.<a href="/OrchardCore.Abstractions/A.html#14806dab63c4713f" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#1b7f22cb91eb12e6" class="t t">IDistributedLock</a>&gt;();
+ 
+                    <span class="c">// Try to acquire a lock before using the scope, so that a next process gets the last committed data.</span>
+                    (<a href="/OrchardCore.Abstractions/A.html#4bdf65719aba2e7d" class="k">var</a> <span id="r17 rd" class="r17 r">locker</span>, <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r18 rd" class="r18 r">locked</span>) = <b>await</b> <span class="r16 r">distributedLock</span>.<a href="/OrchardCore.Abstractions/A.html#ffaeb20d07cf2261" class="i method">TryAcquireBackgroundTaskLockAsync</a>(<span class="r14 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#615d41d484239e78" class="i property">Settings</a>);
+                    <b>if</b> (!<span class="r18 r">locked</span>)
+                    {
+                        <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Timeout to acquire a lock on background task &#39;{TaskName}&#39; on tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r14 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#1e6d96a8e3b0c34e" class="i property">Name</a>, <span class="r12 r">tenant</span>);
+                        <b>return</b>;
+                    }
+ 
+                    <b>await using</b> <a href="/OrchardCore.Abstractions/A.html#4bdf65719aba2e7d" class="k">var</a> <span id="r19 rd" class="r19 r">acquiredLock</span> = <span class="r17 r">locker</span>;
+ 
+                    <b>await</b> <span class="r15 r">shellScope</span>.<a href="/OrchardCore.Abstractions/A.html#ae74d3684cfadb54" class="i method">UsingAsync</a>(<b>async</b> <span id="r20 rd" class="r20 r">scope</span> =&gt;
+                    {
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">taskName</span> = <span class="r14 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#1e6d96a8e3b0c34e" class="i property">Name</a>;
+ 
+                        <a href="/OrchardCore.Abstractions/A.html#6727590c52d8f897" class="k">var</a> <span id="r22 rd" class="r22 r">task</span> = <span class="r20 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.Abstractions/A.html#6727590c52d8f897" class="t t">IBackgroundTask</a>&gt;().<a href="/OrchardCore.Abstractions/A.html#2769bc7cda7e9d34" class="i method">GetTaskByName</a>(<span class="r21 r">taskName</span>);
+ 
+                        <b>if</b> (<span class="r22 r">task</span> == <b>null</b>)
+                        {
+                            <b>return</b>;
+                        }
+ 
+                        <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="k">var</a> <span id="r23 rd" class="r23 r">siteService</span> = <span class="r20 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a>&gt;();
+                        <b>if</b> (<span class="r23 r">siteService</span> != <b>null</b>)
+                        {
+                            <b>try</b>
+                            {
+                                <a href="#9a29b55ac016f5b4" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<a href="#694607b131b023fe" class="i method">SetBaseUrl</a>((<b>await</b> <span class="r23 r">siteService</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#0e8093fc45aa3e1f" class="i property">BaseUrl</a>);
+                            }
+                            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r24 rd" class="r24 r">ex</span>) <b>when</b> (!<span class="r24 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                            {
+                                <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r24 r">ex</span>, <span class="s">&quot;Error while getting the base url from the site settings of the tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r12 r">tenant</span>);
+                            }
+                        }
+ 
+                        <a href="/OrchardCore.Abstractions/A.html#5dd3bf1ae4645945" class="k">var</a> <span id="r25 rd" class="r25 r">context</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#22126e2c3c61479d" class="t constructor">BackgroundTaskEventContext</a>(<span class="r21 r">taskName</span>, <span class="r20 r">scope</span>);
+                        <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r26 rd" class="r26 r">handlers</span> = <span class="r20 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.Abstractions/A.html#336ed65f9bab4ec5" class="t t">IBackgroundTaskEventHandler</a>&gt;();
+ 
+                        <b>await</b> <span class="r26 r">handlers</span>.<a href="/OrchardCore.Abstractions/A.html#317755b6538acde3" class="i method">InvokeAsync</a>((<span id="r27 rd" class="r27 r">handler</span>, <span id="r28 rd" class="r28 r">context</span>, <span id="r29 rd" class="r29 r">token</span>) =&gt; <span class="r27 r">handler</span>.<a href="/OrchardCore.Abstractions/A.html#088d24369282fb4e" class="i method">ExecutingAsync</a>(<span class="r28 r">context</span>, <span class="r29 r">token</span>), <span class="r25 r">context</span>, <span class="r10 r">stoppingToken</span>, <a href="#da98fcae6d3b39e3" class="i field">_logger</a>);
+ 
+                        <b>try</b>
+                        {
+                            <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Start processing background task &#39;{TaskName}&#39; on tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r21 r">taskName</span>, <span class="r12 r">tenant</span>);
+ 
+                            <span class="r14 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#f863c20e0665a2cf" class="i method">Run</a>();
+                            <b>await</b> <span class="r22 r">task</span>.<a href="/OrchardCore.Abstractions/A.html#f2d32db1e6cc578d" class="i method">DoWorkAsync</a>(<span class="r20 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>, <span class="r10 r">stoppingToken</span>);
+ 
+                            <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Finished processing background task &#39;{TaskName}&#39; on tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r21 r">taskName</span>, <span class="r12 r">tenant</span>);
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r30 rd" class="r30 r">ex</span>) <b>when</b> (!<span class="r30 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                        {
+                            <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r30 r">ex</span>, <span class="s">&quot;Error while processing background task &#39;{TaskName}&#39; on tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r21 r">taskName</span>, <span class="r12 r">tenant</span>);
+                            <span class="r25 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#0a55b324e4401e9f" class="i property">Exception</a> = <span class="r30 r">ex</span>;
+ 
+                            <b>await</b> <span class="r20 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#d0bbc9a3c754f990" class="i method">HandleExceptionAsync</a>(<span class="r30 r">ex</span>);
+                        }
+ 
+                        <b>await</b> <span class="r26 r">handlers</span>.<a href="/OrchardCore.Abstractions/A.html#317755b6538acde3" class="i method">InvokeAsync</a>((<span id="r31 rd" class="r31 r">handler</span>, <span id="r32 rd" class="r32 r">context</span>, <span id="r33 rd" class="r33 r">token</span>) =&gt; <span class="r31 r">handler</span>.<a href="/OrchardCore.Abstractions/A.html#93e2cb1b1fa8c39e" class="i method">ExecutedAsync</a>(<span class="r32 r">context</span>, <span class="r33 r">token</span>), <span class="r25 r">context</span>, <span class="r10 r">stoppingToken</span>, <a href="#da98fcae6d3b39e3" class="i field">_logger</a>);
+                    });
+                }
+            });
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="499f0e7c291a2c08" href="../R/499f0e7c291a2c08.html" target="n" data-glyph="76,1" class="i method">UpdateAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <span id="r34 rd" class="r34 r">previousShells</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <span id="r35 rd" class="r35 r">runningShells</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r36 rd" class="r36 r">stoppingToken</span>)
+        {
+            <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="k">var</a> <span id="r37 rd" class="r37 r">referenceTime</span> = <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a>;
+ 
+            <b>await</b> <a href="#265ac3c3c60229ac" class="i method">GetShellsToUpdate</a>(<span class="r34 r">previousShells</span>, <span class="r35 r">runningShells</span>).<a href="/OrchardCore.Abstractions/A.html#73922e65b7e3b27a" class="i method">ForEachAsync</a>(<b>async</b> <span id="r38 rd" class="r38 r">shell</span> =&gt;
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r39 rd" class="r39 r">tenant</span> = <span class="r38 r">shell</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>;
+ 
+                <b>if</b> (<span class="r36 r">stoppingToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#9a29b55ac016f5b4" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span> = <span class="r38 r">shell</span>.<a href="#4eec9b787ee02b17" class="i method">CreateHttpContext</a>();
+ 
+                <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="k">var</a> <span id="r40 rd" class="r40 r">shellScope</span> = <b>await</b> <a href="#be7450685e86f212" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#ba40af19c73a5806" class="i method">GetScopeAsync</a>(<span class="r38 r">shell</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>);
+ 
+                <b>if</b> (<span class="r40 r">shellScope</span>.<a href="/OrchardCore.Abstractions/A.html#e31ecdd9861b326a" class="i property">ShellContext</a>.<a href="/OrchardCore.Abstractions/A.html#83bf1f479f57ae7a" class="i property">Pipeline</a> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <b>await</b> <span class="r40 r">shellScope</span>.<a href="/OrchardCore.Abstractions/A.html#ae74d3684cfadb54" class="i method">UsingAsync</a>(<b>async</b> <span id="r41 rd" class="r41 r">scope</span> =&gt;
+                {
+                    <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r42 rd" class="r42 r">tasks</span> = <span class="r41 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.Abstractions/A.html#6727590c52d8f897" class="t t">IBackgroundTask</a>&gt;();
+ 
+                    <a href="#040656498c58bcfd" class="i method">CleanSchedulers</a>(<span class="r39 r">tenant</span>, <span class="r42 r">tasks</span>);
+ 
+                    <b>if</b> (!<span class="r42 r">tasks</span>.<span class="i method">Any</span>())
+                    {
+                        <b>return</b>;
+                    }
+ 
+                    <a href="/OrchardCore.Abstractions/A.html#152dc36b0c230077" class="k">var</a> <span id="r43 rd" class="r43 r">settingsProvider</span> = <span class="r41 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#152dc36b0c230077" class="t t">IBackgroundTaskSettingsProvider</a>&gt;();
+                    <a href="#a58c89ae46f6c77b" class="i field">_changeTokens</a>[<span class="r39 r">tenant</span>] = <span class="r43 r">settingsProvider</span>?.<a href="/OrchardCore.Abstractions/A.html#842ea01646aa81b0" class="i property">ChangeToken</a> ?? <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+ 
+                    <a href="/OrchardCore.Abstractions/A.html#e85e22c4470a5446" class="t t">ITimeZone</a> <span id="r44 rd" class="r44 r">timeZone</span> = <b>null</b>;
+ 
+                    <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="k">var</a> <span id="r45 rd" class="r45 r">siteService</span> = <span class="r41 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a>&gt;();
+                    <b>if</b> (<span class="r45 r">siteService</span> != <b>null</b>)
+                    {
+                        <b>try</b>
+                        {
+                            <span class="r44 r">timeZone</span> = <a href="#9d18ec1091bb85f6" class="i field">_clock</a>.<a href="/OrchardCore.Abstractions/A.html#74bfeee45eed92f3" class="i method">GetTimeZone</a>((<b>await</b> <span class="r45 r">siteService</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#2decee32d7831b1f" class="i property">TimeZoneId</a>);
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r46 rd" class="r46 r">ex</span>) <b>when</b> (!<span class="r46 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                        {
+                            <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r46 r">ex</span>, <span class="s">&quot;Error while getting the time zone from the site settings of the tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r39 r">tenant</span>);
+                        }
+                    }
+ 
+                    <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#6727590c52d8f897" class="k">var</a> <span id="r47 rd" class="r47 r">task</span> <b>in</b> <span class="r42 r">tasks</span>)
+                    {
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r48 rd" class="r48 r">taskName</span> = <span class="r47 r">task</span>.<a href="/OrchardCore.Abstractions/A.html#e26371f49e7e62af" class="i method">GetTaskName</a>();
+ 
+                        <b>if</b> (!<a href="#3f993f9862d940ff" class="i field">_schedulers</a>.<span class="i method">TryGetValue</span>(<span class="r39 r">tenant</span> + <span class="r48 r">taskName</span>, <b>out</b> <a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="k">var</a> <span id="r49 rd" class="r49 r">scheduler</span>))
+                        {
+                            <a href="#3f993f9862d940ff" class="i field">_schedulers</a>[<span class="r39 r">tenant</span> + <span class="r48 r">taskName</span>] = <span class="r49 r">scheduler</span> = <b>new</b> <a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#3312828364bee6d1" class="t constructor">BackgroundTaskScheduler</a>(<span class="r39 r">tenant</span>, <span class="r48 r">taskName</span>, <span class="r37 r">referenceTime</span>, <a href="#9d18ec1091bb85f6" class="i field">_clock</a>);
+                        }
+ 
+                        <span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#b4bc3b7150391031" class="i property">TimeZone</a> = <span class="r44 r">timeZone</span>;
+ 
+                        <b>if</b> (!<span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#2c7bdc987d4473ae" class="i property">Released</a> &amp;&amp; <span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#b9114c99ed156292" class="i property">Updated</a>)
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <a href="/OrchardCore.Abstractions/A.html#efd6d57166323182" class="t t">BackgroundTaskSettings</a> <span id="r50 rd" class="r50 r">settings</span> = <b>null</b>;
+ 
+                        <b>if</b> (<span class="r43 r">settingsProvider</span> != <b>null</b>)
+                        {
+                            <b>try</b>
+                            {
+                                <span class="r50 r">settings</span> = <b>await</b> <span class="r43 r">settingsProvider</span>.<a href="/OrchardCore.Abstractions/A.html#cee33490c3068a90" class="i method">GetSettingsAsync</a>(<span class="r47 r">task</span>);
+                            }
+                            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r51 rd" class="r51 r">ex</span>) <b>when</b> (!<span class="r51 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                            {
+                                <a href="#da98fcae6d3b39e3" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r51 r">ex</span>, <span class="s">&quot;Error while updating settings of background task &#39;{TaskName}&#39; on tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r48 r">taskName</span>, <span class="r39 r">tenant</span>);
+                            }
+                        }
+ 
+                        <span class="r50 r">settings</span> ??= <span class="r47 r">task</span>.<a href="/OrchardCore.Abstractions/A.html#0ea5f0f7e102b2ba" class="i method">GetDefaultSettings</a>();
+ 
+                        <b>if</b> (<span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#2c7bdc987d4473ae" class="i property">Released</a> || !<span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#615d41d484239e78" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#b2d6a5b88537758c" class="i property">Schedule</a>.<a href="@1@System.Runtime/A.html#31b307b02a3bd6b9" class="i method">Equals</a>(<span class="r50 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#b2d6a5b88537758c" class="i property">Schedule</a>))
+                        {
+                            <span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#e651f525a2d02256" class="i property">ReferenceTime</a> = <span class="r37 r">referenceTime</span>;
+                        }
+ 
+                        <span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#615d41d484239e78" class="i property">Settings</a> = <span class="r50 r">settings</span>;
+                        <span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#2c7bdc987d4473ae" class="i property">Released</a> = <b>false</b>;
+                        <span class="r49 r">scheduler</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#b9114c99ed156292" class="i property">Updated</a> = <b>true</b>;
+                    }
+                });
+            });
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="daa1ebe1a132b24c" href="../R/daa1ebe1a132b24c.html" target="n" data-glyph="76,1" class="i method">WaitAsync</a>(<a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <span id="r52 rd" class="r52 r">pollingDelay</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r53 rd" class="r53 r">stoppingToken</span>)
+        {
+            <b>try</b>
+            {
+                <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b070ae859dd3f7b7" class="i method">Delay</a>(<a href="#617f34ad13a71274" class="i field">MinIdleTime</a>, <span class="r53 r">stoppingToken</span>);
+                <b>await</b> <span class="r52 r">pollingDelay</span>;
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#a0a8b79c277cf327" class="t t">OperationCanceledException</a>)
+            {
+            }
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="3f1c22abb8ef5c97" href="../R/3f1c22abb8ef5c97.html" target="n" data-glyph="76,1" class="i method">GetRunningShells</a>()
+        {
+            <b>return</b> <a href="#be7450685e86f212" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#b2e5c4325d959756" class="i method">ListShellContexts</a>().<span class="i method">Where</span>(<span id="r54 rd" class="r54 r">s</span> =&gt; <span class="r54 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a> &amp;&amp; <span class="r54 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#83bf1f479f57ae7a" class="i property">Pipeline</a> != <b>null</b>).<span class="i method">ToArray</span>();
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="95a50b777285f6b6" href="../R/95a50b777285f6b6.html" target="n" data-glyph="76,1" class="i method">GetShellsToRun</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <span id="r55 rd" class="r55 r">shells</span>)
+        {
+            <b>var</b> <span id="r56 rd" class="r56 r">tenantsToRun</span> = <a href="#3f993f9862d940ff" class="i field">_schedulers</a>.<span class="i method">Where</span>(<span id="r57 rd" class="r57 r">s</span> =&gt; <span class="r57 r">s</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#ac5f3655fb063181" class="i method">CanRun</a>()).<span class="i method">Select</span>(<span id="r58 rd" class="r58 r">s</span> =&gt; <span class="r58 r">s</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#8cea441ae0fac645" class="i property">Tenant</a>).<span class="i method">Distinct</span>().<span class="i method">ToArray</span>();
+            <b>return</b> <span class="r55 r">shells</span>.<span class="i method">Where</span>(<span id="r59 rd" class="r59 r">s</span> =&gt; <span class="r56 r">tenantsToRun</span>.<span class="i method">Contains</span>(<span class="r59 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>)).<span class="i method">ToArray</span>();
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <a id="265ac3c3c60229ac" href="../R/265ac3c3c60229ac.html" target="n" data-glyph="76,1" class="i method">GetShellsToUpdate</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <span id="r60 rd" class="r60 r">previousShells</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a>&gt; <span id="r61 rd" class="r61 r">runningShells</span>)
+        {
+            <b>var</b> <span id="r62 rd" class="r62 r">released</span> = <span class="r60 r">previousShells</span>.<span class="i method">Where</span>(<span id="r63 rd" class="r63 r">s</span> =&gt; <span class="r63 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#fb03a9b2428f332c" class="i property">Released</a>).<span class="i method">Select</span>(<span id="r64 rd" class="r64 r">s</span> =&gt; <span class="r64 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>).<span class="i method">ToArray</span>();
+ 
+            <b>if</b> (<span class="r62 r">released</span>.<span class="i method">Any</span>())
+            {
+                <a href="#431346da8039044b" class="i method">UpdateSchedulers</a>(<span class="r62 r">released</span>, <span id="r65 rd" class="r65 r">s</span> =&gt; <span class="r65 r">s</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#2c7bdc987d4473ae" class="i property">Released</a> = <b>true</b>);
+            }
+ 
+            <b>var</b> <span id="r66 rd" class="r66 r">changed</span> = <a href="#a58c89ae46f6c77b" class="i field">_changeTokens</a>.<span class="i method">Where</span>(<span id="r67 rd" class="r67 r">t</span> =&gt; <span class="r67 r">t</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<span class="i property">HasChanged</span>).<span class="i method">Select</span>(<span id="r68 rd" class="r68 r">t</span> =&gt; <span class="r68 r">t</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>).<span class="i method">ToArray</span>();
+ 
+            <b>if</b> (<span class="r66 r">changed</span>.<span class="i method">Any</span>())
+            {
+                <a href="#431346da8039044b" class="i method">UpdateSchedulers</a>(<span class="r66 r">changed</span>, <span id="r69 rd" class="r69 r">s</span> =&gt; <span class="r69 r">s</span>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#b9114c99ed156292" class="i property">Updated</a> = <b>false</b>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r70 rd" class="r70 r">valid</span> = <span class="r60 r">previousShells</span>.<span class="i method">Select</span>(<span id="r71 rd" class="r71 r">s</span> =&gt; <span class="r71 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>).<span class="i method">Except</span>(<span class="r62 r">released</span>).<span class="i method">Except</span>(<span class="r66 r">changed</span>);
+            <b>var</b> <span id="r72 rd" class="r72 r">tenantsToUpdate</span> = <span class="r61 r">runningShells</span>.<span class="i method">Select</span>(<span id="r73 rd" class="r73 r">s</span> =&gt; <span class="r73 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>).<span class="i method">Except</span>(<span class="r70 r">valid</span>).<span class="i method">ToArray</span>();
+ 
+            <b>return</b> <span class="r61 r">runningShells</span>.<span class="i method">Where</span>(<span id="r74 rd" class="r74 r">s</span> =&gt; <span class="r72 r">tenantsToUpdate</span>.<span class="i method">Contains</span>(<span class="r74 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>)).<span class="i method">ToArray</span>();
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="t t">BackgroundTaskScheduler</a>&gt; <a id="602c9e360a8580bc" href="../R/602c9e360a8580bc.html" target="n" data-glyph="76,1" class="i method">GetSchedulersToRun</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r75 rd" class="r75 r">tenant</span>)
+        {
+            <b>return</b> <a href="#3f993f9862d940ff" class="i field">_schedulers</a>.<span class="i method">Where</span>(<span id="r76 rd" class="r76 r">s</span> =&gt; <span class="r76 r">s</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#8cea441ae0fac645" class="i property">Tenant</a> == <span class="r75 r">tenant</span> &amp;&amp; <span class="r76 r">s</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#ac5f3655fb063181" class="i method">CanRun</a>()).<span class="i method">Select</span>(<span id="r77 rd" class="r77 r">s</span> =&gt; <span class="r77 r">s</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>).<span class="i method">ToArray</span>();
+        }
+ 
+        <b>private void</b> <a id="431346da8039044b" href="../R/431346da8039044b.html" target="n" data-glyph="76,1" class="i method">UpdateSchedulers</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r78 rd" class="r78 r">tenants</span>, <a href="@1@System.Runtime/A.html#486d58da4553e12d" class="t t">Action</a>&lt;<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="t t">BackgroundTaskScheduler</a>&gt; <span id="r79 rd" class="r79 r">action</span>)
+        {
+            <b>var</b> <span id="r80 rd" class="r80 r">keys</span> = <a href="#3f993f9862d940ff" class="i field">_schedulers</a>.<span class="i method">Where</span>(<span id="r81 rd" class="r81 r">kv</span> =&gt; <span class="r78 r">tenants</span>.<span class="i method">Contains</span>(<span class="r81 r">kv</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#8cea441ae0fac645" class="i property">Tenant</a>)).<span class="i method">Select</span>(<span id="r82 rd" class="r82 r">kv</span> =&gt; <span class="r82 r">kv</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>).<span class="i method">ToArray</span>();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r83 rd" class="r83 r">key</span> <b>in</b> <span class="r80 r">keys</span>)
+            {
+                <b>if</b> (<a href="#3f993f9862d940ff" class="i field">_schedulers</a>.<span class="i method">TryGetValue</span>(<span class="r83 r">key</span>, <b>out</b> <a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="t t">BackgroundTaskScheduler</a> <span id="r84 rd" class="r84 r">scheduler</span>))
+                {
+                    <span class="r79 r">action</span>(<span class="r84 r">scheduler</span>);
+                }
+            }
+        }
+ 
+        <b>private void</b> <a id="040656498c58bcfd" href="../R/040656498c58bcfd.html" target="n" data-glyph="76,1" class="i method">CleanSchedulers</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r85 rd" class="r85 r">tenant</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#6727590c52d8f897" class="t t">IBackgroundTask</a>&gt; <span id="r86 rd" class="r86 r">tasks</span>)
+        {
+            <b>var</b> <span id="r87 rd" class="r87 r">validKeys</span> = <span class="r86 r">tasks</span>.<span class="i method">Select</span>(<span id="r88 rd" class="r88 r">task</span> =&gt; <span class="r85 r">tenant</span> + <span class="r88 r">task</span>.<a href="/OrchardCore.Abstractions/A.html#e26371f49e7e62af" class="i method">GetTaskName</a>()).<span class="i method">ToArray</span>();
+ 
+            <b>var</b> <span id="r89 rd" class="r89 r">keys</span> = <a href="#3f993f9862d940ff" class="i field">_schedulers</a>.<span class="i method">Where</span>(<span id="r90 rd" class="r90 r">kv</span> =&gt; <span class="r90 r">kv</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#8cea441ae0fac645" class="i property">Tenant</a> == <span class="r85 r">tenant</span>).<span class="i method">Select</span>(<span id="r91 rd" class="r91 r">kv</span> =&gt; <span class="r91 r">kv</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>).<span class="i method">ToArray</span>();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r92 rd" class="r92 r">key</span> <b>in</b> <span class="r89 r">keys</span>)
+            {
+                <b>if</b> (!<span class="r87 r">validKeys</span>.<span class="i method">Contains</span>(<span class="r92 r">key</span>))
+                {
+                    <a href="#3f993f9862d940ff" class="i field">_schedulers</a>.<span class="i method">TryRemove</span>(<span class="r92 r">key</span>, <b>out</b> <a href="../BackgroundTasks/BackgroundTaskScheduler.cs.html#0a223552d6a1baec" class="k">var</a> <span id="r93 rd" class="r93 r">scheduler</span>);
+                }
+            }
+        }
+    }
+ 
+    <b>internal static class</b> <a id="fc516380d06da0dc" href="../R/../../0000000000.html" target="n" data-glyph="2,0" class="t t">HttpContextExtensions</a>
+    {
+        <b>public static void</b> <a id="694607b131b023fe" href="../R/694607b131b023fe.html" target="n" data-glyph="220,1" class="i method">SetBaseUrl</a>(<b>this</b> <span class="t t">HttpContext</span> <span id="r94 rd" class="r94 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r95 rd" class="r95 r">baseUrl</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#49754736d6982eb6" class="i method">TryCreate</a>(<span class="r95 r">baseUrl</span>, <a href="@1@System.Runtime/A.html#ac43655101ad74be" class="t t">UriKind</a>.<a href="@1@System.Runtime/A.html#d734108197254429" class="i field">Absolute</a>, <b>out</b> <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="k">var</a> <span id="r96 rd" class="r96 r">uri</span>))
+            {
+                <span class="r94 r">context</span>.<span class="i property">Request</span>.<span class="i property">Scheme</span> = <span class="r96 r">uri</span>.<a href="@1@System.Runtime/A.html#e73925be401b9bcb" class="i property">Scheme</a>;
+                <span class="r94 r">context</span>.<span class="i property">Request</span>.<span class="i property">Host</span> = <b>new</b> <span class="t constructor">HostString</span>(<span class="r96 r">uri</span>.<a href="@1@System.Runtime/A.html#c230833968da7179" class="i property">Host</a>, <span class="r96 r">uri</span>.<a href="@1@System.Runtime/A.html#8d40fee6fe43f1d3" class="i property">Port</a>);
+                <span class="r94 r">context</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span> = <span class="r96 r">uri</span>.<a href="@1@System.Runtime/A.html#a25e99acb6b73c81" class="i property">AbsolutePath</a>;
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r96 r">uri</span>.<a href="@1@System.Runtime/A.html#5177e12380d8e70d" class="i property">Query</a>))
+                {
+                    <span class="r94 r">context</span>.<span class="i property">Request</span>.<span class="i property">QueryString</span> = <b>new</b> <span class="t constructor">QueryString</span>(<span class="r96 r">uri</span>.<a href="@1@System.Runtime/A.html#5177e12380d8e70d" class="i property">Query</a>);
+                }
+            }
+        }
+    }
+ 
+    <b>internal static class</b> <a id="5671d36257d5f626" href="../R/../../0000000000.html" target="n" data-glyph="2,0" class="t t">ShellExtensions</a>
+    {
+        <b>public static</b> <span class="t t">HttpContext</span> <a id="4eec9b787ee02b17" href="../R/4eec9b787ee02b17.html" target="n" data-glyph="220,1" class="i method">CreateHttpContext</a>(<b>this</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r97 rd" class="r97 r">shell</span>)
+        {
+            <b>var</b> <span id="r98 rd" class="r98 r">context</span> = <span class="r97 r">shell</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="#17f0822c827b94e2" class="i method">CreateHttpContext</a>();
+ 
+            <span class="r98 r">context</span>.<span class="i property">Features</span>.<span class="i method">Set</span>(<b>new</b> <a href="/OrchardCore.Abstractions/A.html#e417096bb46736d2" class="t constructor">ShellContextFeature</a>
+            {
+                <a href="/OrchardCore.Abstractions/A.html#28180a358ade1eb8" class="i property">ShellContext</a> = <span class="r97 r">shell</span>,
+                <a href="/OrchardCore.Abstractions/A.html#8eacb3da584c7ee2" class="i property">OriginalPathBase</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>,
+                <a href="/OrchardCore.Abstractions/A.html#d7fdca8a76e8e0be" class="i property">OriginalPath</a> = <span class="s">&quot;/&quot;</span>
+            });
+ 
+            <b>return</b> <span class="r98 r">context</span>;
+        }
+ 
+        <b>public static</b> <span class="t t">HttpContext</span> <a id="17f0822c827b94e2" href="../R/17f0822c827b94e2.html" target="n" data-glyph="220,1" class="i method">CreateHttpContext</a>(<b>this</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r99 rd" class="r99 r">settings</span>)
+        {
+            <b>var</b> <span id="r100 rd" class="r100 r">context</span> = <b>new</b> <span class="t constructor">DefaultHttpContext</span>().<a href="/OrchardCore.Abstractions/A.html#f6599c86f4b50996" class="i method">UseShellScopeServices</a>();
+ 
+            <span class="r100 r">context</span>.<span class="i property">Request</span>.<span class="i property">Scheme</span> = <span class="s">&quot;https&quot;</span>;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r101 rd" class="r101 r">urlHost</span> = <span class="r99 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#258c1ed033e90731" class="i property">RequestUrlHost</a>?.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<b>new</b>[] { <span class="s">&#39;,&#39;</span>, <span class="s">&#39; &#39;</span> },
+                <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>).<span class="i method">FirstOrDefault</span>();
+ 
+            <span class="r100 r">context</span>.<span class="i property">Request</span>.<span class="i property">Host</span> = <b>new</b> <span class="t constructor">HostString</span>(<span class="r101 r">urlHost</span> ?? <span class="s">&quot;localhost&quot;</span>);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r99 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a>))
+            {
+                <span class="r100 r">context</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span> = <span class="s">&quot;/&quot;</span> + <span class="r99 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a>;
+            }
+ 
+            <span class="r100 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span> = <span class="s">&quot;/&quot;</span>;
+            <span class="r100 r">context</span>.<span class="i property">Items</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;IsBackground&quot;</span>] = <b>true</b>;
+ 
+            <b>return</b> <span class="r100 r">context</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

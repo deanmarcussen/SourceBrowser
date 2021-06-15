@@ -1,0 +1,134 @@
+﻿<!DOCTYPE html>
+<html><head><title>SchemaService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(125);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Apis.GraphQL/Services/SchemaService.cs" target="_top">Services\SchemaService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Apis.GraphQL" target="_top">src\OrchardCore.Modules\OrchardCore.Apis.GraphQL\OrchardCore.Apis.GraphQL.csproj</a> (OrchardCore.Apis.GraphQL)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">GraphQL</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Types</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="0bfc2207d9287394" href="../R/0bfc2207d9287394.html" target="n" data-glyph="0,0" class="t t">SchemaService</a> : <a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#56d82e9a9b2d53bc" class="t t">ISchemaFactory</a>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#e49b2e0fe493e425" class="t t">ISchemaBuilder</a>&gt; <a id="576be0a1ec618fae" href="../R/576be0a1ec618fae.html" target="n" data-glyph="46,1" class="i field">_schemaBuilders</a>;
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="9ecab2d6325b9d81" href="../R/9ecab2d6325b9d81.html" target="n" data-glyph="46,1" class="i field">_schemaGenerationSemaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1, 1);
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#e49b2e0fe493e425" class="t t">ISchemaBuilder</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="0738a53ce25858d4" href="../R/0738a53ce25858d4.html" target="n" data-glyph="46,1" class="i field">_identifiers</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#e49b2e0fe493e425" class="t t">ISchemaBuilder</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+        <b>private</b> <span class="i">ISchema</span> <a id="632c856bc45ac047" href="../R/632c856bc45ac047.html" target="n" data-glyph="46,1" class="i field">_schema</a>;
+ 
+        <b>public</b> <a id="b89986fdee174383" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SchemaService</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#e49b2e0fe493e425" class="t t">ISchemaBuilder</a>&gt; <span id="r0 rd" class="r0 r">schemaBuilders</span>)
+        {
+            <a href="#576be0a1ec618fae" class="i field">_schemaBuilders</a> = <span class="r0 r">schemaBuilders</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">ISchema</span>&gt; <a id="3bbc310268400b83" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetSchemaAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r1 rd" class="r1 r">hasChanged</span> = <b>false</b>;
+ 
+            <b>foreach</b> (<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#e49b2e0fe493e425" class="k">var</a> <span id="r2 rd" class="r2 r">builder</span> <b>in</b> <a href="#576be0a1ec618fae" class="i field">_schemaBuilders</a>)
+            {
+                <b>if</b> (<a href="#0738a53ce25858d4" class="i field">_identifiers</a>.<span class="i method">TryGetValue</span>(<span class="r2 r">builder</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r3 rd" class="r3 r">identifier</span>) &amp;&amp; <b>await</b> <span class="r2 r">builder</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#8a796ac44be97d11" class="i method">GetIdentifierAsync</a>() != <span class="r3 r">identifier</span>)
+                {
+                    <span class="r1 r">hasChanged</span> = <b>true</b>;
+                    <b>break</b>;
+                }
+            }
+ 
+            <b>if</b> (<a href="#632c856bc45ac047" class="i field">_schema</a> <b>is object</b> &amp;&amp; !<span class="r1 r">hasChanged</span>)
+            {
+                <b>return</b> <a href="#632c856bc45ac047" class="i field">_schema</a>;
+            }
+ 
+            <b>await</b> <a href="#9ecab2d6325b9d81" class="i field">_schemaGenerationSemaphore</a>.<span class="i method">WaitAsync</span>();
+ 
+            <b>try</b>
+            {
+                <b>foreach</b> (<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#e49b2e0fe493e425" class="k">var</a> <span id="r4 rd" class="r4 r">builder</span> <b>in</b> <a href="#576be0a1ec618fae" class="i field">_schemaBuilders</a>)
+                {
+                    <b>if</b> (<a href="#0738a53ce25858d4" class="i field">_identifiers</a>.<span class="i method">TryGetValue</span>(<span class="r4 r">builder</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">identifier</span>) &amp;&amp; <b>await</b> <span class="r4 r">builder</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#8a796ac44be97d11" class="i method">GetIdentifierAsync</a>() != <span class="r5 r">identifier</span>)
+                    {
+                        <span class="r1 r">hasChanged</span> = <b>true</b>;
+                        <b>break</b>;
+                    }
+                }
+ 
+                <b>if</b> (<a href="#632c856bc45ac047" class="i field">_schema</a> <b>is object</b> &amp;&amp; !<span class="r1 r">hasChanged</span>)
+                {
+                    <b>return</b> <a href="#632c856bc45ac047" class="i field">_schema</a>;
+                }
+ 
+                <b>var</b> <span id="r6 rd" class="r6 r">serviceProvider</span> = <span class="i">ShellScope</span>.<span class="i">Services</span>;
+ 
+                <b>var</b> <span id="r7 rd" class="r7 r">schema</span> = <b>new</b> <span class="i">Schema</span>
+                {
+                    <span class="i">Query</span> = <b>new</b> <span class="i">ObjectGraphType</span> { <span class="i">Name</span> = <span class="s">&quot;Query&quot;</span> },
+                    <span class="i">Mutation</span> = <b>new</b> <span class="i">ObjectGraphType</span> { <span class="i">Name</span> = <span class="s">&quot;Mutation&quot;</span> },
+                    <span class="i">Subscription</span> = <b>new</b> <span class="i">ObjectGraphType</span> { <span class="i">Name</span> = <span class="s">&quot;Subscription&quot;</span> },
+                    <span class="i">FieldNameConverter</span> = <b>new</b> <a href="../OrchardFieldNameConverter.cs.html#a64a3cf62ac69464" class="t constructor">OrchardFieldNameConverter</a>(),
+                    <span class="i">DependencyResolver</span> = <span class="r6 r">serviceProvider</span>.<span class="i">GetService</span>&lt;<span class="i">IDependencyResolver</span>&gt;()
+                };
+ 
+                <b>foreach</b> (<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#e49b2e0fe493e425" class="k">var</a> <span id="r8 rd" class="r8 r">builder</span> <b>in</b> <a href="#576be0a1ec618fae" class="i field">_schemaBuilders</a>)
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">identifier</span> = <b>await</b> <span class="r8 r">builder</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#8a796ac44be97d11" class="i method">GetIdentifierAsync</a>();
+ 
+                    <span class="c">// null being a valid value not yet updated.</span>
+                    <b>if</b> (<span class="r9 r">identifier</span> != <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>)
+                    {
+                        <a href="#0738a53ce25858d4" class="i field">_identifiers</a>[<span class="r8 r">builder</span>] = <span class="r9 r">identifier</span>;
+                    }
+ 
+                    <b>await</b> <span class="r8 r">builder</span>.<span class="i">BuildAsync</span>(<span class="r7 r">schema</span>);
+                }
+ 
+                <b>foreach</b> (<b>var</b> <span id="r10 rd" class="r10 r">type</span> <b>in</b> <span class="r6 r">serviceProvider</span>.<span class="i">GetServices</span>&lt;<span class="i">IInputObjectGraphType</span>&gt;())
+                {
+                    <span class="r7 r">schema</span>.<span class="i">RegisterType</span>(<span class="r10 r">type</span>);
+                }
+ 
+                <b>foreach</b> (<b>var</b> <span id="r11 rd" class="r11 r">type</span> <b>in</b> <span class="r6 r">serviceProvider</span>.<span class="i">GetServices</span>&lt;<span class="i">IObjectGraphType</span>&gt;())
+                {
+                    <span class="r7 r">schema</span>.<span class="i">RegisterType</span>(<span class="r11 r">type</span>);
+                }
+ 
+                <span class="c">// Clean Query, Mutation and Subscription if they have no fields</span>
+                <span class="c">// to prevent GraphQL configuration errors.</span>
+ 
+                <b>if</b> (!<span class="r7 r">schema</span>.<span class="i">Query</span>.<span class="i">Fields</span>.<span class="i">Any</span>())
+                {
+                    <span class="r7 r">schema</span>.<span class="i">Query</span> = <b>null</b>;
+                }
+ 
+                <b>if</b> (!<span class="r7 r">schema</span>.<span class="i">Mutation</span>.<span class="i">Fields</span>.<span class="i">Any</span>())
+                {
+                    <span class="r7 r">schema</span>.<span class="i">Mutation</span> = <b>null</b>;
+                }
+ 
+                <b>if</b> (!<span class="r7 r">schema</span>.<span class="i">Subscription</span>.<span class="i">Fields</span>.<span class="i">Any</span>())
+                {
+                    <span class="r7 r">schema</span>.<span class="i">Subscription</span> = <b>null</b>;
+                }
+ 
+                <span class="r7 r">schema</span>.<span class="i">Initialize</span>();
+                <b>return</b> <a href="#632c856bc45ac047" class="i field">_schema</a> = <span class="r7 r">schema</span>;
+            }
+            <b>finally</b>
+            {
+                <a href="#9ecab2d6325b9d81" class="i field">_schemaGenerationSemaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

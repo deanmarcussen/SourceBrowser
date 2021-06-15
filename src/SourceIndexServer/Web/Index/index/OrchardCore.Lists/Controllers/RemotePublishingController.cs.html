@@ -1,0 +1,80 @@
+﻿<!DOCTYPE html>
+<html><head><title>RemotePublishingController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(71);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lists/Controllers/RemotePublishingController.cs" target="_top">Controllers\RemotePublishingController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lists" target="_top">src\OrchardCore.Modules\OrchardCore.Lists\OrchardCore.Lists.csproj</a> (OrchardCore.Lists)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Xml</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Controllers</span>
+{
+    [<span class="i">RequireFeatures</span>(<span class="s">&quot;OrchardCore.RemotePublishing&quot;</span>)]
+    <b>public class</b> <a id="0752ce1164f51d5c" href="../R/0752ce1164f51d5c.html" target="n" data-glyph="0,0" class="t t">RemotePublishingController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="c543e8c2f541b29b" href="../R/c543e8c2f541b29b.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="89f4c0743fcad617" href="../R/89f4c0743fcad617.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="db7c9da120a65629" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RemotePublishingController</a>(
+            <span class="i">IContentManager</span> <span id="r0 rd" class="r0 r">contentManager</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#0752ce1164f51d5c" class="t t">RemotePublishingController</a>&gt; <span id="r1 rd" class="r1 r">logger</span>)
+        {
+            <a href="#c543e8c2f541b29b" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+            <a href="#89f4c0743fcad617" class="i field">_logger</a> = <span class="r1 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="3b322c68d79d0140" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Rsd</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">contentItemId</span>)
+        {
+            <b>if</b> (<a href="#89f4c0743fcad617" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+            {
+                <a href="#89f4c0743fcad617" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;RSD requested&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">contentItem</span> = <b>await</b> <a href="#c543e8c2f541b29b" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r2 r">contentItemId</span>);
+ 
+            <b>if</b> (<span class="r3 r">contentItem</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">listPart</span> = <span class="r3 r">contentItem</span>.<span class="i">As</span>&lt;<a href="../Models/ListPart.cs.html#9805ddfadd8d801c" class="t t">ListPart</a>&gt;();
+ 
+            <b>if</b> (<span class="r4 r">listPart</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>const string</b> <span id="r5 rd" class="r5 r">manifestUri</span> = <span class="s">&quot;http://archipelago.phrasewise.com/rsd&quot;</span>;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">url</span> = <span class="i property">Url</span>.<span class="i method">Action</span>(<span class="s">&quot;Index&quot;</span>, <span class="s">&quot;Home&quot;</span>, <b>new</b> { <a href="#372d2bea7feada7f" class="i property">area</a> = <span class="s">&quot;OrchardCore.XmlRpc&quot;</span> }, <span class="i property">Request</span>.<span class="i property">Scheme</span>);
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">options</span> = <b>new</b> <span class="t constructor">XElement</span>(
+                <span class="t t">XName</span>.<span class="i method">Get</span>(<span class="s">&quot;service&quot;</span>, <span class="r5 r">manifestUri</span>),
+                <b>new</b> <span class="t constructor">XElement</span>(<span class="t t">XName</span>.<span class="i method">Get</span>(<span class="s">&quot;engineName&quot;</span>, <span class="r5 r">manifestUri</span>), <span class="s">&quot;Orchard CMS&quot;</span>),
+                <b>new</b> <span class="t constructor">XElement</span>(<span class="t t">XName</span>.<span class="i method">Get</span>(<span class="s">&quot;engineLink&quot;</span>, <span class="r5 r">manifestUri</span>), <span class="s">&quot;https://orchardcore.net&quot;</span>),
+                <b>new</b> <span class="t constructor">XElement</span>(<span class="t t">XName</span>.<span class="i method">Get</span>(<span class="s">&quot;homePageLink&quot;</span>, <span class="r5 r">manifestUri</span>), <span class="s">&quot;https://orchardcore.net&quot;</span>),
+                <b>new</b> <span class="t constructor">XElement</span>(<span class="t t">XName</span>.<span class="i method">Get</span>(<span class="s">&quot;apis&quot;</span>, <span class="r5 r">manifestUri</span>),
+                    <b>new</b> <span class="t constructor">XElement</span>(<span class="t t">XName</span>.<span class="i method">Get</span>(<span class="s">&quot;api&quot;</span>, <span class="r5 r">manifestUri</span>),
+                        <b>new</b> <span class="t constructor">XAttribute</span>(<span class="s">&quot;name&quot;</span>, <span class="s">&quot;MetaWeblog&quot;</span>),
+                        <b>new</b> <span class="t constructor">XAttribute</span>(<span class="s">&quot;preferred&quot;</span>, <b>true</b>),
+                        <b>new</b> <span class="t constructor">XAttribute</span>(<span class="s">&quot;apiLink&quot;</span>, <span class="r6 r">url</span>),
+                        <b>new</b> <span class="t">XAttribute</span>(<span class="s">&quot;blogID&quot;</span>, <span class="r3 r">contentItem</span>.<span class="i">ContentItemId</span>))));
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">doc</span> = <b>new</b> <span class="t constructor">XDocument</span>(<b>new</b> <span class="t constructor">XElement</span>(
+                                        <span class="t t">XName</span>.<span class="i method">Get</span>(<span class="s">&quot;rsd&quot;</span>, <span class="r5 r">manifestUri</span>),
+                                        <b>new</b> <span class="t constructor">XAttribute</span>(<span class="s">&quot;version&quot;</span>, <span class="s">&quot;1.0&quot;</span>),
+                                        <span class="r7 r">options</span>));
+ 
+            <b>return</b> <span class="i method">Content</span>(<span class="r8 r">doc</span>.<span class="i method">ToString</span>(), <span class="s">&quot;text/xml&quot;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

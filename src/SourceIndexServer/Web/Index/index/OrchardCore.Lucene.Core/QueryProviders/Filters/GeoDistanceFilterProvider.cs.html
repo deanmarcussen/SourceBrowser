@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<html><head><title>GeoDistanceFilterProvider.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(211);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene.Core/QueryProviders/Filters/GeoDistanceFilterProvider.cs" target="_top">QueryProviders\Filters\GeoDistanceFilterProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene.Core" target="_top">src\OrchardCore\OrchardCore.Lucene.Core\OrchardCore.Lucene.Core.csproj</a> (OrchardCore.Lucene.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">RegularExpressions</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Queries</span>.<span class="i">Function</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Prefix</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Prefix</span>.<span class="i">Tree</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Queries</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Util</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i">Spatial4n</span>.<span class="i">Core</span>.<span class="i">Context</span>;
+<b>using</b> <span class="i">Spatial4n</span>.<span class="i">Core</span>.<span class="i">Distance</span>;
+<b>using</b> <span class="i">Spatial4n</span>.<span class="i">Core</span>.<span class="i">Shapes</span>;
+<b>using</b> <span class="i">Spatial4n</span>.<span class="i">Core</span>.<span class="i">Shapes</span>.<span class="i">Impl</span>;
+<b>using</b> <span class="i">Spatial4n</span>.<span class="i">Core</span>.<span class="i">Util</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">QueryProviders</span>.<span class="i n">Filters</span>
+{
+    <b>public class</b> <a id="a7a2cc67e6f10144" href="../../R/a7a2cc67e6f10144.html" target="n" data-glyph="0,0" class="t t"><span id="bd8b822636adf0fe">GeoDistanceFilterProvider</span></a> : <a href="ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="t t">ILuceneBooleanFilterProvider</a>
+    {
+        <b>public</b> <span class="i">FilteredQuery</span> <a id="2c43543b8478a2dd" href="../../R/2c43543b8478a2dd.html" target="n" data-glyph="72,1" class="i method">CreateFilteredQuery</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a> <span id="r0 rd" class="r0 r">builder</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r1 rd" class="r1 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">type</span>, <span class="i">JToken</span> <span id="r3 rd" class="r3 r">filter</span>, <span class="i">Query</span> <span id="r4 rd" class="r4 r">toFilter</span>)
+        {
+            <b>if</b> (<span class="r2 r">type</span> != <span class="s">&quot;geo_distance&quot;</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (!(<span class="r4 r">toFilter</span> <b>is</b> <span class="i">BooleanQuery</span> <span id="r5 rd" class="r5 r">booleanQuery</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">queryObj</span> = <span class="r3 r">filter</span> <b>as</b> <span class="i">JObject</span>;
+ 
+            <b>if</b> (<span class="r6 r">queryObj</span>.<span class="i">Properties</span>().<span class="i">Count</span>() != 2)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">ctx</span> = <span class="i">SpatialContext</span>.<span class="i">GEO</span>;
+ 
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r8 rd" class="r8 r">maxLevels</span> = 11; <span class="c">//results in sub-meter precision for geohash</span>
+ 
+            <span class="c">//  This can also be constructed from SpatialPrefixTreeFactory</span>
+            <span class="i">SpatialPrefixTree</span> <span id="r9 rd" class="r9 r">grid</span> = <b>new</b> <span class="i">GeohashPrefixTree</span>(<span class="r7 r">ctx</span>, <span class="r8 r">maxLevels</span>);
+ 
+            <span class="i">JProperty</span> <span id="r10 rd" class="r10 r">distanceProperty</span> = <b>null</b>;
+            <span class="i">JProperty</span> <span id="r11 rd" class="r11 r">geoProperty</span> = <b>null</b>;
+ 
+            <b>foreach</b> (<b>var</b> <span id="r12 rd" class="r12 r">jProperty</span> <b>in</b> <span class="r6 r">queryObj</span>.<span class="i">Properties</span>())
+            {
+                <b>if</b> (<span class="r12 r">jProperty</span>.<span class="i">Name</span>.<span class="i">Equals</span>(<span class="s">&quot;distance&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+                {
+                    <span class="r10 r">distanceProperty</span> = <span class="r12 r">jProperty</span>;
+                }
+                <b>else</b>
+                {
+                    <span class="r11 r">geoProperty</span> = <span class="r12 r">jProperty</span>;
+                }
+            }
+ 
+            <b>if</b> (<span class="r10 r">distanceProperty</span> == <b>null</b> || <span class="r11 r">geoProperty</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">strategy</span> = <b>new</b> <span class="i">RecursivePrefixTreeStrategy</span>(<span class="r9 r">grid</span>, <span class="r11 r">geoProperty</span>.<span class="i">Name</span>);
+ 
+            <b>if</b> (!<a href="#9b78eba500e43a88" class="i method">TryParseDistance</a>((<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>)<span class="r10 r">distanceProperty</span>.<span class="i">Value</span>, <b>out</b> <a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="k">var</a> <span id="r14 rd" class="r14 r">distanceDegrees</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (!<span class="i">TryGetPointFromJToken</span>(<span class="r11 r">geoProperty</span>.<span class="i">Value</span>, <b>out</b> <b>var</b> <span id="r15 rd" class="r15 r">point</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r16 rd" class="r16 r">circle</span> = <span class="r7 r">ctx</span>.<span class="i">MakeCircle</span>(<span class="r15 r">point</span>.<span class="i">X</span>, <span class="r15 r">point</span>.<span class="i">Y</span>, <span class="r14 r">distanceDegrees</span>);
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">args</span> = <b>new</b> <span class="i">SpatialArgs</span>(<span class="i">SpatialOperation</span>.<span class="i">Intersects</span>, <span class="r16 r">circle</span>);
+ 
+            <b>var</b> <span id="r18 rd" class="r18 r">spatialQuery</span> = <span class="r13 r">strategy</span>.<span class="i">MakeQuery</span>(<span class="r17 r">args</span>);
+            <b>var</b> <span id="r19 rd" class="r19 r">valueSource</span> = <span class="r13 r">strategy</span>.<span class="i">MakeRecipDistanceValueSource</span>(<span class="r16 r">circle</span>);
+            <b>var</b> <span id="r20 rd" class="r20 r">valueSourceFilter</span> = <b>new</b> <span class="i">ValueSourceFilter</span>(<b>new</b> <span class="i">QueryWrapperFilter</span>(<span class="r18 r">spatialQuery</span>), <span class="r19 r">valueSource</span>, 0, 1);
+ 
+            <span class="r5 r">booleanQuery</span>.<span class="i">Add</span>(<b>new</b> <span class="i">FunctionQuery</span>(<span class="r19 r">valueSource</span>), <span class="i">Occur</span>.<span class="i">MUST</span>);
+ 
+            <b>return</b> <b>new</b> <span class="i">FilteredQuery</span>(<span class="r5 r">booleanQuery</span>, <span class="r20 r">valueSourceFilter</span>);
+        }
+ 
+        <b>private static bool</b> <a id="9b78eba500e43a88" href="../../R/9b78eba500e43a88.html" target="n" data-glyph="76,1" class="i method">TryParseDistance</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">distanceValue</span>, <b>out double</b> <span id="r22 rd" class="r22 r">distanceDegrees</span>)
+        {
+            <span class="r22 r">distanceDegrees</span> = -1;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">distanceString</span> = <span class="t t">Regex</span>.<span class="i method">Match</span>(<span class="r21 r">distanceValue</span>, <span class="s">@&quot;^((\d+(\.\d*)?)|(\.\d+))&quot;</span>).<span class="i property">Value</span>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r23 r">distanceString</span>))
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r24 rd" class="r24 r">distanceUnits</span> = <span class="r21 r">distanceValue</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(<span class="r23 r">distanceString</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>, <span class="r21 r">distanceValue</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - <span class="r23 r">distanceString</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>).<a href="@1@System.Runtime/A.html#0b5a1ee33618e0b3" class="i method">ToLower</a>();
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="t t">Double</a>.<a href="@1@System.Runtime/A.html#4ac3250276256193" class="i method">TryParse</a>(<span class="r23 r">distanceString</span>, <b>out</b> <a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="k">var</a> <span id="r25 rd" class="r25 r">distance</span>))
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>switch</b> (<span class="r24 r">distanceUnits</span>)
+            {
+                <b>case</b> <span class="s">&quot;mi&quot;</span>:
+                <b>case</b> <span class="s">&quot;miles&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span>, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_MI</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;km&quot;</span>:
+                <b>case</b> <span class="s">&quot;kilometers&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span>, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_KM</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;ft&quot;</span>:
+                <b>case</b> <span class="s">&quot;feet&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span> / 5280, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_MI</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;yd&quot;</span>:
+                <b>case</b> <span class="s">&quot;yards&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span> / 1760, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_MI</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;in&quot;</span>:
+                <b>case</b> <span class="s">&quot;inch&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span> / 63360, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_MI</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;m&quot;</span>:
+                <b>case</b> <span class="s">&quot;meters&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span> / 1000, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_KM</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;cm&quot;</span>:
+                <b>case</b> <span class="s">&quot;centimeters&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span> / 100000, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_KM</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;mm&quot;</span>:
+                <b>case</b> <span class="s">&quot;millimeters&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span> / 1000000, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_KM</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="s">&quot;nm&quot;</span>:
+                <b>case</b> <span class="s">&quot;nmi&quot;</span>:
+                <b>case</b> <span class="s">&quot;nauticalmiles&quot;</span>:
+                    <span class="r22 r">distanceDegrees</span> = <span class="i">DistanceUtils</span>.<span class="i">Dist2Degrees</span>(<span class="r25 r">distance</span> * 1.852, <span class="i">DistanceUtils</span>.<span class="i">EARTH_MEAN_RADIUS_KM</span>);
+                    <b>return</b> <b>true</b>;
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>private static bool</b> <a id="c640292fbb865ae3" href="../../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">TryGetPointFromJToken</a>(<span class="i">JToken</span> <span id="r26 rd" class="r26 r">geoToken</span>, <b>out</b> <span class="i">IPoint</span> <span id="r27 rd" class="r27 r">point</span>)
+        {
+            <span class="r27 r">point</span> = <b>null</b>;
+ 
+            <b>var</b> <span id="r28 rd" class="r28 r">ctx</span> = <span class="i">SpatialContext</span>.<span class="i">GEO</span>;
+ 
+            <b>switch</b> (<span class="r26 r">geoToken</span>.<span class="i">Type</span>)
+            {
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">String</span>:
+                    <b>var</b> <span id="r29 rd" class="r29 r">geoStringValue</span> = <span class="r26 r">geoToken</span>.<span class="i">ToString</span>();
+ 
+                    <b>var</b> <span id="r30 rd" class="r30 r">geoStringSplit</span> = <span class="r29 r">geoStringValue</span>.<span class="i">Split</span>(<span class="s">&#39;,&#39;</span>);
+ 
+                    <b>if</b> (<span class="r30 r">geoStringSplit</span>.<span class="i">Length</span> == 2)
+                    {
+                        <b>if</b> (!<a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="t t">Double</a>.<span class="i">TryParse</span>(<span class="r30 r">geoStringSplit</span>[0], <b>out</b> <b>var</b> <span id="r31 rd" class="r31 r">lat</span>))
+                        {
+                            <b>return</b> <b>false</b>;
+                        }
+ 
+                        <b>if</b> (!<a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="t t">Double</a>.<span class="i">TryParse</span>(<span class="r30 r">geoStringSplit</span>[1], <b>out</b> <b>var</b> <span id="r32 rd" class="r32 r">lon</span>))
+                        {
+                            <b>return</b> <b>false</b>;
+                        }
+ 
+                        <span class="r27 r">point</span> = <b>new</b> <span class="i">Point</span>(<span class="r32 r">lon</span>, <span class="r31 r">lat</span>, <span class="r28 r">ctx</span>);
+                        <b>return</b> <b>true</b>;
+                    }
+ 
+                    <span class="r27 r">point</span> = <span class="i">GeohashUtils</span>.<span class="i">Decode</span>(<span class="r29 r">geoStringValue</span>, <span class="r28 r">ctx</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Object</span>:
+                    <b>var</b> <span id="r33 rd" class="r33 r">geoPointValue</span> = (<span class="i">JObject</span>)<span class="r26 r">geoToken</span>;
+ 
+                    <b>if</b> (!<span class="r33 r">geoPointValue</span>.<span class="i">ContainsKey</span>(<span class="s">&quot;lon&quot;</span>) || !<span class="r33 r">geoPointValue</span>.<span class="i">ContainsKey</span>(<span class="s">&quot;lat&quot;</span>))
+                    {
+                        <b>return</b> <b>false</b>;
+                    }
+ 
+                    <span class="r27 r">point</span> = <b>new</b> <span class="i">Point</span>(<span class="r33 r">geoPointValue</span>[<span class="s">&quot;lon&quot;</span>].<span class="i">Value</span>&lt;<b>double</b>&gt;(), <span class="r33 r">geoPointValue</span>[<span class="s">&quot;lat&quot;</span>].<span class="i">Value</span>&lt;<b>double</b>&gt;(), <span class="r28 r">ctx</span>);
+                    <b>return</b> <b>true</b>;
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Array</span>:
+                    <b>var</b> <span id="r34 rd" class="r34 r">geoArrayValue</span> = (<span class="i">JArray</span>)<span class="r26 r">geoToken</span>;
+ 
+                    <b>if</b> (<span class="r34 r">geoArrayValue</span>.<span class="i">Count</span> != 2)
+                    {
+                        <b>return</b> <b>false</b>;
+                    }
+ 
+                    <span class="r27 r">point</span> = <b>new</b> <span class="i">Point</span>(<span class="r34 r">geoArrayValue</span>[0].<span class="i">Value</span>&lt;<b>double</b>&gt;(), <span class="r34 r">geoArrayValue</span>[1].<span class="i">Value</span>&lt;<b>double</b>&gt;(), <span class="r28 r">ctx</span>);
+ 
+                    <b>return</b> <b>true</b>;
+                <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Invalid geo point representation&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html><head><title>UserInfoController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(169);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId/Controllers/UserInfoController.cs" target="_top">Controllers\UserInfoController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId" target="_top">src\OrchardCore.Modules\OrchardCore.OpenId\OrchardCore.OpenId.csproj</a> (OrchardCore.OpenId)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authentication</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Server</span>.<span class="i">AspNetCore</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using static</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>.<span class="i">OpenIddictConstants</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Controllers</span>
+{
+    [<span class="i">Feature</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#b0e247f8196e91a5" class="t t">Features</a>.<a href="/OrchardCore.OpenId.Core/A.html#95bdd03828e4cce9" class="i field">Server</a>), <span class="t constructor">SkipStatusCodePages</span>]
+    <b>public class</b> <a id="dad63aa88c729456" href="../R/dad63aa88c729456.html" target="n" data-glyph="0,0" class="t t">UserInfoController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="4c72ccaf6b9c5b58" href="../R/4c72ccaf6b9c5b58.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="faa5ff61c2c2bdb0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UserInfoController</a>(<span class="t t">IStringLocalizer</span>&lt;<a href="#dad63aa88c729456" class="t t">UserInfoController</a>&gt; <span id="r0 rd" class="r0 r">localizer</span>)
+            =&gt; <a href="#4c72ccaf6b9c5b58" class="i field">S</a> = <span class="r0 r">localizer</span>;
+ 
+        <span class="c">// GET/POST: /connect/userinfo</span>
+        [<span class="t constructor">AcceptVerbs</span>(<span class="s">&quot;GET&quot;</span>, <span class="s">&quot;POST&quot;</span>)]
+        [<span class="t constructor">IgnoreAntiforgeryToken</span>]
+        [<span class="t constructor">Produces</span>(<span class="s">&quot;application/json&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="f9520beec86c83e6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Me</a>()
+        {
+            <span class="c">// Warning: this action is decorated with IgnoreAntiforgeryTokenAttribute to override</span>
+            <span class="c">// the global antiforgery token validation policy applied by the MVC modules stack,</span>
+            <span class="c">// which is required for this stateless OpenID userinfo endpoint to work correctly.</span>
+            <span class="c">// To prevent effective CSRF/session fixation attacks, this action MUST NOT return</span>
+            <span class="c">// an authentication cookie or try to establish an ASP.NET Core user session.</span>
+ 
+            <b>var</b> <span id="r1 rd" class="r1 r">request</span> = <span class="i property">HttpContext</span>.<span class="i">GetOpenIddictServerRequest</span>();
+            <b>if</b> (<span class="r1 r">request</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Note: this controller doesn&#39;t use [Authorize] to prevent MVC from throwing</span>
+            <span class="c">// an exception if the OpenIddict server handler was not registered (e.g because the</span>
+            <span class="c">// OpenID server feature was not enabled or because the configuration was invalid).</span>
+            <b>var</b> <span id="r2 rd" class="r2 r">principal</span> = (<b>await</b> <span class="i property">HttpContext</span>.<span class="i">AuthenticateAsync</span>(<span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>))?.<span class="i">Principal</span>;
+            <b>if</b> (<span class="r2 r">principal</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i">Challenge</span>(<span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+            }
+ 
+            <span class="c">// Ensure the access token represents a user and not an application.</span>
+            <b>var</b> <span id="r3 rd" class="r3 r">type</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#d64ac26aadba4293" class="t t">Claims</a>.<a href="/OrchardCore.OpenId.Core/A.html#c88174c42e8b692d" class="i field">EntityType</a>)?.<span class="i">Value</span>;
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(<span class="r3 r">type</span>, <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#f93f39d86a7bd580" class="t t">EntityTypes</a>.<a href="/OrchardCore.OpenId.Core/A.html#39730dd96577994d" class="i field">User</a>))
+            {
+                <b>return</b> <span class="i">Forbid</span>(<b>new</b> <span class="t constructor">AuthenticationProperties</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+                {
+                    [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">Error</span>] = <span class="i">Errors</span>.<span class="i">InvalidRequest</span>,
+                    [<span class="i">OpenIddictServerAspNetCoreConstants</span>.<span class="i">Properties</span>.<span class="i">ErrorDescription</span>] =
+                        <a href="#4c72ccaf6b9c5b58" class="i field">S</a>[<span class="s">&quot;The userinfo endpoint can only be used with access tokens representing users.&quot;</span>]
+                }), <span class="i">OpenIddictServerAspNetCoreDefaults</span>.<span class="i">AuthenticationScheme</span>);
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">claims</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;();
+ 
+            <b>if</b> (<span class="r2 r">principal</span>.<span class="i">HasScope</span>(<span class="i">Scopes</span>.<span class="i">Profile</span>))
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">preferredUsername</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">PreferredUsername</span>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r5 r">preferredUsername</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">PreferredUsername</span>] = <span class="r5 r">preferredUsername</span>;
+                }
+ 
+                <b>var</b> <span id="r6 rd" class="r6 r">name</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">Name</span>)?.<span class="i">Value</span> ?? <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="t t">ClaimTypes</span>.<span class="i field">Name</span>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r6 r">name</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">Name</span>] = <span class="r6 r">name</span>;
+                }
+ 
+                <b>var</b> <span id="r7 rd" class="r7 r">familyName</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">FamilyName</span>)?.<span class="i">Value</span> ?? <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="t t">ClaimTypes</span>.<span class="i field">Surname</span>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r7 r">familyName</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">FamilyName</span>] = <span class="r7 r">familyName</span>;
+                }
+ 
+                <b>var</b> <span id="r8 rd" class="r8 r">givenName</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">GivenName</span>)?.<span class="i">Value</span> ?? <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="t t">ClaimTypes</span>.<span class="i field">GivenName</span>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r8 r">givenName</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">GivenName</span>] = <span class="r8 r">givenName</span>;
+                }
+ 
+                <b>var</b> <span id="r9 rd" class="r9 r">middleName</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">MiddleName</span>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r9 r">middleName</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">MiddleName</span>] = <span class="r9 r">middleName</span>;
+                }
+ 
+                <b>var</b> <span id="r10 rd" class="r10 r">picture</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">Picture</span>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r10 r">picture</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">Picture</span>] = <span class="r10 r">picture</span>;
+                }
+ 
+                <b>var</b> <span id="r11 rd" class="r11 r">updatedAtClaimValue</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">UpdatedAt</span>)?.<span class="i">Value</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r11 r">updatedAtClaimValue</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">UpdatedAt</span>] = <b>long</b>.<span class="i">Parse</span>(<span class="r11 r">updatedAtClaimValue</span>, <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>);
+                }
+            }
+ 
+            <span class="c">// Note: the &quot;sub&quot; claim is a mandatory claim and must be included in the JSON response.</span>
+            <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">Subject</span>] = <span class="r2 r">principal</span>.<span class="i">GetUserIdentifier</span>();
+ 
+            <b>if</b> (<span class="r2 r">principal</span>.<span class="i">HasScope</span>(<span class="i">Scopes</span>.<span class="i">Email</span>))
+            {
+                <b>var</b> <span id="r12 rd" class="r12 r">address</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">Email</span>)?.<span class="i">Value</span> ?? <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="t t">ClaimTypes</span>.<span class="i field">Email</span>)?.<span class="i">Value</span>;
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r12 r">address</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">Email</span>] = <span class="r12 r">address</span>;
+ 
+                    <b>var</b> <span id="r13 rd" class="r13 r">status</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">EmailVerified</span>)?.<span class="i">Value</span>;
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r13 r">status</span>))
+                    {
+                        <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">EmailVerified</span>] = <b>bool</b>.<span class="i">Parse</span>(<span class="r13 r">status</span>);
+                    }
+                }
+            }
+ 
+            <b>if</b> (<span class="r2 r">principal</span>.<span class="i">HasScope</span>(<span class="i">Scopes</span>.<span class="i">Phone</span>))
+            {
+                <b>var</b> <span id="r14 rd" class="r14 r">phone</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">PhoneNumber</span>)?.<span class="i">Value</span> ??
+                            <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="t t">ClaimTypes</span>.<span class="i field">MobilePhone</span>)?.<span class="i">Value</span> ??
+                            <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="t t">ClaimTypes</span>.<span class="i field">HomePhone</span>)?.<span class="i">Value</span> ??
+                            <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="t t">ClaimTypes</span>.<span class="i field">OtherPhone</span>)?.<span class="i">Value</span>;
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r14 r">phone</span>))
+                {
+                    <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">PhoneNumber</span>] = <span class="r14 r">phone</span>;
+ 
+                    <b>var</b> <span id="r15 rd" class="r15 r">status</span> = <span class="r2 r">principal</span>.<span class="i">FindFirst</span>(<span class="i">Claims</span>.<span class="i">PhoneNumberVerified</span>)?.<span class="i">Value</span>;
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r15 r">status</span>))
+                    {
+                        <span class="r4 r">claims</span>[<span class="i">Claims</span>.<span class="i">PhoneNumberVerified</span>] = <b>bool</b>.<span class="i">Parse</span>(<span class="r15 r">status</span>);
+                    }
+                }
+            }
+ 
+            <b>if</b> (<span class="r2 r">principal</span>.<span class="i">HasScope</span>(<span class="i">Scopes</span>.<span class="i">Roles</span>))
+            {
+                <b>var</b> <span id="r16 rd" class="r16 r">roles</span> = <span class="r2 r">principal</span>.<span class="i">FindAll</span>(<span class="i">Claims</span>.<span class="i">Role</span>)
+                                     .<span class="i">Concat</span>(<span class="r2 r">principal</span>.<span class="i">FindAll</span>(<span class="t t">ClaimTypes</span>.<span class="i field">Role</span>))
+                                     .<span class="i">Select</span>(<span id="r17 rd" class="r17 r">claim</span> =&gt; <span class="r17 r">claim</span>.<span class="i">Value</span>)
+                                     .<span class="i">ToArray</span>();
+ 
+                <b>if</b> (<span class="r16 r">roles</span>.<span class="i">Length</span> != 0)
+                {
+                    <span class="r4 r">claims</span>[<span class="s">&quot;roles&quot;</span>] = <span class="r16 r">roles</span>;
+                }
+            }
+ 
+            <span class="c">// Note: the complete list of standard claims supported by the OpenID Connect specification</span>
+            <span class="c">// can be found here: http://openid.net/specs/openid-connect-core-1_0.html#StandardClaims</span>
+ 
+            <b>return</b> <span class="i method">Ok</span>(<span class="r4 r">claims</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

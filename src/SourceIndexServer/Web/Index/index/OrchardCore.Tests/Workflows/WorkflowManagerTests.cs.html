@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html><head><title>WorkflowManagerTests.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(146);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Workflows/WorkflowManagerTests.cs" target="_top">Workflows\WorkflowManagerTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Moq</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>.<span class="i">JavaScript</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Workflows</span>.<span class="i n">Activities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Workflows</span>.<span class="i">Activities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Workflows</span>.<span class="i">Evaluators</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Workflows</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Workflows</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Workflows</span>.<span class="i">WorkflowContextProviders</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Workflows</span>
+{
+    <b>public class</b> <a id="d3a03c590a9f9ea1" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="fb8eb02779e54ff1">WorkflowManagerTests</span></a>
+    {
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4dad2b071a9b72c3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CanExecuteSimpleWorkflow</a>()
+        {
+            <b>var</b> <span id="r0 rd" class="r0 r">serviceProvider</span> = <a href="#7f87ee1a6c68e7e7" class="i method">CreateServiceProvider</a>();
+            <b>var</b> <span id="r1 rd" class="r1 r">scriptEvaluator</span> = <a href="#34cdd4fa66d4f769" class="i method">CreateWorkflowScriptEvaluator</a>(<span class="r0 r">serviceProvider</span>);
+            <b>var</b> <span id="r2 rd" class="r2 r">localizer</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IStringLocalizer</span>&lt;<a href="Activities/AddTask.cs.html#bf05ec71391b31d3" class="t t">AddTask</a>&gt;&gt;();
+ 
+            <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="k">var</a> <span id="r3 rd" class="r3 r">stringBuilder</span> = <b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>();
+            <a href="@1@System.Runtime/A.html#fd76db5d443fe076" class="k">var</a> <span id="r4 rd" class="r4 r">output</span> = <b>new</b> <a href="@1@System.Runtime/A.html#08914a995cb77251" class="t constructor">StringWriter</a>(<span class="r3 r">stringBuilder</span>);
+            <a href="Activities/AddTask.cs.html#bf05ec71391b31d3" class="k">var</a> <span id="r5 rd" class="r5 r">addTask</span> = <b>new</b> <span class="t">AddTask</span>(<span class="r1 r">scriptEvaluator</span>, <span class="r2 r">localizer</span>.<span class="i">Object</span>);
+            <a href="Activities/WriteLineTask.cs.html#0bfaee80a8feaf43" class="k">var</a> <span id="r6 rd" class="r6 r">writeLineTask</span> = <b>new</b> <span class="t">WriteLineTask</span>(<span class="r1 r">scriptEvaluator</span>, <span class="r2 r">localizer</span>.<span class="i">Object</span>, <span class="r4 r">output</span>);
+            <b>var</b> <span id="r7 rd" class="r7 r">setOutputTask</span> = <b>new</b> <span class="i">SetOutputTask</span>(<span class="r1 r">scriptEvaluator</span>, <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IStringLocalizer</span>&lt;<span class="i">SetOutputTask</span>&gt;&gt;().<span class="i">Object</span>);
+            <b>var</b> <span id="r8 rd" class="r8 r">workflowType</span> = <b>new</b> <span class="i">WorkflowType</span>
+            {
+                <span class="i">Id</span> = 1,
+                <span class="i">WorkflowTypeId</span> = <span class="i">IdGenerator</span>.<span class="i">GenerateId</span>(),
+                <span class="i">Activities</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">ActivityRecord</span>&gt;
+                {
+                    <b>new</b> <span class="i">ActivityRecord</span> { <span class="i">ActivityId</span> = <span class="s">&quot;1&quot;</span>, <span class="i">IsStart</span> = <b>true</b>, <span class="i">Name</span> = <span class="r5 r">addTask</span>.<a href="Activities/AddTask.cs.html#9cf61f85a8a2b942" class="i property">Name</a>, <span class="i">Properties</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>( <b>new</b>
+                    {
+                        <a href="#94f1b7ba3c86d02c" class="i property">A</a> = <b>new</b> <span class="i">WorkflowExpression</span>&lt;<b>double</b>&gt;(<span class="s">&quot;input(\&quot;A\&quot;)&quot;</span>),
+                        <a href="#c2f0568fab4e3053" class="i property">B</a> = <b>new</b> <span class="i">WorkflowExpression</span>&lt;<b>double</b>&gt;(<span class="s">&quot;input(\&quot;B\&quot;)&quot;</span>),
+                    }) },
+                    <b>new</b> <span class="i">ActivityRecord</span> { <span class="i">ActivityId</span> = <span class="s">&quot;2&quot;</span>, <span class="i">Name</span> = <span class="r6 r">writeLineTask</span>.<a href="Activities/WriteLineTask.cs.html#3e150a904c5d13a6" class="i property">Name</a>, <span class="i">Properties</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>( <b>new</b> { <a href="#7102c8d15bbef487" class="i property">Text</a> = <b>new</b> <span class="i">WorkflowExpression</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;lastResult().toString()&quot;</span>) }) },
+                    <b>new</b> <span class="i">ActivityRecord</span> { <span class="i">ActivityId</span> = <span class="s">&quot;3&quot;</span>, <span class="i">Name</span> = <span class="r7 r">setOutputTask</span>.<span class="i">Name</span>, <span class="i">Properties</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>( <b>new</b> { <a href="#13dd1d4d9f8babe1" class="i property">Value</a> = <b>new</b> <span class="i">WorkflowExpression</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;lastResult()&quot;</span>), <a href="#b9190ef2eb2e43f4" class="i property">OutputName</a> = <span class="s">&quot;Sum&quot;</span> }) }
+                },
+                <span class="i">Transitions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Transition</span>&gt;
+                {
+                    <b>new</b> <span class="i">Transition</span>{ <span class="i">SourceActivityId</span> = <span class="s">&quot;1&quot;</span>, <span class="i">SourceOutcomeName</span> = <span class="s">&quot;Done&quot;</span>, <span class="i">DestinationActivityId</span> = <span class="s">&quot;2&quot;</span> },
+                    <b>new</b> <span class="i">Transition</span>{ <span class="i">SourceActivityId</span> = <span class="s">&quot;2&quot;</span>, <span class="i">SourceOutcomeName</span> = <span class="s">&quot;Done&quot;</span>, <span class="i">DestinationActivityId</span> = <span class="s">&quot;3&quot;</span> }
+                }
+            };
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">workflowManager</span> = <a href="#c6bdec05150ead07" class="i method">CreateWorkflowManager</a>(<span class="r0 r">serviceProvider</span>, <b>new</b> <span class="i">IActivity</span>[] { <span class="r5 r">addTask</span>, <span class="r6 r">writeLineTask</span>, <span class="r7 r">setOutputTask</span> }, <span class="r8 r">workflowType</span>);
+            <a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="k">var</a> <span id="r10 rd" class="r10 r">a</span> = 10d;
+            <a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="k">var</a> <span id="r11 rd" class="r11 r">b</span> = 22d;
+            <a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="k">var</a> <span id="r12 rd" class="r12 r">expectedSum</span> = <span class="r10 r">a</span> + <span class="r11 r">b</span>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">expectedResult</span> = <span class="r12 r">expectedSum</span>.<a href="@1@System.Runtime/A.html#de581d5a1a6b2a1a" class="i method">ToString</a>() + <span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>;
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">workflowExecutionContext</span> = <b>await</b> <span class="r9 r">workflowManager</span>.<span class="i">StartWorkflowAsync</span>(<span class="r8 r">workflowType</span>, <span class="i">input</span>: <b>new</b> <span class="t constructor">RouteValueDictionary</span>(<b>new</b> { <a href="#94f1b7ba3c86d02c" class="i property">A</a> = <span class="r10 r">a</span>, <a href="#c2f0568fab4e3053" class="i property">B</a> = <span class="r11 r">b</span> }));
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">actualResult</span> = <span class="r3 r">stringBuilder</span>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r13 r">expectedResult</span>, <span class="r15 r">actualResult</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r14 r">workflowExecutionContext</span>.<span class="i">Output</span>.<span class="i">ContainsKey</span>(<span class="s">&quot;Sum&quot;</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r12 r">expectedSum</span>, (<b>double</b>)<span class="r14 r">workflowExecutionContext</span>.<span class="i">Output</span>[<span class="s">&quot;Sum&quot;</span>]);
+        }
+ 
+        <b>private</b> <span class="t t">IServiceProvider</span> <a id="7f87ee1a6c68e7e7" href="../R/7f87ee1a6c68e7e7.html" target="n" data-glyph="76,1" class="i method">CreateServiceProvider</a>()
+        {
+            <b>var</b> <span id="r16 rd" class="r16 r">services</span> = <b>new</b> <span class="t constructor">ServiceCollection</span>();
+            <span class="r16 r">services</span>.<span class="i method">AddScoped</span>(<b>typeof</b>(<span class="i">Resolver</span>&lt;&gt;));
+            <span class="r16 r">services</span>.<span class="i">AddScoped</span>(<span id="r17 rd" class="r17 r">provider</span> =&gt; <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IShapeFactory</span>&gt;().<span class="i">Object</span>);
+            <span class="r16 r">services</span>.<span class="i">AddScoped</span>(<span id="r18 rd" class="r18 r">provider</span> =&gt; <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IViewLocalizer</span>&gt;().<span class="i">Object</span>);
+            <span class="r16 r">services</span>.<span class="i method">AddScoped</span>&lt;<span class="i">IWorkflowExecutionContextHandler</span>, <span class="i">DefaultWorkflowExecutionContextHandler</span>&gt;();
+ 
+            <b>return</b> <span class="r16 r">services</span>.<span class="i method">BuildServiceProvider</span>();
+        }
+ 
+        <b>private</b> <span class="i">IWorkflowScriptEvaluator</span> <a id="34cdd4fa66d4f769" href="../R/34cdd4fa66d4f769.html" target="n" data-glyph="76,1" class="i method">CreateWorkflowScriptEvaluator</a>(<span class="t t">IServiceProvider</span> <span id="r19 rd" class="r19 r">serviceProvider</span>)
+        {
+            <b>var</b> <span id="r20 rd" class="r20 r">memoryCache</span> = <b>new</b> <span class="t constructor">MemoryCache</span>(<b>new</b> <span class="t constructor">MemoryCacheOptions</span>());
+            <b>var</b> <span id="r21 rd" class="r21 r">javaScriptEngine</span> = <b>new</b> <span class="i">JavaScriptEngine</span>(<span class="r20 r">memoryCache</span>);
+            <b>var</b> <span id="r22 rd" class="r22 r">workflowContextHandlers</span> = <b>new</b> <span class="i">Resolver</span>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IWorkflowExecutionContextHandler</span>&gt;&gt;(<span class="r19 r">serviceProvider</span>);
+            <b>var</b> <span id="r23 rd" class="r23 r">globalMethodProviders</span> = <b>new</b> <span class="i">IGlobalMethodProvider</span>[0];
+            <b>var</b> <span id="r24 rd" class="r24 r">scriptingManager</span> = <b>new</b> <span class="i">DefaultScriptingManager</span>(<b>new</b>[] { <span class="r21 r">javaScriptEngine</span> }, <span class="r23 r">globalMethodProviders</span>);
+ 
+            <b>return</b> <b>new</b> <span class="i">JavaScriptWorkflowScriptEvaluator</span>(
+                <span class="r24 r">scriptingManager</span>,
+                <span class="r22 r">workflowContextHandlers</span>.<span class="i">Resolve</span>(),
+                <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">ILogger</span>&lt;<span class="i">JavaScriptWorkflowScriptEvaluator</span>&gt;&gt;().<span class="i">Object</span>
+            );
+        }
+ 
+        <b>private</b> <span class="i">WorkflowManager</span> <a id="c6bdec05150ead07" href="../R/c6bdec05150ead07.html" target="n" data-glyph="76,1" class="i method">CreateWorkflowManager</a>(
+            <span class="t t">IServiceProvider</span> <span id="r25 rd" class="r25 r">serviceProvider</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IActivity</span>&gt; <span id="r26 rd" class="r26 r">activities</span>,
+            <span class="i">WorkflowType</span> <span id="r27 rd" class="r27 r">workflowType</span>
+        )
+        {
+            <b>var</b> <span id="r28 rd" class="r28 r">workflowValueSerializers</span> = <b>new</b> <span class="i">Resolver</span>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IWorkflowValueSerializer</span>&gt;&gt;(<span class="r25 r">serviceProvider</span>);
+            <b>var</b> <span id="r29 rd" class="r29 r">activityLibrary</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IActivityLibrary</span>&gt;();
+            <b>var</b> <span id="r30 rd" class="r30 r">workflowTypeStore</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IWorkflowTypeStore</span>&gt;();
+            <b>var</b> <span id="r31 rd" class="r31 r">workflowStore</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IWorkflowStore</span>&gt;();
+            <b>var</b> <span id="r32 rd" class="r32 r">workflowIdGenerator</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IWorkflowIdGenerator</span>&gt;();
+            <span class="r32 r">workflowIdGenerator</span>.<span class="i">Setup</span>(<span id="r33 rd" class="r33 r">x</span> =&gt; <span class="r33 r">x</span>.<span class="i">GenerateUniqueId</span>(<span class="i">It</span>.<span class="i">IsAny</span>&lt;<span class="i">Workflow</span>&gt;())).<span class="i">Returns</span>(<span class="i">IdGenerator</span>.<span class="i">GenerateId</span>());
+            <b>var</b> <span id="r34 rd" class="r34 r">distributedLock</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IDistributedLock</span>&gt;();
+            <b>var</b> <span id="r35 rd" class="r35 r">workflowManagerLogger</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">ILogger</span>&lt;<span class="i">WorkflowManager</span>&gt;&gt;();
+            <b>var</b> <span id="r36 rd" class="r36 r">workflowContextLogger</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">ILogger</span>&lt;<span class="i">WorkflowExecutionContext</span>&gt;&gt;();
+            <b>var</b> <span id="r37 rd" class="r37 r">missingActivityLogger</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">ILogger</span>&lt;<span class="i">MissingActivity</span>&gt;&gt;();
+            <b>var</b> <span id="r38 rd" class="r38 r">missingActivityLocalizer</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IStringLocalizer</span>&lt;<span class="i">MissingActivity</span>&gt;&gt;();
+            <b>var</b> <span id="r39 rd" class="r39 r">clock</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IClock</span>&gt;();
+            <b>var</b> <span id="r40 rd" class="r40 r">workflowManager</span> = <b>new</b> <span class="i">WorkflowManager</span>(
+                <span class="r29 r">activityLibrary</span>.<span class="i">Object</span>,
+                <span class="r30 r">workflowTypeStore</span>.<span class="i">Object</span>,
+                <span class="r31 r">workflowStore</span>.<span class="i">Object</span>,
+                <span class="r32 r">workflowIdGenerator</span>.<span class="i">Object</span>,
+                <span class="r28 r">workflowValueSerializers</span>,
+                <span class="r34 r">distributedLock</span>.<span class="i">Object</span>,
+                <span class="r35 r">workflowManagerLogger</span>.<span class="i">Object</span>,
+                <span class="r37 r">missingActivityLogger</span>.<span class="i">Object</span>,
+                <span class="r38 r">missingActivityLocalizer</span>.<span class="i">Object</span>,
+                <span class="r39 r">clock</span>.<span class="i">Object</span>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r41 rd" class="r41 r">activity</span> <b>in</b> <span class="r26 r">activities</span>)
+            {
+                <span class="r29 r">activityLibrary</span>.<span class="i">Setup</span>(<span id="r42 rd" class="r42 r">x</span> =&gt; <span class="r42 r">x</span>.<span class="i">InstantiateActivity</span>(<span class="r41 r">activity</span>.<span class="i">Name</span>)).<span class="i">Returns</span>(<span class="r41 r">activity</span>);
+            }
+ 
+            <span class="r30 r">workflowTypeStore</span>.<span class="i">Setup</span>(<span id="r43 rd" class="r43 r">x</span> =&gt; <span class="r43 r">x</span>.<span class="i">GetAsync</span>(<span class="r27 r">workflowType</span>.<span class="i">Id</span>)).<span class="i">Returns</span>(<a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>(<span class="r27 r">workflowType</span>));
+ 
+            <b>return</b> <span class="r40 r">workflowManager</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

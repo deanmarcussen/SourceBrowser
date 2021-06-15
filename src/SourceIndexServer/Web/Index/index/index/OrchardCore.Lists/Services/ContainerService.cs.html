@@ -1,0 +1,410 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContainerService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(401);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lists/Services/ContainerService.cs" target="_top">Services\ContainerService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lists" target="_top">src\OrchardCore.Modules\OrchardCore.Lists\OrchardCore.Lists.csproj</a> (OrchardCore.Lists)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>.<span class="i n">Expressions</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Navigation</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="b1a391a8563142fa" href="../R/b1a391a8563142fa.html" target="n" data-glyph="0,0" class="t t">ContainerService</a> : <a href="IContainerService.cs.html#d44ca777bb535bf4" class="t t">IContainerService</a>
+    {
+        <b>private readonly</b> <span class="i">YesSql</span>.<span class="i">ISession</span> <a id="4937785253ae3792" href="../R/4937785253ae3792.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="ab0321a1bfb503ce" href="../R/ab0321a1bfb503ce.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="b9081c2ca4b2cec5" href="../R/b9081c2ca4b2cec5.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+ 
+        <b>public</b> <a id="4c692bf2c6e7944f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContainerService</a>(
+            <span class="i">YesSql</span>.<span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>,
+            <span class="i">IContentManager</span> <span id="r1 rd" class="r1 r">contentManager</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>)
+        {
+            <a href="#4937785253ae3792" class="i field">_session</a> = <span class="r0 r">session</span>;
+            <a href="#ab0321a1bfb503ce" class="i field">_contentManager</a> = <span class="r1 r">contentManager</span>;
+            <a href="#b9081c2ca4b2cec5" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>int</b>&gt; <a id="52fa89e77f42f448" href="../R/52fa89e77f42f448.html" target="n" data-glyph="72,1" class="i method">GetNextOrderNumberAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">contentItemId</span>)
+        {
+            <b>var</b> <span id="r4 rd" class="r4 r">index</span> = <b>await</b> <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">QueryIndex</span>&lt;<a href="../Indexes/ContainedPartIndex.cs.html#130543d941dba153" class="t t">ContainedPartIndex</a>&gt;(<span id="r5 rd" class="r5 r">x</span> =&gt; <span class="r5 r">x</span>.<span class="i">ListContentItemId</span> == <span class="r3 r">contentItemId</span>)
+                .<span class="i">OrderByDescending</span>(<span id="r6 rd" class="r6 r">x</span> =&gt; <span class="r6 r">x</span>.<span class="i">Order</span>)
+                .<span class="i">FirstOrDefaultAsync</span>();
+ 
+            <b>if</b> (<span class="r4 r">index</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="r4 r">index</span>.<span class="i">Order</span> + 1;
+            }
+            <b>else</b>
+            {
+                <b>return</b> 0;
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="181954baa774ad82" href="../R/181954baa774ad82.html" target="n" data-glyph="72,1" class="i method">UpdateContentItemOrdersAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ContentItem</span>&gt; <span id="r7 rd" class="r7 r">contentItems</span>, <b>int</b> <span id="r8 rd" class="r8 r">orderOfFirstItem</span>)
+        {
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r9 rd" class="r9 r">i</span> = 0;
+            <b>foreach</b> (<b>var</b> <span id="r10 rd" class="r10 r">contentItem</span> <b>in</b> <span class="r7 r">contentItems</span>)
+            {
+                <b>var</b> <span id="r11 rd" class="r11 r">containedPart</span> = <span class="r10 r">contentItem</span>.<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;();
+                <b>if</b> (<span class="r11 r">containedPart</span> != <b>null</b> &amp;&amp; <span class="r11 r">containedPart</span>.<span class="i">Order</span> != <span class="r8 r">orderOfFirstItem</span> + <span class="r9 r">i</span>)
+                {
+                    <span class="r11 r">containedPart</span>.<span class="i">Order</span> = <span class="r8 r">orderOfFirstItem</span> + <span class="r9 r">i</span>;
+                    <span class="r11 r">containedPart</span>.<span class="i">Apply</span>();
+ 
+                    <span class="c">// Keep the published and draft orders the same to avoid confusion in the admin list.</span>
+                    <b>if</b> (!<span class="r10 r">contentItem</span>.<span class="i">IsPublished</span>())
+                    {
+                        <b>var</b> <span id="r12 rd" class="r12 r">publishedItem</span> = <b>await</b> <a href="#ab0321a1bfb503ce" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r10 r">contentItem</span>.<span class="i">ContentItemId</span>, <span class="i">VersionOptions</span>.<span class="i">Published</span>);
+                        <b>if</b> (<span class="r12 r">publishedItem</span> != <b>null</b>)
+                        {
+                            <span class="r12 r">publishedItem</span>.<span class="i">Alter</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;(<span id="r13 rd" class="r13 r">x</span> =&gt; <span class="r13 r">x</span>.<span class="i">Order</span> = <span class="r8 r">orderOfFirstItem</span> + <span class="r9 r">i</span>);
+                            <b>await</b> <a href="#ab0321a1bfb503ce" class="i field">_contentManager</a>.<span class="i">UpdateAsync</span>(<span class="r12 r">publishedItem</span>);
+                        }
+                    }
+ 
+                    <b>await</b> <a href="#ab0321a1bfb503ce" class="i field">_contentManager</a>.<span class="i">UpdateAsync</span>(<span class="r10 r">contentItem</span>);
+                }
+ 
+                <span class="r9 r">i</span>++;
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9b1645f1ed1d97e4" href="../R/9b1645f1ed1d97e4.html" target="n" data-glyph="72,1" class="i method">SetInitialOrder</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">contentType</span>)
+        {
+            <span class="c">// Set initial order for published and drafts if they have never been published.</span>
+            <b>var</b> <span id="r15 rd" class="r15 r">contanerContentItemsQuery</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">QueryIndex</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r16 rd" class="r16 r">x</span> =&gt; <span class="r16 r">x</span>.<span class="i">ContentType</span> == <span class="r14 r">contentType</span> &amp;&amp; (<span class="r16 r">x</span>.<span class="i">Published</span> || <span class="r16 r">x</span>.<span class="i">Latest</span>));
+            <b>var</b> <span id="r17 rd" class="r17 r">containerContentItems</span> = <b>await</b> <span class="r15 r">contanerContentItemsQuery</span>.<span class="i">ListAsync</span>();
+ 
+            <b>if</b> (!<span class="r17 r">containerContentItems</span>.<span class="i">Any</span>())
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Reduce duplicates to only set order for the published container item and the draft item if it has not been published.</span>
+            <b>var</b> <span id="r18 rd" class="r18 r">containerContentItemIds</span> = <span class="r17 r">containerContentItems</span>.<span class="i">Select</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <span class="r19 r">x</span>.<span class="i">ContentItemId</span>).<span class="i">Distinct</span>();
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">containedItemsQuery</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                .<span class="i">With</span>&lt;<a href="../Indexes/ContainedPartIndex.cs.html#130543d941dba153" class="t t">ContainedPartIndex</a>&gt;(<span id="r21 rd" class="r21 r">x</span> =&gt; <span class="r21 r">x</span>.<span class="i">ListContentItemId</span>.<span class="i">IsIn</span>(<span class="r18 r">containerContentItemIds</span>))
+                .<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r22 rd" class="r22 r">ci</span> =&gt; <span class="r22 r">ci</span>.<span class="i">Latest</span> || <span class="r22 r">ci</span>.<span class="i">Published</span>)
+                .<span class="i">OrderByDescending</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<span class="i">CreatedUtc</span>);
+ 
+            <span class="c">// Load items so that loading handlers are invoked.</span>
+            <b>var</b> <span id="r24 rd" class="r24 r">contentItemGroups</span> = (<b>await</b> <span class="r20 r">containedItemsQuery</span>.<span class="i">ListAsync</span>(<a href="#ab0321a1bfb503ce" class="i field">_contentManager</a>)).<span class="i">ToLookup</span>(<span id="r25 rd" class="r25 r">l</span> =&gt; <span class="r25 r">l</span>.<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;()?.<span class="i">ListContentItemId</span>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r26 rd" class="r26 r">contentItemGroup</span> <b>in</b> <span class="r24 r">contentItemGroups</span>)
+            {
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r27 rd" class="r27 r">i</span> = 0;
+                <b>foreach</b> (<b>var</b> <span id="r28 rd" class="r28 r">contentItem</span> <b>in</b> <span class="r26 r">contentItemGroup</span>)
+                {
+                    <b>var</b> <span id="r29 rd" class="r29 r">containedPart</span> = <span class="r28 r">contentItem</span>.<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;();
+                    <b>if</b> (<span class="r29 r">containedPart</span> != <b>null</b>)
+                    {
+                        <b>if</b> (<span class="r28 r">contentItem</span>.<span class="i">Published</span> &amp;&amp; <span class="r28 r">contentItem</span>.<span class="i">Latest</span>)
+                        {
+                            <span class="r29 r">containedPart</span>.<span class="i">Order</span> = <span class="r27 r">i</span>;
+                            <span class="r29 r">containedPart</span>.<span class="i">Apply</span>();
+                        }
+                        <b>else</b> <b>if</b> (<span class="r28 r">contentItem</span>.<span class="i">Latest</span> &amp;&amp; !<span class="r28 r">contentItem</span>.<span class="i">Published</span>)
+                        {
+                            <span class="c">// Update the latest order.</span>
+                            <span class="r29 r">containedPart</span>.<span class="i">Order</span> = <span class="r27 r">i</span>;
+                            <span class="r29 r">containedPart</span>.<span class="i">Apply</span>();
+ 
+                            <span class="c">// If a published version exists, find it, and set it to the same order as the draft.</span>
+                            <b>var</b> <span id="r30 rd" class="r30 r">publishedItem</span> = <span class="r26 r">contentItemGroup</span>.<span class="i">FirstOrDefault</span>(<span id="r31 rd" class="r31 r">p</span> =&gt; <span class="r31 r">p</span>.<span class="i">Published</span> == <b>true</b> &amp;&amp; <span class="r31 r">p</span>.<span class="i">ContentItemId</span> == <span class="r28 r">contentItem</span>.<span class="i">ContentItemId</span>);
+                            <b>var</b> <span id="r32 rd" class="r32 r">publishedContainedPart</span> = <span class="r30 r">publishedItem</span>?.<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;();
+                            <b>if</b> (<span class="r32 r">publishedContainedPart</span> != <b>null</b>)
+                            {
+                                <span class="r32 r">publishedContainedPart</span>.<span class="i">Order</span> = <span class="r27 r">i</span>;
+                                <span class="r32 r">publishedContainedPart</span>.<span class="i">Apply</span>();
+                            }
+                        }
+                        <b>else</b> <b>if</b> (<span class="r28 r">contentItem</span>.<span class="i">Published</span> &amp;&amp; !<span class="r28 r">contentItem</span>.<span class="i">Latest</span>)
+                        {
+                            <span class="c">// If a latest version exists, it will handle updating the order.</span>
+                            <b>var</b> <span id="r33 rd" class="r33 r">latestItem</span> = <span class="r26 r">contentItemGroup</span>.<span class="i">FirstOrDefault</span>(<span id="r34 rd" class="r34 r">l</span> =&gt; <span class="r34 r">l</span>.<span class="i">Latest</span> == <b>true</b> &amp;&amp; <span class="r34 r">l</span>.<span class="i">ContentItemId</span> == <span class="r28 r">contentItem</span>.<span class="i">ContentItemId</span>);
+                            <b>if</b> (<span class="r33 r">latestItem</span> == <b>null</b>)
+                            {
+                                <span class="c">// Apply order to the published item.</span>
+                                <span class="r29 r">containedPart</span>.<span class="i">Order</span> = <span class="r27 r">i</span>;
+                                <span class="r29 r">containedPart</span>.<span class="i">Apply</span>();
+                            }
+                            <b>else</b>
+                            {
+                                <span class="c">// Order of this item will be updated when latest is iterated.</span>
+                                <b>continue</b>;
+                            }
+                        }
+ 
+                        <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Save</span>(<span class="r28 r">contentItem</span>);
+                    }
+ 
+                    <span class="r27 r">i</span>++;
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ContentItem</span>&gt;&gt; <a id="4fd05325dcd0a2d5" href="../R/4fd05325dcd0a2d5.html" target="n" data-glyph="72,1" class="i method">QueryContainedItemsAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">contentItemId</span>,
+            <b>bool</b> <span id="r36 rd" class="r36 r">enableOrdering</span>,
+            <span class="i">PagerSlim</span> <span id="r37 rd" class="r37 r">pager</span>,
+            <a href="../Models/ContainedItemOptions.cs.html#cb0e6fd64f7cc2de" class="t t">ContainedItemOptions</a> <span id="r38 rd" class="r38 r">containedItemOptions</span>)
+        {
+            <b>if</b> (<span class="r38 r">containedItemOptions</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r38 r">containedItemOptions</span>));
+            }
+ 
+            <span class="i">IQuery</span>&lt;<span class="i">ContentItem</span>&gt; <span id="r39 rd" class="r39 r">query</span> = <b>null</b>;
+            <b>if</b> (<span class="r37 r">pager</span>.<span class="i">Before</span> != <b>null</b>)
+            {
+                <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                {
+                    <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r40 rd" class="r40 r">beforeValue</span> = <b>int</b>.<span class="i">Parse</span>(<span class="r37 r">pager</span>.<span class="i">Before</span>);
+                    <span class="r39 r">query</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                        .<span class="i">With</span>(<a href="#6af7235f3f646a62" class="i method">CreateOrderedContainedPartIndexFilter</a>(<span class="r40 r">beforeValue</span>, <b>null</b>, <span class="r35 r">contentItemId</span>))
+                        .<span class="i">OrderByDescending</span>(<span id="r41 rd" class="r41 r">x</span> =&gt; <span class="r41 r">x</span>.<span class="i">Order</span>);
+                }
+                <b>else</b>
+                {
+                    <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="k">var</a> <span id="r42 rd" class="r42 r">beforeValue</span> = <b>new</b> <a href="@1@System.Runtime/A.html#943ac78ef8dd0f5f" class="t constructor">DateTime</a>(<b>long</b>.<span class="i">Parse</span>(<span class="r37 r">pager</span>.<span class="i">Before</span>));
+                    <span class="r39 r">query</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                        .<span class="i">With</span>&lt;<a href="../Indexes/ContainedPartIndex.cs.html#130543d941dba153" class="t t">ContainedPartIndex</a>&gt;(<span id="r43 rd" class="r43 r">x</span> =&gt; <span class="r43 r">x</span>.<span class="i">ListContentItemId</span> == <span class="r35 r">contentItemId</span>);
+ 
+                    <a href="#007dc668250234fb" class="i method">ApplyPagingContentIndexFilter</a>(<span class="r42 r">beforeValue</span>, <b>null</b>, <b>true</b>, <span class="r39 r">query</span>);
+                }
+ 
+                <a href="#0c71f9bc7aadcac4" class="i method">ApplyContainedItemOptionsFilter</a>(<span class="r38 r">containedItemOptions</span>, <span class="r39 r">query</span>);
+ 
+                <span class="c">// Take() needs to be the last expression in the query otherwise the ORDER BY clause will be</span>
+                <span class="c">// syntactically incorrect.</span>
+                <span class="r39 r">query</span>.<span class="i">Take</span>(<span class="r37 r">pager</span>.<span class="i">PageSize</span> + 1);
+ 
+                <span class="c">// Load items so that loading handlers are invoked.</span>
+                <b>var</b> <span id="r44 rd" class="r44 r">containedItems</span> = <b>await</b> <span class="r39 r">query</span>.<span class="i">ListAsync</span>(<a href="#ab0321a1bfb503ce" class="i field">_contentManager</a>);
+ 
+                <b>if</b> (!<span class="r44 r">containedItems</span>.<span class="i">Any</span>())
+                {
+                    <b>return</b> <span class="r44 r">containedItems</span>;
+                }
+ 
+                <span class="r44 r">containedItems</span> = <span class="r44 r">containedItems</span>.<span class="i">Reverse</span>();
+ 
+                <span class="c">// There is always an After as we clicked on Before</span>
+                <span class="r37 r">pager</span>.<span class="i">Before</span> = <b>null</b>;
+                <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                {
+                    <span class="r37 r">pager</span>.<span class="i">After</span> = <span class="r44 r">containedItems</span>.<span class="i">Last</span>().<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;().<span class="i">Order</span>.<span class="i">ToString</span>();
+                }
+                <b>else</b>
+                {
+                    <span class="r37 r">pager</span>.<span class="i">After</span> = <span class="r44 r">containedItems</span>.<span class="i">Last</span>().<span class="i">CreatedUtc</span>.<span class="i">Value</span>.<span class="i">Ticks</span>.<span class="i">ToString</span>();
+                }
+                <b>if</b> (<span class="r44 r">containedItems</span>.<span class="i">Count</span>() == <span class="r37 r">pager</span>.<span class="i">PageSize</span> + 1)
+                {
+                    <span class="r44 r">containedItems</span> = <span class="r44 r">containedItems</span>.<span class="i">Skip</span>(1);
+                    <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                    {
+                        <span class="r37 r">pager</span>.<span class="i">Before</span> = <span class="r44 r">containedItems</span>.<span class="i">First</span>().<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;().<span class="i">Order</span>.<span class="i">ToString</span>();
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r37 r">pager</span>.<span class="i">Before</span> = <span class="r44 r">containedItems</span>.<span class="i">First</span>().<span class="i">CreatedUtc</span>.<span class="i">Value</span>.<span class="i">Ticks</span>.<span class="i">ToString</span>();
+                    }
+                }
+ 
+                <b>return</b> <span class="r44 r">containedItems</span>;
+            }
+            <b>else</b> <b>if</b> (<span class="r37 r">pager</span>.<span class="i">After</span> != <b>null</b>)
+            {
+                <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                {
+                    <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r45 rd" class="r45 r">afterValue</span> = <b>int</b>.<span class="i">Parse</span>(<span class="r37 r">pager</span>.<span class="i">After</span>);
+                    <span class="r39 r">query</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                        .<span class="i">With</span>(<a href="#6af7235f3f646a62" class="i method">CreateOrderedContainedPartIndexFilter</a>(<b>null</b>, <span class="r45 r">afterValue</span>, <span class="r35 r">contentItemId</span>))
+                        .<span class="i">OrderBy</span>(<span id="r46 rd" class="r46 r">x</span> =&gt; <span class="r46 r">x</span>.<span class="i">Order</span>);
+                }
+                <b>else</b>
+                {
+                    <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="k">var</a> <span id="r47 rd" class="r47 r">afterValue</span> = <b>new</b> <a href="@1@System.Runtime/A.html#943ac78ef8dd0f5f" class="t constructor">DateTime</a>(<b>long</b>.<span class="i">Parse</span>(<span class="r37 r">pager</span>.<span class="i">After</span>));
+                    <span class="r39 r">query</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                        .<span class="i">With</span>(<a href="#6af7235f3f646a62" class="i method">CreateOrderedContainedPartIndexFilter</a>(<b>null</b>, <b>null</b>, <span class="r35 r">contentItemId</span>));
+ 
+                    <a href="#007dc668250234fb" class="i method">ApplyPagingContentIndexFilter</a>(<b>null</b>, <span class="r47 r">afterValue</span>, <b>false</b>, <span class="r39 r">query</span>);
+                }
+ 
+                <a href="#0c71f9bc7aadcac4" class="i method">ApplyContainedItemOptionsFilter</a>(<span class="r38 r">containedItemOptions</span>, <span class="r39 r">query</span>);
+ 
+                <span class="r39 r">query</span>.<span class="i">Take</span>(<span class="r37 r">pager</span>.<span class="i">PageSize</span> + 1);
+ 
+                <span class="c">// Load items so that loading handlers are invoked.</span>
+                <b>var</b> <span id="r48 rd" class="r48 r">containedItems</span> = <b>await</b> <span class="r39 r">query</span>.<span class="i">ListAsync</span>(<a href="#ab0321a1bfb503ce" class="i field">_contentManager</a>);
+ 
+                <b>if</b> (!<span class="r48 r">containedItems</span>.<span class="i">Any</span>())
+                {
+                    <b>return</b> <span class="r48 r">containedItems</span>;
+                }
+ 
+                <span class="c">// There is always a Before page as we clicked on After</span>
+                <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                {
+                    <span class="r37 r">pager</span>.<span class="i">Before</span> = <span class="r48 r">containedItems</span>.<span class="i">First</span>().<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;().<span class="i">Order</span>.<span class="i">ToString</span>();
+                }
+                <b>else</b>
+                {
+                    <span class="r37 r">pager</span>.<span class="i">Before</span> = <span class="r48 r">containedItems</span>.<span class="i">First</span>().<span class="i">CreatedUtc</span>.<span class="i">Value</span>.<span class="i">Ticks</span>.<span class="i">ToString</span>();
+                }
+                <span class="r37 r">pager</span>.<span class="i">After</span> = <b>null</b>;
+ 
+                <b>if</b> (<span class="r48 r">containedItems</span>.<span class="i">Count</span>() == <span class="r37 r">pager</span>.<span class="i">PageSize</span> + 1)
+                {
+                    <span class="r48 r">containedItems</span> = <span class="r48 r">containedItems</span>.<span class="i">Take</span>(<span class="r37 r">pager</span>.<span class="i">PageSize</span>);
+                    <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                    {
+                        <span class="r37 r">pager</span>.<span class="i">After</span> = <span class="r48 r">containedItems</span>.<span class="i">Last</span>().<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;().<span class="i">Order</span>.<span class="i">ToString</span>();
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r37 r">pager</span>.<span class="i">After</span> = <span class="r48 r">containedItems</span>.<span class="i">Last</span>().<span class="i">CreatedUtc</span>.<span class="i">Value</span>.<span class="i">Ticks</span>.<span class="i">ToString</span>();
+                    }
+                }
+ 
+                <b>return</b> <span class="r48 r">containedItems</span>;
+            }
+            <b>else</b>
+            {
+                <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                {
+                    <span class="r39 r">query</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                        .<span class="i">With</span>(<a href="#6af7235f3f646a62" class="i method">CreateOrderedContainedPartIndexFilter</a>(<b>null</b>, <b>null</b>, <span class="r35 r">contentItemId</span>))
+                        .<span class="i">OrderBy</span>(<span id="r49 rd" class="r49 r">x</span> =&gt; <span class="r49 r">x</span>.<span class="i">Order</span>);
+                }
+                <b>else</b>
+                {
+                    <span class="r39 r">query</span> = <a href="#4937785253ae3792" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                        .<span class="i">With</span>&lt;<a href="../Indexes/ContainedPartIndex.cs.html#130543d941dba153" class="t t">ContainedPartIndex</a>&gt;(<span id="r50 rd" class="r50 r">x</span> =&gt; <span class="r50 r">x</span>.<span class="i">ListContentItemId</span> == <span class="r35 r">contentItemId</span>);
+ 
+                    <a href="#007dc668250234fb" class="i method">ApplyPagingContentIndexFilter</a>(<b>null</b>, <b>null</b>, <b>false</b>, <span class="r39 r">query</span>);
+                }
+ 
+                <a href="#0c71f9bc7aadcac4" class="i method">ApplyContainedItemOptionsFilter</a>(<span class="r38 r">containedItemOptions</span>, <span class="r39 r">query</span>);
+ 
+                <span class="r39 r">query</span>.<span class="i">Take</span>(<span class="r37 r">pager</span>.<span class="i">PageSize</span> + 1);
+ 
+                <span class="c">// Load items so that loading handlers are invoked.</span>
+                <b>var</b> <span id="r51 rd" class="r51 r">containedItems</span> = <b>await</b> <span class="r39 r">query</span>.<span class="i">ListAsync</span>(<a href="#ab0321a1bfb503ce" class="i field">_contentManager</a>);
+ 
+                <b>if</b> (!<span class="r51 r">containedItems</span>.<span class="i">Any</span>())
+                {
+                    <b>return</b> <span class="r51 r">containedItems</span>;
+                }
+ 
+                <span class="r37 r">pager</span>.<span class="i">Before</span> = <b>null</b>;
+                <span class="r37 r">pager</span>.<span class="i">After</span> = <b>null</b>;
+ 
+                <b>if</b> (<span class="r51 r">containedItems</span>.<span class="i">Count</span>() == <span class="r37 r">pager</span>.<span class="i">PageSize</span> + 1)
+                {
+                    <span class="r51 r">containedItems</span> = <span class="r51 r">containedItems</span>.<span class="i">Take</span>(<span class="r37 r">pager</span>.<span class="i">PageSize</span>);
+                    <b>if</b> (<span class="r36 r">enableOrdering</span>)
+                    {
+                        <span class="r37 r">pager</span>.<span class="i">After</span> = <span class="r51 r">containedItems</span>.<span class="i">Last</span>().<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;().<span class="i">Order</span>.<span class="i">ToString</span>();
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r37 r">pager</span>.<span class="i">After</span> = <span class="r51 r">containedItems</span>.<span class="i">Last</span>().<span class="i">CreatedUtc</span>.<span class="i">Value</span>.<span class="i">Ticks</span>.<span class="i">ToString</span>();
+                    }
+                }
+ 
+                <b>return</b> <span class="r51 r">containedItems</span>;
+            }
+        }
+ 
+        <b>private static void</b> <a id="007dc668250234fb" href="../R/007dc668250234fb.html" target="n" data-glyph="76,1" class="i method">ApplyPagingContentIndexFilter</a>(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>? <span id="r52 rd" class="r52 r">before</span>, <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>? <span id="r53 rd" class="r53 r">after</span>, <b>bool</b> <span id="r54 rd" class="r54 r">orderByAsc</span>, <span class="i">IQuery</span>&lt;<span class="i">ContentItem</span>&gt; <span id="r55 rd" class="r55 r">query</span>)
+        {
+            <b>var</b> <span id="r56 rd" class="r56 r">indexQuery</span> = <span class="r55 r">query</span>.<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;();
+ 
+            <b>if</b> (<span class="r52 r">before</span> != <b>null</b>)
+            {
+                <span class="r56 r">indexQuery</span>.<span class="i">Where</span>(<span id="r57 rd" class="r57 r">i</span> =&gt; <span class="r57 r">i</span>.<span class="i">CreatedUtc</span> &gt; <span class="r52 r">before</span>);
+            }
+ 
+            <b>if</b> (<span class="r53 r">after</span> != <b>null</b>)
+            {
+                <span class="r56 r">indexQuery</span>.<span class="i">Where</span>(<span id="r58 rd" class="r58 r">i</span> =&gt; <span class="r58 r">i</span>.<span class="i">CreatedUtc</span> &lt; <span class="r53 r">after</span>);
+            }
+ 
+            <b>if</b> (<span class="r54 r">orderByAsc</span>)
+            {
+                <span class="r56 r">indexQuery</span>.<span class="i">OrderBy</span>(<span id="r59 rd" class="r59 r">i</span> =&gt; <span class="r59 r">i</span>.<span class="i">CreatedUtc</span>);
+            }
+            <b>else</b>
+            {
+                <span class="r56 r">indexQuery</span>.<span class="i">OrderByDescending</span>(<span id="r60 rd" class="r60 r">i</span> =&gt; <span class="r60 r">i</span>.<span class="i">CreatedUtc</span>);
+            }
+        }
+ 
+        <b>private void</b> <a id="0c71f9bc7aadcac4" href="../R/0c71f9bc7aadcac4.html" target="n" data-glyph="76,1" class="i method">ApplyContainedItemOptionsFilter</a>(<a href="../Models/ContainedItemOptions.cs.html#cb0e6fd64f7cc2de" class="t t">ContainedItemOptions</a> <span id="r61 rd" class="r61 r">containedItemOptions</span>, <span class="i">IQuery</span>&lt;<span class="i">ContentItem</span>&gt; <span id="r62 rd" class="r62 r">query</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r61 r">containedItemOptions</span>.<a href="../Models/ContainedItemOptions.cs.html#4ab321595a566185" class="i property">DisplayText</a>))
+            {
+                <span class="r62 r">query</span>.<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r63 rd" class="r63 r">i</span> =&gt; <span class="r63 r">i</span>.<span class="i">DisplayText</span>.<span class="i">Contains</span>(<span class="r61 r">containedItemOptions</span>.<a href="../Models/ContainedItemOptions.cs.html#4ab321595a566185" class="i property">DisplayText</a>));
+            }
+ 
+            <b>switch</b> (<span class="r61 r">containedItemOptions</span>.<a href="../Models/ContainedItemOptions.cs.html#3b6e7db6902bd5d5" class="i property">Status</a>)
+            {
+                <b>case</b> <a href="../Models/ContainedItemOptions.cs.html#78e1391e9782e86f" class="t t">ContentsStatus</a>.<a href="../Models/ContainedItemOptions.cs.html#65a13097cc6159b1" class="i field">Published</a>:
+                    <span class="r62 r">query</span>.<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r64 rd" class="r64 r">i</span> =&gt; <span class="r64 r">i</span>.<span class="i">Published</span>);
+                    <b>break</b>;
+                <b>case</b> <a href="../Models/ContainedItemOptions.cs.html#78e1391e9782e86f" class="t t">ContentsStatus</a>.<a href="../Models/ContainedItemOptions.cs.html#f9fa9da7bdd48dee" class="i field">Latest</a>:
+                    <span class="r62 r">query</span>.<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r65 rd" class="r65 r">i</span> =&gt; <span class="r65 r">i</span>.<span class="i">Latest</span>);
+                    <b>break</b>;
+                <b>case</b> <a href="../Models/ContainedItemOptions.cs.html#78e1391e9782e86f" class="t t">ContentsStatus</a>.<a href="../Models/ContainedItemOptions.cs.html#03e65f92a423b04d" class="i field">Draft</a>:
+                    <span class="r62 r">query</span>.<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r66 rd" class="r66 r">i</span> =&gt; !<span class="r66 r">i</span>.<span class="i">Published</span> &amp;&amp; <span class="r66 r">i</span>.<span class="i">Latest</span>);
+                    <b>break</b>;
+                <b>case</b> <a href="../Models/ContainedItemOptions.cs.html#78e1391e9782e86f" class="t t">ContentsStatus</a>.<a href="../Models/ContainedItemOptions.cs.html#31ca2c0803c91898" class="i field">Owner</a>:
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r67 rd" class="r67 r">currentUserName</span> = <a href="#b9081c2ca4b2cec5" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>?.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>);
+ 
+                    <b>if</b> (<span class="r67 r">currentUserName</span> != <b>null</b>)
+                    {
+                        <span class="r62 r">query</span>.<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r68 rd" class="r68 r">i</span> =&gt; <span class="r68 r">i</span>.<span class="i">Owner</span> == <span class="r67 r">currentUserName</span>);
+                    }
+ 
+                    <b>break</b>;
+                <b>default</b>:
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#3d3c2c03118be4f8" class="t constructor">NotSupportedException</a>(<span class="s">&quot;Unknown status filter.&quot;</span>);
+            }
+        }
+ 
+        <b>private static</b> <span class="t t">Expression</span>&lt;<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../Indexes/ContainedPartIndex.cs.html#130543d941dba153" class="t t">ContainedPartIndex</a>, <b>bool</b>&gt;&gt; <a id="6af7235f3f646a62" href="../R/6af7235f3f646a62.html" target="n" data-glyph="76,1" class="i method">CreateOrderedContainedPartIndexFilter</a>(<b>int</b>? <span id="r69 rd" class="r69 r">before</span>, <b>int</b>? <span id="r70 rd" class="r70 r">after</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r71 rd" class="r71 r">contentItemId</span>)
+        {
+            <b>if</b> (<span class="r69 r">before</span> != <b>null</b>)
+            {
+                <b>return</b> <span id="r72 rd" class="r72 r">x</span> =&gt; <span class="r72 r">x</span>.<a href="../Indexes/ContainedPartIndex.cs.html#7364d5edbe8bab0e" class="i property">Order</a> &lt; <span class="r69 r">before</span> &amp;&amp; <span class="r72 r">x</span>.<a href="../Indexes/ContainedPartIndex.cs.html#48ec6b847ae3674d" class="i property">ListContentItemId</a> == <span class="r71 r">contentItemId</span>;
+            }
+ 
+            <b>if</b> (<span class="r70 r">after</span> != <b>null</b>)
+            {
+                <b>return</b> <span id="r73 rd" class="r73 r">x</span> =&gt; <span class="r73 r">x</span>.<a href="../Indexes/ContainedPartIndex.cs.html#7364d5edbe8bab0e" class="i property">Order</a> &gt; <span class="r70 r">after</span> &amp;&amp; <span class="r73 r">x</span>.<a href="../Indexes/ContainedPartIndex.cs.html#48ec6b847ae3674d" class="i property">ListContentItemId</a> == <span class="r71 r">contentItemId</span>;
+            }
+ 
+            <b>return</b> <span id="r74 rd" class="r74 r">x</span> =&gt; <span class="r74 r">x</span>.<a href="../Indexes/ContainedPartIndex.cs.html#48ec6b847ae3674d" class="i property">ListContentItemId</a> == <span class="r71 r">contentItemId</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,239 @@
+﻿<!DOCTYPE html>
+<html><head><title>SmtpService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(230);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Email/Services/SmtpService.cs" target="_top">Services\SmtpService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Email" target="_top">src\OrchardCore.Modules\OrchardCore.Email\OrchardCore.Email.csproj</a> (OrchardCore.Email)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Security</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>.<span class="i n">X509Certificates</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">MailKit</span>.<span class="i">Net</span>.<span class="i">Smtp</span>;
+<b>using</b> <span class="i">MailKit</span>.<span class="i">Security</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">MimeKit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Email</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="3ef8f554d7e17248" href="../R/3ef8f554d7e17248.html" target="n" data-glyph="0,0" class="t t">SmtpService</a> : <a href="/OrchardCore.Email.Abstractions/A.html#d4b2856f88729993" class="t t">ISmtpService</a>
+    {
+        <b>private const string</b> <a id="ceae6fdca6169af3" href="../R/ceae6fdca6169af3.html" target="n" data-glyph="10,1" class="i field">EmailExtension</a> = <span class="s">&quot;.eml&quot;</span>;
+ 
+        <b>private static readonly char</b>[] <a id="1bde54d3de83fd98" href="../R/1bde54d3de83fd98.html" target="n" data-glyph="46,1" class="i field">EmailsSeparator</a> = <b>new</b> <b>char</b>[] { <span class="s">&#39;,&#39;</span>, <span class="s">&#39;;&#39;</span> };
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Email.Abstractions/A.html#ad488d80c6b5828a" class="t t">SmtpSettings</a> <a id="ee54143430b6a7f0" href="../R/ee54143430b6a7f0.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="5653110d3dc6d750" href="../R/5653110d3dc6d750.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="daaaada57167bae9" href="../R/daaaada57167bae9.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="79c5e5f73c9a82a1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SmtpService</a>(
+            <span class="t t">IOptions</span>&lt;<a href="/OrchardCore.Email.Abstractions/A.html#ad488d80c6b5828a" class="t t">SmtpSettings</a>&gt; <span id="r0 rd" class="r0 r">options</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#3ef8f554d7e17248" class="t t">SmtpService</a>&gt; <span id="r1 rd" class="r1 r">logger</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#3ef8f554d7e17248" class="t t">SmtpService</a>&gt; <span id="r2 rd" class="r2 r">stringLocalizer</span>
+            )
+        {
+            <a href="#ee54143430b6a7f0" class="i field">_options</a> = <span class="r0 r">options</span>.<span class="i property">Value</span>;
+            <a href="#5653110d3dc6d750" class="i field">_logger</a> = <span class="r1 r">logger</span>;
+            <a href="#daaaada57167bae9" class="i field">S</a> = <span class="r2 r">stringLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Email.Abstractions/A.html#2b18b3c58b7bf542" class="t t">SmtpResult</a>&gt; <a id="de6d67237f32fa6f" href="../R/de6d67237f32fa6f.html" target="n" data-glyph="72,1" class="i method">SendAsync</a>(<a href="/OrchardCore.Email.Abstractions/A.html#f7149f61f5bd6362" class="t t">MailMessage</a> <span id="r3 rd" class="r3 r">message</span>)
+        {
+            <b>if</b> (<a href="#ee54143430b6a7f0" class="i field">_options</a>?.<a href="/OrchardCore.Email.Abstractions/A.html#3a9bd53e3bc48869" class="i property">DefaultSender</a> == <b>null</b>)
+            {
+                <b>return</b> <a href="/OrchardCore.Email.Abstractions/A.html#2b18b3c58b7bf542" class="t t">SmtpResult</a>.<a href="/OrchardCore.Email.Abstractions/A.html#457920286f08fa74" class="i method">Failed</a>(<a href="#daaaada57167bae9" class="i field">S</a>[<span class="s">&quot;SMTP settings must be configured before an email can be sent.&quot;</span>]);
+            }
+ 
+            <b>try</b>
+            {
+                <span class="c">// Set the MailMessage.From, to avoid the confusion between _options.DefaultSender (Author) and submitter (Sender)</span>
+                <span class="r3 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#eb96f33d131af93c" class="i property">From</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r3 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#eb96f33d131af93c" class="i property">From</a>)
+                    ? <a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#3a9bd53e3bc48869" class="i property">DefaultSender</a>
+                    : <span class="r3 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#eb96f33d131af93c" class="i property">From</a>;
+ 
+                <b>var</b> <span id="r4 rd" class="r4 r">mimeMessage</span> = <a href="#be65f4032af672a2" class="i method">FromMailMessage</a>(<span class="r3 r">message</span>);
+ 
+                <b>switch</b> (<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#84bf714d0b7f6324" class="i property">DeliveryMethod</a>)
+                {
+                    <b>case</b> <a href="/OrchardCore.Email.Abstractions/A.html#0518b7018deed206" class="t t">SmtpDeliveryMethod</a>.<a href="/OrchardCore.Email.Abstractions/A.html#626e1be92fb64426" class="i field">Network</a>:
+                        <b>await</b> <a href="#09f2c9c51ff20545" class="i method">SendOnlineMessage</a>(<span class="r4 r">mimeMessage</span>);
+                        <b>break</b>;
+                    <b>case</b> <a href="/OrchardCore.Email.Abstractions/A.html#0518b7018deed206" class="t t">SmtpDeliveryMethod</a>.<a href="/OrchardCore.Email.Abstractions/A.html#4af09357138d55da" class="i field">SpecifiedPickupDirectory</a>:
+                        <b>await</b> <a href="#4be66c8552e0d54b" class="i method">SendOfflineMessage</a>(<span class="r4 r">mimeMessage</span>, <a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#cdc288e9ec8c60df" class="i property">PickupDirectoryLocation</a>);
+                        <b>break</b>;
+                    <b>default</b>:
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#3d3c2c03118be4f8" class="t constructor">NotSupportedException</a>(<span class="s">$&quot;</span><span class="s">The &#39;</span>{<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#84bf714d0b7f6324" class="i property">DeliveryMethod</a>}<span class="s">&#39; delivery method is not supported.</span><span class="s">&quot;</span>);
+                }
+ 
+                <b>return</b> <a href="/OrchardCore.Email.Abstractions/A.html#2b18b3c58b7bf542" class="t t">SmtpResult</a>.<a href="/OrchardCore.Email.Abstractions/A.html#1c4f84ee4e094987" class="i property">Success</a>;
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r5 rd" class="r5 r">ex</span>)
+            {
+                <b>return</b> <a href="/OrchardCore.Email.Abstractions/A.html#2b18b3c58b7bf542" class="t t">SmtpResult</a>.<a href="/OrchardCore.Email.Abstractions/A.html#457920286f08fa74" class="i method">Failed</a>(<a href="#daaaada57167bae9" class="i field">S</a>[<span class="s">&quot;An error occurred while sending an email: &#39;{0}&#39;&quot;</span>, <span class="r5 r">ex</span>.<a href="@1@System.Runtime/A.html#5fba0e16215b42a3" class="i property">Message</a>]);
+            }
+        }
+ 
+        <b>private</b> <span class="i">MimeMessage</span> <a id="be65f4032af672a2" href="../R/be65f4032af672a2.html" target="n" data-glyph="76,1" class="i method">FromMailMessage</a>(<a href="/OrchardCore.Email.Abstractions/A.html#f7149f61f5bd6362" class="t t">MailMessage</a> <span id="r6 rd" class="r6 r">message</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r7 rd" class="r7 r">senderAddress</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#dd3db4a0ab1833c1" class="i property">Sender</a>)
+                ? <a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#3a9bd53e3bc48869" class="i property">DefaultSender</a>
+                : <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#dd3db4a0ab1833c1" class="i property">Sender</a>;
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">mimeMessage</span> = <b>new</b> <span class="i">MimeMessage</span>
+            {
+                <span class="i">Sender</span> = <span class="i">MailboxAddress</span>.<span class="i">Parse</span>(<span class="r7 r">senderAddress</span>)
+            };
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#eb96f33d131af93c" class="i property">From</a>))
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">address</span> <b>in</b> <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#eb96f33d131af93c" class="i property">From</a>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#1bde54d3de83fd98" class="i field">EmailsSeparator</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>))
+                {
+                    <span class="r8 r">mimeMessage</span>.<span class="i">From</span>.<span class="i">Add</span>(<span class="i">MailboxAddress</span>.<span class="i">Parse</span>(<span class="r9 r">address</span>));
+                }
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#89bfd2d7198179f9" class="i property">To</a>))
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">address</span> <b>in</b> <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#89bfd2d7198179f9" class="i property">To</a>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#1bde54d3de83fd98" class="i field">EmailsSeparator</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>))
+                {
+                    <span class="r8 r">mimeMessage</span>.<span class="i">To</span>.<span class="i">Add</span>(<span class="i">MailboxAddress</span>.<span class="i">Parse</span>(<span class="r10 r">address</span>));
+                }
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#89a9756c731b1c06" class="i property">Cc</a>))
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">address</span> <b>in</b> <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#89a9756c731b1c06" class="i property">Cc</a>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#1bde54d3de83fd98" class="i field">EmailsSeparator</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>))
+                {
+                    <span class="r8 r">mimeMessage</span>.<span class="i">Cc</span>.<span class="i">Add</span>(<span class="i">MailboxAddress</span>.<span class="i">Parse</span>(<span class="r11 r">address</span>));
+                }
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#d4c7a03925421974" class="i property">Bcc</a>))
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">address</span> <b>in</b> <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#d4c7a03925421974" class="i property">Bcc</a>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#1bde54d3de83fd98" class="i field">EmailsSeparator</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>))
+                {
+                    <span class="r8 r">mimeMessage</span>.<span class="i">Bcc</span>.<span class="i">Add</span>(<span class="i">MailboxAddress</span>.<span class="i">Parse</span>(<span class="r12 r">address</span>));
+                }
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#efbfbf7fb50304c0" class="i property">ReplyTo</a>))
+            {
+                <b>foreach</b> (<b>var</b> <span id="r13 rd" class="r13 r">address</span> <b>in</b> <span class="r8 r">mimeMessage</span>.<span class="i">From</span>)
+                {
+                    <span class="r8 r">mimeMessage</span>.<span class="i">ReplyTo</span>.<span class="i">Add</span>(<span class="r13 r">address</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">address</span> <b>in</b> <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#efbfbf7fb50304c0" class="i property">ReplyTo</a>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#1bde54d3de83fd98" class="i field">EmailsSeparator</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>))
+                {
+                    <span class="r8 r">mimeMessage</span>.<span class="i">ReplyTo</span>.<span class="i">Add</span>(<span class="i">MailboxAddress</span>.<span class="i">Parse</span>(<span class="r14 r">address</span>));
+                }
+            }
+ 
+            <span class="r8 r">mimeMessage</span>.<span class="i">Subject</span> = <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#7970aaa39d95f42b" class="i property">Subject</a>;
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">body</span> = <b>new</b> <span class="i">BodyBuilder</span>();
+ 
+            <b>if</b> (<span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#d69f509970b9cb44" class="i property">IsBodyHtml</a>)
+            {
+                <span class="r15 r">body</span>.<span class="i">HtmlBody</span> = <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#c7019032888ffec7" class="i property">Body</a>;
+            }
+            <b>else</b>
+            {
+                <span class="r15 r">body</span>.<span class="i">TextBody</span> = <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#c7019032888ffec7" class="i property">Body</a>;
+            }
+ 
+            <b>foreach</b> (<a href="/OrchardCore.Email.Abstractions/A.html#0f67e3f306221907" class="k">var</a> <span id="r16 rd" class="r16 r">attachment</span> <b>in</b> <span class="r6 r">message</span>.<a href="/OrchardCore.Email.Abstractions/A.html#48d023f6a472a518" class="i property">Attachments</a>)
+            {
+                <span class="c">// Stream must not be null, otherwise it would try to get the filesystem path</span>
+                <b>if</b> (<span class="r16 r">attachment</span>.<a href="/OrchardCore.Email.Abstractions/A.html#3568dce7e2e45658" class="i property">Stream</a> != <b>null</b>)
+                {
+                    <span class="r15 r">body</span>.<span class="i">Attachments</span>.<span class="i">Add</span>(<span class="r16 r">attachment</span>.<a href="/OrchardCore.Email.Abstractions/A.html#e6ee53cc20cb1ba4" class="i property">Filename</a>, <span class="r16 r">attachment</span>.<a href="/OrchardCore.Email.Abstractions/A.html#3568dce7e2e45658" class="i property">Stream</a>);
+                }            
+            }
+ 
+            <span class="r8 r">mimeMessage</span>.<span class="i">Body</span> = <span class="r15 r">body</span>.<span class="i">ToMessageBody</span>();
+ 
+            <b>return</b> <span class="r8 r">mimeMessage</span>;
+        }
+ 
+        <b>private bool</b> <a id="69d9cbf1fe6ba84d" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">CertificateValidationCallback</a>(<b>object</b> <span id="r17 rd" class="r17 r">sender</span>, <span class="t t">X509Certificate</span> <span id="r18 rd" class="r18 r">certificate</span>, <span class="t t">X509Chain</span> <span id="r19 rd" class="r19 r">chain</span>, <span class="t t">SslPolicyErrors</span> <span id="r20 rd" class="r20 r">sslPolicyErrors</span>)
+        {
+            <b>if</b> (<span class="r20 r">sslPolicyErrors</span> == <span class="t t">SslPolicyErrors</span>.<span class="i field">None</span>)
+                <b>return</b> <b>true</b>;
+ 
+            <a href="#5653110d3dc6d750" class="i field">_logger</a>.<span class="i method">LogError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#17e1cc2f91f20974" class="i method">Concat</a>(<span class="s">&quot;SMTP Server&#39;s certificate {CertificateSubject} issued by {CertificateIssuer} &quot;</span>,
+                <span class="s">&quot;with thumbprint {CertificateThumbprint} and expiration date {CertificateExpirationDate} &quot;</span>,
+                <span class="s">&quot;is considered invalid with {SslPolicyErrors} policy errors&quot;</span>),
+                <span class="r18 r">certificate</span>.<span class="i property">Subject</span>, <span class="r18 r">certificate</span>.<span class="i property">Issuer</span>, <span class="r18 r">certificate</span>.<span class="i method">GetCertHashString</span>(),
+                <span class="r18 r">certificate</span>.<span class="i method">GetExpirationDateString</span>(), <span class="r20 r">sslPolicyErrors</span>);
+ 
+            <b>if</b> (<span class="r20 r">sslPolicyErrors</span>.<a href="@1@System.Runtime/A.html#9cd73f33d2df3074" class="i method">HasFlag</a>(<span class="t t">SslPolicyErrors</span>.<span class="i field">RemoteCertificateChainErrors</span>) &amp;&amp; <span class="r19 r">chain</span>?.<span class="i property">ChainStatus</span> != <b>null</b>)
+            {
+                <b>foreach</b> (<b>var</b> <span id="r21 rd" class="r21 r">chainStatus</span> <b>in</b> <span class="r19 r">chain</span>.<span class="i property">ChainStatus</span>)
+                {
+                    <a href="#5653110d3dc6d750" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Status: {Status} - {StatusInformation}&quot;</span>, <span class="r21 r">chainStatus</span>.<span class="i property">Status</span>, <span class="r21 r">chainStatus</span>.<span class="i property">StatusInformation</span>);
+                }
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="09f2c9c51ff20545" href="../R/09f2c9c51ff20545.html" target="n" data-glyph="76,1" class="i method">SendOnlineMessage</a>(<span class="i">MimeMessage</span> <span id="r22 rd" class="r22 r">message</span>)
+        {
+            <b>var</b> <span id="r23 rd" class="r23 r">secureSocketOptions</span> = <span class="i">SecureSocketOptions</span>.<span class="i">Auto</span>;
+ 
+            <b>if</b> (!<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#b7b6bd6e19c69090" class="i property">AutoSelectEncryption</a>)
+            {
+                <b>switch</b> (<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#74e2d124cfdb2dc1" class="i property">EncryptionMethod</a>)
+                {
+                    <b>case</b> <a href="/OrchardCore.Email.Abstractions/A.html#338618655ba2e805" class="t t">SmtpEncryptionMethod</a>.<a href="/OrchardCore.Email.Abstractions/A.html#ceef6cc3bdca1b4b" class="i field">None</a>:
+                        <span class="r23 r">secureSocketOptions</span> = <span class="i">SecureSocketOptions</span>.<span class="i">None</span>;
+                        <b>break</b>;
+                    <b>case</b> <a href="/OrchardCore.Email.Abstractions/A.html#338618655ba2e805" class="t t">SmtpEncryptionMethod</a>.<a href="/OrchardCore.Email.Abstractions/A.html#4611293aaf3493a1" class="i field">SSLTLS</a>:
+                        <span class="r23 r">secureSocketOptions</span> = <span class="i">SecureSocketOptions</span>.<span class="i">SslOnConnect</span>;
+                        <b>break</b>;
+                    <b>case</b> <a href="/OrchardCore.Email.Abstractions/A.html#338618655ba2e805" class="t t">SmtpEncryptionMethod</a>.<a href="/OrchardCore.Email.Abstractions/A.html#7854883cd70e1b88" class="i field">STARTTLS</a>:
+                        <span class="r23 r">secureSocketOptions</span> = <span class="i">SecureSocketOptions</span>.<span class="i">StartTls</span>;
+                        <b>break</b>;
+                    <b>default</b>:
+                        <b>break</b>;
+                }
+            }
+ 
+            <b>using</b> (<b>var</b> <span id="r24 rd" class="r24 r">client</span> = <b>new</b> <span class="i">SmtpClient</span>())
+            {
+                <span class="r24 r">client</span>.<span class="i">ServerCertificateValidationCallback</span> = <span class="i">CertificateValidationCallback</span>;
+                <b>await</b> <span class="r24 r">client</span>.<span class="i">ConnectAsync</span>(<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#e4c26c8fce64ecec" class="i property">Host</a>, <a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#748f80fa428dd5c1" class="i property">Port</a>, <span class="r23 r">secureSocketOptions</span>);
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r25 rd" class="r25 r">useDefaultCredentials</span> = <a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#5d14af8297c89bed" class="i property">RequireCredentials</a> &amp;&amp; <a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#76bebf7eb4b7c09e" class="i property">UseDefaultCredentials</a>;
+                <b>if</b> (<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#5d14af8297c89bed" class="i property">RequireCredentials</a>)
+                {
+                    <b>if</b> (<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#76bebf7eb4b7c09e" class="i property">UseDefaultCredentials</a>)
+                    {
+                        <span class="c">// There&#39;s no notion of &#39;UseDefaultCredentials&#39; in MailKit, so empty credentials is passed in</span>
+                        <b>await</b> <span class="r24 r">client</span>.<span class="i">AuthenticateAsync</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>);
+                    }
+                    <b>else</b> <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#9d93a3c75d07389c" class="i property">UserName</a>))
+                    {
+                        <b>await</b> <span class="r24 r">client</span>.<span class="i">AuthenticateAsync</span>(<a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#9d93a3c75d07389c" class="i property">UserName</a>, <a href="#ee54143430b6a7f0" class="i field">_options</a>.<a href="/OrchardCore.Email.Abstractions/A.html#07a7595b4c453e85" class="i property">Password</a>);
+                    }
+                }
+                <b>await</b> <span class="r24 r">client</span>.<span class="i">SendAsync</span>(<span class="r22 r">message</span>);
+                <b>await</b> <span class="r24 r">client</span>.<span class="i">DisconnectAsync</span>(<b>true</b>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4be66c8552e0d54b" href="../R/4be66c8552e0d54b.html" target="n" data-glyph="76,1" class="i method">SendOfflineMessage</a>(<span class="i">MimeMessage</span> <span id="r26 rd" class="r26 r">message</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">pickupDirectory</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r28 rd" class="r28 r">mailPath</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<span class="r27 r">pickupDirectory</span>, <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>() + <a href="#ceae6fdca6169af3" class="i field">EmailExtension</a>);
+            <b>await</b> <span class="r26 r">message</span>.<span class="i">WriteToAsync</span>(<span class="r28 r">mailPath</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>.<a href="@1@System.Runtime/A.html#ec32c41597007382" class="i property">None</a>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

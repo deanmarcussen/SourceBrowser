@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html><head><title>BooleanQueryProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(126);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene.Core/QueryProviders/BooleanQueryProvider.cs" target="_top">QueryProviders\BooleanQueryProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene.Core" target="_top">src\OrchardCore\OrchardCore.Lucene.Core\OrchardCore.Lucene.Core.csproj</a> (OrchardCore.Lucene.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">QueryProviders</span>.<span class="i n">Filters</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">QueryProviders</span>
+{
+    <b>public class</b> <a id="ad45d8f8beb36b6d" href="../R/ad45d8f8beb36b6d.html" target="n" data-glyph="0,0" class="t t">BooleanQueryProvider</a> : <a href="/OrchardCore.Lucene.Abstractions/A.html#fe150d221b555d91" class="t t">ILuceneQueryProvider</a>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="Filters/ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="t t">ILuceneBooleanFilterProvider</a>&gt; <a id="f28145f1c0fe3163" href="../R/f28145f1c0fe3163.html" target="n" data-glyph="46,1" class="i field">_filters</a>;
+ 
+        <b>public</b> <a id="3a489a32a2930832" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">BooleanQueryProvider</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="Filters/ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="t t">ILuceneBooleanFilterProvider</a>&gt; <span id="r0 rd" class="r0 r">filters</span>)
+        {
+            <a href="#f28145f1c0fe3163" class="i field">_filters</a> = <span class="r0 r">filters</span>;
+        }
+ 
+        <b>public</b> <span class="i">Query</span> <a id="f5aba572d82fe21d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreateQuery</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a> <span id="r1 rd" class="r1 r">builder</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r2 rd" class="r2 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">type</span>, <span class="i">JObject</span> <span id="r4 rd" class="r4 r">query</span>)
+        {
+            <b>if</b> (<span class="r3 r">type</span> != <span class="s">&quot;bool&quot;</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">boolQuery</span> = <b>new</b> <span class="i">BooleanQuery</span>();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r6 rd" class="r6 r">property</span> <b>in</b> <span class="r4 r">query</span>.<span class="i">Properties</span>())
+            {
+                <b>var</b> <span id="r7 rd" class="r7 r">occur</span> = <span class="i">Occur</span>.<span class="i">MUST</span>;
+                <b>bool</b> <span id="r8 rd" class="r8 r">isProps</span> = <b>false</b>;
+ 
+                <b>switch</b> (<span class="r6 r">property</span>.<span class="i">Name</span>.<span class="i">ToLowerInvariant</span>())
+                {
+                    <b>case</b> <span class="s">&quot;must&quot;</span>:
+                        <span class="r7 r">occur</span> = <span class="i">Occur</span>.<span class="i">MUST</span>;
+                        <b>break</b>;
+                    <b>case</b> <span class="s">&quot;mustnot&quot;</span>:
+                    <b>case</b> <span class="s">&quot;must_not&quot;</span>:
+                        <span class="r7 r">occur</span> = <span class="i">Occur</span>.<span class="i">MUST_NOT</span>;
+                        <b>break</b>;
+                    <b>case</b> <span class="s">&quot;should&quot;</span>:
+                        <span class="r7 r">occur</span> = <span class="i">Occur</span>.<span class="i">SHOULD</span>;
+                        <b>break</b>;
+                    <b>case</b> <span class="s">&quot;boost&quot;</span>:
+                        <span class="r5 r">boolQuery</span>.<span class="i">Boost</span> = <span class="r6 r">property</span>.<span class="i">Value</span>.<span class="i">Value</span>&lt;<b>float</b>&gt;();
+                        <span class="r8 r">isProps</span> = <b>true</b>;
+                        <b>break</b>;
+                    <b>case</b> <span class="s">&quot;minimum_should_match&quot;</span>:
+                        <span class="r5 r">boolQuery</span>.<span class="i">MinimumNumberShouldMatch</span> = <span class="r6 r">property</span>.<span class="i">Value</span>.<span class="i">Value</span>&lt;<b>int</b>&gt;();
+                        <span class="r8 r">isProps</span> = <b>true</b>;
+                        <b>break</b>;
+                    <b>case</b> <span class="s">&quot;filter&quot;</span>:
+                        <b>return</b> <span class="i">CreateFilteredQuery</span>(<span class="r1 r">builder</span>, <span class="r2 r">context</span>, <span class="r5 r">boolQuery</span>, <span class="r6 r">property</span>.<span class="i">Value</span>);
+                    <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">$&quot;</span><span class="s">Invalid property &#39;</span>{<span class="r6 r">property</span>.<span class="i">Name</span>}<span class="s">&#39; in boolean query</span><span class="s">&quot;</span>);
+                }
+ 
+                <b>if</b> (!<span class="r8 r">isProps</span>)
+                {
+                    <b>switch</b> (<span class="r6 r">property</span>.<span class="i">Value</span>.<span class="i">Type</span>)
+                    {
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">Object</span>:
+                            <span class="r5 r">boolQuery</span>.<span class="i">Add</span>(<span class="r1 r">builder</span>.<span class="i">CreateQueryFragment</span>(<span class="r2 r">context</span>, (<span class="i">JObject</span>)<span class="r6 r">property</span>.<span class="i">Value</span>), <span class="r7 r">occur</span>);
+                            <b>break</b>;
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">Array</span>:
+                            <b>foreach</b> (<b>var</b> <span id="r9 rd" class="r9 r">item</span> <b>in</b> ((<span class="i">JArray</span>)<span class="r6 r">property</span>.<span class="i">Value</span>))
+                            {
+                                <b>if</b> (<span class="r9 r">item</span>.<span class="i">Type</span> != <span class="i">JTokenType</span>.<span class="i">Object</span>)
+                                {
+                                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">$&quot;</span><span class="s">Invalid value in boolean query</span><span class="s">&quot;</span>);
+                                }
+                                <span class="r5 r">boolQuery</span>.<span class="i">Add</span>(<span class="r1 r">builder</span>.<span class="i">CreateQueryFragment</span>(<span class="r2 r">context</span>, (<span class="i">JObject</span>)<span class="r9 r">item</span>), <span class="r7 r">occur</span>);
+                            }
+                            <b>break</b>;
+                        <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">$&quot;</span><span class="s">Invalid value in boolean query</span><span class="s">&quot;</span>);
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="r5 r">boolQuery</span>;
+        }
+ 
+        <b>private</b> <span class="i">Query</span> <a id="41f7ccd0a2cc0f2c" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">CreateFilteredQuery</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a> <span id="r10 rd" class="r10 r">builder</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r11 rd" class="r11 r">context</span>, <span class="i">Query</span> <span id="r12 rd" class="r12 r">query</span>, <span class="i">JToken</span> <span id="r13 rd" class="r13 r">filter</span>)
+        {
+            <span class="i">Query</span> <span id="r14 rd" class="r14 r">filteredQuery</span> = <b>null</b>;
+            <b>var</b> <span id="r15 rd" class="r15 r">queryObj</span> = <span class="r13 r">filter</span> <b>as</b> <span class="i">JObject</span>;
+ 
+            <b>switch</b> (<span class="r13 r">filter</span>.<span class="i">Type</span>)
+            {
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Object</span>:
+                    <b>var</b> <span id="r16 rd" class="r16 r">first</span> = <span class="r15 r">queryObj</span>.<span class="i">Properties</span>().<span class="i">First</span>();
+ 
+                    <b>foreach</b> (<a href="Filters/ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="k">var</a> <span id="r17 rd" class="r17 r">queryProvider</span> <b>in</b> <a href="#f28145f1c0fe3163" class="i field">_filters</a>)
+                    {
+                        <span class="r14 r">filteredQuery</span> = <span class="r17 r">queryProvider</span>.<span class="i">CreateFilteredQuery</span>(<span class="r10 r">builder</span>, <span class="r11 r">context</span>, <span class="r16 r">first</span>.<span class="i">Name</span>, <span class="r16 r">first</span>.<span class="i">Value</span>, <span class="r12 r">query</span>);
+ 
+                        <b>if</b> (<span class="r14 r">filteredQuery</span> != <b>null</b>)
+                        {
+                            <b>break</b>;
+                        }
+                    }
+                    <b>break</b>;
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Array</span>:
+                    <b>foreach</b> (<b>var</b> <span id="r18 rd" class="r18 r">item</span> <b>in</b> ((<span class="i">JArray</span>)<span class="r13 r">filter</span>))
+                    {
+                        <b>var</b> <span id="r19 rd" class="r19 r">firstQuery</span> = <span class="r18 r">item</span>.<span class="i">First</span>() <b>as</b> <span class="i">JProperty</span>;
+ 
+                        <b>foreach</b> (<a href="Filters/ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="k">var</a> <span id="r20 rd" class="r20 r">queryProvider</span> <b>in</b> <a href="#f28145f1c0fe3163" class="i field">_filters</a>)
+                        {
+                            <span class="r14 r">filteredQuery</span> = <span class="r20 r">queryProvider</span>.<span class="i">CreateFilteredQuery</span>(<span class="r10 r">builder</span>, <span class="r11 r">context</span>, <span class="r19 r">firstQuery</span>.<span class="i">Name</span>, <span class="r19 r">firstQuery</span>.<span class="i">Value</span>, <span class="r12 r">query</span>);
+ 
+                            <b>if</b> (<span class="r14 r">filteredQuery</span> != <b>null</b>)
+                            {
+                                <b>break</b>;
+                            }
+                        }
+                    }
+                    <b>break</b>;
+                <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">$&quot;</span><span class="s">Invalid value in boolean query</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>return</b> <span class="r14 r">filteredQuery</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

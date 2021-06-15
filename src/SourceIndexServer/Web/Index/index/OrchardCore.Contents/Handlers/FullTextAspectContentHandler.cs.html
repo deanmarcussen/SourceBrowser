@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html><head><title>FullTextAspectContentHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(85);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Handlers/FullTextAspectContentHandler.cs" target="_top">Handlers\FullTextAspectContentHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Cysharp</span>.<span class="i">Text</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Handlers</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Provides the content for FullTextAspect based on FullTextAspectSettings</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="d9fe3dd7e61f9972" href="../R/d9fe3dd7e61f9972.html" target="n" data-glyph="0,0" class="t t">FullTextAspectContentHandler</a> : <span class="i">ContentHandlerBase</span>
+    {
+        <b>private readonly</b> <span class="i">IContentDefinitionManager</span> <a id="315af78998dc14fd" href="../R/315af78998dc14fd.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <a id="447d771a2ea2cfff" href="../R/447d771a2ea2cfff.html" target="n" data-glyph="46,1" class="i field">_liquidTemplateManager</a>;
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="f711a95b68200ffc" href="../R/f711a95b68200ffc.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+ 
+        <b>public</b> <a id="4282173515350043" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">FullTextAspectContentHandler</a>(
+            <span class="i">IContentDefinitionManager</span> <span id="r0 rd" class="r0 r">contentDefinitionManager</span>,
+            <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <span id="r1 rd" class="r1 r">liquidTemplateManager</span>,
+            <span class="t t">IServiceProvider</span> <span id="r2 rd" class="r2 r">serviceProvider</span>
+            )
+        {
+            <a href="#315af78998dc14fd" class="i field">_contentDefinitionManager</a> = <span class="r0 r">contentDefinitionManager</span>;
+            <a href="#447d771a2ea2cfff" class="i field">_liquidTemplateManager</a> = <span class="r1 r">liquidTemplateManager</span>;
+            <a href="#f711a95b68200ffc" class="i field">_serviceProvider</a> = <span class="r2 r">serviceProvider</span>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="33ac60e6128ad88a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetContentItemAspectAsync</a>(<span class="i">ContentItemAspectContext</span> <span id="r3 rd" class="r3 r">context</span>)
+        {
+            <b>var</b> <span id="r4 rd" class="r4 r">contentTypeDefinition</span> = <a href="#315af78998dc14fd" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r3 r">context</span>.<span class="i">ContentItem</span>.<span class="i">ContentType</span>);
+ 
+            <b>if</b> (<span class="r4 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <b>return</b> <span class="r3 r">context</span>.<span class="i">ForAsync</span>&lt;<span class="i">FullTextAspect</span>&gt;(<b>async</b> <span id="r5 rd" class="r5 r">fullTextAspect</span> =&gt;
+            {
+                <b>var</b> <span id="r6 rd" class="r6 r">contentTypeDefinition</span> = <a href="#315af78998dc14fd" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r3 r">context</span>.<span class="i">ContentItem</span>.<span class="i">ContentType</span>);
+                <b>var</b> <span id="r7 rd" class="r7 r">settings</span> = <span class="r6 r">contentTypeDefinition</span>.<span class="i">GetSettings</span>&lt;<a href="../Models/FullTextAspectSettings.cs.html#021de5ffb9e29ade" class="t t">FullTextAspectSettings</a>&gt;();
+ 
+                <b>if</b> (<span class="r7 r">settings</span>.<span class="i">IncludeDisplayText</span>)
+                {
+                    <span class="r5 r">fullTextAspect</span>.<span class="i">Segments</span>.<span class="i">Add</span>(<span class="r3 r">context</span>.<span class="i">ContentItem</span>.<span class="i">DisplayText</span>);
+                }
+ 
+                <b>if</b> (<span class="r7 r">settings</span>.<span class="i">IncludeBodyAspect</span>)
+                {
+                    <span class="c">// Lazy resolution to prevent cyclic dependency of content handlers</span>
+                    <b>var</b> <span id="r8 rd" class="r8 r">contentManager</span> = <a href="#f711a95b68200ffc" class="i field">_serviceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IContentManager</span>&gt;();
+                    <b>var</b> <span id="r9 rd" class="r9 r">bodyAspect</span> = <b>await</b> <span class="r8 r">contentManager</span>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">BodyAspect</span>&gt;(<span class="r3 r">context</span>.<span class="i">ContentItem</span>);
+ 
+                    <b>if</b> (<span class="r9 r">bodyAspect</span> != <b>null</b> &amp;&amp; <span class="r9 r">bodyAspect</span>.<span class="i">Body</span> != <b>null</b>)
+                    {
+                        <b>using</b> <b>var</b> <span id="r10 rd" class="r10 r">sw</span> = <b>new</b> <span class="i">ZStringWriter</span>();
+                        <span class="c">// Don&#39;t encode the body</span>
+                        <span class="r9 r">bodyAspect</span>.<span class="i">Body</span>.<span class="i">WriteTo</span>(<span class="r10 r">sw</span>, <span class="t t">NullHtmlEncoder</span>.<span class="i property">Default</span>);
+                        <span class="r5 r">fullTextAspect</span>.<span class="i">Segments</span>.<span class="i">Add</span>(<span class="r10 r">sw</span>.<span class="i">ToString</span>());
+                    }
+                }
+ 
+                <b>if</b> (<span class="r7 r">settings</span>.<span class="i">IncludeFullTextTemplate</span> &amp;&amp; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r7 r">settings</span>.<span class="i">FullTextTemplate</span>))
+                {
+                    <b>var</b> <span id="r11 rd" class="r11 r">result</span> = <b>await</b> <a href="#447d771a2ea2cfff" class="i field">_liquidTemplateManager</a>.<span class="i">RenderStringAsync</span>(<span class="r7 r">settings</span>.<span class="i">FullTextTemplate</span>, <span class="i">NullEncoder</span>.<span class="i">Default</span>, <span class="r3 r">context</span>.<span class="i">ContentItem</span>,
+                        <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;() { [<span class="s">&quot;ContentItem&quot;</span>] = <b>new</b> <span class="i">ObjectValue</span>(<span class="r3 r">context</span>.<span class="i">ContentItem</span>) });
+ 
+                    <span class="r5 r">fullTextAspect</span>.<span class="i">Segments</span>.<span class="i">Add</span>(<span class="r11 r">result</span>);
+                }
+            });
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

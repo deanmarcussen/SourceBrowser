@@ -1,0 +1,130 @@
+﻿<!DOCTYPE html>
+<html><head><title>LuceneIndexingContentHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(121);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Handler/LuceneIndexingContentHandler.cs" target="_top">Handler\LuceneIndexingContentHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentPreview</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Indexing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Handlers</span>
+{
+    <b>public class</b> <a id="11afc274d43dc9f6" href="../R/11afc274d43dc9f6.html" target="n" data-glyph="0,0" class="t t">LuceneIndexingContentHandler</a> : <span class="i">ContentHandlerBase</span>
+    {
+        <b>private readonly</b> <span class="t t">List</span>&lt;<span class="i">ContentContextBase</span>&gt; <a id="18caccef8a7bbd36" href="../R/18caccef8a7bbd36.html" target="n" data-glyph="46,1" class="i field">_contexts</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">ContentContextBase</span>&gt;();
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="9d4dd42bf82cced8" href="../R/9d4dd42bf82cced8.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+ 
+        <b>public</b> <a id="8787f3253fd4ee60" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LuceneIndexingContentHandler</a>(<span class="t t">IHttpContextAccessor</span> <span id="r0 rd" class="r0 r">httpContextAccessor</span>)
+        {
+            <a href="#9d4dd42bf82cced8" class="i field">_httpContextAccessor</a> = <span class="r0 r">httpContextAccessor</span>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="bfc59946d06cf0fe" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">PublishedAsync</a>(<span class="i">PublishContentContext</span> <span id="r1 rd" class="r1 r">context</span>) =&gt; <span class="i">AddContextAsync</span>(<span class="r1 r">context</span>);
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a9a93c4839b3c5db" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreatedAsync</a>(<span class="i">CreateContentContext</span> <span id="r2 rd" class="r2 r">context</span>) =&gt; <span class="i">AddContextAsync</span>(<span class="r2 r">context</span>);
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="326793802abc85b6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdatedAsync</a>(<span class="i">UpdateContentContext</span> <span id="r3 rd" class="r3 r">context</span>) =&gt; <span class="i">AddContextAsync</span>(<span class="r3 r">context</span>);
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="0de31b487e7bfcb0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RemovedAsync</a>(<span class="i">RemoveContentContext</span> <span id="r4 rd" class="r4 r">context</span>) =&gt; <span class="i">AddContextAsync</span>(<span class="r4 r">context</span>);
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="78fe86903bb7fe6f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UnpublishedAsync</a>(<span class="i">PublishContentContext</span> <span id="r5 rd" class="r5 r">context</span>) =&gt; <span class="i">AddContextAsync</span>(<span class="r5 r">context</span>);
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="88d8d1af20427138" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">AddContextAsync</a>(<span class="i">ContentContextBase</span> <span id="r6 rd" class="r6 r">context</span>)
+        {
+            <span class="c">// Do not index a preview content item.</span>
+            <b>if</b> (<a href="#9d4dd42bf82cced8" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">Features</span>.<span class="i method">Get</span>&lt;<a href="/OrchardCore.ContentPreview.Abstractions/A.html#6ca72e815e1ea408" class="t t">ContentPreviewFeature</a>&gt;()?.<a href="/OrchardCore.ContentPreview.Abstractions/A.html#afd96211a7d18a85" class="i property">Previewing</a> == <b>true</b>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <b>if</b> (<span class="r6 r">context</span>.<span class="i">ContentItem</span>.<span class="i">Id</span> == 0)
+            {
+                <span class="c">// Ignore that case, when Update is called on a content item which has not be &quot;created&quot; yet.</span>
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <b>if</b> (<a href="#18caccef8a7bbd36" class="i field">_contexts</a>.<span class="i property">Count</span> == 0)
+            {
+                <b>var</b> <span id="r7 rd" class="r7 r">contexts</span> = <a href="#18caccef8a7bbd36" class="i field">_contexts</a>;
+ 
+                <span class="c">// Using a local var prevents the lambda from holding a ref on this scoped service.</span>
+                <span class="i">ShellScope</span>.<span class="i">AddDeferredTask</span>(<span id="r8 rd" class="r8 r">scope</span> =&gt; <span class="i">IndexingAsync</span>(<span class="r8 r">scope</span>, <span class="r7 r">contexts</span>));
+            }
+ 
+            <a href="#18caccef8a7bbd36" class="i field">_contexts</a>.<span class="i method">Add</span>(<span class="r6 r">context</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>private static async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4f80abbe7ceb776d" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">IndexingAsync</a>(<span class="i">ShellScope</span> <span id="r9 rd" class="r9 r">scope</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ContentContextBase</span>&gt; <span id="r10 rd" class="r10 r">contexts</span>)
+        {
+            <b>var</b> <span id="r11 rd" class="r11 r">services</span> = <span class="r9 r">scope</span>.<span class="i">ServiceProvider</span>;
+            <b>var</b> <span id="r12 rd" class="r12 r">contentManager</span> = <span class="r11 r">services</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">IContentManager</span>&gt;();
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r13 rd" class="r13 r">contentItemIndexHandlers</span> = <span class="r11 r">services</span>.<span class="i">GetServices</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#33f535f791f6941b" class="t t">IContentItemIndexHandler</a>&gt;();
+            <a href="../Services/LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="k">var</a> <span id="r14 rd" class="r14 r">luceneIndexManager</span> = <span class="r11 r">services</span>.<span class="i">GetRequiredService</span>&lt;<a href="../Services/LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a>&gt;();
+            <a href="../Services/LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="k">var</a> <span id="r15 rd" class="r15 r">luceneIndexSettingsService</span> = <span class="r11 r">services</span>.<span class="i">GetRequiredService</span>&lt;<a href="../Services/LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a>&gt;();
+            <b>var</b> <span id="r16 rd" class="r16 r">logger</span> = <span class="r11 r">services</span>.<span class="i">GetRequiredService</span>&lt;<span class="t t">ILogger</span>&lt;<a href="#11afc274d43dc9f6" class="t t">LuceneIndexingContentHandler</a>&gt;&gt;();
+            <span class="c">// Multiple items may have been updated in the same scope, e.g through a recipe.</span>
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r17 rd" class="r17 r">contextsGroupById</span> = <span class="r10 r">contexts</span>.<span class="i method">GroupBy</span>(<span id="r18 rd" class="r18 r">c</span> =&gt; <span class="r18 r">c</span>.<span class="i">ContentItem</span>.<span class="i">ContentItemId</span>, <span id="r19 rd" class="r19 r">c</span> =&gt; <span class="r19 r">c</span>);
+ 
+            <span class="c">// Get all contexts for each content item id.</span>
+            <b>foreach</b> (<b>var</b> <span id="r20 rd" class="r20 r">ContextsById</span> <b>in</b> <span class="r17 r">contextsGroupById</span>)
+            {
+                <span class="c">// Only process the last context.</span>
+                <b>var</b> <span id="r21 rd" class="r21 r">context</span> = <span class="r20 r">ContextsById</span>.<span class="i method">Last</span>();
+ 
+                <span class="i">ContentItem</span> <span id="r22 rd" class="r22 r">published</span> = <b>null</b>, <span id="r23 rd" class="r23 r">latest</span> = <b>null</b>;
+                <b>bool</b> <span id="r24 rd" class="r24 r">publishedLoaded</span> = <b>false</b>, <span id="r25 rd" class="r25 r">latestLoaded</span> = <b>false</b>;
+ 
+                <b>foreach</b> (<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r26 rd" class="r26 r">indexSettings</span> <b>in</b> <b>await</b> <span class="r15 r">luceneIndexSettingsService</span>.<a href="../Services/LuceneIndexSettingsService.cs.html#be2c2197d07ad806" class="i method">GetSettingsAsync</a>())
+                {
+                    <b>var</b> <span id="r27 rd" class="r27 r">cultureAspect</span> = <b>await</b> <span class="r12 r">contentManager</span>.<span class="i">PopulateAspectAsync</span>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#605bf92af83d0ea5" class="t t">CultureAspect</a>&gt;(<span class="r21 r">context</span>.<span class="i">ContentItem</span>);
+                    <b>var</b> <span id="r28 rd" class="r28 r">culture</span> = <span class="r27 r">cultureAspect</span>.<span class="i">HasCulture</span> ? <span class="r27 r">cultureAspect</span>.<span class="i">Culture</span>.<span class="i">Name</span> : <b>null</b>;
+                    <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r29 rd" class="r29 r">ignoreIndexedCulture</span> = <span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#5615f7c342b37b3c" class="i property">Culture</a> == <span class="s">&quot;any&quot;</span> ? <b>false</b> : <span class="r28 r">culture</span> != <span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#5615f7c342b37b3c" class="i property">Culture</a>;
+ 
+                    <b>if</b> (<span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#0f0aec348c89fa26" class="i property">IndexedContentTypes</a>.<span class="i">Contains</span>(<span class="r21 r">context</span>.<span class="i">ContentItem</span>.<span class="i">ContentType</span>) &amp;&amp; !<span class="r29 r">ignoreIndexedCulture</span>)
+                    {
+                        <b>if</b> (!<span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a> &amp;&amp; !<span class="r24 r">publishedLoaded</span>)
+                        {
+                            <span class="r24 r">publishedLoaded</span> = <b>true</b>;
+                            <span class="r22 r">published</span> = <b>await</b> <span class="r12 r">contentManager</span>.<span class="i">GetAsync</span>(<span class="r21 r">context</span>.<span class="i">ContentItem</span>.<span class="i">ContentItemId</span>, <span class="i">VersionOptions</span>.<span class="i">Published</span>);
+                        }
+ 
+                        <b>if</b> (<span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a> &amp;&amp; !<span class="r25 r">latestLoaded</span>)
+                        {
+                            <span class="r25 r">latestLoaded</span> = <b>true</b>;
+                            <span class="r23 r">latest</span> = <b>await</b> <span class="r12 r">contentManager</span>.<span class="i">GetAsync</span>(<span class="r21 r">context</span>.<span class="i">ContentItem</span>.<span class="i">ContentItemId</span>, <span class="i">VersionOptions</span>.<span class="i">Latest</span>);
+                        }
+ 
+                        <b>var</b> <span id="r30 rd" class="r30 r">contentItem</span> = !<span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a> ? <span class="r22 r">published</span> : <span class="r23 r">latest</span>;
+ 
+                        <b>if</b> (<span class="r30 r">contentItem</span> == <b>null</b>)
+                        {
+                            <b>await</b> <span class="r14 r">luceneIndexManager</span>.<a href="../Services/LuceneIndexManager.cs.html#43644c5c2b926c26" class="i method">DeleteDocumentsAsync</a>(<span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>, <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="r21 r">context</span>.<span class="i">ContentItem</span>.<span class="i">ContentItemId</span> });
+                        }
+                        <b>else</b>
+                        {
+                            <a href="/OrchardCore.Indexing.Abstractions/A.html#0c8f7540208faa00" class="k">var</a> <span id="r31 rd" class="r31 r">buildIndexContext</span> = <b>new</b> <span class="t">BuildIndexContext</span>(<b>new</b> <span class="t">DocumentIndex</span>(<span class="r30 r">contentItem</span>.<span class="i">ContentItemId</span>), <span class="r30 r">contentItem</span>, <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="r30 r">contentItem</span>.<span class="i">ContentType</span> });
+                            <b>await</b> <span class="r13 r">contentItemIndexHandlers</span>.<span class="i">InvokeAsync</span>(<span id="r32 rd" class="r32 r">x</span> =&gt; <span class="r32 r">x</span>.<span class="i">BuildIndexAsync</span>(<span class="r31 r">buildIndexContext</span>), <span class="r16 r">logger</span>);
+ 
+                            <b>await</b> <span class="r14 r">luceneIndexManager</span>.<a href="../Services/LuceneIndexManager.cs.html#43644c5c2b926c26" class="i method">DeleteDocumentsAsync</a>(<span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>, <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="r30 r">contentItem</span>.<span class="i">ContentItemId</span> });
+                            <b>await</b> <span class="r14 r">luceneIndexManager</span>.<a href="../Services/LuceneIndexManager.cs.html#3b380cea2847e60f" class="i method">StoreDocumentsAsync</a>(<span class="r26 r">indexSettings</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>, <b>new</b> <a href="/OrchardCore.Indexing.Abstractions/A.html#0cbc5b91325ef982" class="t t">DocumentIndex</a>[] { <span class="r31 r">buildIndexContext</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#95f00ccb3a1e5e4e" class="i property">DocumentIndex</a> });
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

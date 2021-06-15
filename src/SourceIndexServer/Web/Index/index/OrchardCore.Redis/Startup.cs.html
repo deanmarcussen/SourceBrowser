@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html><head><title>Startup.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(107);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Redis/Startup.cs" target="_top">Startup.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Redis" target="_top">src\OrchardCore.Modules\OrchardCore.Redis\OrchardCore.Redis.csproj</a> (OrchardCore.Redis)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>.<span class="i n">KeyManagement</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i">StackExchangeRedis</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Caching</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Cache</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>.<span class="i">Configuration</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Redis</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Redis</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i">StackExchange</span>.<span class="i">Redis</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Redis</span>
+{
+    <b>public class</b> <a id="ae464a4c837429d7" href="R/ae464a4c837429d7.html" target="n" data-glyph="0,0" class="t t">Startup</a> : <span class="i">StartupBase</span>
+    {
+        <b>private readonly string</b> <a id="b863bf2cc72e1b14" href="R/b863bf2cc72e1b14.html" target="n" data-glyph="46,1" class="i field">_tenant</a>;
+        <b>private readonly</b> <span class="i">IShellConfiguration</span> <a id="91bad5fca48b8385" href="R/91bad5fca48b8385.html" target="n" data-glyph="46,1" class="i field">_configuration</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="9f8aba8ad5d40b77" href="R/9f8aba8ad5d40b77.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="8d7836776eb84c9e" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">Startup</a>(<span class="i">ShellSettings</span> <span id="r0 rd" class="r0 r">shellSettings</span>, <span class="i">IShellConfiguration</span> <span id="r1 rd" class="r1 r">configuration</span>, <span class="t t">ILogger</span>&lt;<a href="#ae464a4c837429d7" class="t t">Startup</a>&gt; <span id="r2 rd" class="r2 r">logger</span>)
+        {
+            <a href="#b863bf2cc72e1b14" class="i field">_tenant</a> = <span class="r0 r">shellSettings</span>.<span class="i">Name</span>;
+            <a href="#91bad5fca48b8385" class="i field">_configuration</a> = <span class="r1 r">configuration</span>;
+            <a href="#9f8aba8ad5d40b77" class="i field">_logger</a> = <span class="r2 r">logger</span>;
+        }
+ 
+        <b>public override void</b> <a id="f76fd836e2404a6a" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ConfigureServices</a>(<span class="t t">IServiceCollection</span> <span id="r3 rd" class="r3 r">services</span>)
+        {
+            <b>try</b>
+            {
+                <b>var</b> <span id="r4 rd" class="r4 r">configurationOptions</span> = <span class="i">ConfigurationOptions</span>.<span class="i">Parse</span>(<a href="#91bad5fca48b8385" class="i field">_configuration</a>[<span class="s">&quot;OrchardCore_Redis:Configuration&quot;</span>]);
+                <b>var</b> <span id="r5 rd" class="r5 r">instancePrefix</span> = <a href="#91bad5fca48b8385" class="i field">_configuration</a>[<span class="s">&quot;OrchardCore_Redis:InstancePrefix&quot;</span>];
+ 
+                <span class="r3 r">services</span>.<span class="i">Configure</span>&lt;<a href="/OrchardCore.Redis.Abstractions/A.html#10655a2564a40c5f" class="t t">RedisOptions</a>&gt;(<span id="r6 rd" class="r6 r">options</span> =&gt;
+                {
+                    <span class="r6 r">options</span>.<a href="/OrchardCore.Redis.Abstractions/A.html#e5b191dfaa9ef411" class="i property">ConfigurationOptions</a> = <span class="r4 r">configurationOptions</span>;
+                    <span class="r6 r">options</span>.<a href="/OrchardCore.Redis.Abstractions/A.html#9591bd37ac50a128" class="i property">InstancePrefix</a> = <span class="r5 r">instancePrefix</span>;
+                });
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r7 rd" class="r7 r">e</span>)
+            {
+                <a href="#9f8aba8ad5d40b77" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;&#39;Redis&#39; features are not active on tenant &#39;{TenantName}&#39; as the &#39;Configuration&#39; string is missing or invalid: &quot;</span> + <span class="r7 r">e</span>.<a href="@1@System.Runtime/A.html#5fba0e16215b42a3" class="i property">Message</a>, <a href="#b863bf2cc72e1b14" class="i field">_tenant</a>);
+                <b>return</b>;
+            }
+ 
+            <span class="r3 r">services</span>.<span class="i">AddSingleton</span>&lt;<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a>, <a href="Services/RedisService.cs.html#bb7f2c629bc83615" class="t t">RedisService</a>&gt;();
+            <span class="r3 r">services</span>.<span class="i method">AddSingleton</span>&lt;<span class="i">IModularTenantEvents</span>&gt;(<span id="r8 rd" class="r8 r">sp</span> =&gt; <span class="r8 r">sp</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a>&gt;());
+        }
+    }
+ 
+    [<span class="i">Feature</span>(<span class="s">&quot;OrchardCore.Redis.Cache&quot;</span>)]
+    <b>public class</b> <a id="3f497326c4bb0636" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="2ecc210d2e8e6ada">RedisCacheStartup</span></a> : <span class="i">StartupBase</span>
+    {
+        <b>public override void</b> <a id="1105e9985b989292" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ConfigureServices</a>(<span class="t t">IServiceCollection</span> <span id="r9 rd" class="r9 r">services</span>)
+        {
+            <b>if</b> (<span class="r9 r">services</span>.<span class="i method">Any</span>(<span id="r10 rd" class="r10 r">d</span> =&gt; <span class="r10 r">d</span>.<span class="i property">ServiceType</span> == <b>typeof</b>(<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a>)))
+            {
+                <span class="r9 r">services</span>.<span class="i">AddStackExchangeRedisCache</span>(<span id="r11 rd" class="r11 r">o</span> =&gt; { });
+                <span class="r9 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="t t">IConfigureOptions</span>&lt;<span class="i">RedisCacheOptions</span>&gt;, <a href="Options/RedisCacheOptionsSetup.cs.html#85ae9a6f4b52906e" class="t t">RedisCacheOptionsSetup</a>&gt;();
+                <span class="r9 r">services</span>.<span class="i method">AddScoped</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#f325fdd7b10a2e85" class="t t">ITagCache</a>, <a href="Services/RedisTagCache.cs.html#8c4e439776a8911a" class="t t">RedisTagCache</a>&gt;();
+            }
+        }
+    }
+ 
+    [<span class="i">Feature</span>(<span class="s">&quot;OrchardCore.Redis.Bus&quot;</span>)]
+    <b>public class</b> <a id="cf51cd86da60b9cc" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="09fa9fc41bbc72a1">RedisBusStartup</span></a> : <span class="i">StartupBase</span>
+    {
+        <b>public override void</b> <a id="9305c6cb6d2c4e91" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ConfigureServices</a>(<span class="t t">IServiceCollection</span> <span id="r12 rd" class="r12 r">services</span>)
+        {
+            <b>if</b> (<span class="r12 r">services</span>.<span class="i method">Any</span>(<span id="r13 rd" class="r13 r">d</span> =&gt; <span class="r13 r">d</span>.<span class="i property">ServiceType</span> == <b>typeof</b>(<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a>)))
+            {
+                <span class="r12 r">services</span>.<span class="i">AddSingleton</span>&lt;<span class="i">IMessageBus</span>, <a href="Services/RedisBus.cs.html#393cf3b56a88995e" class="t t">RedisBus</a>&gt;();
+            }
+        }
+    }
+ 
+    [<span class="i">Feature</span>(<span class="s">&quot;OrchardCore.Redis.Lock&quot;</span>)]
+    <b>public class</b> <a id="86629d34ae4c6150" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="3dc5454b5fe59e09">RedisLockStartup</span></a> : <span class="i">StartupBase</span>
+    {
+        <b>public override void</b> <a id="6064cd3a1f9fa369" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ConfigureServices</a>(<span class="t t">IServiceCollection</span> <span id="r14 rd" class="r14 r">services</span>)
+        {
+            <b>if</b> (<span class="r14 r">services</span>.<span class="i method">Any</span>(<span id="r15 rd" class="r15 r">d</span> =&gt; <span class="r15 r">d</span>.<span class="i property">ServiceType</span> == <b>typeof</b>(<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a>)))
+            {
+                <span class="r14 r">services</span>.<span class="i">AddSingleton</span>&lt;<span class="i">IDistributedLock</span>, <a href="Services/RedisLock.cs.html#1d051bc1e080f188" class="t t">RedisLock</a>&gt;();
+            }
+        }
+    }
+ 
+    [<span class="i">Feature</span>(<span class="s">&quot;OrchardCore.Redis.DataProtection&quot;</span>)]
+    <b>public class</b> <a id="0137569b6d8ece5c" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="cbc2e983a32e375a">RedisDataProtectionStartup</span></a> : <span class="i">StartupBase</span>
+    {
+        <b>public override void</b> <a id="38c02be34f9713f0" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ConfigureServices</a>(<span class="t t">IServiceCollection</span> <span id="r16 rd" class="r16 r">services</span>)
+        {
+            <b>if</b> (<span class="r16 r">services</span>.<span class="i method">Any</span>(<span id="r17 rd" class="r17 r">d</span> =&gt; <span class="r17 r">d</span>.<span class="i property">ServiceType</span> == <b>typeof</b>(<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a>)))
+            {
+                <span class="r16 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="t t">IConfigureOptions</span>&lt;<span class="t t">KeyManagementOptions</span>&gt;, <a href="Options/RedisKeyManagementOptionsSetup.cs.html#a067f344d72eb349" class="t t">RedisKeyManagementOptionsSetup</a>&gt;();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

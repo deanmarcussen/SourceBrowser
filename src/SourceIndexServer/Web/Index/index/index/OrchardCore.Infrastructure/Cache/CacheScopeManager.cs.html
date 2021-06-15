@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html><head><title>CacheScopeManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(141);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Infrastructure/Cache/CacheScopeManager.cs" target="_top">Cache\CacheScopeManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Infrastructure" target="_top">src\OrchardCore\OrchardCore.Infrastructure\OrchardCore.Infrastructure.csproj</a> (OrchardCore.Infrastructure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Cache</span>
+{
+    <span class="c">// todo: does this belong in dynamic cache?</span>
+    <b>public class</b> <a id="331679880005c3ce" href="../R/331679880005c3ce.html" target="n" data-glyph="0,0" class="t t">CacheScopeManager</a> : <a href="/OrchardCore.Infrastructure.Abstractions/A.html#094977033e73f19f" class="t t">ICacheScopeManager</a>
+    {
+        <b>private readonly</b> <span class="t t">Stack</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="t t">CacheContext</a>&gt; <a id="4e42fda1ca5dca09" href="../R/4e42fda1ca5dca09.html" target="n" data-glyph="46,1" class="i field">_scopes</a>;
+ 
+        <b>public</b> <a id="49890251ba15a296" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">CacheScopeManager</a>()
+        {
+            <a href="#4e42fda1ca5dca09" class="i field">_scopes</a> = <b>new</b> <span class="t constructor">Stack</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="t t">CacheContext</a>&gt;();
+        }
+ 
+        <b>public void</b> <a id="d89d37a9821c4789" href="../R/d89d37a9821c4789.html" target="n" data-glyph="72,1" class="i method">EnterScope</a>(<a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="t t">CacheContext</a> <span id="r0 rd" class="r0 r">context</span>)
+        {
+            <a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Push</span>(<span class="r0 r">context</span>);
+        }
+ 
+        <b>public void</b> <a id="4e74eda9d6859f7f" href="../R/4e74eda9d6859f7f.html" target="n" data-glyph="72,1" class="i method">ExitScope</a>()
+        {
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="k">var</a> <span id="r1 rd" class="r1 r">childScope</span> = <a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Pop</span>();
+ 
+            <b>if</b> (<a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i property">Count</span> &gt; 0)
+            {
+                <a href="#0e75d08f808a7c3c" class="i method">MergeCacheContexts</a>(<a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Peek</span>(), <span class="r1 r">childScope</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="ea6632c109b51e93" href="../R/ea6632c109b51e93.html" target="n" data-glyph="72,1" class="i method">AddDependencies</a>(<b>params string</b>[] <span id="r2 rd" class="r2 r">dependencies</span>)
+        {
+            <b>if</b> (<a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i property">Count</span> &gt; 0)
+            {
+                <a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Peek</span>().<a href="/OrchardCore.Infrastructure.Abstractions/A.html#355dcd3a7a9de2bd" class="i method">AddTag</a>(<span class="r2 r">dependencies</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="4b9293d9366eddb4" href="../R/4b9293d9366eddb4.html" target="n" data-glyph="72,1" class="i method">AddContexts</a>(<b>params string</b>[] <span id="r3 rd" class="r3 r">contexts</span>)
+        {
+            <b>if</b> (<a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i property">Count</span> &gt; 0)
+            {
+                <a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Peek</span>().<a href="/OrchardCore.Infrastructure.Abstractions/A.html#da8d952cfca95b6b" class="i method">AddContext</a>(<span class="r3 r">contexts</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="4d8bf5a5a1395bf8" href="../R/4d8bf5a5a1395bf8.html" target="n" data-glyph="72,1" class="i method">WithExpiryOn</a>(<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a> <span id="r4 rd" class="r4 r">expiryOn</span>)
+        {
+            <b>if</b> (<a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i property">Count</span> &lt;= 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="k">var</a> <span id="r5 rd" class="r5 r">scope</span> = <a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Peek</span>();
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r6 rd" class="r6 r">value</span> = <a href="#936a12d7dd9b064a" class="i method">GetMostRestrictiveDateTimeOffset</a>(<span class="r5 r">scope</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#8b2322c22319bf6c" class="i property">ExpiresOn</a>, <span class="r4 r">expiryOn</span>);
+ 
+            <b>if</b> (<span class="r6 r">value</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r5 r">scope</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#17bd295e0bb61474" class="i method">WithExpiryOn</a>(<span class="r6 r">value</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+        }
+ 
+        <b>public void</b> <a id="4d53cd10f1c82b22" href="../R/4d53cd10f1c82b22.html" target="n" data-glyph="72,1" class="i method">WithExpiryAfter</a>(<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <span id="r7 rd" class="r7 r">expiryAfter</span>)
+        {
+            <b>if</b> (<a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i property">Count</span> &lt;= 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="k">var</a> <span id="r8 rd" class="r8 r">scope</span> = <a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Peek</span>();
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r9 rd" class="r9 r">value</span> = <a href="#5b891b8fa64a8289" class="i method">GetMostRestrictiveTimespan</a>(<span class="r8 r">scope</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bb04bc36659870ca" class="i property">ExpiresAfter</a>, <span class="r7 r">expiryAfter</span>);
+ 
+            <b>if</b> (<span class="r9 r">value</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r8 r">scope</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#2dbe4043692eba8f" class="i method">WithExpiryAfter</a>(<span class="r9 r">value</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+        }
+ 
+        <b>public void</b> <a id="7a2560b9ea60a8ae" href="../R/7a2560b9ea60a8ae.html" target="n" data-glyph="72,1" class="i method">WithExpirySliding</a>(<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <span id="r10 rd" class="r10 r">expirySliding</span>)
+        {
+            <b>if</b> (<a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i property">Count</span> &lt;= 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="k">var</a> <span id="r11 rd" class="r11 r">scope</span> = <a href="#4e42fda1ca5dca09" class="i field">_scopes</a>.<span class="i method">Peek</span>();
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r12 rd" class="r12 r">value</span> = <a href="#5b891b8fa64a8289" class="i method">GetMostRestrictiveTimespan</a>(<span class="r11 r">scope</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#12bae03d6a719aee" class="i property">ExpiresSliding</a>, <span class="r10 r">expirySliding</span>);
+ 
+            <b>if</b> (<span class="r12 r">value</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r11 r">scope</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#d0509b73175442d4" class="i method">WithExpirySliding</a>(<span class="r12 r">value</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+        }
+ 
+        <b>private void</b> <a id="0e75d08f808a7c3c" href="../R/0e75d08f808a7c3c.html" target="n" data-glyph="76,1" class="i method">MergeCacheContexts</a>(<a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="t t">CacheContext</a> <span id="r13 rd" class="r13 r">into</span>, <a href="/OrchardCore.Infrastructure.Abstractions/A.html#ac2fe3ab5208377e" class="t t">CacheContext</a> <span id="r14 rd" class="r14 r">from</span>)
+        {
+            <span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#da8d952cfca95b6b" class="i method">AddContext</a>(<span class="r14 r">from</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#44dfd83b998607e6" class="i property">Contexts</a>.<span class="i method">ToArray</span>());
+            <span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#355dcd3a7a9de2bd" class="i method">AddTag</a>(<span class="r14 r">from</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#5caeb85406df394d" class="i property">Tags</a>.<span class="i method">ToArray</span>());
+ 
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r15 rd" class="r15 r">offset</span> = <a href="#936a12d7dd9b064a" class="i method">GetMostRestrictiveDateTimeOffset</a>(<span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#8b2322c22319bf6c" class="i property">ExpiresOn</a>, <span class="r14 r">from</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#8b2322c22319bf6c" class="i property">ExpiresOn</a>);
+            <b>if</b> (<span class="r15 r">offset</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#17bd295e0bb61474" class="i method">WithExpiryOn</a>(<span class="r15 r">offset</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r16 rd" class="r16 r">slidingExpiration</span> = <a href="#5b891b8fa64a8289" class="i method">GetMostRestrictiveTimespan</a>(<span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#12bae03d6a719aee" class="i property">ExpiresSliding</a>, <span class="r14 r">from</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#12bae03d6a719aee" class="i property">ExpiresSliding</a>);
+            <b>if</b> (<span class="r16 r">slidingExpiration</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#d0509b73175442d4" class="i method">WithExpirySliding</a>(<span class="r16 r">slidingExpiration</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#ffebe438fd9cbf0e" class="k">var</a> <span id="r17 rd" class="r17 r">duration</span> = <a href="#5b891b8fa64a8289" class="i method">GetMostRestrictiveTimespan</a>(<span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bb04bc36659870ca" class="i property">ExpiresAfter</a>, <span class="r14 r">from</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bb04bc36659870ca" class="i property">ExpiresAfter</a>);
+            <b>if</b> (<span class="r17 r">duration</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r13 r">into</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#2dbe4043692eba8f" class="i method">WithExpiryAfter</a>(<span class="r17 r">duration</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>? <a id="936a12d7dd9b064a" href="../R/936a12d7dd9b064a.html" target="n" data-glyph="76,1" class="i method">GetMostRestrictiveDateTimeOffset</a>(<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>? <span id="r18 rd" class="r18 r">a</span>, <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>? <span id="r19 rd" class="r19 r">b</span>)
+        {
+            <b>if</b> (<span class="r18 r">a</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> &amp;&amp; <span class="r19 r">b</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <b>return</b> <span class="r19 r">b</span> &lt; <span class="r18 r">a</span> ? <span class="r19 r">b</span> : <span class="r18 r">a</span>;
+            }
+ 
+            <b>return</b> <span class="r18 r">a</span> ?? <span class="r19 r">b</span>;
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>? <a id="5b891b8fa64a8289" href="../R/5b891b8fa64a8289.html" target="n" data-glyph="76,1" class="i method">GetMostRestrictiveTimespan</a>(<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>? <span id="r20 rd" class="r20 r">a</span>, <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>? <span id="r21 rd" class="r21 r">b</span>)
+        {
+            <b>if</b> (<span class="r20 r">a</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> &amp;&amp; <span class="r21 r">b</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <b>return</b> <span class="r21 r">b</span> &lt; <span class="r20 r">a</span> ? <span class="r21 r">b</span> : <span class="r20 r">a</span>;
+            }
+ 
+            <b>return</b> <span class="r20 r">a</span> ?? <span class="r21 r">b</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

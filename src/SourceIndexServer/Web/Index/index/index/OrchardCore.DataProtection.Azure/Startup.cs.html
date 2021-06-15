@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html>
+<html><head><title>Startup.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(134);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DataProtection.Azure/Startup.cs" target="_top">Startup.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DataProtection.Azure" target="_top">src\OrchardCore.Modules\OrchardCore.DataProtection.Azure\OrchardCore.DataProtection.Azure.csproj</a> (OrchardCore.DataProtection.Azure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i">Azure</span>.<span class="i">Storage</span>.<span class="i">Blobs</span>;
+<b>using</b> <span class="i">Azure</span>.<span class="i">Storage</span>.<span class="i">Blobs</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Configuration</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DataProtection</span>.<span class="i n">Azure</span>
+{
+    <b>public class</b> <a id="42ccae7d1202c8f0" href="R/42ccae7d1202c8f0.html" target="n" data-glyph="0,0" class="t t">Startup</a> : <span class="i">StartupBase</span>
+    {
+        <b>private readonly</b> <span class="i">IShellConfiguration</span> <a id="7bf44d3c11abbcab" href="R/7bf44d3c11abbcab.html" target="n" data-glyph="46,1" class="i field">_configuration</a>;
+        <b>private readonly</b> <span class="i">ShellOptions</span> <a id="083f60b8e0f2d9ab" href="R/083f60b8e0f2d9ab.html" target="n" data-glyph="46,1" class="i field">_shellOptions</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="483e5f7eacc5d627" href="R/483e5f7eacc5d627.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="1f286304ffda07e3" href="R/1f286304ffda07e3.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <span class="c">// Local instance since it can be discarded once the startup is over</span>
+        <b>private readonly</b> <span class="i">FluidParser</span> <a id="2ed5eaa6715c5ec9" href="R/2ed5eaa6715c5ec9.html" target="n" data-glyph="46,1" class="i field">_fluidParser</a> = <b>new</b> <span class="i">FluidParser</span>();
+ 
+        <b>public</b> <a id="1eb7838330bbea87" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">Startup</a>(
+            <span class="i">IShellConfiguration</span> <span id="r0 rd" class="r0 r">configuration</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">ShellOptions</span>&gt; <span id="r1 rd" class="r1 r">shellOptions</span>,
+            <span class="i">ShellSettings</span> <span id="r2 rd" class="r2 r">shellSettings</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#42ccae7d1202c8f0" class="t t">Startup</a>&gt; <span id="r3 rd" class="r3 r">logger</span>)
+        {
+            <a href="#7bf44d3c11abbcab" class="i field">_configuration</a> = <span class="r0 r">configuration</span>;
+            <a href="#083f60b8e0f2d9ab" class="i field">_shellOptions</a> = <span class="r1 r">shellOptions</span>.<span class="i property">Value</span>;
+            <a href="#483e5f7eacc5d627" class="i field">_shellSettings</a> = <span class="r2 r">shellSettings</span>;
+            <a href="#1f286304ffda07e3" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+        }
+ 
+        <b>public override void</b> <a id="969b1bb8430b3336" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ConfigureServices</a>(<span class="t t">IServiceCollection</span> <span id="r4 rd" class="r4 r">services</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">connectionString</span> = <a href="#7bf44d3c11abbcab" class="i field">_configuration</a>.<span class="i">GetValue</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;OrchardCore_DataProtection_Azure:ConnectionString&quot;</span>);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r5 r">connectionString</span>))
+            {
+                <span class="r4 r">services</span>.<span class="i method">AddDataProtection</span>().<span class="i">PersistKeysToAzureBlobStorage</span>(<span class="r5 r">connectionString</span>, <a href="#aba783f91a9824dd" class="i method">GetBlobContainerName</a>(<span class="r5 r">connectionString</span>), <a href="#7207db8fee61abe5" class="i method">GetBlobName</a>());
+            }
+            <b>else</b>
+            {
+                <a href="#1f286304ffda07e3" class="i field">_logger</a>.<span class="i method">LogCritical</span>(<span class="s">&quot;No connection string was supplied for OrchardCore.DataProtection.Azure. Ensure that an application setting containing a valid Azure Storage connection string is available at `Modules:OrchardCore.DataProtection.Azure:ConnectionString`.&quot;</span>);
+            }
+        }
+ 
+        <b>private string</b> <a id="aba783f91a9824dd" href="R/aba783f91a9824dd.html" target="n" data-glyph="76,1" class="i method">GetBlobContainerName</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">connectionString</span>)
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">containerName</span> = <a href="#7bf44d3c11abbcab" class="i field">_configuration</a>.<span class="i">GetValue</span>(<span class="s">&quot;OrchardCore_DataProtection_Azure:ContainerName&quot;</span>, <span class="s">&quot;dataprotection&quot;</span>);
+ 
+            <span class="c">// Use Fluid directly as the service provider has not been built.</span>
+            <b>try</b>
+            {
+                <b>var</b> <span id="r8 rd" class="r8 r">templateOptions</span> = <b>new</b> <span class="i">TemplateOptions</span>();
+                <span class="r8 r">templateOptions</span>.<span class="i">MemberAccessStrategy</span>.<span class="i">Register</span>&lt;<span class="i">ShellSettings</span>&gt;();
+                <b>var</b> <span id="r9 rd" class="r9 r">templateContext</span> = <b>new</b> <span class="i">TemplateContext</span>(<span class="r8 r">templateOptions</span>);
+                <span class="r9 r">templateContext</span>.<span class="i">SetValue</span>(<span class="s">&quot;ShellSettings&quot;</span>, <a href="#483e5f7eacc5d627" class="i field">_shellSettings</a>);
+ 
+                <b>var</b> <span id="r10 rd" class="r10 r">template</span> = <a href="#2ed5eaa6715c5ec9" class="i field">_fluidParser</a>.<span class="i">Parse</span>(<span class="r7 r">containerName</span>);
+ 
+                <span class="c">// container name must be lowercase</span>
+                <span class="r7 r">containerName</span> = <span class="r10 r">template</span>.<span class="i">Render</span>(<span class="r9 r">templateContext</span>, <span class="i">NullEncoder</span>.<span class="i">Default</span>).<span class="i">ToLower</span>();
+                <span class="r7 r">containerName</span>.<span class="i">Replace</span>(<span class="s">&quot;\r&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>).<span class="i">Replace</span>(<span class="s">&quot;\n&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r11 rd" class="r11 r">e</span>)
+            {
+                <a href="#1f286304ffda07e3" class="i field">_logger</a>.<span class="i method">LogCritical</span>(<span class="r11 r">e</span>, <span class="s">&quot;Unable to parse data protection connection string.&quot;</span>);
+                <b>throw</b>;
+            }
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">createContainer</span> = <a href="#7bf44d3c11abbcab" class="i field">_configuration</a>.<span class="i">GetValue</span>(<span class="s">&quot;OrchardCore_DataProtection_Azure:CreateContainer&quot;</span>, <b>true</b>);
+            <b>if</b> (<span class="r12 r">createContainer</span>)
+            {
+                <b>try</b>
+                {
+                    <a href="#1f286304ffda07e3" class="i field">_logger</a>.<span class="i">LogDebug</span>(<span class="s">&quot;Testing data protection container {ContainerName} existence&quot;</span>, <span class="r7 r">containerName</span>);
+                    <b>var</b> <span id="r13 rd" class="r13 r">_blobContainer</span> = <b>new</b> <span class="i">BlobContainerClient</span>(<span class="r6 r">connectionString</span>, <span class="r7 r">containerName</span>);
+                    <b>var</b> <span id="r14 rd" class="r14 r">response</span> =  <span class="r13 r">_blobContainer</span>.<span class="i">CreateIfNotExistsAsync</span>(<span class="i">PublicAccessType</span>.<span class="i">None</span>).<span class="i">GetAwaiter</span>().<span class="i">GetResult</span>();
+                    <a href="#1f286304ffda07e3" class="i field">_logger</a>.<span class="i">LogDebug</span>(<span class="s">&quot;Data protection container {ContainerName} created.&quot;</span>, <span class="r7 r">containerName</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a>)
+                {
+                    <a href="#1f286304ffda07e3" class="i field">_logger</a>.<span class="i method">LogCritical</span>(<span class="s">&quot;Unable to connect to Azure Storage to configure data protection storage. Ensure that an application setting containing a valid Azure Storage connection string is available at `Modules:OrchardCore.DataProtection.Azure:ConnectionString`.&quot;</span>);
+ 
+                    <b>throw</b>;
+                }
+            }
+ 
+            <b>return</b> <span class="r7 r">containerName</span>;
+        }
+ 
+        <b>private string</b> <a id="7207db8fee61abe5" href="R/7207db8fee61abe5.html" target="n" data-glyph="76,1" class="i method">GetBlobName</a>()
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">blobName</span> = <a href="#7bf44d3c11abbcab" class="i field">_configuration</a>.<span class="i">GetValue</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;OrchardCore_DataProtection_Azure:BlobName&quot;</span>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r15 r">blobName</span>))
+            {
+                <span class="r15 r">blobName</span> = <span class="s">$&quot;</span>{<a href="#083f60b8e0f2d9ab" class="i field">_shellOptions</a>.<span class="i">ShellsContainerName</span>}<span class="s">/</span>{<a href="#483e5f7eacc5d627" class="i field">_shellSettings</a>.<span class="i">Name</span>}<span class="s">/DataProtectionKeys.xml</span><span class="s">&quot;</span>;
+            }
+            <b>else</b>
+            {
+                <b>try</b>
+                {
+                    <span class="c">// Use Fluid directly as the service provider has not been built.</span>
+                    <b>var</b> <span id="r16 rd" class="r16 r">templateOptions</span> = <b>new</b> <span class="i">TemplateOptions</span>();
+                    <b>var</b> <span id="r17 rd" class="r17 r">templateContext</span> = <b>new</b> <span class="i">TemplateContext</span>(<span class="r16 r">templateOptions</span>);
+                    <span class="r16 r">templateOptions</span>.<span class="i">MemberAccessStrategy</span>.<span class="i">Register</span>&lt;<span class="i">ShellSettings</span>&gt;();
+                    <span class="r17 r">templateContext</span>.<span class="i">SetValue</span>(<span class="s">&quot;ShellSettings&quot;</span>, <a href="#483e5f7eacc5d627" class="i field">_shellSettings</a>);
+ 
+                    <b>var</b> <span id="r18 rd" class="r18 r">template</span> = <a href="#2ed5eaa6715c5ec9" class="i field">_fluidParser</a>.<span class="i">Parse</span>(<span class="r15 r">blobName</span>);
+ 
+                    <span class="r15 r">blobName</span> = <span class="r18 r">template</span>.<span class="i">Render</span>(<span class="r17 r">templateContext</span>, <span class="i">NullEncoder</span>.<span class="i">Default</span>);
+                    <span class="r15 r">blobName</span>.<a href="@1@System.Runtime/A.html#69fc1d0aa6df8a90" class="i method">Replace</a>(<span class="s">&quot;\r&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>).<a href="@1@System.Runtime/A.html#69fc1d0aa6df8a90" class="i method">Replace</a>(<span class="s">&quot;\n&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r19 rd" class="r19 r">e</span>)
+                {
+                    <a href="#1f286304ffda07e3" class="i field">_logger</a>.<span class="i method">LogCritical</span>(<span class="r19 r">e</span>, <span class="s">&quot;Unable to parse data protection blob name.&quot;</span>);
+                    <b>throw</b>;
+                }
+            }
+ 
+            <b>return</b> <span class="r15 r">blobName</span>;
+        }
+ 
+        <span class="c">// Assume that this module will override default configuration, so set the Order to a value above the default.</span>
+        <b>public override int</b> <a id="e7cd978b4ddeaf2f" href="R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Order</a> =&gt; 10;
+    }
+}
+</pre></td></tr></table></div></body></html>

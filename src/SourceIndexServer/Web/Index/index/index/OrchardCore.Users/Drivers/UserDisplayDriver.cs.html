@@ -1,0 +1,138 @@
+﻿<!DOCTYPE html>
+<html><head><title>UserDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(129);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/Drivers/UserDisplayDriver.cs" target="_top">Drivers\UserDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="758d4c138650a57c" href="../R/758d4c138650a57c.html" target="n" data-glyph="0,0" class="t t">UserDisplayDriver</a> : <a href="/OrchardCore.DisplayManagement/A.html#65ff4d3d4e853e70" class="t t">DisplayDriver</a>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>&gt;
+    {
+        <b>private const string</b> <a id="f4015f0016de31d1" href="../R/f4015f0016de31d1.html" target="n" data-glyph="10,1" class="i field">AdministratorRole</a> = <span class="s">&quot;Administrator&quot;</span>;
+        <b>private readonly</b> <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <a id="cbc3204368fa99d1" href="../R/cbc3204368fa99d1.html" target="n" data-glyph="46,1" class="i field">_userManager</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="55eff3c136fca5ae" href="../R/55eff3c136fca5ae.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="a562f012a196b0e3" href="../R/a562f012a196b0e3.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="08652fe9d921a820" href="../R/08652fe9d921a820.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IUserEventHandler</span>&gt; <a id="e423eda2bad48b1e" href="../R/e423eda2bad48b1e.html" target="n" data-glyph="46,1" class="i field">_userEventHandlers</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="a7023ed0099cbb68" href="../R/a7023ed0099cbb68.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="20c85d989e006a34" href="../R/20c85d989e006a34.html" target="n" data-glyph="46,1" class="i field">H</a>;
+ 
+        <b>public</b> <a id="5bc414dd74d1717f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UserDisplayDriver</a>(
+            <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r0 rd" class="r0 r">userManager</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r1 rd" class="r1 r">httpContextAccessor</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r2 rd" class="r2 r">notifier</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#758d4c138650a57c" class="t t">UserDisplayDriver</a>&gt; <span id="r3 rd" class="r3 r">logger</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IUserEventHandler</span>&gt; <span id="r4 rd" class="r4 r">userEventHandlers</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r5 rd" class="r5 r">authorizationService</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#758d4c138650a57c" class="t t">UserDisplayDriver</a>&gt; <span id="r6 rd" class="r6 r">htmlLocalizer</span>)
+        {
+            <a href="#cbc3204368fa99d1" class="i field">_userManager</a> = <span class="r0 r">userManager</span>;
+            <a href="#55eff3c136fca5ae" class="i field">_httpContextAccessor</a> = <span class="r1 r">httpContextAccessor</span>;
+            <a href="#a562f012a196b0e3" class="i field">_notifier</a> = <span class="r2 r">notifier</span>;
+            <a href="#08652fe9d921a820" class="i field">_authorizationService</a> = <span class="r5 r">authorizationService</span>;
+            <a href="#a7023ed0099cbb68" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+            <a href="#e423eda2bad48b1e" class="i field">_userEventHandlers</a> = <span class="r4 r">userEventHandlers</span>;
+            <a href="#20c85d989e006a34" class="i field">H</a> = <span class="r6 r">htmlLocalizer</span>;
+        }
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="983b2dde44b4a279" href="../R/983b2dde44b4a279.html" target="n" data-glyph="72,1" class="i method">Display</a>(<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a> <span id="r7 rd" class="r7 r">user</span>)
+        {
+            <b>return</b> <a href="/OrchardCore.DisplayManagement/A.html#45c40adf0e2cce1e" class="i method">Combine</a>(
+                <a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/SummaryAdminUserViewModel.cs.html#7f21a0812528ebe0" class="t t">SummaryAdminUserViewModel</a>&gt;(<span class="s">&quot;UserFields&quot;</span>, <span id="r8 rd" class="r8 r">model</span> =&gt; <span class="r8 r">model</span>.<a href="../ViewModels/SummaryAdminUserViewModel.cs.html#f6c0fc064e33c46d" class="i property">User</a> = <span class="r7 r">user</span>).<a href="/OrchardCore.DisplayManagement/A.html#69203efb6f458dc2" class="i method">Location</a>(<span class="s">&quot;SummaryAdmin&quot;</span>, <span class="s">&quot;Header:1&quot;</span>),
+                <a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/SummaryAdminUserViewModel.cs.html#7f21a0812528ebe0" class="t t">SummaryAdminUserViewModel</a>&gt;(<span class="s">&quot;UserButtons&quot;</span>, <span id="r9 rd" class="r9 r">model</span> =&gt; <span class="r9 r">model</span>.<a href="../ViewModels/SummaryAdminUserViewModel.cs.html#f6c0fc064e33c46d" class="i property">User</a> = <span class="r7 r">user</span>).<a href="/OrchardCore.DisplayManagement/A.html#69203efb6f458dc2" class="i method">Location</a>(<span class="s">&quot;SummaryAdmin&quot;</span>, <span class="s">&quot;Actions:1&quot;</span>)
+            );
+        }
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="e7b5d62e7c6c35ff" href="../R/e7b5d62e7c6c35ff.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a> <span id="r10 rd" class="r10 r">user</span>)
+        {
+            <b>return</b> <span class="i">Initialize</span>&lt;<a href="../ViewModels/EditUserViewModel.cs.html#4188cff616303ab2" class="t t">EditUserViewModel</a>&gt;(<span class="s">&quot;UserFields_Edit&quot;</span>, <b>async</b> <span id="r11 rd" class="r11 r">model</span> =&gt;
+            {
+                <span class="r11 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#b9e1364bc99caaaa" class="i property">EmailConfirmed</a> = <span class="r10 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#a81bf3b3d6c7ea18" class="i property">EmailConfirmed</a>;
+                <span class="r11 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#2b789ff39979a1c9" class="i property">IsEnabled</a> = <span class="r10 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#04ad20cf959d0407" class="i property">IsEnabled</a>;
+                <span class="c">// The current user cannot disable themselves, nor can a user without permission to manage this user disable them.</span>
+                <span class="r11 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#4ec95671d86d929b" class="i property">IsEditingDisabled</a> = !<b>await</b> <a href="#08652fe9d921a820" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<a href="#55eff3c136fca5ae" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r10 r">user</span>) ||
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<a href="#55eff3c136fca5ae" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <span class="r10 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>);
+            })
+            .<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Content:1.5&quot;</span>)
+            .<span class="i">RenderWhen</span>(() =&gt; <a href="#08652fe9d921a820" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<a href="#55eff3c136fca5ae" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#f17b872f1cb00bc1" class="i field">ViewUsers</a>, <span class="r10 r">user</span>));
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="76feef9a3779cb24" href="../R/76feef9a3779cb24.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a> <span id="r12 rd" class="r12 r">user</span>, <a href="/OrchardCore.DisplayManagement/A.html#688c28d1f0b44917" class="t t">UpdateEditorContext</a> <span id="r13 rd" class="r13 r">context</span>)
+        {
+            <span class="c">// To prevent html injection when updating the user must meet all authorization requirements.</span>
+            <b>if</b> (!<b>await</b> <a href="#08652fe9d921a820" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<a href="#55eff3c136fca5ae" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r12 r">user</span>))
+            {
+                <span class="c">// When the user is only editing their profile never update this part of the user.</span>
+                <b>return</b> <a href="#e7b5d62e7c6c35ff" class="i method">Edit</a>(<span class="r12 r">user</span>);
+            }
+ 
+            <a href="../ViewModels/EditUserViewModel.cs.html#4188cff616303ab2" class="k">var</a> <span id="r14 rd" class="r14 r">model</span> = <b>new</b> <a href="../ViewModels/EditUserViewModel.cs.html#4188cff616303ab2" class="t constructor">EditUserViewModel</a>();
+ 
+            <b>if</b> (!<b>await</b> <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">TryUpdateModelAsync</span>(<span class="r14 r">model</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>))
+            {
+                <b>return</b> <b>await</b> <a href="/OrchardCore.DisplayManagement/A.html#bd0b19470fdc6b25" class="i method">EditAsync</a>(<span class="r12 r">user</span>, <span class="r13 r">context</span>);
+            }
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">isEditingDisabled</span> = !<b>await</b> <a href="#08652fe9d921a820" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<a href="#55eff3c136fca5ae" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r12 r">user</span>) ||
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<a href="#55eff3c136fca5ae" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <span class="r12 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>);
+ 
+            <b>if</b> (!<span class="r15 r">isEditingDisabled</span> &amp;&amp;!<span class="r14 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#2b789ff39979a1c9" class="i property">IsEnabled</a> &amp;&amp; <span class="r12 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#04ad20cf959d0407" class="i property">IsEnabled</a>)
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r16 rd" class="r16 r">usersOfAdminRole</span> = (<b>await</b> <a href="#cbc3204368fa99d1" class="i field">_userManager</a>.<span class="i method">GetUsersInRoleAsync</span>(<a href="#f4015f0016de31d1" class="i field">AdministratorRole</a>)).<span class="i method">Cast</span>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>&gt;(); ;
+                <b>if</b> (<span class="r16 r">usersOfAdminRole</span>.<span class="i method">Count</span>() == 1 &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r12 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <span class="r16 r">usersOfAdminRole</span>.<span class="i method">First</span>().<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <a href="#a562f012a196b0e3" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#d76d0a932a0405e2" class="i method">Warning</a>(<a href="#20c85d989e006a34" class="i field">H</a>[<span class="s">&quot;Cannot disable the only administrator.&quot;</span>]);
+                }
+                <b>else</b>
+                {
+                    <span class="r12 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#04ad20cf959d0407" class="i property">IsEnabled</a> = <span class="r14 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#2b789ff39979a1c9" class="i property">IsEnabled</a>;
+                    <b>var</b> <span id="r17 rd" class="r17 r">userContext</span> = <b>new</b> <span class="i">UserContext</span>(<span class="r12 r">user</span>);
+                        <span class="c">// TODO This handler should be invoked through the create or update methods.</span>
+                    <span class="c">// otherwise it will not be invoked when a workflow, or other operation, changes this value.</span>
+                    <b>await</b> <a href="#e423eda2bad48b1e" class="i field">_userEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r18 rd" class="r18 r">handler</span>, <span id="r19 rd" class="r19 r">context</span>) =&gt; <span class="r18 r">handler</span>.<span class="i">DisabledAsync</span>(<span class="r17 r">userContext</span>), <span class="r17 r">userContext</span>, <a href="#a7023ed0099cbb68" class="i field">_logger</a>);
+                }
+            }
+            <b>else</b> <b>if</b> (!<span class="r15 r">isEditingDisabled</span> &amp;&amp; <span class="r14 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#2b789ff39979a1c9" class="i property">IsEnabled</a> &amp;&amp; !<span class="r12 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#04ad20cf959d0407" class="i property">IsEnabled</a>)
+            {
+                <span class="r12 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#04ad20cf959d0407" class="i property">IsEnabled</a> = <span class="r14 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#2b789ff39979a1c9" class="i property">IsEnabled</a>;
+                <b>var</b> <span id="r20 rd" class="r20 r">userContext</span> = <b>new</b> <span class="i">UserContext</span>(<span class="r12 r">user</span>);
+                <span class="c">// TODO This handler should be invoked through the create or update methods.</span>
+                <span class="c">// otherwise it will not be invoked when a workflow, or other operation, changes this value.</span>
+                <b>await</b> <a href="#e423eda2bad48b1e" class="i field">_userEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r21 rd" class="r21 r">handler</span>, <span id="r22 rd" class="r22 r">context</span>) =&gt; <span class="r21 r">handler</span>.<span class="i">EnabledAsync</span>(<span class="r20 r">userContext</span>), <span class="r20 r">userContext</span>, <a href="#a7023ed0099cbb68" class="i field">_logger</a>);
+            }
+ 
+            <b>if</b> (<span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">ModelState</span>.<span class="i">IsValid</span>)
+            {
+                <b>if</b> (<span class="r14 r">model</span>.<a href="../ViewModels/EditUserViewModel.cs.html#b9e1364bc99caaaa" class="i property">EmailConfirmed</a> &amp;&amp; !<b>await</b> <a href="#cbc3204368fa99d1" class="i field">_userManager</a>.<span class="i">IsEmailConfirmedAsync</span>(<span class="r12 r">user</span>))
+                {
+                    <b>var</b> <span id="r23 rd" class="r23 r">token</span> = <b>await</b> <a href="#cbc3204368fa99d1" class="i field">_userManager</a>.<span class="i">GenerateEmailConfirmationTokenAsync</span>(<span class="r12 r">user</span>);
+                    <b>await</b> <a href="#cbc3204368fa99d1" class="i field">_userManager</a>.<span class="i">ConfirmEmailAsync</span>(<span class="r12 r">user</span>, <span class="r23 r">token</span>);
+                }
+            }
+ 
+            <b>return</b> <a href="#e7b5d62e7c6c35ff" class="i method">Edit</a>(<span class="r12 r">user</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

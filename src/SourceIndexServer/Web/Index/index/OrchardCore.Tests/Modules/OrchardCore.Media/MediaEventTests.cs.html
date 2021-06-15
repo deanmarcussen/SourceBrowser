@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html><head><title>MediaEventTests.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(84);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Modules/OrchardCore.Media/MediaEventTests.cs" target="_top">Modules\OrchardCore.Media\MediaEventTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Media</span>.<span class="i">Events</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Modules</span>.<span class="i n">OrchardCore</span>.<span class="i n">Media</span>
+{
+    <b>public class</b> <a id="eb002697614a3a0f" href="../../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="1b5fc2f840c6b35f">MediaEventTests</span></a>
+    {
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5b89461d19d3cf96" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DisposesMediaCreatingStreams</a>()
+        {
+            <b>var</b> <span id="r0 rd" class="r0 r">streams</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt;();
+            <b>var</b> <span id="r1 rd" class="r1 r">creatingEventHandlers</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">IMediaCreatingEventHandler</span>&gt;()
+            {
+                <b>new</b> <a href="#b3707d011488e2b4" class="t constructor">TestMediaEventHandler</a>(),
+                <b>new</b> <a href="#b3707d011488e2b4" class="t constructor">TestMediaEventHandler</a>()
+            };
+ 
+            <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r2 rd" class="r2 r">originalStream</span> = <b>null</b>;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r3 rd" class="r3 r">path</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            <span class="c">// This stream will be disposed by the creating stream, or the finally block.</span>
+            <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r4 rd" class="r4 r">inputStream</span> = <b>null</b>;
+            <b>try</b>
+            {
+                <span class="r4 r">inputStream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>();
+                <span class="r2 r">originalStream</span> = <span class="r4 r">inputStream</span>;
+                <span class="c">// Add original stream to streams to maintain reference to test disposal.</span>
+                <span class="r0 r">streams</span>.<span class="i method">Add</span>(<span class="r2 r">originalStream</span>);
+ 
+                <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r5 rd" class="r5 r">outputStream</span> = <span class="r4 r">inputStream</span>;
+                <b>try</b>
+                {
+                    <b>var</b> <span id="r6 rd" class="r6 r">context</span> = <b>new</b> <span class="i">MediaCreatingContext</span>
+                    {
+                        <span class="i">Path</span> = <span class="r3 r">path</span>
+                    };
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r7 rd" class="r7 r">eventHandler</span> <b>in</b> <span class="r1 r">creatingEventHandlers</span>)
+                    {
+                        <span class="c">// Creating stream disposed by using.</span>
+                        <b>using</b> (<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r8 rd" class="r8 r">creatingStream</span> = <span class="r5 r">outputStream</span>)
+                        {
+                            <span class="c">// Add to streams to maintain reference to test disposal.</span>
+                            <span class="r0 r">streams</span>.<span class="i method">Add</span>(<span class="r8 r">creatingStream</span>);
+                            <span class="r4 r">inputStream</span> = <b>null</b>;
+                            <span class="r5 r">outputStream</span> = <b>null</b>;
+                            <span class="r5 r">outputStream</span> = <b>await</b> <span class="r7 r">eventHandler</span>.<span class="i">MediaCreatingAsync</span>(<span class="r6 r">context</span>, <span class="r8 r">creatingStream</span>);
+                        }
+                    }
+                }
+                <b>finally</b>
+                {
+                    <span class="c">// This disposes the final outputStream.</span>
+                    <span class="r5 r">outputStream</span>?.<a href="@1@System.Runtime/A.html#f1b4285950a82354" class="i method">Dispose</a>();
+                }
+            }
+            <b>finally</b>
+            {
+                <span class="r4 r">inputStream</span>?.<a href="@1@System.Runtime/A.html#f1b4285950a82354" class="i method">Dispose</a>();
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r9 rd" class="r9 r">stream</span> <b>in</b> <span class="r0 r">streams</span>)
+            {
+                <span class="i">Assert</span>.<span class="i">Throws</span>&lt;<a href="@1@System.Runtime/A.html#50f5efda2e1b8af8" class="t t">ObjectDisposedException</a>&gt;(() =&gt; <span class="r9 r">stream</span>.<a href="@1@System.Runtime/A.html#8b5e336542fa849f" class="i method">ReadByte</a>());
+            }
+        }
+    }
+ 
+    <b>public class</b> <a id="b3707d011488e2b4" href="../../R/b3707d011488e2b4.html" target="n" data-glyph="0,0" class="t t"><span id="794833587242d923">TestMediaEventHandler</span></a> : <span class="i">IMediaCreatingEventHandler</span>
+    {
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt; <a id="306c1a3f47bf6213" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">MediaCreatingAsync</a>(<span class="i">MediaCreatingContext</span> <span id="r10 rd" class="r10 r">context</span>, <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r11 rd" class="r11 r">inputStream</span>)
+        {
+            <a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r12 rd" class="r12 r">outStream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>();
+            <b>await</b> <span class="r11 r">inputStream</span>.<a href="@1@System.Runtime/A.html#1ed7a6d41a19abf9" class="i method">CopyToAsync</a>(<span class="r12 r">outStream</span>);
+ 
+            <b>return</b> <span class="r12 r">outStream</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

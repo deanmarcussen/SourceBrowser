@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html><head><title>DownloadController.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(87);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Deployment/Download/DownloadController.cs" target="_top">Deployment\Download\DownloadController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Deployment</span>.<span class="i n">Download</span>
+{
+    [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>]
+    [<span class="i">Feature</span>(<span class="s">&quot;OrchardCore.Contents.Deployment.Download&quot;</span>)]
+    <b>public class</b> <a id="739a14d988ca0b21" href="../../R/739a14d988ca0b21.html" target="n" data-glyph="0,0" class="t t">DownloadController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="d6790879906a4bab" href="../../R/d6790879906a4bab.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="d7f0902f7d7d0b52" href="../../R/d7f0902f7d7d0b52.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+ 
+        <b>public</b> <a id="b78e34fc1506a978" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DownloadController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <span class="i">IContentManager</span> <span id="r1 rd" class="r1 r">contentManager</span>
+            )
+        {
+            <a href="#d6790879906a4bab" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#d7f0902f7d7d0b52" class="i field">_contentManager</a> = <span class="r1 r">contentManager</span>;
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="3af66d216336efab" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Display</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">contentItemId</span>, <b>bool</b> <span id="r3 rd" class="r3 r">latest</span> = <b>false</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#d6790879906a4bab" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<a href="/OrchardCore.Deployment.Core/A.html#069ba858e27456cc" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Deployment.Core/A.html#37740fd057a28432" class="i field">Export</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">contentItem</span> = <b>await</b> <a href="#d7f0902f7d7d0b52" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r2 r">contentItemId</span>, <span class="r3 r">latest</span> == <b>false</b> ? <span class="i">VersionOptions</span>.<span class="i">Published</span> : <span class="i">VersionOptions</span>.<span class="i">Latest</span>);
+ 
+            <b>if</b> (<span class="r4 r">contentItem</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Export permission is required as the overriding permission.</span>
+            <span class="c">// Requesting EditContent would allow custom permissions to deny access to this content item.</span>
+            <b>if</b> (!<b>await</b> <a href="#d6790879906a4bab" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r4 r">contentItem</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="DisplayJsonContentItemViewModel.cs.html#25b04b42d5476c89" class="k">var</a> <span id="r5 rd" class="r5 r">model</span> = <b>new</b> <a href="DisplayJsonContentItemViewModel.cs.html#25b04b42d5476c89" class="t constructor">DisplayJsonContentItemViewModel</a>
+            {
+                <a href="DisplayJsonContentItemViewModel.cs.html#b69dfb9125357108" class="i property">ContentItem</a> = <span class="r4 r">contentItem</span>,
+                <a href="DisplayJsonContentItemViewModel.cs.html#07e58ec36d8c4c96" class="i property">ContentItemJson</a> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r4 r">contentItem</span>).<span class="i">ToString</span>()
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r5 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="e4615d1ce3088d5c" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Download</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">contentItemId</span>, <b>bool</b> <span id="r7 rd" class="r7 r">latest</span> = <b>false</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#d6790879906a4bab" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<a href="/OrchardCore.Deployment.Core/A.html#069ba858e27456cc" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Deployment.Core/A.html#37740fd057a28432" class="i field">Export</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">contentItem</span> = <b>await</b> <a href="#d7f0902f7d7d0b52" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r6 r">contentItemId</span>, <span class="r7 r">latest</span> == <b>false</b> ? <span class="i">VersionOptions</span>.<span class="i">Published</span> : <span class="i">VersionOptions</span>.<span class="i">Latest</span>);
+ 
+            <b>if</b> (<span class="r8 r">contentItem</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Export permission is required as the overriding permission.</span>
+            <span class="c">// Requesting EditContent would allow custom permissions to deny access to this content item.</span>
+            <b>if</b> (!<b>await</b> <a href="#d6790879906a4bab" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r8 r">contentItem</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">jItem</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r8 r">contentItem</span>);
+ 
+            <b>return</b> <span class="i">File</span>(<a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<span class="i">GetBytes</span>(<span class="r9 r">jItem</span>.<span class="i">ToString</span>()), <span class="s">&quot;application/json&quot;</span>, <span class="s">$&quot;</span>{<span class="r8 r">contentItem</span>.<span class="i">ContentItemId</span>}<span class="s">.json</span><span class="s">&quot;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

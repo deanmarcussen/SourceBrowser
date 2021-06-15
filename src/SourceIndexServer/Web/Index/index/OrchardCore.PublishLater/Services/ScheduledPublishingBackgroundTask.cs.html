@@ -1,0 +1,56 @@
+﻿<!DOCTYPE html>
+<html><head><title>ScheduledPublishingBackgroundTask.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(47);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.PublishLater/Services/ScheduledPublishingBackgroundTask.cs" target="_top">Services\ScheduledPublishingBackgroundTask.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.PublishLater" target="_top">src\OrchardCore.Modules\OrchardCore.PublishLater\OrchardCore.PublishLater.csproj</a> (OrchardCore.PublishLater)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">BackgroundTasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">PublishLater</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">PublishLater</span>.<span class="i n">Services</span>
+{
+    [<span class="i">BackgroundTask</span>(<span class="i">Schedule</span> = <span class="s">&quot;* * * * *&quot;</span>, <span class="i">Description</span> = <span class="s">&quot;Publishes content items when their scheduled publish date time arrives.&quot;</span>)]
+    <b>public class</b> <a id="5e8cd18cac361113" href="../R/5e8cd18cac361113.html" target="n" data-glyph="0,0" class="t t">ScheduledPublishingBackgroundTask</a> : <span class="i">IBackgroundTask</span>
+    {
+        <b>private readonly</b> <span class="t t">ILogger</span>&lt;<a href="#5e8cd18cac361113" class="t t">ScheduledPublishingBackgroundTask</a>&gt; <a id="55695603069464ac" href="../R/55695603069464ac.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="i">IClock</span> <a id="40c852041c5fac75" href="../R/40c852041c5fac75.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+ 
+        <b>public</b> <a id="9de6d2796163c0e6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ScheduledPublishingBackgroundTask</a>(<span class="t t">ILogger</span>&lt;<a href="#5e8cd18cac361113" class="t t">ScheduledPublishingBackgroundTask</a>&gt; <span id="r0 rd" class="r0 r">logger</span>, <span class="i">IClock</span> <span id="r1 rd" class="r1 r">clock</span>)
+        {
+            <a href="#55695603069464ac" class="i field">_logger</a> = <span class="r0 r">logger</span>;
+            <a href="#40c852041c5fac75" class="i field">_clock</a> = <span class="r1 r">clock</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="fea234aee732db57" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DoWorkAsync</a>(<span class="t t">IServiceProvider</span> <span id="r2 rd" class="r2 r">serviceProvider</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r3 rd" class="r3 r">cancellationToken</span>)
+        {
+            <b>var</b> <span id="r4 rd" class="r4 r">itemsToPublish</span> = <b>await</b> <span class="r2 r">serviceProvider</span>
+                .<span class="i method">GetRequiredService</span>&lt;<span class="i">ISession</span>&gt;()
+                .<span class="i">Query</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>, <a href="../Indexes/PublishLaterPartIndex.cs.html#5c068c597fcead35" class="t t">PublishLaterPartIndex</a>&gt;(<span id="r5 rd" class="r5 r">index</span> =&gt; <span class="r5 r">index</span>.<span class="i">ScheduledPublishDateTimeUtc</span> &lt; <a href="#40c852041c5fac75" class="i field">_clock</a>.<span class="i">UtcNow</span>)
+                .<span class="i">ListAsync</span>();
+ 
+            <b>if</b> (!<span class="r4 r">itemsToPublish</span>.<span class="i">Any</span>())
+            {
+                <b>return</b>;
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r6 rd" class="r6 r">item</span> <b>in</b> <span class="r4 r">itemsToPublish</span>)
+            {
+                <a href="#55695603069464ac" class="i field">_logger</a>.<span class="i">LogDebug</span>(<span class="s">&quot;Publishing scheduled content item {ContentItemId}.&quot;</span>, <span class="r6 r">item</span>.<span class="i">ContentItemId</span>);
+                <b>await</b> <span class="r2 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a>&gt;().<span class="i">PublishAsync</span>(<span class="r6 r">item</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

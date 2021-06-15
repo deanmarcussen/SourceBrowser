@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html><head><title>TaxonomyIndex.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(120);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Taxonomies/Indexing/TaxonomyIndex.cs" target="_top">Indexing\TaxonomyIndex.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Taxonomies" target="_top">src\OrchardCore.Modules\OrchardCore.Taxonomies\OrchardCore.Taxonomies.csproj</a> (OrchardCore.Taxonomies)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Taxonomies</span>.<span class="i n">Fields</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Indexes</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Taxonomies</span>.<span class="i n">Indexing</span>
+{
+    <b>public class</b> <a id="c8aa09bdfb1d694d" href="../R/c8aa09bdfb1d694d.html" target="n" data-glyph="0,0" class="t t"><span id="bda4abee0c016238">TaxonomyIndex</span></a> : <span class="i">MapIndex</span>
+    {
+        <b>public string</b> <a id="f3e64975872d922c" href="../R/f3e64975872d922c.html" target="n" data-glyph="102,1" class="i property">TaxonomyContentItemId</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="684547e008d33f47" href="../R/684547e008d33f47.html" target="n" data-glyph="102,1" class="i property">ContentItemId</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="803e7c5e48016b27" href="../R/803e7c5e48016b27.html" target="n" data-glyph="102,1" class="i property">ContentType</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="cd683b69808cdcee" href="../R/cd683b69808cdcee.html" target="n" data-glyph="102,1" class="i property">ContentPart</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="f076210d4ed48281" href="../R/f076210d4ed48281.html" target="n" data-glyph="102,1" class="i property">ContentField</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="02346d824a3754ef" href="../R/02346d824a3754ef.html" target="n" data-glyph="102,1" class="i property">TermContentItemId</a> { <b>get</b>; <b>set</b>; }
+        <b>public bool</b> <a id="2eccf7c1b7ed897b" href="../R/2eccf7c1b7ed897b.html" target="n" data-glyph="102,1" class="i property">Published</a> { <b>get</b>; <b>set</b>; }
+        <b>public bool</b> <a id="52fe353b97cdb5fd" href="../R/52fe353b97cdb5fd.html" target="n" data-glyph="102,1" class="i property">Latest</a> { <b>get</b>; <b>set</b>; }
+    }
+ 
+    <b>public class</b> <a id="785d083495385137" href="../R/785d083495385137.html" target="n" data-glyph="0,0" class="t t">TaxonomyIndexProvider</a> : <span class="i">IndexProvider</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;, <span class="i">IScopedIndexProvider</span>
+    {
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="63402514b8eabee2" href="../R/63402514b8eabee2.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="55ec3aa589975844" href="../R/55ec3aa589975844.html" target="n" data-glyph="46,1" class="i field">_ignoredTypes</a> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+        <b>private</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="5fac3e8d395f212d" href="../R/5fac3e8d395f212d.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+ 
+        <b>public</b> <a id="49ca792a0c669784" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">TaxonomyIndexProvider</a>(<span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">serviceProvider</span>)
+        {
+            <a href="#63402514b8eabee2" class="i field">_serviceProvider</a> = <span class="r0 r">serviceProvider</span>;
+        }
+ 
+        <b>public override void</b> <a id="ffa7c5fb12b1ddce" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Describe</a>(<span class="i">DescribeContext</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r1 rd" class="r1 r">context</span>)
+        {
+            <span class="r1 r">context</span>.<span class="i">For</span>&lt;<a href="#c8aa09bdfb1d694d" class="t t">TaxonomyIndex</a>&gt;()
+                .<span class="i">Map</span>(<span id="r2 rd" class="r2 r">contentItem</span> =&gt;
+                {
+                    <span class="c">// Remove index records of soft deleted items.</span>
+                    <b>if</b> (!<span class="r2 r">contentItem</span>.<span class="i">Published</span> &amp;&amp; !<span class="r2 r">contentItem</span>.<span class="i">Latest</span>)
+                    {
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <span class="c">// Can we safely ignore this content item?</span>
+                    <b>if</b> (<a href="#55ec3aa589975844" class="i field">_ignoredTypes</a>.<span class="i">Contains</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>))
+                    {
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <span class="c">// Lazy initialization because of ISession cyclic dependency</span>
+                    <a href="#5fac3e8d395f212d" class="i field">_contentDefinitionManager</a> ??= <a href="#63402514b8eabee2" class="i field">_serviceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a>&gt;();
+ 
+                    <span class="c">// Search for Taxonomy fields</span>
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r3 rd" class="r3 r">contentTypeDefinition</span> = <a href="#5fac3e8d395f212d" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>);
+ 
+                    <span class="c">// This can occur when content items become orphaned, particularly layer widgets when a layer is removed, before its widgets have been unpublished.</span>
+                    <b>if</b> (<span class="r3 r">contentTypeDefinition</span> == <b>null</b>)
+                    {
+                        <a href="#55ec3aa589975844" class="i field">_ignoredTypes</a>.<span class="i">Add</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>);
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <b>var</b> <span id="r4 rd" class="r4 r">fieldDefinitions</span> = <span class="r3 r">contentTypeDefinition</span>
+                        .<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">SelectMany</span>(<span id="r5 rd" class="r5 r">x</span> =&gt; <span class="r5 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">Where</span>(<span id="r6 rd" class="r6 r">f</span> =&gt; <span class="r6 r">f</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a> == <b>nameof</b>(<a href="../Fields/TaxonomyField.cs.html#9facaea9e47d8f0c" class="t t">TaxonomyField</a>)))
+                        .<span class="i method">ToArray</span>();
+ 
+                    <span class="c">// This type doesn&#39;t have any TaxonomyField, ignore it</span>
+                    <b>if</b> (<span class="r4 r">fieldDefinitions</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 0)
+                    {
+                        <a href="#55ec3aa589975844" class="i field">_ignoredTypes</a>.<span class="i">Add</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>);
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <b>var</b> <span id="r7 rd" class="r7 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="#c8aa09bdfb1d694d" class="t t">TaxonomyIndex</a>&gt;();
+ 
+                    <span class="c">// Get all field values</span>
+                    <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r8 rd" class="r8 r">fieldDefinition</span> <b>in</b> <span class="r4 r">fieldDefinitions</span>)
+                    {
+                        <b>var</b> <span id="r9 rd" class="r9 r">jPart</span> = (<span class="i">JObject</span>)<span class="r2 r">contentItem</span>.<span class="i">Content</span>[<span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38f32a81414eb933" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>];
+ 
+                        <b>if</b> (<span class="r9 r">jPart</span> == <b>null</b>)
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <b>var</b> <span id="r10 rd" class="r10 r">jField</span> = (<span class="i">JObject</span>)<span class="r9 r">jPart</span>[<span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>];
+ 
+                        <b>if</b> (<span class="r10 r">jField</span> == <b>null</b>)
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <b>var</b> <span id="r11 rd" class="r11 r">field</span> = <span class="r10 r">jField</span>.<span class="i">ToObject</span>&lt;<a href="../Fields/TaxonomyField.cs.html#9facaea9e47d8f0c" class="t t">TaxonomyField</a>&gt;();
+ 
+                        <b>foreach</b> (<b>var</b> <span id="r12 rd" class="r12 r">termContentItemId</span> <b>in</b> <span class="r11 r">field</span>.<span class="i">TermContentItemIds</span>)
+                        {
+                            <span class="r7 r">results</span>.<span class="i method">Add</span>(<b>new</b> <a href="#c8aa09bdfb1d694d" class="t constructor">TaxonomyIndex</a>
+                            {
+                                <a href="#f3e64975872d922c" class="i property">TaxonomyContentItemId</a> = <span class="r11 r">field</span>.<span class="i">TaxonomyContentItemId</span>,
+                                <a href="#684547e008d33f47" class="i property">ContentItemId</a> = <span class="r2 r">contentItem</span>.<span class="i">ContentItemId</span>,
+                                <a href="#803e7c5e48016b27" class="i property">ContentType</a> = <span class="r2 r">contentItem</span>.<span class="i">ContentType</span>,
+                                <a href="#cd683b69808cdcee" class="i property">ContentPart</a> = <span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38f32a81414eb933" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>,
+                                <a href="#f076210d4ed48281" class="i property">ContentField</a> = <span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>,
+                                <a href="#02346d824a3754ef" class="i property">TermContentItemId</a> = <span class="r12 r">termContentItemId</span>,
+                                <a href="#2eccf7c1b7ed897b" class="i property">Published</a> = <span class="r2 r">contentItem</span>.<span class="i">Published</span>,
+                                <a href="#52fe353b97cdb5fd" class="i property">Latest</a> = <span class="r2 r">contentItem</span>.<span class="i">Latest</span>
+                            });
+                        }
+                    }
+ 
+                    <b>return</b> <span class="r7 r">results</span>;
+                });
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

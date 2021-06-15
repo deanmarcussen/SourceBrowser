@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+<html><head><title>ImageShortcodeProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(133);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Shortcodes/ImageShortcodeProvider.cs" target="_top">Shortcodes\ImageShortcodeProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">WebUtilities</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Infrastructure</span>.<span class="i">Html</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ResourceManagement</span>;
+<b>using</b> <span class="i">Shortcodes</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Shortcodes</span>
+{
+    <b>public class</b> <a id="1bc8a27475000516" href="../R/1bc8a27475000516.html" target="n" data-glyph="0,0" class="t t">ImageShortcodeProvider</a> : <span class="i">IShortcodeProvider</span>
+    {
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="61804816e6f9c4c6" href="../R/61804816e6f9c4c6.html" target="n" data-glyph="46,1" class="i field">Null</a> = <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;((<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>)<b>null</b>);
+        <b>private static readonly</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="fa5a9969f5ab2968" href="../R/fa5a9969f5ab2968.html" target="n" data-glyph="46,1" class="i field">ImageShortcode</a> = <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;[image]&quot;</span>);
+        <b>private static readonly</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="a715e7bea6aa4f3b" href="../R/a715e7bea6aa4f3b.html" target="n" data-glyph="46,1" class="i field">Shortcodes</a> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>)
+        {
+            <span class="s">&quot;image&quot;</span>,
+            <span class="s">&quot;media&quot;</span> <span class="c">// [media] is a deprecated shortcode, and can be removed in a future release.</span>
+        };
+ 
+        <b>private readonly</b> <span class="i">IMediaFileStore</span> <a id="66c166fd13457ed2" href="../R/66c166fd13457ed2.html" target="n" data-glyph="46,1" class="i field">_mediaFileStore</a>;
+        <b>private readonly</b> <span class="i">IHtmlSanitizerService</span> <a id="74b867a126bd0d0f" href="../R/74b867a126bd0d0f.html" target="n" data-glyph="46,1" class="i field">_htmlSanitizerService</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="85d64032be490345" href="../R/85d64032be490345.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="i">ResourceManagementOptions</span> <a id="311679fdf1c4c5d6" href="../R/311679fdf1c4c5d6.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+ 
+        <b>public</b> <a id="116c93dca24e6069" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ImageShortcodeProvider</a>(
+            <span class="i">IMediaFileStore</span> <span id="r0 rd" class="r0 r">mediaFileStore</span>,
+            <span class="i">IHtmlSanitizerService</span> <span id="r1 rd" class="r1 r">htmlSanitizerService</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">ResourceManagementOptions</span>&gt; <span id="r3 rd" class="r3 r">options</span>)
+        {
+            <a href="#66c166fd13457ed2" class="i field">_mediaFileStore</a> = <span class="r0 r">mediaFileStore</span>;
+            <a href="#74b867a126bd0d0f" class="i field">_htmlSanitizerService</a> = <span class="r1 r">htmlSanitizerService</span>;
+            <a href="#85d64032be490345" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+            <a href="#311679fdf1c4c5d6" class="i field">_options</a> = <span class="r3 r">options</span>.<span class="i property">Value</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="7546fd74be518c3f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EvaluateAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">identifier</span>, <span class="i">Arguments</span> <span id="r5 rd" class="r5 r">arguments</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">content</span>, <span class="i">Context</span> <span id="r7 rd" class="r7 r">context</span>)
+        {
+            <b>if</b> (!<a href="#a715e7bea6aa4f3b" class="i field">Shortcodes</a>.<span class="i method">Contains</span>(<span class="r4 r">identifier</span>))
+            {
+                <b>return</b> <a href="#61804816e6f9c4c6" class="i field">Null</a>;
+            }
+ 
+            <span class="c">// Handle self closing shortcodes.</span>
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">content</span>))
+            {
+                <span class="r6 r">content</span> = <span class="r5 r">arguments</span>.<span class="i">NamedOrDefault</span>(<span class="s">&quot;src&quot;</span>);
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">content</span>))
+                {
+                    <span class="c">// Do not handle the deprecated media shortcode in this edge case.</span>
+                    <b>return</b> <a href="#fa5a9969f5ab2968" class="i field">ImageShortcode</a>;
+                }
+            }
+ 
+            <b>if</b> (!<span class="r6 r">content</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;//&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>) &amp;&amp; !<span class="r6 r">content</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;http&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <span class="c">// Serve static files from virtual path.</span>
+                <b>if</b> (<span class="r6 r">content</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;~/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+                {
+                    <span class="r6 r">content</span> = <a href="#85d64032be490345" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span>.<span class="i method">Add</span>(<span class="r6 r">content</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(1)).<span class="i property">Value</span>;
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<a href="#311679fdf1c4c5d6" class="i field">_options</a>.<span class="i">CdnBaseUrl</span>))
+                    {
+                        <span class="r6 r">content</span> = <a href="#311679fdf1c4c5d6" class="i field">_options</a>.<span class="i">CdnBaseUrl</span> + <span class="r6 r">content</span>;
+                    }
+                }
+                <b>else</b>
+                {
+                    <span class="r6 r">content</span> = <a href="#66c166fd13457ed2" class="i field">_mediaFileStore</a>.<span class="i">MapPathToPublicUrl</span>(<span class="r6 r">content</span>);
+                }
+            }
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">className</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">altText</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            <b>if</b> (<span class="r5 r">arguments</span>.<span class="i">Any</span>())
+            {
+                <b>var</b> <span id="r10 rd" class="r10 r">queryStringParams</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+                <b>var</b> <span id="r11 rd" class="r11 r">width</span> = <span class="r5 r">arguments</span>.<span class="i">Named</span>(<span class="s">&quot;width&quot;</span>);
+                <b>var</b> <span id="r12 rd" class="r12 r">height</span> = <span class="r5 r">arguments</span>.<span class="i">Named</span>(<span class="s">&quot;height&quot;</span>);
+                <b>var</b> <span id="r13 rd" class="r13 r">mode</span> = <span class="r5 r">arguments</span>.<span class="i">Named</span>(<span class="s">&quot;mode&quot;</span>);
+                <b>var</b> <span id="r14 rd" class="r14 r">quality</span> = <span class="r5 r">arguments</span>.<span class="i">Named</span>(<span class="s">&quot;quality&quot;</span>);
+                <b>var</b> <span id="r15 rd" class="r15 r">format</span> = <span class="r5 r">arguments</span>.<span class="i">Named</span>(<span class="s">&quot;format&quot;</span>);
+                <span class="r8 r">className</span> = <span class="r5 r">arguments</span>.<span class="i">Named</span>(<span class="s">&quot;class&quot;</span>);
+                <span class="r9 r">altText</span> = <span class="r5 r">arguments</span>.<span class="i">Named</span>(<span class="s">&quot;alt&quot;</span>);
+ 
+                <b>if</b> (<span class="r11 r">width</span> != <b>null</b>)
+                {
+                    <span class="r10 r">queryStringParams</span>.<span class="i">Add</span>(<span class="s">&quot;width&quot;</span>, <span class="r11 r">width</span>);
+                }
+ 
+                <b>if</b> (<span class="r12 r">height</span> != <b>null</b>)
+                {
+                    <span class="r10 r">queryStringParams</span>.<span class="i">Add</span>(<span class="s">&quot;height&quot;</span>, <span class="r12 r">height</span>);
+                }
+ 
+                <b>if</b> (<span class="r13 r">mode</span> != <b>null</b>)
+                {
+                    <span class="r10 r">queryStringParams</span>.<span class="i">Add</span>(<span class="s">&quot;rmode&quot;</span>, <span class="r13 r">mode</span>);
+                }
+ 
+                <b>if</b> (<span class="r14 r">quality</span> != <b>null</b>)
+                {
+                    <span class="r10 r">queryStringParams</span>.<span class="i">Add</span>(<span class="s">&quot;quality&quot;</span>, <span class="r14 r">quality</span>);
+                }
+ 
+                <b>if</b> (<span class="r15 r">format</span> != <b>null</b>)
+                {
+                    <span class="r10 r">queryStringParams</span>.<span class="i">Add</span>(<span class="s">&quot;format&quot;</span>, <span class="r15 r">format</span>);
+                }
+ 
+                <b>if</b> (<span class="r8 r">className</span> != <b>null</b>)
+                {
+                    <span class="r8 r">className</span> = <span class="s">&quot;class=\&quot;&quot;</span> + <span class="r8 r">className</span> + <span class="s">&quot;\&quot; &quot;</span>;
+                }
+ 
+                <b>if</b> (<span class="r9 r">altText</span> != <b>null</b>)
+                {
+                    <span class="r9 r">altText</span> = <span class="s">&quot;alt=\&quot;&quot;</span> + <span class="r9 r">altText</span> + <span class="s">&quot;\&quot; &quot;</span>;
+                }
+ 
+                <span class="r6 r">content</span> = <span class="t t">QueryHelpers</span>.<span class="i method">AddQueryString</span>(<span class="r6 r">content</span>, <span class="r10 r">queryStringParams</span>);
+            }
+ 
+            <span class="r6 r">content</span> = <span class="s">&quot;&lt;img &quot;</span> + <span class="r9 r">altText</span> + <span class="r8 r">className</span> + <span class="s">&quot;src=\&quot;&quot;</span> + <span class="r6 r">content</span> + <span class="s">&quot;\&quot;&gt;&quot;</span>;
+            <span class="r6 r">content</span> = <a href="#74b867a126bd0d0f" class="i field">_htmlSanitizerService</a>.<span class="i">Sanitize</span>(<span class="r6 r">content</span>);
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r6 r">content</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

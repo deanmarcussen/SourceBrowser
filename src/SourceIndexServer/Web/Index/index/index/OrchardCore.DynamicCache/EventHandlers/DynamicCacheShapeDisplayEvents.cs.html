@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html><head><title>DynamicCacheShapeDisplayEvents.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(114);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DynamicCache/EventHandlers/DynamicCacheShapeDisplayEvents.cs" target="_top">EventHandlers\DynamicCacheShapeDisplayEvents.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DynamicCache" target="_top">src\OrchardCore.Modules\OrchardCore.DynamicCache\OrchardCore.DynamicCache.csproj</a> (OrchardCore.DynamicCache)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Abstractions</span>.<span class="i">Pooling</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Implementation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Cache</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DynamicCache</span>.<span class="i n">EventHandlers</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Caches shapes in the default </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> implementation.</span>
+    <span class="c">///</span><span class="c"> It uses the shape&#39;s metadata cache context to define the cache parameters.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="e6c0cac35014d45e" href="../R/e6c0cac35014d45e.html" target="n" data-glyph="0,0" class="t t">DynamicCacheShapeDisplayEvents</a> : <a href="/OrchardCore.DisplayManagement/A.html#e1238bf6ed229aec" class="t t">IShapeDisplayEvents</a>
+    {
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">CacheContext</span>&gt; <a id="3a4dd243715ead5d" href="../R/3a4dd243715ead5d.html" target="n" data-glyph="46,1" class="i field">_cached</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">CacheContext</span>&gt;();
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">CacheContext</span>&gt; <a id="afa7f4b72352fa67" href="../R/afa7f4b72352fa67.html" target="n" data-glyph="46,1" class="i field">_openScopes</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">CacheContext</span>&gt;();
+ 
+        <b>private readonly</b> <a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a> <a id="154066684a7dd44e" href="../R/154066684a7dd44e.html" target="n" data-glyph="46,1" class="i field">_dynamicCacheService</a>;
+        <b>private readonly</b> <span class="i">ICacheScopeManager</span> <a id="66b66c2202419f47" href="../R/66b66c2202419f47.html" target="n" data-glyph="46,1" class="i field">_cacheScopeManager</a>;
+        <b>private readonly</b> <span class="t t">HtmlEncoder</span> <a id="cf74df84dd7a8d53" href="../R/cf74df84dd7a8d53.html" target="n" data-glyph="46,1" class="i field">_htmlEncoder</a>;
+        <b>private readonly</b> <span class="i">CacheOptions</span> <a id="b84405bd498ebef3" href="../R/b84405bd498ebef3.html" target="n" data-glyph="46,1" class="i field">_cacheOptions</a>;
+ 
+        <b>public</b> <a id="fce831fda1e5fb70" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DynamicCacheShapeDisplayEvents</a>(
+            <a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a> <span id="r0 rd" class="r0 r">dynamicCacheService</span>,
+            <span class="i">ICacheScopeManager</span> <span id="r1 rd" class="r1 r">cacheScopeManager</span>,
+            <span class="t t">HtmlEncoder</span> <span id="r2 rd" class="r2 r">htmlEncoder</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">CacheOptions</span>&gt; <span id="r3 rd" class="r3 r">options</span>)
+        {
+            <a href="#154066684a7dd44e" class="i field">_dynamicCacheService</a> = <span class="r0 r">dynamicCacheService</span>;
+            <a href="#66b66c2202419f47" class="i field">_cacheScopeManager</a> = <span class="r1 r">cacheScopeManager</span>;
+            <a href="#cf74df84dd7a8d53" class="i field">_htmlEncoder</a> = <span class="r2 r">htmlEncoder</span>;
+            <a href="#b84405bd498ebef3" class="i field">_cacheOptions</a> = <span class="r3 r">options</span>.<span class="i property">Value</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="1a669a3fec012a1e" href="../R/1a669a3fec012a1e.html" target="n" data-glyph="72,1" class="i method">DisplayingAsync</a>(<a href="/OrchardCore.DisplayManagement/A.html#0fe1137e8e1878e1" class="t t">ShapeDisplayContext</a> <span id="r4 rd" class="r4 r">context</span>)
+        {
+            <span class="c">// The shape has cache settings and no content yet</span>
+            <b>if</b> (<span class="r4 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#340bc14e14f4115a" class="i property">IsCached</a> &amp;&amp; <span class="r4 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#8d3f7c54fd333a8d" class="i property">ChildContent</a> == <b>null</b>)
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">cacheContext</span> = <span class="r4 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<span class="i">Cache</span>();
+                <a href="#66b66c2202419f47" class="i field">_cacheScopeManager</a>.<span class="i">EnterScope</span>(<span class="r5 r">cacheContext</span>);
+                <a href="#afa7f4b72352fa67" class="i field">_openScopes</a>[<span class="r5 r">cacheContext</span>.<span class="i">CacheId</span>] = <span class="r5 r">cacheContext</span>;
+ 
+                <b>var</b> <span id="r6 rd" class="r6 r">cachedContent</span> = <b>await</b> <a href="#154066684a7dd44e" class="i field">_dynamicCacheService</a>.<span class="i">GetCachedValueAsync</span>(<span class="r5 r">cacheContext</span>);
+ 
+                <b>if</b> (<span class="r6 r">cachedContent</span> != <b>null</b>)
+                {
+                    <span class="c">// The contents of this shape was found in the cache.</span>
+                    <span class="c">// Add the cacheContext to _cached so that we don&#39;t try to cache the content again in the DisplayedAsync method.</span>
+                    <a href="#3a4dd243715ead5d" class="i field">_cached</a>[<span class="r5 r">cacheContext</span>.<span class="i">CacheId</span>] = <span class="r5 r">cacheContext</span>;
+                    <span class="r4 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#8d3f7c54fd333a8d" class="i property">ChildContent</a> = <b>new</b> <span class="t">HtmlString</span>(<span class="r6 r">cachedContent</span>);
+                }
+                <b>else</b> <b>if</b> (<a href="#b84405bd498ebef3" class="i field">_cacheOptions</a>.<span class="i">DebugMode</span>)
+                {
+                    <span class="r4 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#6ffe6442b8f12f40" class="i property">Wrappers</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">&quot;CachedShapeWrapper&quot;</span>);
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="1cb64758a8baaf30" href="../R/1cb64758a8baaf30.html" target="n" data-glyph="72,1" class="i method">DisplayedAsync</a>(<a href="/OrchardCore.DisplayManagement/A.html#0fe1137e8e1878e1" class="t t">ShapeDisplayContext</a> <span id="r7 rd" class="r7 r">context</span>)
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">cacheContext</span> = <span class="r7 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<span class="i">Cache</span>();
+ 
+            <span class="c">// If the shape is not configured to be cached, continue as usual</span>
+            <b>if</b> (<span class="r8 r">cacheContext</span> == <b>null</b>)
+            {
+                <b>if</b> (<span class="r7 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#8d3f7c54fd333a8d" class="i property">ChildContent</a> == <b>null</b>)
+                {
+                    <span class="r7 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#8d3f7c54fd333a8d" class="i property">ChildContent</a> = <span class="t t">HtmlString</span>.<span class="i field">Empty</span>;
+                }
+ 
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If we have got this far, then this shape is configured to be cached.</span>
+            <span class="c">// We need to determine whether or not the ChildContent of this shape was retrieved from the cache by the DisplayingAsync method above, as opposed to generated by the View Engine.</span>
+            <span class="c">// ChildContent will be generated by the View Engine if it was not available in the cache when we rendered the shape.</span>
+            <span class="c">// In this instance, we need insert the ChildContent into the cache so that subsequent attempt to render this shape can take advantage of the cached content.</span>
+ 
+            <span class="c">// If the ChildContent was retrieved form the cache, then the Cache Context will be present in the _cached collection (see the DisplayingAsync method in this class).</span>
+            <span class="c">// So, if the cache context is not present in the _cached collection, we need to insert the ChildContent value into the cache:</span>
+            <b>if</b> (!<a href="#3a4dd243715ead5d" class="i field">_cached</a>.<span class="i">ContainsKey</span>(<span class="r8 r">cacheContext</span>.<span class="i">CacheId</span>) &amp;&amp; <span class="r7 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#8d3f7c54fd333a8d" class="i property">ChildContent</a> != <b>null</b>)
+            {
+                <span class="c">// The content is pre-encoded in the cache so we don&#39;t have to do it every time it&#39;s rendered</span>
+                <b>using</b> <b>var</b> <span id="r9 rd" class="r9 r">sw</span> = <b>new</b> <span class="i">ZStringWriter</span>();
+ 
+                <span class="c">// &#39;ChildContent&#39; may be a &#39;ViewBufferTextWriterContent&#39; on which we can&#39;t</span>
+                <span class="c">// call &#39;WriteTo()&#39; twice, so here we update it with a new &#39;HtmlString()&#39;.</span>
+                <span class="r7 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#8d3f7c54fd333a8d" class="i property">ChildContent</a>.<span class="i">WriteTo</span>(<span class="r9 r">sw</span>, <a href="#cf74df84dd7a8d53" class="i field">_htmlEncoder</a>);
+                <b>var</b> <span id="r10 rd" class="r10 r">contentHtmlString</span> = <b>new</b> <span class="t">HtmlString</span>(<span class="r9 r">sw</span>.<span class="i">ToString</span>());
+                <span class="r7 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#8d3f7c54fd333a8d" class="i property">ChildContent</a> = <span class="r10 r">contentHtmlString</span>;
+ 
+                <b>await</b> <a href="#154066684a7dd44e" class="i field">_dynamicCacheService</a>.<span class="i">SetCachedValueAsync</span>(<span class="r8 r">cacheContext</span>, <span class="r10 r">contentHtmlString</span>.<span class="i property">Value</span>);
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="47a317d6da10f6bc" href="../R/47a317d6da10f6bc.html" target="n" data-glyph="72,1" class="i method">DisplayingFinalizedAsync</a>(<a href="/OrchardCore.DisplayManagement/A.html#0fe1137e8e1878e1" class="t t">ShapeDisplayContext</a> <span id="r11 rd" class="r11 r">context</span>)
+        {
+            <b>var</b> <span id="r12 rd" class="r12 r">cacheContext</span> = <span class="r11 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<span class="i">Cache</span>();
+ 
+            <b>if</b> (<span class="r12 r">cacheContext</span> != <b>null</b> &amp;&amp; <a href="#afa7f4b72352fa67" class="i field">_openScopes</a>.<span class="i">ContainsKey</span>(<span class="r12 r">cacheContext</span>.<span class="i">CacheId</span>))
+            {
+                <a href="#66b66c2202419f47" class="i field">_cacheScopeManager</a>.<span class="i">ExitScope</span>();
+                <a href="#afa7f4b72352fa67" class="i field">_openScopes</a>.<span class="i">Remove</span>(<span class="r12 r">cacheContext</span>.<span class="i">CacheId</span>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

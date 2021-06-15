@@ -1,0 +1,179 @@
+﻿<!DOCTYPE html>
+<html><head><title>AttachedMediaFieldFileService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(170);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Services/AttachedMediaFieldFileService.cs" target="_top">Services\AttachedMediaFieldFileService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentPreview</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Services</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Handles file management operations related to the attached media field</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="44a3b57f0325407d" href="../R/44a3b57f0325407d.html" target="n" data-glyph="0,0" class="t t">AttachedMediaFieldFileService</a>
+    {
+        <b>private readonly</b> <span class="i">IMediaFileStore</span> <a id="0659f7b9ea05bd9b" href="../R/0659f7b9ea05bd9b.html" target="n" data-glyph="46,1" class="i field">_fileStore</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="c6961b1ba26062ca" href="../R/c6961b1ba26062ca.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="6b8cc53613405d69" href="../R/6b8cc53613405d69.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="dcbbe8f429e92fac" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AttachedMediaFieldFileService</a>(
+            <span class="i">IMediaFileStore</span> <span id="r0 rd" class="r0 r">fileStore</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r1 rd" class="r1 r">httpContextAccessor</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#44a3b57f0325407d" class="t t">AttachedMediaFieldFileService</a>&gt; <span id="r2 rd" class="r2 r">logger</span>)
+        {
+            <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a> = <span class="r0 r">fileStore</span>;
+            <a href="#c6961b1ba26062ca" class="i field">_httpContextAccessor</a> = <span class="r1 r">httpContextAccessor</span>;
+            <a href="#6b8cc53613405d69" class="i field">_logger</a> = <span class="r2 r">logger</span>;
+ 
+            <a href="#b3158cb7cd9242cb" class="i property">MediaFieldsFolder</a> = <span class="s">&quot;mediafields&quot;</span>;
+            <a href="#2f279f9d2f51b755" class="i property">MediaFieldsTempSubFolder</a> = <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">Combine</span>(<a href="#b3158cb7cd9242cb" class="i property">MediaFieldsFolder</a>, <span class="s">&quot;temp&quot;</span>);
+        }
+ 
+        <b>public string</b> <a id="b3158cb7cd9242cb" href="../R/b3158cb7cd9242cb.html" target="n" data-glyph="102,1" class="i property">MediaFieldsFolder</a> { <b>get</b>; }
+        <b>public string</b> <a id="2f279f9d2f51b755" href="../R/2f279f9d2f51b755.html" target="n" data-glyph="102,1" class="i property">MediaFieldsTempSubFolder</a> { <b>get</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Removes the assets attached to a content item through an attached media field.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> To be used by content handlers when the content item is deleted</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="bde36064f535613b" href="../R/bde36064f535613b.html" target="n" data-glyph="72,1" class="i method">DeleteContentItemFolderAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r3 rd" class="r3 r">contentItem</span>)
+        {
+            <b>return</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">TryDeleteDirectoryAsync</span>(<a href="#69630ac44a57be08" class="i method">GetContentItemFolder</a>(<span class="r3 r">contentItem</span>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Moves uploaded files to a folder specific for the content item</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="30921f631383a9cf" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">HandleFilesOnFieldUpdateAsync</a>(<span class="t t">List</span>&lt;<a href="../ViewModels/EditMediaFieldViewModel.cs.html#71bad039b60d3111" class="t t">EditMediaFieldItemInfo</a>&gt; <span id="r4 rd" class="r4 r">items</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r5 rd" class="r5 r">contentItem</span>)
+        {
+            <b>if</b> (<span class="r4 r">items</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r4 r">items</span>));
+            }
+ 
+            <b>if</b> (<a href="#c6961b1ba26062ca" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">Features</span>.<span class="i method">Get</span>&lt;<a href="/OrchardCore.ContentPreview.Abstractions/A.html#6ca72e815e1ea408" class="t t">ContentPreviewFeature</a>&gt;()?.<a href="/OrchardCore.ContentPreview.Abstractions/A.html#afd96211a7d18a85" class="i property">Previewing</a> == <b>true</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#c17ab1182f8f514f" class="i method">EnsureGlobalDirectoriesAsync</a>();
+ 
+            <b>await</b> <a href="#58db09591f8073f2" class="i method">RemoveTemporaryAsync</a>(<span class="r4 r">items</span>);
+ 
+            <b>await</b> <a href="#e6b6a36d1b6b1855" class="i method">MoveNewFilesToContentItemDirAndUpdatePathsAsync</a>(<span class="r4 r">items</span>, <span class="r5 r">contentItem</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c17ab1182f8f514f" href="../R/c17ab1182f8f514f.html" target="n" data-glyph="76,1" class="i method">EnsureGlobalDirectoriesAsync</a>()
+        {
+            <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">TryCreateDirectoryAsync</span>(<a href="#b3158cb7cd9242cb" class="i property">MediaFieldsFolder</a>);
+            <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">TryCreateDirectoryAsync</span>(<a href="#2f279f9d2f51b755" class="i property">MediaFieldsTempSubFolder</a>);
+        }
+ 
+        <span class="c">// Files just uploaded and then immediately discarded.</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="58db09591f8073f2" href="../R/58db09591f8073f2.html" target="n" data-glyph="76,1" class="i method">RemoveTemporaryAsync</a>(<span class="t t">List</span>&lt;<a href="../ViewModels/EditMediaFieldViewModel.cs.html#71bad039b60d3111" class="t t">EditMediaFieldItemInfo</a>&gt; <span id="r6 rd" class="r6 r">items</span>)
+        {
+            <b>foreach</b> (<a href="../ViewModels/EditMediaFieldViewModel.cs.html#71bad039b60d3111" class="k">var</a> <span id="r7 rd" class="r7 r">item</span> <b>in</b> <span class="r6 r">items</span>.<span class="i method">Where</span>(<span id="r8 rd" class="r8 r">i</span> =&gt; <span class="r8 r">i</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#7fe4acdf56bd6867" class="i property">IsRemoved</a> &amp;&amp; <span class="r8 r">i</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#6d70cdd21583639b" class="i property">IsNew</a>))
+            {
+                <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">TryDeleteFileAsync</span>(<span class="r7 r">item</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a>);
+            }
+        }
+ 
+        <span class="c">// Newly added files</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="e6b6a36d1b6b1855" href="../R/e6b6a36d1b6b1855.html" target="n" data-glyph="76,1" class="i method">MoveNewFilesToContentItemDirAndUpdatePathsAsync</a>(<span class="t t">List</span>&lt;<a href="../ViewModels/EditMediaFieldViewModel.cs.html#71bad039b60d3111" class="t t">EditMediaFieldItemInfo</a>&gt; <span id="r9 rd" class="r9 r">items</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r10 rd" class="r10 r">contentItem</span>)
+        {
+            <b>foreach</b> (<a href="../ViewModels/EditMediaFieldViewModel.cs.html#71bad039b60d3111" class="k">var</a> <span id="r11 rd" class="r11 r">item</span> <b>in</b> <span class="r9 r">items</span>.<span class="i method">Where</span>(<span id="r12 rd" class="r12 r">i</span> =&gt; !<span class="r12 r">i</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#7fe4acdf56bd6867" class="i property">IsRemoved</a> &amp;&amp; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r12 r">i</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a>)))
+            {
+                <b>var</b> <span id="r13 rd" class="r13 r">fileInfo</span> = <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r11 r">item</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a>);
+ 
+                <b>if</b> (<span class="r13 r">fileInfo</span> == <b>null</b>)
+                {
+                    <a href="#6b8cc53613405d69" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;A file with the path &#39;{Path}&#39; does not exist.&quot;</span>, <span class="r11 r">item</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a>);
+                    <b>return</b>;
+                }
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">targetDir</span> = <a href="#69630ac44a57be08" class="i method">GetContentItemFolder</a>(<span class="r10 r">contentItem</span>);
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">finalFileName</span> = (<b>await</b> <a href="#57c65afc3375ae14" class="i method">GetFileHashAsync</a>(<span class="r11 r">item</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a>)) + <a href="#6819a019af64b113" class="i method">GetFileExtension</a>(<span class="r11 r">item</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a>);
+                <b>var</b> <span id="r16 rd" class="r16 r">finalFilePath</span> = <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">Combine</span>(<span class="r14 r">targetDir</span>, <span class="r15 r">finalFileName</span>);
+ 
+                <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">TryCreateDirectoryAsync</span>(<span class="r14 r">targetDir</span>);
+ 
+                <span class="c">// When there is a validation error before creating the content item we can end up with an empty folder</span>
+                <span class="c">// because the content item is different on each form submit . We need to remove that empty folder.</span>
+                <b>var</b> <span id="r17 rd" class="r17 r">previousDirPath</span> = <span class="r13 r">fileInfo</span>.<span class="i">DirectoryPath</span>;
+ 
+                <span class="c">// fileName is a hash of the file. We preserve disk space by reusing the file.</span>
+                <b>if</b> (<b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r16 r">finalFilePath</span>) == <b>null</b>)
+                {
+                    <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">MoveFileAsync</span>(<span class="r11 r">item</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a>, <span class="r16 r">finalFilePath</span>);
+                }
+ 
+                <span class="r11 r">item</span>.<a href="../ViewModels/EditMediaFieldViewModel.cs.html#5624eada8d1d0e7f" class="i property">Path</a> = <span class="r16 r">finalFilePath</span>;
+ 
+                <b>await</b> <span class="i">DeleteDirIfEmptyAsync</span>(<span class="r17 r">previousDirPath</span>);
+            }
+        }
+ 
+        <b>private string</b> <a id="69630ac44a57be08" href="../R/69630ac44a57be08.html" target="n" data-glyph="76,1" class="i method">GetContentItemFolder</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r18 rd" class="r18 r">contentItem</span>)
+        {
+            <b>return</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">Combine</span>(<a href="#b3158cb7cd9242cb" class="i property">MediaFieldsFolder</a>, <span class="r18 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>, <span class="r18 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="57c65afc3375ae14" href="../R/57c65afc3375ae14.html" target="n" data-glyph="76,1" class="i method">GetFileHashAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">filePath</span>)
+        {
+            <b>using</b> (<b>var</b> <span id="r20 rd" class="r20 r">fs</span> = <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">GetFileStreamAsync</span>(<span class="r19 r">filePath</span>))
+            <b>using</b> (<span class="t t">HashAlgorithm</span> <span id="r21 rd" class="r21 r">hashAlgorithm</span> = <span class="t t">MD5</span>.<span class="i method">Create</span>())
+            {
+                <b>var</b> <span id="r22 rd" class="r22 r">hash</span> = <span class="r21 r">hashAlgorithm</span>.<span class="i">ComputeHash</span>(<span class="r20 r">fs</span>);
+                <b>return</b> <a href="#1e8381d3ca318bd5" class="i method">ByteArrayToHexString</a>(<span class="r22 r">hash</span>);
+            }
+        }
+ 
+        <b>public string</b> <a id="1e8381d3ca318bd5" href="../R/1e8381d3ca318bd5.html" target="n" data-glyph="72,1" class="i method">ByteArrayToHexString</a>(<b>byte</b>[] <span id="r23 rd" class="r23 r">bytes</span>)
+        {
+            <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="k">var</a> <span id="r24 rd" class="r24 r">sb</span> = <b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>();
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#3933aebb80415ce0" class="k">var</a> <span id="r25 rd" class="r25 r">b</span> <b>in</b> <span class="r23 r">bytes</span>)
+            {
+                <span class="r24 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="r25 r">b</span>.<a href="@1@System.Runtime/A.html#51506b5791391f8f" class="i method">ToString</a>(<span class="s">&quot;x2&quot;</span>).<a href="@1@System.Runtime/A.html#0b5a1ee33618e0b3" class="i method">ToLower</a>());
+            }
+ 
+            <b>return</b> <span class="r24 r">sb</span>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+        }
+ 
+        <b>private string</b> <a id="6819a019af64b113" href="../R/6819a019af64b113.html" target="n" data-glyph="76,1" class="i method">GetFileExtension</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r27 rd" class="r27 r">lastPoint</span> = <span class="r26 r">path</span>.<a href="@1@System.Runtime/A.html#43ea090a2243545e" class="i method">LastIndexOf</a>(<span class="s">&#39;.&#39;</span>);
+            <b>return</b> <span class="r27 r">lastPoint</span> &gt; -1 ? <span class="r26 r">path</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r27 r">lastPoint</span>) : <span class="s">&quot;&quot;</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="8249c780e6cfeb88" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">DeleteDirIfEmptyAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">previousDirPath</span>)
+        {
+            <b>if</b> (<b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">GetDirectoryInfoAsync</span>(<span class="r28 r">previousDirPath</span>) == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (!(<b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">GetDirectoryContentAsync</span>(<span class="r28 r">previousDirPath</span>).<span class="i">AnyAsync</span>()))
+            {
+                <b>await</b> <a href="#0659f7b9ea05bd9b" class="i field">_fileStore</a>.<span class="i">TryDeleteDirectoryAsync</span>(<span class="r28 r">previousDirPath</span>);                
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

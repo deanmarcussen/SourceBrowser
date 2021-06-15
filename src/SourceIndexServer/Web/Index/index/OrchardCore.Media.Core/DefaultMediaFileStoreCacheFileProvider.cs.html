@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultMediaFileStoreCacheFileProvider.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(173);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media.Core/DefaultMediaFileStoreCacheFileProvider.cs" target="_top">DefaultMediaFileStoreCacheFileProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media.Core" target="_top">src\OrchardCore\OrchardCore.Media.Core\OrchardCore.Media.Core.csproj</a> (OrchardCore.Media.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Physical</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Core</span>
+{
+    <b>public class</b> <a id="227ee36a31c3c955" href="R/227ee36a31c3c955.html" target="n" data-glyph="0,0" class="t t">DefaultMediaFileStoreCacheFileProvider</a> : <span class="t t">PhysicalFileProvider</span>, <a href="/OrchardCore.Media.Abstractions/A.html#b9b6010a0a2dc1e2" class="t t">IMediaFileProvider</a>, <a href="/OrchardCore.Media.Abstractions/A.html#48ba15b08ecb38c6" class="t t">IMediaFileStoreCacheFileProvider</a>
+    {
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The path in the wwwroot folder containing the asset cache.</span>
+        <span class="c">///</span><span class="c"> The tenants name will be appended to this path.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public static readonly string</b> <a id="b0356f5c966af9ec" href="R/b0356f5c966af9ec.html" target="n" data-glyph="42,1" class="i field">AssetsCachePath</a> = <span class="s">&quot;ms-cache&quot;</span>;
+ 
+        <span class="c">// Use default stream copy buffer size to stay in gen0 garbage collection.</span>
+        <b>private const int</b> <a id="49cf9b67b168395e" href="R/49cf9b67b168395e.html" target="n" data-glyph="10,1" class="i field">StreamCopyBufferSize</a> = 81920;
+ 
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="92fdf9a4198fc1da" href="R/92fdf9a4198fc1da.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="7a19ca484b5693ae" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultMediaFileStoreCacheFileProvider</a>(<span class="t t">ILogger</span>&lt;<a href="#227ee36a31c3c955" class="t t">DefaultMediaFileStoreCacheFileProvider</a>&gt; <span id="r0 rd" class="r0 r">logger</span>, <span class="t t">PathString</span> <span id="r1 rd" class="r1 r">virtualPathBase</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">root</span>) : <b>base</b>(<span class="r2 r">root</span>)
+        {
+            <a href="#92fdf9a4198fc1da" class="i field">_logger</a> = <span class="r0 r">logger</span>;
+            <a href="#3d8c890db76fa3a3" class="i property">VirtualPathBase</a> = <span class="r1 r">virtualPathBase</span>;
+        }
+ 
+        <b>public</b> <a id="99e80ef19ae4ad80" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultMediaFileStoreCacheFileProvider</a>(<span class="t t">ILogger</span>&lt;<a href="#227ee36a31c3c955" class="t t">DefaultMediaFileStoreCacheFileProvider</a>&gt; <span id="r3 rd" class="r3 r">logger</span>, <span class="t t">PathString</span> <span id="r4 rd" class="r4 r">virtualPathBase</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">root</span>, <span class="t t">ExclusionFilters</span> <span id="r6 rd" class="r6 r">filters</span>) : <b>base</b>(<span class="r5 r">root</span>, <span class="r6 r">filters</span>)
+        {
+            <a href="#92fdf9a4198fc1da" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+            <a href="#3d8c890db76fa3a3" class="i property">VirtualPathBase</a> = <span class="r4 r">virtualPathBase</span>;
+        }
+ 
+        <b>public</b> <span class="t t">PathString</span> <a id="3d8c890db76fa3a3" href="R/3d8c890db76fa3a3.html" target="n" data-glyph="102,1" class="i property">VirtualPathBase</a> { <b>get</b>; }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="8fba4eb7ff352d94" href="R/8fba4eb7ff352d94.html" target="n" data-glyph="72,1" class="i method">IsCachedAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">path</span>)
+        {
+            <span class="c">// Opportunity here to save metadata and/or provide cache validation / integrity checks.</span>
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">fileInfo</span> = <span class="i method">GetFileInfo</span>(<span class="r7 r">path</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r8 r">fileInfo</span>.<span class="i property">Exists</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b047899ce38a2675" href="R/b047899ce38a2675.html" target="n" data-glyph="72,1" class="i method">SetCacheAsync</a>(<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r9 rd" class="r9 r">stream</span>, <a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a> <span id="r10 rd" class="r10 r">fileStoreEntry</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r11 rd" class="r11 r">cancellationToken</span>)
+        {
+            <span class="c">// File store semantics include a leading slash.</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">cachePath</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<span class="i property">Root</span>, <span class="r10 r">fileStoreEntry</span>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#87bcc81e6615fbee" class="i property">Path</a>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(1));
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">directory</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r12 r">cachePath</span>);
+ 
+            <b>if</b> (!<span class="t t">Directory</span>.<span class="i method">Exists</span>(<span class="r13 r">directory</span>))
+            {
+                <span class="t t">Directory</span>.<span class="i method">CreateDirectory</span>(<span class="r13 r">directory</span>);
+            }
+ 
+            <span class="c">// A file download may fail, so a partially downloaded file should be deleted so the next request can reprocess.</span>
+            <span class="c">// All exceptions here are recaught by the MediaFileStoreResolverMiddleware.</span>
+            <b>try</b>
+            {
+                <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r12 r">cachePath</span>))
+                {
+                    <span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r12 r">cachePath</span>);
+                }
+                <b>using</b> (<a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r14 rd" class="r14 r">fileStream</span> = <span class="t t">File</span>.<span class="i method">Create</span>(<span class="r12 r">cachePath</span>))
+                {
+                    <b>await</b> <span class="r9 r">stream</span>.<a href="@1@System.Runtime/A.html#f0efbf865d612832" class="i method">CopyToAsync</a>(<span class="r14 r">fileStream</span>, <a href="#49cf9b67b168395e" class="i field">StreamCopyBufferSize</a>);
+                    <b>await</b> <span class="r9 r">stream</span>.<a href="@1@System.Runtime/A.html#cee1514a2782d81a" class="i method">FlushAsync</a>();
+                    
+                    <b>if</b> (<span class="r14 r">fileStream</span>.<a href="@1@System.Runtime/A.html#fa88edfdb51ed91c" class="i property">Length</a> == 0)
+                    {
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#df2d82d91ca29e40" class="t constructor">Exception</a>(<span class="s">$&quot;</span><span class="s">Error retrieving file (length equals 0 byte) : </span>{<span class="r12 r">cachePath</span>}<span class="s">&quot;</span>);
+                    }
+                }
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r15 rd" class="r15 r">ex</span>)
+            {
+                <a href="#92fdf9a4198fc1da" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r15 r">ex</span>, <span class="s">&quot;Error saving file {Path}&quot;</span>, <span class="r12 r">cachePath</span>);
+                <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r12 r">cachePath</span>))
+                {
+                    <b>try</b>
+                    {
+                        <span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r12 r">cachePath</span>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r16 rd" class="r16 r">e</span>)
+                    {
+                        <a href="#92fdf9a4198fc1da" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r16 r">e</span>, <span class="s">&quot;Error deleting file {Path}&quot;</span>, <span class="r12 r">cachePath</span>);
+                        <b>throw</b>;
+                    }
+                }
+                <b>throw</b>;
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="c595332e8a58471e" href="R/c595332e8a58471e.html" target="n" data-glyph="72,1" class="i method">PurgeAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r17 rd" class="r17 r">hasErrors</span> = <b>false</b>;
+            <b>var</b> <span id="r18 rd" class="r18 r">folders</span> = <span class="i method">GetDirectoryContents</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>);
+            <b>foreach</b> (<b>var</b> <span id="r19 rd" class="r19 r">fileInfo</span> <b>in</b> <span class="r18 r">folders</span>)
+            {
+                <b>if</b> (<span class="r19 r">fileInfo</span>.<span class="i property">IsDirectory</span>)
+                {
+                    <b>try</b>
+                    {
+                        <span class="t t">Directory</span>.<span class="i method">Delete</span>(<span class="r19 r">fileInfo</span>.<span class="i property">PhysicalPath</span>, <b>true</b>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#bf546e435199e83c" class="t t">IOException</a> <span id="r20 rd" class="r20 r">ex</span>)
+                    {
+                        <a href="#92fdf9a4198fc1da" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r20 r">ex</span>, <span class="s">&quot;Error deleting cache folder {Path}&quot;</span>, <span class="r19 r">fileInfo</span>.<span class="i property">PhysicalPath</span>);
+                        <span class="r17 r">hasErrors</span> = <b>true</b>;
+                    }
+                }
+                <b>else</b>
+                {
+                    <b>try</b>
+                    {
+                        <span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r19 r">fileInfo</span>.<span class="i property">PhysicalPath</span>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#bf546e435199e83c" class="t t">IOException</a> <span id="r21 rd" class="r21 r">ex</span>)
+                    {
+                        <a href="#92fdf9a4198fc1da" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r21 r">ex</span>, <span class="s">&quot;Error deleting cache file {Path}&quot;</span>, <span class="r19 r">fileInfo</span>.<span class="i property">PhysicalPath</span>);
+                        <span class="r17 r">hasErrors</span> = <b>true</b>;
+                    }
+                }
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r17 r">hasErrors</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="fbe7c8c59568dc01" href="R/fbe7c8c59568dc01.html" target="n" data-glyph="72,1" class="i method">TryDeleteDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">path</span>)
+        {
+            <b>var</b> <span id="r23 rd" class="r23 r">directoryInfo</span> = <span class="i method">GetFileInfo</span>(<span class="r22 r">path</span>);
+ 
+            <b>try</b>
+            {
+                <span class="t t">Directory</span>.<span class="i method">Delete</span>(<span class="r23 r">directoryInfo</span>.<span class="i property">PhysicalPath</span>, <b>true</b>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#bf546e435199e83c" class="t t">IOException</a> <span id="r24 rd" class="r24 r">ex</span>)
+            {
+                <a href="#92fdf9a4198fc1da" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r24 r">ex</span>, <span class="s">&quot;Error deleting cache folder {Path}&quot;</span>, <span class="r23 r">directoryInfo</span>.<span class="i property">PhysicalPath</span>);
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>false</b>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>true</b>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="773e106c35cb679e" href="R/773e106c35cb679e.html" target="n" data-glyph="72,1" class="i method">TryDeleteFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">path</span>)
+        {
+            <b>var</b> <span id="r26 rd" class="r26 r">fileInfo</span> = <span class="i method">GetFileInfo</span>(<span class="r25 r">path</span>);
+ 
+            <b>if</b> (<span class="r26 r">fileInfo</span>.<span class="i property">Exists</span>)
+            {
+                <b>try</b>
+                {
+                    <span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r26 r">fileInfo</span>.<span class="i property">PhysicalPath</span>);
+                    <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>true</b>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#bf546e435199e83c" class="t t">IOException</a> <span id="r27 rd" class="r27 r">ex</span>)
+                {
+                    <a href="#92fdf9a4198fc1da" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r27 r">ex</span>, <span class="s">&quot;Error deleting cache file {Path}&quot;</span>, <span class="r26 r">fileInfo</span>.<span class="i property">PhysicalPath</span>);
+                    <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>false</b>);
+                }
+            }
+            <b>else</b>
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>false</b>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

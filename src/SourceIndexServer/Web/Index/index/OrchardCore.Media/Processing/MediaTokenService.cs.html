@@ -1,0 +1,136 @@
+﻿<!DOCTYPE html>
+<html><head><title>MediaTokenService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(127);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Processing/MediaTokenService.cs" target="_top">Processing\MediaTokenService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">WebUtilities</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i">SixLabors</span>.<span class="i">ImageSharp</span>.<span class="i">Web</span>.<span class="i">Processors</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Processing</span>
+{
+    <b>public class</b> <a id="c49b21e120f456f9" href="../R/c49b21e120f456f9.html" target="n" data-glyph="0,0" class="t t">MediaTokenService</a> : <span class="i">IMediaTokenService</span>
+    {
+        <b>private const string</b> <a id="16523be15195b6d4" href="../R/16523be15195b6d4.html" target="n" data-glyph="10,1" class="i field">TokenCacheKeyPrefix</a> = <span class="s">&quot;MediaToken:&quot;</span>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="ceed53f4acf20641" href="../R/ceed53f4acf20641.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+ 
+        <b>private readonly</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="389617785cdc713d" href="../R/389617785cdc713d.html" target="n" data-glyph="46,1" class="i field">_knownCommands</a> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+        <b>private readonly byte</b>[] <a id="21f6f4059a0b0edf" href="../R/21f6f4059a0b0edf.html" target="n" data-glyph="46,1" class="i field">_hashKey</a>;
+ 
+        <b>public</b> <a id="8b0298d2e30984b0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">MediaTokenService</a>(
+            <span class="t t">IMemoryCache</span> <span id="r0 rd" class="r0 r">memoryCache</span>,
+            <span class="t t">IOptions</span>&lt;<a href="MediaTokenOptions.cs.html#2e1f4ecedaf45686" class="t t">MediaTokenOptions</a>&gt; <span id="r1 rd" class="r1 r">options</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IImageWebProcessor</span>&gt; <span id="r2 rd" class="r2 r">processors</span>)
+        {
+            <a href="#ceed53f4acf20641" class="i field">_memoryCache</a> = <span class="r0 r">memoryCache</span>;
+            <b>foreach</b> (<b>var</b> <span id="r3 rd" class="r3 r">processor</span> <b>in</b> <span class="r2 r">processors</span>)
+            {
+                <b>foreach</b> (<b>var</b> <span id="r4 rd" class="r4 r">command</span> <b>in</b> <span class="r3 r">processor</span>.<span class="i">Commands</span>)
+                {
+                    <a href="#389617785cdc713d" class="i field">_knownCommands</a>.<span class="i">Add</span>(<span class="r4 r">command</span>);
+                }
+            }
+ 
+            <a href="#21f6f4059a0b0edf" class="i field">_hashKey</a> = <span class="r1 r">options</span>.<span class="i property">Value</span>.<a href="MediaTokenOptions.cs.html#712bbfedb86bf29a" class="i property">HashKey</a>;
+        }
+ 
+        <b>public string</b> <a id="a011f143a8a7fc32" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddTokenToPath</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">path</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">pathParts</span> = <span class="r5 r">path</span>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;?&#39;</span>);
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">parsed</span> = <span class="t t">QueryHelpers</span>.<span class="i method">ParseQuery</span>(<span class="r6 r">pathParts</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> &gt; 1 ? <span class="r6 r">pathParts</span>[1] : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>);
+ 
+            <span class="c">// If no commands or only a version command don&#39;t bother tokenizing.</span>
+            <b>if</b> (<span class="r7 r">parsed</span>.<span class="i property">Count</span> == 0 || <span class="r7 r">parsed</span>.<span class="i property">Count</span> == 1 &amp;&amp; <span class="r7 r">parsed</span>.<span class="i method">ContainsKey</span>(<a href="ImageVersionProcessor.cs.html#56b9d7f0395bce1e" class="t t">ImageVersionProcessor</a>.<a href="ImageVersionProcessor.cs.html#f4ca42ba072961a8" class="i field">VersionCommand</a>))
+            {
+                <b>return</b> <span class="r5 r">path</span>;
+            }
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">processingCommands</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r9 rd" class="r9 r">otherCommands</span> = <b>null</b>;
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r10 rd" class="r10 r">command</span> <b>in</b> <span class="r7 r">parsed</span>)
+            {
+                <b>if</b> (<a href="#389617785cdc713d" class="i field">_knownCommands</a>.<span class="i method">Contains</span>(<span class="r10 r">command</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>))
+                {
+                    <span class="r8 r">processingCommands</span>[<span class="r10 r">command</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>] = <span class="r10 r">command</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<span class="i method">ToString</span>();
+                }
+                <b>else</b>
+                {
+                    <span class="r9 r">otherCommands</span> ??= <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                    <span class="r9 r">otherCommands</span>[<span class="r10 r">command</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>] = <span class="r10 r">command</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<span class="i method">ToString</span>();
+                }
+            }
+ 
+            <span class="c">// Using the command values as a key retrieve from cache</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">queryStringTokenKey</span> = <a href="#698eb1b5d894031a" class="i method">CreateQueryStringTokenKey</a>(<span class="r8 r">processingCommands</span>.<span class="i property">Values</span>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">queryStringToken</span> = <a href="#36aa9f9d55ba39d0" class="i method">GetHash</a>(<span class="r11 r">queryStringTokenKey</span>);
+ 
+            <span class="r8 r">processingCommands</span>[<span class="s">&quot;token&quot;</span>] = <span class="r12 r">queryStringToken</span>;
+ 
+            <span class="c">// If any non-resizing parameters have been added to the path include these on the query string output.</span>
+            <b>if</b> (<span class="r9 r">otherCommands</span> != <b>null</b>)
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r13 rd" class="r13 r">command</span> <b>in</b> <span class="r9 r">otherCommands</span>)
+                {
+                    <span class="r8 r">processingCommands</span>.<span class="i method">Add</span>(<span class="r13 r">command</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r13 r">command</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                }
+            }
+ 
+            <b>return</b> <span class="t t">QueryHelpers</span>.<span class="i method">AddQueryString</span>(<span class="r6 r">pathParts</span>[0], <span class="r8 r">processingCommands</span>);
+        }
+ 
+        <b>public bool</b> <a id="e10085c8604fa0a8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">TryValidateToken</a>(<a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r14 rd" class="r14 r">commands</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">token</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">queryStringTokenKey</span> = <a href="#698eb1b5d894031a" class="i method">CreateQueryStringTokenKey</a>(<span class="r14 r">commands</span>.<a href="@1@System.Runtime/A.html#81fedd966b885f90" class="i property">Values</a>);
+ 
+            <span class="c">// Store a hash of the valid query string commands.</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">queryStringToken</span> = <a href="#36aa9f9d55ba39d0" class="i method">GetHash</a>(<span class="r16 r">queryStringTokenKey</span>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r17 r">queryStringToken</span>, <span class="r15 r">token</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>private static string</b> <a id="698eb1b5d894031a" href="../R/698eb1b5d894031a.html" target="n" data-glyph="76,1" class="i method">CreateQueryStringTokenKey</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r18 rd" class="r18 r">values</span>)
+        {
+            <b>using</b> <b>var</b> <span id="r19 rd" class="r19 r">stringBuilderPool</span> = <span class="i">StringBuilderPool</span>.<span class="i">GetInstance</span>();
+            <b>var</b> <span id="r20 rd" class="r20 r">result</span> = <span class="r19 r">stringBuilderPool</span>.<span class="i">Builder</span>;
+            <span class="r20 r">result</span>.<span class="i">Append</span>(<a href="#16523be15195b6d4" class="i field">TokenCacheKeyPrefix</a>);
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">item</span> <b>in</b> <span class="r18 r">values</span>)
+            {
+                <span class="r20 r">result</span>.<span class="i">Append</span>(<span class="r21 r">item</span>);
+            }
+            <b>return</b> <span class="r20 r">result</span>.<span class="i">ToString</span>();
+        }
+ 
+        <b>private string</b> <a id="36aa9f9d55ba39d0" href="../R/36aa9f9d55ba39d0.html" target="n" data-glyph="76,1" class="i method">GetHash</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">queryStringTokenKey</span>)
+            =&gt; <a href="#ceed53f4acf20641" class="i field">_memoryCache</a>.<span class="i method">GetOrCreate</span>(<span class="r22 r">queryStringTokenKey</span>, <span id="r23 rd" class="r23 r">entry</span> =&gt;
+               {
+                   <span class="r23 r">entry</span>.<span class="i property">SlidingExpiration</span> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#060fe8cc38e0a7e3" class="i method">FromHours</a>(5);
+ 
+                   <b>using</b> <b>var</b> <span id="r24 rd" class="r24 r">hmac</span> = <b>new</b> <span class="t constructor">HMACSHA256</span>(<a href="#21f6f4059a0b0edf" class="i field">_hashKey</a>);
+ 
+                   <span class="c">// queryStringTokenKey also contains prefix</span>
+                   <b>var</b> <span id="r25 rd" class="r25 r">bytes</span> = <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<a href="@1@System.Runtime/A.html#d1c9194729973ab8" class="i method">GetBytes</a>(<span class="r22 r">queryStringTokenKey</span>, <a href="#16523be15195b6d4" class="i field">TokenCacheKeyPrefix</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>, <span class="r22 r">queryStringTokenKey</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - <a href="#16523be15195b6d4" class="i field">TokenCacheKeyPrefix</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+ 
+                   <b>var</b> <span id="r26 rd" class="r26 r">hash</span> = <span class="r24 r">hmac</span>.<span class="i method">ComputeHash</span>(<span class="r25 r">bytes</span>);
+ 
+                   <b>return</b> <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#f9e5bd7b69c5f334" class="i method">ToBase64String</a>(<span class="r26 r">hash</span>);
+               });
+    }
+}
+</pre></td></tr></table></div></body></html>

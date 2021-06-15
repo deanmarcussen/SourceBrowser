@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellConfiguration.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(169);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Shell/Configuration/ShellConfiguration.cs" target="_top">Shell\Configuration\ShellConfiguration.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Configuration</span>.<span class="i n">Internal</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Configuration</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Holds the tenant </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IConfiguration</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> which is lazily built</span>
+    <span class="c">///</span><span class="c"> from the application configuration &#39;appsettings.json&#39;, the &#39;App_Data/appsettings.json&#39;</span>
+    <span class="c">///</span><span class="c"> file and then the &#39;App_Data/Sites/{tenant}/appsettings.json&#39; file.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="23b550a8b4ce9459" href="../../R/23b550a8b4ce9459.html" target="n" data-glyph="0,0" class="t t">ShellConfiguration</a> : <a href="IShellConfiguration.cs.html#8daf7b8b25c1ed82" class="t t">IShellConfiguration</a>
+    {
+        <b>private</b> <span class="t t">IConfigurationRoot</span> <a id="c03a3ec97442240d" href="../../R/c03a3ec97442240d.html" target="n" data-glyph="46,1" class="i field">_configuration</a>;
+        <b>private</b> <a href="Internal/UpdatableDataProvider.cs.html#31d22fddddb09f06" class="t t">UpdatableDataProvider</a> <a id="b42d6095160fdbe0" href="../../R/b42d6095160fdbe0.html" target="n" data-glyph="46,1" class="i field">_updatableData</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="e4840b2c07aafd49" href="../../R/e4840b2c07aafd49.html" target="n" data-glyph="46,1" class="i field">_initialData</a>;
+ 
+        <b>private readonly string</b> <a id="a1b06d4b4e1f1c56" href="../../R/a1b06d4b4e1f1c56.html" target="n" data-glyph="46,1" class="i field">_name</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IConfigurationBuilder</span>&gt;&gt; <a id="43be19f179cdaec2" href="../../R/43be19f179cdaec2.html" target="n" data-glyph="46,1" class="i field">_configBuilderFactory</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IConfigurationProvider</span>&gt; <a id="0f94f5a75b145e38" href="../../R/0f94f5a75b145e38.html" target="n" data-glyph="46,1" class="i field">_configurationProviders</a>;
+        <b>private</b> <span class="t t">SemaphoreSlim</span> <a id="b530eae8859facb4" href="../../R/b530eae8859facb4.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>public</b> <a id="19ba954dd31c01b4" href="../../R/19ba954dd31c01b4.html" target="n" data-glyph="72,1" class="t constructor">ShellConfiguration</a>()
+        {
+        }
+ 
+        <b>public</b> <a id="efb13771a274ecc6" href="../../R/efb13771a274ecc6.html" target="n" data-glyph="72,1" class="t constructor">ShellConfiguration</a>(<span class="t t">IConfiguration</span> <span id="r0 rd" class="r0 r">configuration</span>)
+        {
+            <a href="#0f94f5a75b145e38" class="i field">_configurationProviders</a> = <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                .<span class="i method">AddConfiguration</span>(<span class="r0 r">configuration</span>)
+                .<span class="i method">Build</span>().<span class="i property">Providers</span>;
+        }
+ 
+        <b>public</b> <a id="4ff529cc8ac19302" href="../../R/4ff529cc8ac19302.html" target="n" data-glyph="72,1" class="t constructor">ShellConfiguration</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">name</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IConfigurationBuilder</span>&gt;&gt; <span id="r2 rd" class="r2 r">factory</span>)
+        {
+            <a href="#a1b06d4b4e1f1c56" class="i field">_name</a> = <span class="r1 r">name</span>;
+            <a href="#43be19f179cdaec2" class="i field">_configBuilderFactory</a> = <span class="r2 r">factory</span>;
+        }
+ 
+        <b>public</b> <a id="ba29e2333c9d983b" href="../../R/ba29e2333c9d983b.html" target="n" data-glyph="72,1" class="t constructor">ShellConfiguration</a>(<a href="#23b550a8b4ce9459" class="t t">ShellConfiguration</a> <span id="r3 rd" class="r3 r">configuration</span>) : <a href="#2c7b9853d13c7729" class="k">this</a>(<b>null</b>, <span class="r3 r">configuration</span>)
+        {
+        }
+ 
+        <b>public</b> <a id="2c7b9853d13c7729" href="../../R/2c7b9853d13c7729.html" target="n" data-glyph="72,1" class="t constructor">ShellConfiguration</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">name</span>, <a href="#23b550a8b4ce9459" class="t t">ShellConfiguration</a> <span id="r5 rd" class="r5 r">configuration</span>)
+        {
+            <a href="#a1b06d4b4e1f1c56" class="i field">_name</a> = <span class="r4 r">name</span>;
+ 
+            <b>if</b> (<span class="r5 r">configuration</span>.<a href="#c03a3ec97442240d" class="i field">_configuration</a> != <b>null</b>)
+            {
+                <a href="#0f94f5a75b145e38" class="i field">_configurationProviders</a> = <span class="r5 r">configuration</span>.<a href="#c03a3ec97442240d" class="i field">_configuration</a>.<span class="i property">Providers</span>
+                    .<span class="i method">Where</span>(<span id="r6 rd" class="r6 r">p</span> =&gt; !(<span class="r6 r">p</span> <b>is</b> <a href="Internal/UpdatableDataProvider.cs.html#31d22fddddb09f06" class="t t">UpdatableDataProvider</a>)).<span class="i method">ToArray</span>();
+ 
+                <a href="#e4840b2c07aafd49" class="i field">_initialData</a> = <span class="r5 r">configuration</span>.<a href="#b42d6095160fdbe0" class="i field">_updatableData</a>.<span class="i method">ToArray</span>();
+ 
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r4 r">name</span> == <b>null</b>)
+            {
+                <a href="#0f94f5a75b145e38" class="i field">_configurationProviders</a> = <span class="r5 r">configuration</span>.<a href="#0f94f5a75b145e38" class="i field">_configurationProviders</a>;
+                <a href="#e4840b2c07aafd49" class="i field">_initialData</a> = <span class="r5 r">configuration</span>.<a href="#e4840b2c07aafd49" class="i field">_initialData</a>;
+                <b>return</b>;
+            }
+ 
+            <a href="#43be19f179cdaec2" class="i field">_configBuilderFactory</a> = <span class="r5 r">configuration</span>.<a href="#43be19f179cdaec2" class="i field">_configBuilderFactory</a>;
+        }
+ 
+        <b>private void</b> <a id="5dd37672d8fae1ae" href="../../R/5dd37672d8fae1ae.html" target="n" data-glyph="76,1" class="i method">EnsureConfiguration</a>()
+        {
+            <b>if</b> (<a href="#c03a3ec97442240d" class="i field">_configuration</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#25f82cdb97543db7" class="i method">EnsureConfigurationAsync</a>().<a href="@1@System.Runtime/A.html#9865ec4fb8abca74" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#fac5be2731353aa8" class="i method">GetResult</a>();
+        }
+ 
+        <b>internal async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="25f82cdb97543db7" href="../../R/25f82cdb97543db7.html" target="n" data-glyph="74,1" class="i method">EnsureConfigurationAsync</a>()
+        {
+            <b>if</b> (<a href="#c03a3ec97442240d" class="i field">_configuration</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#b530eae8859facb4" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>if</b> (<a href="#c03a3ec97442240d" class="i field">_configuration</a> != <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <b>var</b> <span id="r7 rd" class="r7 r">providers</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">IConfigurationProvider</span>&gt;();
+ 
+                <b>if</b> (<a href="#43be19f179cdaec2" class="i field">_configBuilderFactory</a> != <b>null</b>)
+                {
+                    <span class="r7 r">providers</span>.<span class="i method">AddRange</span>(<b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                        .<span class="i method">AddConfiguration</span>((<b>await</b> <a href="#43be19f179cdaec2" class="i field">_configBuilderFactory</a>.<a href="@1@System.Runtime/A.html#3c17e52b9e2c8f81" class="i method">Invoke</a>(<a href="#a1b06d4b4e1f1c56" class="i field">_name</a>)).<span class="i method">Build</span>())
+                        .<span class="i method">Build</span>().<span class="i property">Providers</span>);
+                }
+ 
+                <b>if</b> (<a href="#0f94f5a75b145e38" class="i field">_configurationProviders</a> != <b>null</b>)
+                {
+                    <span class="r7 r">providers</span>.<span class="i method">AddRange</span>(<a href="#0f94f5a75b145e38" class="i field">_configurationProviders</a>);
+                }
+ 
+                <a href="#b42d6095160fdbe0" class="i field">_updatableData</a> = <b>new</b> <a href="Internal/UpdatableDataProvider.cs.html#7e3c1d7e27e8cb0f" class="t constructor">UpdatableDataProvider</a>(<a href="#e4840b2c07aafd49" class="i field">_initialData</a> ?? <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;());
+ 
+                <span class="r7 r">providers</span>.<span class="i method">Add</span>(<a href="#b42d6095160fdbe0" class="i field">_updatableData</a>);
+ 
+                <a href="#c03a3ec97442240d" class="i field">_configuration</a> = <b>new</b> <span class="t constructor">ConfigurationRoot</span>(<span class="r7 r">providers</span>);
+            }
+            <b>finally</b>
+            {
+                <a href="#b530eae8859facb4" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The tenant lazily built </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IConfiguration</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <span class="t t">IConfiguration</span> <a id="4f8d84cc5c21d4b2" href="../../R/4f8d84cc5c21d4b2.html" target="n" data-glyph="106,1" class="i property">Configuration</a>
+        {
+            <b>get</b>
+            {
+                <a href="#5dd37672d8fae1ae" class="i method">EnsureConfiguration</a>();
+                <b>return</b> <a href="#c03a3ec97442240d" class="i field">_configuration</a>;
+            }
+        }
+ 
+        <b>public string</b> <a id="d488eeed7027deeb" href="../../R/d488eeed7027deeb.html" target="n" data-glyph="102,1" class="k">this</a>[<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">key</span>]
+        {
+            <b>get</b>
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">value</span> = <a href="#4f8d84cc5c21d4b2" class="i property">Configuration</a>[<span class="r8 r">key</span>];
+ 
+                <b>return</b> <span class="r9 r">value</span> ?? (<span class="r8 r">key</span>.<a href="@1@System.Runtime/A.html#98876d0c1980f5ef" class="i method">Contains</a>(<span class="s">&#39;_&#39;</span>)
+                    ? <a href="#4f8d84cc5c21d4b2" class="i property">Configuration</a>[<span class="r8 r">key</span>.<a href="@1@System.Runtime/A.html#987da5dfb39f1927" class="i method">Replace</a>(<span class="s">&#39;_&#39;</span>, <span class="s">&#39;.&#39;</span>)]
+                    : <b>null</b>);
+            }
+            <b>set</b>
+            {
+                <a href="#5dd37672d8fae1ae" class="i method">EnsureConfiguration</a>();
+                <a href="#b42d6095160fdbe0" class="i field">_updatableData</a>.<a href="Internal/UpdatableDataProvider.cs.html#d15fddbe8df74156" class="i method">Set</a>(<span class="r8 r">key</span>, <b>value</b>);
+            }
+        }
+ 
+        <b>public</b> <span class="t t">IConfigurationSection</span> <a id="bf35e7745388ee73" href="../../R/bf35e7745388ee73.html" target="n" data-glyph="72,1" class="i method">GetSection</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">key</span>)
+        {
+            <b>return</b> <a href="#4f8d84cc5c21d4b2" class="i property">Configuration</a>.<a href="ConfigurationSectionExtensions.cs.html#be2b329a0f4e3c81" class="i method">GetSectionCompat</a>(<span class="r10 r">key</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IConfigurationSection</span>&gt; <a id="2503f2a8d5574ae4" href="../../R/2503f2a8d5574ae4.html" target="n" data-glyph="72,1" class="i method">GetChildren</a>()
+        {
+            <b>return</b> <a href="#4f8d84cc5c21d4b2" class="i property">Configuration</a>.<span class="i method">GetChildren</span>();
+        }
+ 
+        <b>public</b> <span class="t t">IChangeToken</span> <a id="7a28431a478786ae" href="../../R/7a28431a478786ae.html" target="n" data-glyph="72,1" class="i method">GetReloadToken</a>()
+        {
+            <b>return</b> <a href="#4f8d84cc5c21d4b2" class="i property">Configuration</a>.<span class="i method">GetReloadToken</span>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

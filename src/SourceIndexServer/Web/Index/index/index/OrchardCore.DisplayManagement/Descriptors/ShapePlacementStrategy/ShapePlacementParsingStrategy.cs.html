@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShapePlacementParsingStrategy.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(147);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/Descriptors/ShapePlacementStrategy/ShapePlacementParsingStrategy.cs" target="_top">Descriptors\ShapePlacementStrategy\ShapePlacementParsingStrategy.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Shapes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Extensions</span>.<span class="i">Features</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Descriptors</span>.<span class="i n">ShapePlacementStrategy</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This component discovers and announces the shape alterations implied by the contents of the Placement.json files</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="4b150ed52411a6f1" href="../../R/4b150ed52411a6f1.html" target="n" data-glyph="0,0" class="t t">ShapePlacementParsingStrategy</a> : <a href="../Interfaces.cs.html#5172c54cd1d3325e" class="t t">IShapeTableHarvester</a>
+    {
+        <b>private readonly</b> <span class="t t">IHostEnvironment</span> <a id="ac31b61dbd67f8a1" href="../../R/ac31b61dbd67f8a1.html" target="n" data-glyph="46,1" class="i field">_hostingEnvironment</a>;
+        <b>private readonly</b> <span class="i">IShellFeaturesManager</span> <a id="a3ed90d42538b80d" href="../../R/a3ed90d42538b80d.html" target="n" data-glyph="46,1" class="i field">_shellFeaturesManager</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IPlacementNodeFilterProvider.cs.html#70724ce3d6aa5a20" class="t t">IPlacementNodeFilterProvider</a>&gt; <a id="57e1c30f38262821" href="../../R/57e1c30f38262821.html" target="n" data-glyph="46,1" class="i field">_placementParseMatchProviders</a>;
+ 
+        <b>public</b> <a id="fa9db9f3a57b8042" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShapePlacementParsingStrategy</a>(
+            <span class="t t">IHostEnvironment</span> <span id="r0 rd" class="r0 r">hostingEnvironment</span>,
+            <span class="i">IShellFeaturesManager</span> <span id="r1 rd" class="r1 r">shellFeaturesManager</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#4b150ed52411a6f1" class="t t">ShapePlacementParsingStrategy</a>&gt; <span id="r2 rd" class="r2 r">logger</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IPlacementNodeFilterProvider.cs.html#70724ce3d6aa5a20" class="t t">IPlacementNodeFilterProvider</a>&gt; <span id="r3 rd" class="r3 r">placementParseMatchProviders</span>)
+        {
+            <a href="#ac31b61dbd67f8a1" class="i field">_hostingEnvironment</a> = <span class="r0 r">hostingEnvironment</span>;
+            <a href="#a3ed90d42538b80d" class="i field">_shellFeaturesManager</a> = <span class="r1 r">shellFeaturesManager</span>;
+            <a href="#57e1c30f38262821" class="i field">_placementParseMatchProviders</a> = <span class="r3 r">placementParseMatchProviders</span>;
+        }
+ 
+        <b>public void</b> <a id="5749470f8e8bd4bf" href="../../R/5749470f8e8bd4bf.html" target="n" data-glyph="72,1" class="i method">Discover</a>(<a href="../ShapeTableBuilder.cs.html#2dceb447d3fdae18" class="t t">ShapeTableBuilder</a> <span id="r4 rd" class="r4 r">builder</span>)
+        {
+            <b>var</b> <span id="r5 rd" class="r5 r">enabledFeatures</span> = <a href="#a3ed90d42538b80d" class="i field">_shellFeaturesManager</a>.<span class="i">GetEnabledFeaturesAsync</span>().<span class="i">GetAwaiter</span>().<span class="i">GetResult</span>()
+                .<span class="i">Where</span>(<span id="r6 rd" class="r6 r">Feature</span> =&gt; !<span class="r4 r">builder</span>.<a href="../ShapeTableBuilder.cs.html#f1ee01feb43809a6" class="i property">ExcludedFeatureIds</a>.<span class="i">Contains</span>(<span class="r6 r">Feature</span>.<span class="i">Id</span>));
+ 
+            <b>foreach</b> (<b>var</b> <span id="r7 rd" class="r7 r">featureDescriptor</span> <b>in</b> <span class="r5 r">enabledFeatures</span>)
+            {
+                <span class="i">ProcessFeatureDescriptor</span>(<span class="r4 r">builder</span>, <span class="r7 r">featureDescriptor</span>);
+            }
+        }
+ 
+        <b>private void</b> <a id="581fb396e89b15d5" href="../../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ProcessFeatureDescriptor</a>(<a href="../ShapeTableBuilder.cs.html#2dceb447d3fdae18" class="t t">ShapeTableBuilder</a> <span id="r8 rd" class="r8 r">builder</span>, <span class="i">IFeatureInfo</span> <span id="r9 rd" class="r9 r">featureDescriptor</span>)
+        {
+            <span class="c">// TODO : (ngm) Replace with configuration Provider and read from that.</span>
+            <span class="c">// Dont use JSON Deserializer directly.</span>
+            <b>var</b> <span id="r10 rd" class="r10 r">virtualFileInfo</span> = <a href="#ac31b61dbd67f8a1" class="i field">_hostingEnvironment</a>
+                .<span class="i">GetExtensionFileInfo</span>(<span class="r9 r">featureDescriptor</span>.<span class="i">Extension</span>, <span class="s">&quot;placement.json&quot;</span>);
+ 
+            <b>if</b> (<span class="r10 r">virtualFileInfo</span>.<span class="i">Exists</span>)
+            {
+                <b>using</b> (<b>var</b> <span id="r11 rd" class="r11 r">stream</span> = <span class="r10 r">virtualFileInfo</span>.<span class="i">CreateReadStream</span>())
+                {
+                    <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r12 rd" class="r12 r">reader</span> = <b>new</b> <span class="t">StreamReader</span>(<span class="r11 r">stream</span>))
+                    {
+                        <b>using</b> (<b>var</b> <span id="r13 rd" class="r13 r">jtr</span> = <b>new</b> <span class="i">JsonTextReader</span>(<span class="r12 r">reader</span>))
+                        {
+                            <span class="i">JsonSerializer</span> <span id="r14 rd" class="r14 r">serializer</span> = <b>new</b> <span class="i">JsonSerializer</span>();
+                            <b>var</b> <span id="r15 rd" class="r15 r">placementFile</span> = <span class="r14 r">serializer</span>.<span class="i">Deserialize</span>&lt;<a href="PlacementFile.cs.html#4c4b1a7ba610fd99" class="t t">PlacementFile</a>&gt;(<span class="r13 r">jtr</span>);
+                            <span class="i">ProcessPlacementFile</span>(<span class="r8 r">builder</span>, <span class="r9 r">featureDescriptor</span>, <span class="r15 r">placementFile</span>);
+                        }
+                    }
+                }
+            }
+        }
+ 
+        <b>private void</b> <a id="fb4c48990d531192" href="../../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ProcessPlacementFile</a>(<a href="../ShapeTableBuilder.cs.html#2dceb447d3fdae18" class="t t">ShapeTableBuilder</a> <span id="r16 rd" class="r16 r">builder</span>, <span class="i">IFeatureInfo</span> <span id="r17 rd" class="r17 r">featureDescriptor</span>, <a href="PlacementFile.cs.html#4c4b1a7ba610fd99" class="t t">PlacementFile</a> <span id="r18 rd" class="r18 r">placementFile</span>)
+        {
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r19 rd" class="r19 r">entry</span> <b>in</b> <span class="r18 r">placementFile</span>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">shapeType</span> = <span class="r19 r">entry</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>;
+ 
+                <b>foreach</b> (<a href="PlacementFile.cs.html#f48e44f7af523868" class="k">var</a> <span id="r21 rd" class="r21 r">filter</span> <b>in</b> <span class="r19 r">entry</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>)
+                {
+                    <b>var</b> <span id="r22 rd" class="r22 r">matches</span> = <span class="r21 r">filter</span>.<a href="PlacementFile.cs.html#0d14c26cb5f1dd62" class="i property">Filters</a>.<span class="i method">ToList</span>();
+ 
+                    <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../ShapeAlterationBuilder.cs.html#c9e3b8f174b6d011" class="t t">ShapePlacementContext</a>, <b>bool</b>&gt; <span id="r23 rd" class="r23 r">predicate</span> = <span id="r24 rd" class="r24 r">ctx</span> =&gt; <a href="#2ca95bd87e9491ab" class="i method">CheckFilter</a>(<span class="r24 r">ctx</span>, <span class="r21 r">filter</span>);
+ 
+                    <b>if</b> (<span class="r22 r">matches</span>.<span class="i method">Any</span>())
+                    {
+                        <span class="r23 r">predicate</span> = <span class="r22 r">matches</span>.<span class="i method">Aggregate</span>(<span class="r23 r">predicate</span>, <a href="#9019d2d90c9c5aac" class="i method">BuildPredicate</a>);
+                    }
+ 
+                    <a href="../PlacementInfo.cs.html#b3deb872be78af9d" class="k">var</a> <span id="r25 rd" class="r25 r">placement</span> = <b>new</b> <a href="../PlacementInfo.cs.html#b3deb872be78af9d" class="t constructor">PlacementInfo</a>();
+ 
+                    <span class="r25 r">placement</span>.<a href="../PlacementInfo.cs.html#a617eb951569e43f" class="i property">Location</a> = <span class="r21 r">filter</span>.<a href="PlacementFile.cs.html#74e7029096251cd7" class="i property">Location</a>;
+                    <b>if</b> (<span class="r21 r">filter</span>.<a href="PlacementFile.cs.html#5d8cc186a2018aa3" class="i property">Alternates</a>?.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> &gt; 0)
+                    {
+                        <span class="r25 r">placement</span>.<a href="../PlacementInfo.cs.html#2f61eb737828a339" class="i property">Alternates</a> = <b>new</b> <a href="../../Shapes/AlternatesCollection.cs.html#57291ca7c7610ed5" class="t constructor">AlternatesCollection</a>(<span class="r21 r">filter</span>.<a href="PlacementFile.cs.html#5d8cc186a2018aa3" class="i property">Alternates</a>);
+                    }
+ 
+                    <b>if</b> (<span class="r21 r">filter</span>.<a href="PlacementFile.cs.html#ec069feb25f8f74f" class="i property">Wrappers</a>?.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> &gt; 0)
+                    {
+                        <span class="r25 r">placement</span>.<a href="../PlacementInfo.cs.html#cb2fcd01defb8358" class="i property">Wrappers</a> = <b>new</b> <a href="../../Shapes/AlternatesCollection.cs.html#57291ca7c7610ed5" class="t constructor">AlternatesCollection</a>(<span class="r21 r">filter</span>.<a href="PlacementFile.cs.html#ec069feb25f8f74f" class="i property">Wrappers</a>);
+                    }
+ 
+                    <span class="r25 r">placement</span>.<a href="../PlacementInfo.cs.html#16c0a034342db0a2" class="i property">ShapeType</a> = <span class="r21 r">filter</span>.<a href="PlacementFile.cs.html#96bf791e6463df0c" class="i property">ShapeType</a>;
+ 
+                    <span class="r16 r">builder</span>.<a href="../ShapeTableBuilder.cs.html#367d1e27b6144761" class="i method">Describe</a>(<span class="r20 r">shapeType</span>)
+                        .<a href="../ShapeAlterationBuilder.cs.html#38f17ced3e75bb85" class="i method">From</a>(<span class="r17 r">featureDescriptor</span>)
+                        .<a href="../ShapeAlterationBuilder.cs.html#13c19f1c3c6b5673" class="i method">Placement</a>(<span id="r26 rd" class="r26 r">ctx</span> =&gt; <span class="r23 r">predicate</span>(<span class="r26 r">ctx</span>), <span class="r25 r">placement</span>);
+                }
+            }
+        }
+ 
+        <b>public static bool</b> <a id="2ca95bd87e9491ab" href="../../R/2ca95bd87e9491ab.html" target="n" data-glyph="72,1" class="i method">CheckFilter</a>(<a href="../ShapeAlterationBuilder.cs.html#c9e3b8f174b6d011" class="t t">ShapePlacementContext</a> <span id="r27 rd" class="r27 r">ctx</span>, <a href="PlacementFile.cs.html#f48e44f7af523868" class="t t">PlacementNode</a> <span id="r28 rd" class="r28 r">filter</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r28 r">filter</span>.<a href="PlacementFile.cs.html#503e8283250fe145" class="i property">DisplayType</a>) &amp;&amp; <span class="r28 r">filter</span>.<a href="PlacementFile.cs.html#503e8283250fe145" class="i property">DisplayType</a> != <span class="r27 r">ctx</span>.<a href="../ShapeAlterationBuilder.cs.html#f27bc0224192f69d" class="i property">DisplayType</a>)
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r28 r">filter</span>.<a href="PlacementFile.cs.html#ea2c31bb1239eca7" class="i property">Differentiator</a>) &amp;&amp; <span class="r28 r">filter</span>.<a href="PlacementFile.cs.html#ea2c31bb1239eca7" class="i property">Differentiator</a> != <span class="r27 r">ctx</span>.<a href="../ShapeAlterationBuilder.cs.html#4815fae8853aa0d0" class="i property">Differentiator</a>)
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../ShapeAlterationBuilder.cs.html#c9e3b8f174b6d011" class="t t">ShapePlacementContext</a>, <b>bool</b>&gt; <a id="9019d2d90c9c5aac" href="../../R/9019d2d90c9c5aac.html" target="n" data-glyph="76,1" class="i method">BuildPredicate</a>(<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../ShapeAlterationBuilder.cs.html#c9e3b8f174b6d011" class="t t">ShapePlacementContext</a>, <b>bool</b>&gt; <span id="r29 rd" class="r29 r">predicate</span>,
+              <a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">JToken</span>&gt; <span id="r30 rd" class="r30 r">term</span>)
+        {
+            <b>return</b> <a href="#6ca6b74fc04372e0" class="i method">BuildPredicate</a>(<span class="r29 r">predicate</span>, <span class="r30 r">term</span>, <a href="#57e1c30f38262821" class="i field">_placementParseMatchProviders</a>);
+        }
+ 
+        <b>public static</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../ShapeAlterationBuilder.cs.html#c9e3b8f174b6d011" class="t t">ShapePlacementContext</a>, <b>bool</b>&gt; <a id="6ca6b74fc04372e0" href="../../R/6ca6b74fc04372e0.html" target="n" data-glyph="72,1" class="i method">BuildPredicate</a>(<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../ShapeAlterationBuilder.cs.html#c9e3b8f174b6d011" class="t t">ShapePlacementContext</a>, <b>bool</b>&gt; <span id="r31 rd" class="r31 r">predicate</span>,
+                <a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">JToken</span>&gt; <span id="r32 rd" class="r32 r">term</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IPlacementNodeFilterProvider.cs.html#70724ce3d6aa5a20" class="t t">IPlacementNodeFilterProvider</a>&gt; <span id="r33 rd" class="r33 r">placementMatchProviders</span>)
+        {
+            <b>if</b> (<span class="r33 r">placementMatchProviders</span> != <b>null</b>)
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r34 rd" class="r34 r">providersForTerm</span> = <span class="r33 r">placementMatchProviders</span>.<span class="i method">Where</span>(<span id="r35 rd" class="r35 r">x</span> =&gt; <span class="r35 r">x</span>.<a href="IPlacementNodeFilterProvider.cs.html#1e46de1fda8d7657" class="i property">Key</a>.<a href="@1@System.Runtime/A.html#31b307b02a3bd6b9" class="i method">Equals</a>(<span class="r32 r">term</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>));
+                <b>if</b> (<span class="r34 r">providersForTerm</span>.<span class="i method">Any</span>())
+                {
+                    <b>var</b> <span id="r36 rd" class="r36 r">expression</span> = <span class="r32 r">term</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>;
+                    <b>return</b> <span id="r37 rd" class="r37 r">ctx</span> =&gt; <span class="r34 r">providersForTerm</span>.<span class="i method">Any</span>(<span id="r38 rd" class="r38 r">x</span> =&gt; <span class="r38 r">x</span>.<a href="IPlacementNodeFilterProvider.cs.html#ac2bc3243c84eae9" class="i method">IsMatch</a>(<span class="r37 r">ctx</span>, <span class="r36 r">expression</span>)) &amp;&amp; <span class="r31 r">predicate</span>(<span class="r37 r">ctx</span>);
+                }
+            }
+            <b>return</b> <span class="r31 r">predicate</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

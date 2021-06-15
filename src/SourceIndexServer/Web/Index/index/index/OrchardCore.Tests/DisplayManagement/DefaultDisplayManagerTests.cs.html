@@ -1,0 +1,449 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultDisplayManagerTests.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(440);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/DisplayManagement/DefaultDisplayManagerTests.cs" target="_top">DisplayManagement\DefaultDisplayManagerTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Descriptors</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Implementation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Shapes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Theming</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Stubs</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">DisplayManagement</span>
+{
+    <b>public class</b> <a id="14393f0fae316822" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">DefaultDisplayManagerTests</a>
+    {
+        <b>private</b> <span class="i">ShapeTable</span> <a id="2b3a571386785dab" href="../R/2b3a571386785dab.html" target="n" data-glyph="46,1" class="i field">_defaultShapeTable</a>;
+        <b>private</b> <a href="../Stubs/TestShapeBindingResolver.cs.html#730882ac94bd3415" class="t t">TestShapeBindingsDictionary</a> <a id="f68d4c90941ecefa" href="../R/f68d4c90941ecefa.html" target="n" data-glyph="46,1" class="i field">_additionalBindings</a>;
+        <b>private</b> <span class="t t">IServiceProvider</span> <a id="a9d5fe5a5fbf2cda" href="../R/a9d5fe5a5fbf2cda.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+ 
+        <b>public</b> <a id="39f77860a11f27f2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultDisplayManagerTests</a>()
+        {
+            <a href="#2b3a571386785dab" class="i field">_defaultShapeTable</a> = <b>new</b> <span class="i">ShapeTable</span>
+            (
+                <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">ShapeDescriptor</span>&gt;(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>),
+                <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">ShapeBinding</span>&gt;(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>)
+            );
+            <a href="#f68d4c90941ecefa" class="i field">_additionalBindings</a> = <b>new</b> <a href="../Stubs/TestShapeBindingResolver.cs.html#c54bf0fd9db91c21" class="t constructor">TestShapeBindingsDictionary</a>();
+ 
+            <span class="t t">IServiceCollection</span> <span id="r0 rd" class="r0 r">serviceCollection</span> = <b>new</b> <span class="t constructor">ServiceCollection</span>();
+ 
+            <span class="r0 r">serviceCollection</span>.<span class="i method">AddScoped</span>&lt;<span class="i">IThemeManager</span>, <span class="i">ThemeManager</span>&gt;();
+            <span class="r0 r">serviceCollection</span>.<span class="i method">AddScoped</span>&lt;<span class="i">IHtmlDisplay</span>, <span class="i">DefaultHtmlDisplay</span>&gt;();
+            <span class="r0 r">serviceCollection</span>.<span class="i">AddScoped</span>&lt;<span class="i">IShapeTableManager</span>, <a href="../Stubs/TestShapeTableManager.cs.html#783e4ce6ac05bafc" class="t t">TestShapeTableManager</a>&gt;();
+            <span class="r0 r">serviceCollection</span>.<span class="i">AddScoped</span>&lt;<span class="i">IShapeBindingResolver</span>, <a href="../Stubs/TestShapeBindingResolver.cs.html#7d9a1fac2f82f547" class="t t">TestShapeBindingResolver</a>&gt;();
+            <span class="r0 r">serviceCollection</span>.<span class="i">AddScoped</span>&lt;<span class="i">IShapeDisplayEvents</span>, <a href="#a7468e6cd4848c62" class="t t">TestDisplayEvents</a>&gt;();
+            <span class="r0 r">serviceCollection</span>.<span class="i">AddScoped</span>&lt;<span class="i">IExtensionManager</span>, <a href="../Stubs/StubExtensionManager.cs.html#94dabdda2432708c" class="t t">StubExtensionManager</a>&gt;();
+            <span class="r0 r">serviceCollection</span>.<span class="i method">AddSingleton</span>&lt;<span class="t t">IStringLocalizerFactory</span>, <span class="i">NullStringLocalizerFactory</span>&gt;();
+            <span class="r0 r">serviceCollection</span>.<span class="i method">AddTransient</span>(<b>typeof</b>(<span class="t t">IStringLocalizer</span>&lt;&gt;), <b>typeof</b>(<span class="t t">StringLocalizer</span>&lt;&gt;));
+ 
+            <span class="r0 r">serviceCollection</span>.<span class="i method">AddLogging</span>();
+ 
+            <span class="r0 r">serviceCollection</span>.<span class="i">AddSingleton</span>(<a href="#2b3a571386785dab" class="i field">_defaultShapeTable</a>);
+            <span class="r0 r">serviceCollection</span>.<span class="i method">AddSingleton</span>(<a href="#f68d4c90941ecefa" class="i field">_additionalBindings</a>);
+            <span class="r0 r">serviceCollection</span>.<span class="i method">AddWebEncoders</span>();
+ 
+            <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a> = <span class="r0 r">serviceCollection</span>.<span class="i method">BuildServiceProvider</span>();
+        }
+ 
+        <b>private class</b> <a id="a7468e6cd4848c62" href="../R/a7468e6cd4848c62.html" target="n" data-glyph="4,1" class="t t"><span id="c2c3f8c289fc0f49">TestDisplayEvents</span></a> : <span class="i">IShapeDisplayEvents</span>
+        {
+            <b>public</b> <a href="@1@System.Runtime/A.html#486d58da4553e12d" class="t t">Action</a>&lt;<span class="i">ShapeDisplayContext</span>&gt; <a id="d987c8e462026e11" href="../R/d987c8e462026e11.html" target="n" data-glyph="42,2" class="i field">Displaying</a> = <span id="r1 rd" class="r1 r">ctx</span> =&gt; { };
+            <b>public</b> <a href="@1@System.Runtime/A.html#486d58da4553e12d" class="t t">Action</a>&lt;<span class="i">ShapeDisplayContext</span>&gt; <a id="bd5a7b92cd6c10ba" href="../R/bd5a7b92cd6c10ba.html" target="n" data-glyph="42,2" class="i field">Displayed</a> = <span id="r2 rd" class="r2 r">ctx</span> =&gt; { };
+            <b>public</b> <a href="@1@System.Runtime/A.html#486d58da4553e12d" class="t t">Action</a>&lt;<span class="i">ShapeDisplayContext</span>&gt; <a id="5254b195ae910562" href="../R/5254b195ae910562.html" target="n" data-glyph="42,2" class="i field">Finalized</a> = <span id="r3 rd" class="r3 r">ctx</span> =&gt; { };
+ 
+            <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <span class="i">IShapeDisplayEvents</span>.<a id="24b309f89f0daabd" href="../R/../../0000000000.html" target="n" data-glyph="76,2" class="i method">DisplayingAsync</a>(<span class="i">ShapeDisplayContext</span> <span id="r4 rd" class="r4 r">context</span>)
+            {
+                <a href="#d987c8e462026e11" class="i field">Displaying</a>(<span class="r4 r">context</span>); <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+            <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <span class="i">IShapeDisplayEvents</span>.<a id="2ac951921e8fb404" href="../R/../../0000000000.html" target="n" data-glyph="76,2" class="i method">DisplayedAsync</a>(<span class="i">ShapeDisplayContext</span> <span id="r5 rd" class="r5 r">context</span>)
+            {
+                <a href="#bd5a7b92cd6c10ba" class="i field">Displayed</a>(<span class="r5 r">context</span>); <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+            <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <span class="i">IShapeDisplayEvents</span>.<a id="f71e25c338f9c2ba" href="../R/../../0000000000.html" target="n" data-glyph="76,2" class="i method">DisplayingFinalizedAsync</a>(<span class="i">ShapeDisplayContext</span> <span id="r6 rd" class="r6 r">context</span>)
+            {
+                <a href="#5254b195ae910562" class="i field">Finalized</a>(<span class="r6 r">context</span>); <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+        }
+ 
+        <b>private void</b> <a id="183786c1083ef47e" href="../R/183786c1083ef47e.html" target="n" data-glyph="76,1" class="i method">AddShapeDescriptor</a>(<span class="i">ShapeDescriptor</span> <span id="r7 rd" class="r7 r">shapeDescriptor</span>)
+        {
+            <a href="#2b3a571386785dab" class="i field">_defaultShapeTable</a>.<span class="i">Descriptors</span>[<span class="r7 r">shapeDescriptor</span>.<span class="i">ShapeType</span>] = <span class="r7 r">shapeDescriptor</span>;
+            <b>foreach</b> (<b>var</b> <span id="r8 rd" class="r8 r">binding</span> <b>in</b> <span class="r7 r">shapeDescriptor</span>.<span class="i">Bindings</span>)
+            {
+                <a href="#2b3a571386785dab" class="i field">_defaultShapeTable</a>.<span class="i">Bindings</span>[<span class="r8 r">binding</span>.<span class="i">Key</span>] = <span class="r8 r">binding</span>.<span class="i">Value</span>;
+            }
+        }
+ 
+        <b>private static</b> <span class="i">DisplayContext</span> <a id="a37b86fff39eb2c1" href="../R/a37b86fff39eb2c1.html" target="n" data-glyph="76,1" class="i method">CreateDisplayContext</a>(<span class="i">Shape</span> <span id="r9 rd" class="r9 r">shape</span>)
+        {
+            <b>return</b> <b>new</b> <span class="i">DisplayContext</span>
+            {
+                <span class="i">Value</span> = <span class="r9 r">shape</span>
+            };
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="69c38757d7b307fd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderSimpleShape</a>()
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r11 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <span class="r12 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r13 rd" class="r13 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hi there!&quot;</span>))
+            };
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r12 r">descriptor</span>);
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">result</span> = <b>await</b> <span class="r10 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r11 r">shape</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Hi there!&quot;</span>, <span class="r14 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ce565f795c1b7f27" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderIShapeBindingResolverProvidedShapes</a>()
+        {
+            <b>var</b> <span id="r15 rd" class="r15 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r16 rd" class="r16 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r16 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Baz&quot;</span>;
+ 
+            <a href="#f68d4c90941ecefa" class="i field">_additionalBindings</a>[<span class="s">&quot;Baz&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Baz&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r17 rd" class="r17 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hi from IShapeBindingResolver.&quot;</span>))
+            };
+ 
+            <b>var</b> <span id="r18 rd" class="r18 r">result</span> = <b>await</b> <span class="r15 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r16 r">shape</span>));
+ 
+            <span class="c">// Cleanup</span>
+            <a href="#f68d4c90941ecefa" class="i field">_additionalBindings</a>.<span class="i method">Clear</span>();
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Hi from IShapeBindingResolver.&quot;</span>, <span class="r18 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a8323019e59395db" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderPreCalculatedShape</a>()
+        {
+            <b>var</b> <span id="r19 rd" class="r19 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r20 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+            <span class="r20 r">shape</span>.<span class="i">Metadata</span>.<span class="i">OnDisplaying</span>(
+                <span id="r21 rd" class="r21 r">context</span> =&gt;
+                {
+                    <span class="r21 r">context</span>.<span class="i">ChildContent</span> = <b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Bar&quot;</span>);
+                });
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <span class="r22 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r23 rd" class="r23 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hi there!&quot;</span>))
+            };
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r22 r">descriptor</span>);
+ 
+            <b>var</b> <span id="r24 rd" class="r24 r">result</span> = <b>await</b> <span class="r19 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r20 r">shape</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Bar&quot;</span>, <span class="r24 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="d573b61ced046940" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IShapeBindingResolverProvidedShapesDoesNotOverrideShapeDescriptor</a>()
+        {
+            <b>var</b> <span id="r25 rd" class="r25 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r26 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+ 
+            <b>var</b> <span id="r27 rd" class="r27 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">ProcessingAsync</span> = <b>new</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="i">ShapeDisplayContext</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt;[] {
+                    <span id="r28 rd" class="r28 r">context</span> =&gt;
+                    {
+                        <b>dynamic</b> <span id="r29 rd" class="r29 r">dynamicShape</span> = <span class="r28 r">context</span>.<span class="i">Shape</span>;
+                        <span class="r29 r">dynamicShape</span>.<span class="i">Data</span> = <span class="s">&quot;some data&quot;</span>;
+                        <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+                    }
+                }
+            };
+            <span class="r27 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r30 rd" class="r30 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Is there any data ?&quot;</span>))
+            };
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r27 r">descriptor</span>);
+ 
+            <a href="#f68d4c90941ecefa" class="i field">_additionalBindings</a>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r31 rd" class="r31 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">$&quot;</span><span class="s">Yes there is </span>{ ((<b>dynamic</b>)<span class="r31 r">ctx</span>.<span class="i">Value</span>).<span class="i">Data</span> }<span class="s">.</span><span class="s">&quot;</span>))
+            };
+ 
+            <b>var</b> <span id="r32 rd" class="r32 r">result</span> = <b>await</b> <span class="r25 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r26 r">shape</span>));
+ 
+            <span class="c">// Cleanup</span>
+            <a href="#f68d4c90941ecefa" class="i field">_additionalBindings</a>.<span class="i method">Clear</span>();
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Yes there is some data.&quot;</span>, <span class="r32 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="351c75a30c292fa5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderFallbackShape</a>()
+        {
+            <b>var</b> <span id="r33 rd" class="r33 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r34 rd" class="r34 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r34 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo__2&quot;</span>;
+ 
+            <b>var</b> <span id="r35 rd" class="r35 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <span class="r35 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r36 rd" class="r36 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hi there!&quot;</span>))
+            };
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r35 r">descriptor</span>);
+ 
+            <b>var</b> <span id="r37 rd" class="r37 r">result</span> = <b>await</b> <span class="r33 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r34 r">shape</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Hi there!&quot;</span>, <span class="r37 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="946840aa07997916" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddAlternatesOnDisplaying</a>()
+        {
+            <b>var</b> <span id="r38 rd" class="r38 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r39 rd" class="r39 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r39 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+ 
+            <b>var</b> <span id="r40 rd" class="r40 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">DisplayingAsync</span> = <b>new</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="i">ShapeDisplayContext</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt;[] {
+                    <span id="r41 rd" class="r41 r">context</span> =&gt;
+                    {
+                            <span class="r41 r">context</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">&quot;Bar&quot;</span>);
+                            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+                    }
+                }
+            };
+            <span class="r40 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r42 rd" class="r42 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Foo&quot;</span>))
+            };
+            <span class="r40 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Bar&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Bar&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r43 rd" class="r43 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Bar&quot;</span>))
+            };
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r40 r">descriptor</span>);
+ 
+            <b>var</b> <span id="r44 rd" class="r44 r">result</span> = <b>await</b> <span class="r38 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r39 r">shape</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Bar&quot;</span>, <span class="r44 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="637358d9f451b638" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddAlternatesOnProcessing</a>()
+        {
+            <b>var</b> <span id="r45 rd" class="r45 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r46 rd" class="r46 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r46 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+ 
+            <b>var</b> <span id="r47 rd" class="r47 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">ProcessingAsync</span> = <b>new</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="i">ShapeDisplayContext</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt;[] {
+                    <span id="r48 rd" class="r48 r">context</span> =&gt;
+                    {
+                            <span class="r48 r">context</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">&quot;Bar&quot;</span>);
+                            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+                    }
+                }
+            };
+            <span class="r47 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r49 rd" class="r49 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Foo&quot;</span>))
+            };
+            <span class="r47 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Bar&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Bar&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r50 rd" class="r50 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Bar&quot;</span>))
+            };
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r47 r">descriptor</span>);
+ 
+            <b>var</b> <span id="r51 rd" class="r51 r">result</span> = <b>await</b> <span class="r45 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r46 r">shape</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Bar&quot;</span>, <span class="r51 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ab747b356ac64122" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderAlternateShapeExplicitly</a>()
+        {
+            <b>var</b> <span id="r52 rd" class="r52 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r53 rd" class="r53 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r53 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo__2&quot;</span>;
+ 
+            <b>var</b> <span id="r54 rd" class="r54 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <span class="r54 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r55 rd" class="r55 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hi there!&quot;</span>))
+            };
+            <span class="r54 r">descriptor</span>.<span class="i">Bindings</span>[<span class="s">&quot;Foo__2&quot;</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="s">&quot;Foo__2&quot;</span>,
+                <span class="i">BindingAsync</span> = <span id="r56 rd" class="r56 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hello again!&quot;</span>))
+            };
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r54 r">descriptor</span>);
+ 
+            <b>var</b> <span id="r57 rd" class="r57 r">result</span> = <b>await</b> <span class="r52 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r53 r">shape</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Hello again!&quot;</span>, <span class="r57 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="6b7f2885b9720f62" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderAlternateShapeByMostRecentlyAddedMatchingAlternate</a>()
+        {
+            <b>var</b> <span id="r58 rd" class="r58 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r59 rd" class="r59 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r59 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+            <span class="r59 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">&quot;Foo__1&quot;</span>);
+            <span class="r59 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">&quot;Foo__2&quot;</span>);
+            <span class="r59 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">&quot;Foo__3&quot;</span>);
+ 
+            <b>var</b> <span id="r60 rd" class="r60 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <a href="#0e2b1d12ec91164b" class="i method">AddBinding</a>(<span class="r60 r">descriptor</span>, <span class="s">&quot;Foo&quot;</span>, <span id="r61 rd" class="r61 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hi there!&quot;</span>)));
+            <a href="#0e2b1d12ec91164b" class="i method">AddBinding</a>(<span class="r60 r">descriptor</span>, <span class="s">&quot;Foo__1&quot;</span>, <span id="r62 rd" class="r62 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hello (1)!&quot;</span>)));
+            <a href="#0e2b1d12ec91164b" class="i method">AddBinding</a>(<span class="r60 r">descriptor</span>, <span class="s">&quot;Foo__2&quot;</span>, <span id="r63 rd" class="r63 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;Hello (2)!&quot;</span>)));
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r60 r">descriptor</span>);
+ 
+            <b>var</b> <span id="r64 rd" class="r64 r">result</span> = <b>await</b> <span class="r58 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r59 r">shape</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Hello (2)!&quot;</span>, <span class="r64 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        <b>private static void</b> <a id="0e2b1d12ec91164b" href="../R/0e2b1d12ec91164b.html" target="n" data-glyph="76,1" class="i method">AddBinding</a>(<span class="i">ShapeDescriptor</span> <span id="r65 rd" class="r65 r">descriptor</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r66 rd" class="r66 r">bindingName</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="i">DisplayContext</span>, <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt;&gt; <span id="r67 rd" class="r67 r">binding</span>)
+        {
+            <span class="r65 r">descriptor</span>.<span class="i">Bindings</span>[<span class="r66 r">bindingName</span>] = <b>new</b> <span class="i">ShapeBinding</span>
+            {
+                <span class="i">BindingName</span> = <span class="r66 r">bindingName</span>,
+                <span class="i">BindingAsync</span> = <span class="r67 r">binding</span>
+            };
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="09b85c8ed476709e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShapeDescriptorDisplayingAndDisplayedAreCalled</a>()
+        {
+            <b>var</b> <span id="r68 rd" class="r68 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r69 rd" class="r69 r">shape</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r69 r">shape</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+ 
+            <b>var</b> <span id="r70 rd" class="r70 r">descriptor</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <a href="#0e2b1d12ec91164b" class="i method">AddBinding</a>(<span class="r70 r">descriptor</span>, <span class="s">&quot;Foo&quot;</span>, <span id="r71 rd" class="r71 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;yarg&quot;</span>)));
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r70 r">descriptor</span>);
+ 
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r72 rd" class="r72 r">displayingEventCount</span> = 0;
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r73 rd" class="r73 r">displayedEventCount</span> = 0;
+            <span class="r70 r">descriptor</span>.<span class="i">DisplayingAsync</span> = <b>new</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="i">ShapeDisplayContext</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt;[] { <span id="r74 rd" class="r74 r">ctx</span> =&gt; { ++<span class="r72 r">displayingEventCount</span>; <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>; } };
+            <span class="r70 r">descriptor</span>.<span class="i">DisplayedAsync</span> = <b>new</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="i">ShapeDisplayContext</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt;[] { <span id="r75 rd" class="r75 r">ctx</span> =&gt; { ++<span class="r73 r">displayedEventCount</span>; <span class="r75 r">ctx</span>.<span class="i">ChildContent</span> = <b>new</b> <span class="t">HtmlString</span>(<span class="s">&quot;[&quot;</span> + <span class="r75 r">ctx</span>.<span class="i">ChildContent</span>.<span class="i">ToString</span>() + <span class="s">&quot;]&quot;</span>); <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>; } };
+ 
+            <b>var</b> <span id="r76 rd" class="r76 r">result</span> = <b>await</b> <span class="r68 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r69 r">shape</span>));
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(1, <span class="r72 r">displayingEventCount</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(1, <span class="r73 r">displayedEventCount</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;[yarg]&quot;</span>, <span class="r76 r">result</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="8dd2d74e695b3be7" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DisplayingEventFiresEarlyEnoughToAddAlternateShapeBindingNames</a>()
+        {
+            <b>var</b> <span id="r77 rd" class="r77 r">htmlDisplay</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r78 rd" class="r78 r">shapeFoo</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r78 r">shapeFoo</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+ 
+            <b>var</b> <span id="r79 rd" class="r79 r">descriptorFoo</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <a href="#0e2b1d12ec91164b" class="i method">AddBinding</a>(<span class="r79 r">descriptorFoo</span>, <span class="s">&quot;Foo&quot;</span>, <span id="r80 rd" class="r80 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;alpha&quot;</span>)));
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r79 r">descriptorFoo</span>);
+ 
+            <b>var</b> <span id="r81 rd" class="r81 r">descriptorBar</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Bar&quot;</span>
+            };
+            <a href="#0e2b1d12ec91164b" class="i method">AddBinding</a>(<span class="r81 r">descriptorBar</span>, <span class="s">&quot;Bar&quot;</span>, <span id="r82 rd" class="r82 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;beta&quot;</span>)));
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r81 r">descriptorBar</span>);
+ 
+            <b>var</b> <span id="r83 rd" class="r83 r">resultNormally</span> = <b>await</b> <span class="r77 r">htmlDisplay</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r78 r">shapeFoo</span>));
+ 
+            <span class="r78 r">shapeFoo</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r78 r">shapeFoo</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+            <span class="r79 r">descriptorFoo</span>.<span class="i">DisplayingAsync</span> = <b>new</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="i">ShapeDisplayContext</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt;[] { <span id="r84 rd" class="r84 r">ctx</span> =&gt; { <span class="r84 r">ctx</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">&quot;Bar&quot;</span>); <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>; } };
+            <b>var</b> <span id="r85 rd" class="r85 r">resultWithOverride</span> = <b>await</b> <span class="r77 r">htmlDisplay</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r78 r">shapeFoo</span>));
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;alpha&quot;</span>, <span class="r83 r">resultNormally</span>.<span class="i">ToString</span>());
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;beta&quot;</span>, <span class="r85 r">resultWithOverride</span>.<span class="i">ToString</span>());
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f01494a4b9dd2447" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShapeTypeAndBindingNamesAreNotCaseSensitive</a>()
+        {
+            <b>var</b> <span id="r86 rd" class="r86 r">displayManager</span> = <a href="#a9d5fe5a5fbf2cda" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="i">IHtmlDisplay</span>&gt;();
+ 
+            <b>var</b> <span id="r87 rd" class="r87 r">shapeFoo</span> = <b>new</b> <span class="i">Shape</span>();
+            <span class="r87 r">shapeFoo</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Foo&quot;</span>;
+ 
+            <b>var</b> <span id="r88 rd" class="r88 r">descriptorFoo</span> = <b>new</b> <span class="i">ShapeDescriptor</span>
+            {
+                <span class="i">ShapeType</span> = <span class="s">&quot;Foo&quot;</span>
+            };
+            <a href="#0e2b1d12ec91164b" class="i method">AddBinding</a>(<span class="r88 r">descriptorFoo</span>, <span class="s">&quot;Foo&quot;</span>, <span id="r89 rd" class="r89 r">ctx</span> =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">&quot;alpha&quot;</span>)));
+            <a href="#183786c1083ef47e" class="i method">AddShapeDescriptor</a>(<span class="r88 r">descriptorFoo</span>);
+ 
+            <b>var</b> <span id="r90 rd" class="r90 r">result</span> = <b>await</b> <span class="r86 r">displayManager</span>.<span class="i">ExecuteAsync</span>(<a href="#a37b86fff39eb2c1" class="i method">CreateDisplayContext</a>(<span class="r87 r">shapeFoo</span>));
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;alpha&quot;</span>, <span class="r90 r">result</span>.<span class="i">ToString</span>());
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

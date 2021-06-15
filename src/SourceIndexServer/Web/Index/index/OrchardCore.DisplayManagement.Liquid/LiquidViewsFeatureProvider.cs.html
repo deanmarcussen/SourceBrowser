@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html><head><title>LiquidViewsFeatureProvider.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(69);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid/LiquidViewsFeatureProvider.cs" target="_top">LiquidViewsFeatureProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid" target="_top">src\OrchardCore\OrchardCore.DisplayManagement.Liquid\OrchardCore.DisplayManagement.Liquid.csproj</a> (OrchardCore.DisplayManagement.Liquid)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ApplicationParts</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>.<span class="i n">Compilation</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Razor</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">FileProviders</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>
+{
+    <b>public class</b> <a id="eb08850ed4e81bc3" href="R/eb08850ed4e81bc3.html" target="n" data-glyph="0,0" class="t t">LiquidViewsFeatureProvider</a> : <span class="t t">IApplicationFeatureProvider</span>&lt;<span class="t t">ViewsFeature</span>&gt;
+    {
+        <b>public const string</b> <a id="1b6f50d186818fb2" href="R/1b6f50d186818fb2.html" target="n" data-glyph="6,1" class="i field">DefaultLiquidViewName</a> = <span class="s">&quot;DefaultLiquidViewName&quot;</span>;
+        <b>public static string</b> <a id="32cf1ff4771b5cf8" href="R/32cf1ff4771b5cf8.html" target="n" data-glyph="42,1" class="i field">DefaultRazorViewPath</a> = <span class="s">&#39;/&#39;</span> + <a href="#1b6f50d186818fb2" class="i field">DefaultLiquidViewName</a> + <span class="t t">RazorViewEngine</span>.<span class="i field">ViewExtension</span>;
+        <b>public static string</b> <a id="3bbcd7202bc9286f" href="R/3bbcd7202bc9286f.html" target="n" data-glyph="42,1" class="i field">DefaultLiquidViewPath</a> = <span class="s">&#39;/&#39;</span> + <a href="#1b6f50d186818fb2" class="i field">DefaultLiquidViewName</a> + <a href="LiquidViewTemplate.cs.html#9fbef59705c4102a" class="t t">LiquidViewTemplate</a>.<a href="LiquidViewTemplate.cs.html#b6362942e3bda091" class="i field">ViewExtension</a>;
+ 
+        <b>private static</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="f1fe63295f986ff7" href="R/f1fe63295f986ff7.html" target="n" data-glyph="46,1" class="i field">_sharedPaths</a>;
+        <b>private static object</b> <a id="3a1777935facaf6c" href="R/3a1777935facaf6c.html" target="n" data-glyph="46,1" class="i field">_synLock</a> = <b>new</b> <b>object</b>();
+ 
+        <b>public</b> <a id="071ebe37b30b0b63" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LiquidViewsFeatureProvider</a>(<span class="t t">IOptions</span>&lt;<span class="i">TemplateOptions</span>&gt; <span id="r0 rd" class="r0 r">templateOptions</span>)
+        {
+            <b>if</b> (<a href="#f1fe63295f986ff7" class="i field">_sharedPaths</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>lock</b> (<a href="#3a1777935facaf6c" class="i field">_synLock</a>)
+            {
+                <b>if</b> (<a href="#f1fe63295f986ff7" class="i field">_sharedPaths</a> == <b>null</b>)
+                {
+                    <a href="#f1fe63295f986ff7" class="i field">_sharedPaths</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+                    <b>var</b> <span id="r1 rd" class="r1 r">filePaths</span> = <span class="r0 r">templateOptions</span>.<span class="i property">Value</span>.<span class="i">FileProvider</span>.<span class="i">GetViewFilePaths</span>(
+                        <span class="i">Application</span>.<span class="i">ModulesPath</span>, <b>new</b>[] { <a href="LiquidViewTemplate.cs.html#9fbef59705c4102a" class="t t">LiquidViewTemplate</a>.<a href="LiquidViewTemplate.cs.html#b6362942e3bda091" class="i field">ViewExtension</a> },
+                        <a href="LiquidViewTemplate.cs.html#9fbef59705c4102a" class="t t">LiquidViewTemplate</a>.<a href="LiquidViewTemplate.cs.html#1a0123be544d1b69" class="i field">ViewsFolder</a>);
+ 
+                    <a href="#f1fe63295f986ff7" class="i field">_sharedPaths</a>.<span class="i">AddRange</span>(<span class="r1 r">filePaths</span>.<span class="i">Select</span>(<span id="r2 rd" class="r2 r">p</span> =&gt; <span class="s">&#39;/&#39;</span> + <span class="r2 r">p</span>));
+                }
+            }
+        }
+ 
+        <b>public void</b> <a id="cc6121cdd21dc1fe" href="R/cc6121cdd21dc1fe.html" target="n" data-glyph="72,1" class="i method">PopulateFeature</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">ApplicationPart</span>&gt; <span id="r3 rd" class="r3 r">parts</span>, <span class="t t">ViewsFeature</span> <span id="r4 rd" class="r4 r">feature</span>)
+        {
+            <span class="r4 r">feature</span>.<span class="i property">ViewDescriptors</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<b>new</b> <span class="t constructor">CompiledViewDescriptor</span>
+            {
+                <span class="i property">RelativePath</span> = <a href="#32cf1ff4771b5cf8" class="i field">DefaultRazorViewPath</a>,
+                <span class="i property">Item</span> = <b>new</b> <a href="/OrchardCore.DisplayManagement/A.html#6e0a4786d27a3538" class="t constructor">RazorViewCompiledItem</a>(<b>typeof</b>(<a href="LiquidPage.cs.html#e57831f56a2f54ca" class="t t">LiquidPage</a>), <span class="s">@&quot;mvc.1.0.view&quot;</span>, <a href="#3bbcd7202bc9286f" class="i field">DefaultLiquidViewPath</a>)
+            });
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">path</span> <b>in</b> <a href="#f1fe63295f986ff7" class="i field">_sharedPaths</a>)
+            {
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#95facc58d06cadd0" class="i method">GetFileName</a>(<span class="r5 r">path</span>).<a href="@1@System.Runtime/A.html#df82e02d721cc7f5" class="i method">StartsWith</a>(<span class="s">&#39;_&#39;</span>))
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">viewPath</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#8b380aa7025bf5f6" class="i method">ChangeExtension</a>(<span class="r5 r">path</span>, <span class="t t">RazorViewEngine</span>.<span class="i field">ViewExtension</span>);
+                    <span class="r4 r">feature</span>.<span class="i property">ViewDescriptors</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<b>new</b> <span class="t constructor">CompiledViewDescriptor</span>
+                    {
+                        <span class="i property">RelativePath</span> = <span class="r6 r">viewPath</span>,
+                        <span class="i property">Item</span> = <b>new</b> <a href="/OrchardCore.DisplayManagement/A.html#6e0a4786d27a3538" class="t constructor">RazorViewCompiledItem</a>(<b>typeof</b>(<a href="LiquidPage.cs.html#e57831f56a2f54ca" class="t t">LiquidPage</a>), <span class="s">@&quot;mvc.1.0.view&quot;</span>, <span class="r6 r">viewPath</span>)
+                    });
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

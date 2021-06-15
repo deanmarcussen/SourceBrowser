@@ -1,0 +1,187 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentItemDisplayManager.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(178);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentManagement.Display/ContentItemDisplayManager.cs" target="_top">ContentItemDisplayManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentManagement.Display" target="_top">src\OrchardCore\OrchardCore.ContentManagement.Display\OrchardCore.ContentManagement.Display.csproj</a> (OrchardCore.ContentManagement.Display)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Descriptors</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Layout</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Shapes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> The default implementation of </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="IContentItemDisplayManager.cs.html#ccb0f2621bf941ec" class="t t">IContentItemDisplayManager</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">. It is used to render</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> objects by leveraging any </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="ContentDisplay/IContentDisplayHandler.cs.html#c19e5af489380288" class="t t">IContentDisplayHandler</a><span class="c">&quot;</span><span class="c">/&gt;</span>
+    <span class="c">///</span><span class="c"> implementation. The resulting shapes are targeting the stereotype of the content item</span>
+    <span class="c">///</span><span class="c"> to display.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="f823adc9bb6ad1a8" href="R/f823adc9bb6ad1a8.html" target="n" data-glyph="0,0" class="t t">ContentItemDisplayManager</a> : <a href="/OrchardCore.DisplayManagement/A.html#1baedcff90a97b6a" class="t t">BaseDisplayManager</a>, <a href="IContentItemDisplayManager.cs.html#ccb0f2621bf941ec" class="t t">IContentItemDisplayManager</a>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#887416973166e420" class="t t">IContentHandler</a>&gt; <a id="87f6ac51c6ae71b3" href="R/87f6ac51c6ae71b3.html" target="n" data-glyph="46,1" class="i field">_contentHandlers</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="ContentDisplay/IContentDisplayHandler.cs.html#c19e5af489380288" class="t t">IContentDisplayHandler</a>&gt; <a id="75887a78c4462a46" href="R/75887a78c4462a46.html" target="n" data-glyph="46,1" class="i field">_handlers</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#f66024a4d4149e8d" class="t t">IShapeTableManager</a> <a id="c727e8099960b95b" href="R/c727e8099960b95b.html" target="n" data-glyph="46,1" class="i field">_shapeTableManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="57f96b2679055e46" href="R/57f96b2679055e46.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <a id="e2669bbe05cc29a2" href="R/e2669bbe05cc29a2.html" target="n" data-glyph="46,1" class="i field">_shapeFactory</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#1db760e65443bcbe" class="t t">ILayoutAccessor</a> <a id="2928d7accb89202d" href="R/2928d7accb89202d.html" target="n" data-glyph="46,1" class="i field">_layoutAccessor</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="751e0f3d47753d96" href="R/751e0f3d47753d96.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="989a6ed07b39439c" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentItemDisplayManager</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="ContentDisplay/IContentDisplayHandler.cs.html#c19e5af489380288" class="t t">IContentDisplayHandler</a>&gt; <span id="r0 rd" class="r0 r">handlers</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#887416973166e420" class="t t">IContentHandler</a>&gt; <span id="r1 rd" class="r1 r">contentHandlers</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#f66024a4d4149e8d" class="t t">IShapeTableManager</a> <span id="r2 rd" class="r2 r">shapeTableManager</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r3 rd" class="r3 r">contentDefinitionManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r4 rd" class="r4 r">shapeFactory</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#dc8c39d7e3c9418a" class="t t">IShapePlacementProvider</a>&gt; <span id="r5 rd" class="r5 r">placementProviders</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#f823adc9bb6ad1a8" class="t t">ContentItemDisplayManager</a>&gt; <span id="r6 rd" class="r6 r">logger</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#1db760e65443bcbe" class="t t">ILayoutAccessor</a> <span id="r7 rd" class="r7 r">layoutAccessor</span>
+            ) : <a href="/OrchardCore.DisplayManagement/A.html#cbfbc60511074fd7" class="k">base</a>(<span class="r4 r">shapeFactory</span>, <span class="r5 r">placementProviders</span>)
+        {
+            <a href="#75887a78c4462a46" class="i field">_handlers</a> = <span class="r0 r">handlers</span>;
+            <a href="#87f6ac51c6ae71b3" class="i field">_contentHandlers</a> = <span class="r1 r">contentHandlers</span>;
+            <a href="#c727e8099960b95b" class="i field">_shapeTableManager</a> = <span class="r2 r">shapeTableManager</span>;
+            <a href="#57f96b2679055e46" class="i field">_contentDefinitionManager</a> = <span class="r3 r">contentDefinitionManager</span>;
+            <a href="#e2669bbe05cc29a2" class="i field">_shapeFactory</a> = <span class="r4 r">shapeFactory</span>;
+            <a href="#2928d7accb89202d" class="i field">_layoutAccessor</a> = <span class="r7 r">layoutAccessor</span>;
+            <a href="#751e0f3d47753d96" class="i field">_logger</a> = <span class="r6 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a>&gt; <a id="e47b066e0ce02680" href="R/e47b066e0ce02680.html" target="n" data-glyph="72,1" class="i method">BuildDisplayAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r8 rd" class="r8 r">contentItem</span>, <span class="i">IUpdateModel</span> <span id="r9 rd" class="r9 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">displayType</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">groupId</span>)
+        {
+            <b>if</b> (<span class="r8 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r8 r">contentItem</span>));
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r12 rd" class="r12 r">contentTypeDefinition</span> = <a href="#57f96b2679055e46" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r8 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">stereotype</span> = <span class="r12 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#51306a656d4fca2d" class="i property">Stereotype</a>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">actualDisplayType</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">displayType</span>) ? <span class="s">&quot;Detail&quot;</span> : <span class="r10 r">displayType</span>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">actualShapeType</span> = <span class="r13 r">stereotype</span> ?? <span class="s">&quot;Content&quot;</span>;
+ 
+            <span class="c">// _[DisplayType] is only added for the ones different than Detail</span>
+            <b>if</b> (<span class="r14 r">actualDisplayType</span> != <span class="s">&quot;Detail&quot;</span>)
+            {
+                <span class="r15 r">actualShapeType</span> = <span class="r15 r">actualShapeType</span> + <span class="s">&quot;_&quot;</span> + <span class="r14 r">actualDisplayType</span>;
+            }
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r16 rd" class="r16 r">itemShape</span> = <b>await</b> <a href="/OrchardCore.DisplayManagement/A.html#b3c9da341a8e410c" class="i method">CreateContentShapeAsync</a>(<span class="r15 r">actualShapeType</span>);
+            <span class="r16 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentItem&quot;</span>] = <span class="r8 r">contentItem</span>;
+            <span class="r16 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;Stereotype&quot;</span>] = <span class="r13 r">stereotype</span>;
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#65f6f514c36f37a2" class="k">var</a> <span id="r17 rd" class="r17 r">metadata</span> = <span class="r16 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>;
+            <span class="r17 r">metadata</span>.<a href="/OrchardCore.DisplayManagement/A.html#7cd0e688e269d1a2" class="i property">DisplayType</a> = <span class="r14 r">actualDisplayType</span>;
+ 
+            <span class="c">// [Stereotype]_[DisplayType]__[ContentType] e.g. Content-BlogPost.Summary</span>
+            <span class="r17 r">metadata</span>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r15 r">actualShapeType</span>}<span class="s">__</span>{<span class="r8 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>}<span class="s">&quot;</span>);
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#c7443c2b211ac7e2" class="k">var</a> <span id="r18 rd" class="r18 r">context</span> = <b>new</b> <span class="t">BuildDisplayContext</span>(
+                <span class="r16 r">itemShape</span>,
+                <span class="r14 r">actualDisplayType</span>,
+                <span class="r11 r">groupId</span>,
+                <a href="#e2669bbe05cc29a2" class="i field">_shapeFactory</a>,
+                <b>await</b> <a href="#2928d7accb89202d" class="i field">_layoutAccessor</a>.<a href="/OrchardCore.DisplayManagement/A.html#eda786ce061efb69" class="i method">GetLayoutAsync</a>(),
+                <b>new</b> <span class="t">ModelStateWrapperUpdater</span>(<span class="r9 r">updater</span>)
+            );
+ 
+            <b>await</b> <a href="/OrchardCore.DisplayManagement/A.html#a70557e5b92a645a" class="i method">BindPlacementAsync</a>(<span class="r18 r">context</span>);
+ 
+            <b>await</b> <a href="#75887a78c4462a46" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r19 rd" class="r19 r">handler</span>, <span id="r20 rd" class="r20 r">contentItem</span>, <span id="r21 rd" class="r21 r">context</span>) =&gt; <span class="r19 r">handler</span>.<span class="i">BuildDisplayAsync</span>(<span class="r20 r">contentItem</span>, <span class="r21 r">context</span>), <span class="r8 r">contentItem</span>, <span class="r18 r">context</span>, <a href="#751e0f3d47753d96" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r18 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e8980395d144a462" class="i property">Shape</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a>&gt; <a id="6a2f803d21835b41" href="R/6a2f803d21835b41.html" target="n" data-glyph="72,1" class="i method">BuildEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r22 rd" class="r22 r">contentItem</span>, <span class="i">IUpdateModel</span> <span id="r23 rd" class="r23 r">updater</span>, <b>bool</b> <span id="r24 rd" class="r24 r">isNew</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">groupId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">htmlFieldPrefix</span>)
+        {
+            <b>if</b> (<span class="r22 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r22 r">contentItem</span>));
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r27 rd" class="r27 r">contentTypeDefinition</span> = <a href="#57f96b2679055e46" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r22 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r28 rd" class="r28 r">stereotype</span> = <span class="r27 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#51306a656d4fca2d" class="i property">Stereotype</a>;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r29 rd" class="r29 r">actualShapeType</span> = (<span class="r28 r">stereotype</span> ?? <span class="s">&quot;Content&quot;</span>) + <span class="s">&quot;_Edit&quot;</span>;
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r30 rd" class="r30 r">itemShape</span> = <b>await</b> <a href="/OrchardCore.DisplayManagement/A.html#b3c9da341a8e410c" class="i method">CreateContentShapeAsync</a>(<span class="r29 r">actualShapeType</span>);
+            <span class="r30 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentItem&quot;</span>] = <span class="r22 r">contentItem</span>;
+            <span class="r30 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;Stereotype&quot;</span>] = <span class="r28 r">stereotype</span>;
+ 
+            <span class="c">// adding an alternate for [Stereotype]_Edit__[ContentType] e.g. Content-Menu.Edit</span>
+            <span class="r30 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="r29 r">actualShapeType</span> + <span class="s">&quot;__&quot;</span> + <span class="r22 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="k">var</a> <span id="r31 rd" class="r31 r">context</span> = <b>new</b> <span class="t">BuildEditorContext</span>(
+                <span class="r30 r">itemShape</span>,
+                <span class="r25 r">groupId</span>,
+                <span class="r24 r">isNew</span>,
+                <span class="r26 r">htmlFieldPrefix</span>,
+                <a href="#e2669bbe05cc29a2" class="i field">_shapeFactory</a>,
+                <b>await</b> <a href="#2928d7accb89202d" class="i field">_layoutAccessor</a>.<a href="/OrchardCore.DisplayManagement/A.html#eda786ce061efb69" class="i method">GetLayoutAsync</a>(),
+                <b>new</b> <span class="t">ModelStateWrapperUpdater</span>(<span class="r23 r">updater</span>)
+            );
+ 
+            <b>await</b> <a href="/OrchardCore.DisplayManagement/A.html#a70557e5b92a645a" class="i method">BindPlacementAsync</a>(<span class="r31 r">context</span>);
+ 
+            <b>await</b> <a href="#75887a78c4462a46" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r32 rd" class="r32 r">handler</span>, <span id="r33 rd" class="r33 r">contentItem</span>, <span id="r34 rd" class="r34 r">context</span>) =&gt; <span class="r32 r">handler</span>.<span class="i">BuildEditorAsync</span>(<span class="r33 r">contentItem</span>, <span class="r34 r">context</span>), <span class="r22 r">contentItem</span>, <span class="r31 r">context</span>, <a href="#751e0f3d47753d96" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r31 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e8980395d144a462" class="i property">Shape</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a>&gt; <a id="636326058e7b1a0b" href="R/636326058e7b1a0b.html" target="n" data-glyph="72,1" class="i method">UpdateEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r35 rd" class="r35 r">contentItem</span>, <span class="i">IUpdateModel</span> <span id="r36 rd" class="r36 r">updater</span>, <b>bool</b> <span id="r37 rd" class="r37 r">isNew</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">groupId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r39 rd" class="r39 r">htmlFieldPrefix</span>)
+        {
+            <b>if</b> (<span class="r35 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r35 r">contentItem</span>));
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r40 rd" class="r40 r">contentTypeDefinition</span> = <a href="#57f96b2679055e46" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#154ab18e7ab850da" class="i method">LoadTypeDefinition</a>(<span class="r35 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r41 rd" class="r41 r">stereotype</span> = <span class="r40 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#51306a656d4fca2d" class="i property">Stereotype</a>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r42 rd" class="r42 r">actualShapeType</span> = (<span class="r41 r">stereotype</span> ?? <span class="s">&quot;Content&quot;</span>) + <span class="s">&quot;_Edit&quot;</span>;
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r43 rd" class="r43 r">itemShape</span> = <b>await</b> <a href="/OrchardCore.DisplayManagement/A.html#b3c9da341a8e410c" class="i method">CreateContentShapeAsync</a>(<span class="r42 r">actualShapeType</span>);
+            <span class="r43 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentItem&quot;</span>] = <span class="r35 r">contentItem</span>;
+            <span class="r43 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;Stereotype&quot;</span>] = <span class="r41 r">stereotype</span>;
+ 
+            <span class="c">// adding an alternate for [Stereotype]_Edit__[ContentType] e.g. Content-Menu.Edit</span>
+            <span class="r43 r">itemShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="r42 r">actualShapeType</span> + <span class="s">&quot;__&quot;</span> + <span class="r35 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#688c28d1f0b44917" class="k">var</a> <span id="r44 rd" class="r44 r">context</span> = <b>new</b> <span class="t">UpdateEditorContext</span>(
+                <span class="r43 r">itemShape</span>,
+                <span class="r38 r">groupId</span>,
+                <span class="r37 r">isNew</span>,
+                <span class="r39 r">htmlFieldPrefix</span>,
+                <a href="#e2669bbe05cc29a2" class="i field">_shapeFactory</a>,
+                <b>await</b> <a href="#2928d7accb89202d" class="i field">_layoutAccessor</a>.<a href="/OrchardCore.DisplayManagement/A.html#eda786ce061efb69" class="i method">GetLayoutAsync</a>(),
+                <b>new</b> <span class="t">ModelStateWrapperUpdater</span>(<span class="r36 r">updater</span>)
+            );
+ 
+            <b>await</b> <a href="/OrchardCore.DisplayManagement/A.html#a70557e5b92a645a" class="i method">BindPlacementAsync</a>(<span class="r44 r">context</span>);
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#17034b8a83935eae" class="k">var</a> <span id="r45 rd" class="r45 r">updateContentContext</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#b63b50988bd3e2c1" class="t constructor">UpdateContentContext</a>(<span class="r35 r">contentItem</span>);
+ 
+            <b>await</b> <a href="#87f6ac51c6ae71b3" class="i field">_contentHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r46 rd" class="r46 r">handler</span>, <span id="r47 rd" class="r47 r">updateContentContext</span>) =&gt; <span class="r46 r">handler</span>.<span class="i">UpdatingAsync</span>(<span class="r47 r">updateContentContext</span>), <span class="r45 r">updateContentContext</span>, <a href="#751e0f3d47753d96" class="i field">_logger</a>);
+            <b>await</b> <a href="#75887a78c4462a46" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r48 rd" class="r48 r">handler</span>, <span id="r49 rd" class="r49 r">contentItem</span>, <span id="r50 rd" class="r50 r">context</span>) =&gt; <span class="r48 r">handler</span>.<span class="i">UpdateEditorAsync</span>(<span class="r49 r">contentItem</span>, <span class="r50 r">context</span>), <span class="r35 r">contentItem</span>, <span class="r44 r">context</span>, <a href="#751e0f3d47753d96" class="i field">_logger</a>);
+            <b>await</b> <a href="#87f6ac51c6ae71b3" class="i field">_contentHandlers</a>.<span class="i method">Reverse</span>().<span class="i">InvokeAsync</span>((<span id="r51 rd" class="r51 r">handler</span>, <span id="r52 rd" class="r52 r">updateContentContext</span>) =&gt; <span class="r51 r">handler</span>.<span class="i">UpdatedAsync</span>(<span class="r52 r">updateContentContext</span>), <span class="r45 r">updateContentContext</span>, <a href="#751e0f3d47753d96" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r44 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e8980395d144a462" class="i property">Shape</a>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

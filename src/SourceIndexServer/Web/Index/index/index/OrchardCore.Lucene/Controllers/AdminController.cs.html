@@ -1,0 +1,509 @@
+﻿<!DOCTYPE html>
+<html><head><title>AdminController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(500);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Controllers/AdminController.cs" target="_top">Controllers\AdminController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Model</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="305c02622d8b3200" href="../R/305c02622d8b3200.html" target="n" data-glyph="0,0" class="t t">AdminController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">ISession</span> <a id="511fe3d9b3924759" href="../R/511fe3d9b3924759.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <a href="../Services/LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <a id="23f0c6355caaf9df" href="../R/23f0c6355caaf9df.html" target="n" data-glyph="46,1" class="i field">_luceneIndexManager</a>;
+        <b>private readonly</b> <a href="../Services/LuceneIndexingService.cs.html#e2827df3cdff875a" class="t t">LuceneIndexingService</a> <a id="3c5c862270c03bbf" href="../R/3c5c862270c03bbf.html" target="n" data-glyph="46,1" class="i field">_luceneIndexingService</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="054a5a1473b18498" href="../R/054a5a1473b18498.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="1b9c7fee3c1bdbc2" href="../R/1b9c7fee3c1bdbc2.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <a href="../Services/LuceneAnalyzerManager.cs.html#c9d43f02df73f256" class="t t">LuceneAnalyzerManager</a> <a id="223756c638520f65" href="../R/223756c638520f65.html" target="n" data-glyph="46,1" class="i field">_luceneAnalyzerManager</a>;
+        <b>private readonly</b> <a href="../Services/LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <a id="dff497ae770e79ad" href="../R/dff497ae770e79ad.html" target="n" data-glyph="46,1" class="i field">_luceneIndexSettingsService</a>;
+        <b>private readonly</b> <span class="i">ILuceneQueryService</span> <a id="99599c73ee24ed22" href="../R/99599c73ee24ed22.html" target="n" data-glyph="46,1" class="i field">_queryService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <a id="50f4d0ce4f1438b4" href="../R/50f4d0ce4f1438b4.html" target="n" data-glyph="46,1" class="i field">_liquidTemplateManager</a>;
+        <b>private readonly</b> <span class="i">IContentDefinitionManager</span> <a id="3511668867d7c33c" href="../R/3511668867d7c33c.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="e900ae833213da71" href="../R/e900ae833213da71.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly dynamic</b> <a id="3682ed7937a13d21" href="../R/3682ed7937a13d21.html" target="n" data-glyph="46,1" class="i field">New</a>;
+        <b>private readonly</b> <span class="t t">JavaScriptEncoder</span> <a id="bb7d7fe08dabf5ae" href="../R/bb7d7fe08dabf5ae.html" target="n" data-glyph="46,1" class="i field">_javaScriptEncoder</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="48a5b39ed6098fa9" href="../R/48a5b39ed6098fa9.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="81224844a12378c1" href="../R/81224844a12378c1.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="e6589a96d928de9a" href="../R/e6589a96d928de9a.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IOptions</span>&lt;<span class="i">TemplateOptions</span>&gt; <a id="8d0fe846821915df" href="../R/8d0fe846821915df.html" target="n" data-glyph="46,1" class="i field">_templateOptions</a>;
+ 
+        <b>public</b> <a id="2dfae656aa438a23" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AdminController</a>(
+            <span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>,
+            <span class="i">IContentDefinitionManager</span> <span id="r1 rd" class="r1 r">contentDefinitionManager</span>,
+            <a href="../Services/LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <span id="r2 rd" class="r2 r">luceneIndexManager</span>,
+            <a href="../Services/LuceneIndexingService.cs.html#e2827df3cdff875a" class="t t">LuceneIndexingService</a> <span id="r3 rd" class="r3 r">luceneIndexingService</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r4 rd" class="r4 r">authorizationService</span>,
+            <a href="../Services/LuceneAnalyzerManager.cs.html#c9d43f02df73f256" class="t t">LuceneAnalyzerManager</a> <span id="r5 rd" class="r5 r">luceneAnalyzerManager</span>,
+            <a href="../Services/LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <span id="r6 rd" class="r6 r">luceneIndexSettingsService</span>,
+            <span class="i">ILuceneQueryService</span> <span id="r7 rd" class="r7 r">queryService</span>,
+            <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <span id="r8 rd" class="r8 r">liquidTemplateManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r9 rd" class="r9 r">notifier</span>,
+            <span class="i">ISiteService</span> <span id="r10 rd" class="r10 r">siteService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r11 rd" class="r11 r">shapeFactory</span>,
+            <span class="t t">JavaScriptEncoder</span> <span id="r12 rd" class="r12 r">javaScriptEncoder</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#305c02622d8b3200" class="t t">AdminController</a>&gt; <span id="r13 rd" class="r13 r">stringLocalizer</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#305c02622d8b3200" class="t t">AdminController</a>&gt; <span id="r14 rd" class="r14 r">htmlLocalizer</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#305c02622d8b3200" class="t t">AdminController</a>&gt; <span id="r15 rd" class="r15 r">logger</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">TemplateOptions</span>&gt; <span id="r16 rd" class="r16 r">templateOptions</span>)
+        {
+            <a href="#511fe3d9b3924759" class="i field">_session</a> = <span class="r0 r">session</span>;
+            <a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a> = <span class="r2 r">luceneIndexManager</span>;
+            <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a> = <span class="r3 r">luceneIndexingService</span>;
+            <a href="#054a5a1473b18498" class="i field">_authorizationService</a> = <span class="r4 r">authorizationService</span>;
+            <a href="#223756c638520f65" class="i field">_luceneAnalyzerManager</a> = <span class="r5 r">luceneAnalyzerManager</span>;
+            <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a> = <span class="r6 r">luceneIndexSettingsService</span>;
+            <a href="#99599c73ee24ed22" class="i field">_queryService</a> = <span class="r7 r">queryService</span>;
+            <a href="#50f4d0ce4f1438b4" class="i field">_liquidTemplateManager</a> = <span class="r8 r">liquidTemplateManager</span>;
+            <a href="#3511668867d7c33c" class="i field">_contentDefinitionManager</a> = <span class="r1 r">contentDefinitionManager</span>;
+            <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a> = <span class="r9 r">notifier</span>;
+            <a href="#e900ae833213da71" class="i field">_siteService</a> = <span class="r10 r">siteService</span>;
+ 
+            <a href="#3682ed7937a13d21" class="i field">New</a> = <span class="r11 r">shapeFactory</span>;
+            <a href="#bb7d7fe08dabf5ae" class="i field">_javaScriptEncoder</a> = <span class="r12 r">javaScriptEncoder</span>;
+            <a href="#48a5b39ed6098fa9" class="i field">S</a> = <span class="r13 r">stringLocalizer</span>;
+            <a href="#81224844a12378c1" class="i field">H</a> = <span class="r14 r">htmlLocalizer</span>;
+            <a href="#e6589a96d928de9a" class="i field">_logger</a> = <span class="r15 r">logger</span>;
+            <a href="#8d0fe846821915df" class="i field">_templateOptions</a> = <span class="r16 r">templateOptions</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="b55d048e58535d3f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="../ViewModels/AdminIndexViewModel.cs.html#2c5e226c11af8d2e" class="t t">ContentOptions</a> <span id="r17 rd" class="r17 r">options</span>, <a href="/OrchardCore.Navigation.Core/A.html#51c8763abc99132d" class="t t">PagerParameters</a> <span id="r18 rd" class="r18 r">pagerParameters</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r19 rd" class="r19 r">indexes</span> = (<b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#be2c2197d07ad806" class="i method">GetSettingsAsync</a>()).<span class="i method">Select</span>(<span id="r20 rd" class="r20 r">i</span> =&gt; <b>new</b> <a href="../ViewModels/IndexViewModel.cs.html#326bfbc0e2ef77ff" class="t constructor">IndexViewModel</a> { <a href="../ViewModels/IndexViewModel.cs.html#7f30a1245d0399cd" class="i property">Name</a> = <span class="r20 r">i</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a> });
+ 
+            <b>var</b> <span id="r21 rd" class="r21 r">siteSettings</span> = <b>await</b> <a href="#e900ae833213da71" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+            <a href="/OrchardCore.Navigation.Core/A.html#e6e879b28e4fdee2" class="k">var</a> <span id="r22 rd" class="r22 r">pager</span> = <b>new</b> <span class="t">Pager</span>(<span class="r18 r">pagerParameters</span>, <span class="r21 r">siteSettings</span>.<span class="i">PageSize</span>);
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r23 rd" class="r23 r">count</span> = <span class="r19 r">indexes</span>.<span class="i method">Count</span>();
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r24 rd" class="r24 r">results</span> = <span class="r19 r">indexes</span>;
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r17 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#f6151f8e7db54ea3" class="i property">Search</a>))
+            {
+                <span class="r24 r">results</span> = <span class="r24 r">results</span>.<span class="i method">Where</span>(<span id="r25 rd" class="r25 r">q</span> =&gt; <span class="r25 r">q</span>.<a href="../ViewModels/IndexViewModel.cs.html#7f30a1245d0399cd" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#7d6aed52d875ec59" class="i method">IndexOf</a>(<span class="r17 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#f6151f8e7db54ea3" class="i property">Search</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>) &gt;= 0);
+            }
+ 
+            <span class="r24 r">results</span> = <span class="r24 r">results</span>
+                .<span class="i method">Skip</span>(<span class="r22 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#985e078e8039ce3c" class="i method">GetStartIndex</a>())
+                .<span class="i method">Take</span>(<span class="r22 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2ca905c9c05191b1" class="i property">PageSize</a>).<span class="i method">ToList</span>();
+ 
+            <span class="c">// Maintain previous route data when generating page links</span>
+            <b>var</b> <span id="r26 rd" class="r26 r">routeData</span> = <b>new</b> <span class="t constructor">RouteData</span>();
+            <b>var</b> <span id="r27 rd" class="r27 r">pagerShape</span> = (<b>await</b> <a href="#3682ed7937a13d21" class="i field">New</a>.<span class="i">Pager</span>(<span class="r22 r">pager</span>)).<span class="i">TotalItemCount</span>(<span class="r23 r">count</span>).<span class="i">RouteData</span>(<span class="r26 r">routeData</span>);
+ 
+            <a href="../ViewModels/AdminIndexViewModel.cs.html#e6e02fc7dccd591b" class="k">var</a> <span id="r28 rd" class="r28 r">model</span> = <b>new</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#e6e02fc7dccd591b" class="t constructor">AdminIndexViewModel</a>
+            {
+                <a href="../ViewModels/AdminIndexViewModel.cs.html#63267aac29395fda" class="i property">Indexes</a> = <span class="r24 r">results</span>,
+                <a href="../ViewModels/AdminIndexViewModel.cs.html#99363903741eeebc" class="i property">Options</a> = <span class="r17 r">options</span>,
+                <a href="../ViewModels/AdminIndexViewModel.cs.html#4e2a5587f843dbd7" class="i property">Pager</a> = <span class="r27 r">pagerShape</span>
+            };
+ 
+            <span class="r28 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#99363903741eeebc" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#49b57a4f51a83061" class="i property">ContentsBulkAction</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;() {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;Reset&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#f80f6e5a053e517b" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#ef3ea7bd2f8a37d7" class="i field">Reset</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;Rebuild&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#f80f6e5a053e517b" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#4f2ce567960b92d2" class="i field">Rebuild</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;Delete&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#f80f6e5a053e517b" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#cc1ad84f2536fa77" class="i field">Remove</a>) }
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r28 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Filter&quot;</span>)]
+        <b>public</b> <span class="t t">ActionResult</span> <a id="6a76f78591a8897c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexFilterPOST</a>(<a href="../ViewModels/AdminIndexViewModel.cs.html#e6e02fc7dccd591b" class="t t">AdminIndexViewModel</a> <span id="r29 rd" class="r29 r">model</span>)
+        {
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>), <b>new</b> <span class="t constructor">RouteValueDictionary</span> {
+                { <span class="s">&quot;Options.Search&quot;</span>, <span class="r29 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#99363903741eeebc" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#f6151f8e7db54ea3" class="i property">Search</a> }
+            });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="d740b203b26a149b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r30 rd" class="r30 r">indexName</span> = <b>null</b>)
+        {
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r31 rd" class="r31 r">IsCreate</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r30 r">indexName</span>);
+            <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r32 rd" class="r32 r">settings</span> = <b>new</b> <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="t constructor">LuceneIndexSettings</a>();
+ 
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<span class="r31 r">IsCreate</span>)
+            {
+                <span class="r32 r">settings</span> = <b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#d458f0ed69accb9f" class="i method">GetSettingsAsync</a>(<span class="r30 r">indexName</span>);
+ 
+                <b>if</b> (<span class="r32 r">settings</span> == <b>null</b>)
+                {
+                    <b>return</b> <span class="i method">NotFound</span>();
+                }
+            }
+ 
+            <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="k">var</a> <span id="r33 rd" class="r33 r">model</span> = <b>new</b> <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t constructor">LuceneIndexSettingsViewModel</a>
+            {
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#cdd48224b87ab923" class="i property">IsCreate</a> = <span class="r31 r">IsCreate</span>,
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a> = <span class="r31 r">IsCreate</span> ? <span class="s">&quot;&quot;</span> : <span class="r32 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>,
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#6ee8495bf61faaf2" class="i property">AnalyzerName</a> = <span class="r31 r">IsCreate</span> ? <span class="s">&quot;standardanalyzer&quot;</span> : <span class="r32 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#1baa87c4c14424fc" class="i property">AnalyzerName</a>,
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#bdba375a030d238d" class="i property">IndexLatest</a> = <span class="r32 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a>,
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#02830f928ae8aaa5" class="i property">Culture</a> = <span class="r32 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#5615f7c342b37b3c" class="i property">Culture</a>,
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#f8305578132caba2" class="i property">Cultures</a> = <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#1859a6b2d0a379f1" class="i method">GetCultures</a>(<a href="@1@System.Runtime/A.html#3185520d461b420f" class="t t">CultureTypes</a>.<a href="@1@System.Runtime/A.html#d9596b2e46386a0e" class="i field">AllCultures</a>)
+                    .<span class="i method">Select</span>(<span id="r34 rd" class="r34 r">x</span> =&gt; <b>new</b> <span class="t constructor">SelectListItem</span> { <span class="i property">Text</span> = <span class="r34 r">x</span>.<a href="@1@System.Runtime/A.html#a99dfd86b8014a4a" class="i property">Name</a> + <span class="s">&quot; (&quot;</span> + <span class="r34 r">x</span>.<a href="@1@System.Runtime/A.html#5c991b528f01e8d0" class="i property">DisplayName</a> + <span class="s">&quot;)&quot;</span>, <span class="i property">Value</span> = <span class="r34 r">x</span>.<a href="@1@System.Runtime/A.html#a99dfd86b8014a4a" class="i property">Name</a> }).<span class="i method">Prepend</span>(<b>new</b> <span class="t constructor">SelectListItem</span> { <span class="i property">Text</span> = <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;Any culture&quot;</span>], <span class="i property">Value</span> = <span class="s">&quot;any&quot;</span> }),
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#f862c00fb42b74ce" class="i property">Analyzers</a> = <a href="#223756c638520f65" class="i field">_luceneAnalyzerManager</a>.<a href="../Services/LuceneAnalyzerManager.cs.html#d6d3b7196a6e1481" class="i method">GetAnalyzers</a>()
+                    .<span class="i method">Select</span>(<span id="r35 rd" class="r35 r">x</span> =&gt; <b>new</b> <span class="t constructor">SelectListItem</span> { <span class="i property">Text</span> = <span class="r35 r">x</span>.<span class="i">Name</span>, <span class="i property">Value</span> = <span class="r35 r">x</span>.<span class="i">Name</span> }),
+                <a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#9cb8c69001f423ab" class="i property">IndexedContentTypes</a> = <span class="r31 r">IsCreate</span> ? <a href="#3511668867d7c33c" class="i field">_contentDefinitionManager</a>.<span class="i">ListTypeDefinitions</span>()
+                    .<span class="i">Select</span>(<span id="r36 rd" class="r36 r">x</span> =&gt; <span class="r36 r">x</span>.<span class="i">Name</span>).<span class="i">ToArray</span>() : <span class="r32 r">settings</span>.<a href="../Model/LuceneIndexSettings.cs.html#0f0aec348c89fa26" class="i property">IndexedContentTypes</a>
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r33 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Edit&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="f5d572e8b0ec9d32" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPost</a>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a> <span id="r37 rd" class="r37 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r38 rd" class="r38 r">indexedContentTypes</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="#30aced7c85319bbc" class="i method">ValidateModel</a>(<span class="r37 r">model</span>);
+ 
+            <b>if</b> (<span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#cdd48224b87ab923" class="i property">IsCreate</a>)
+            {
+                <b>if</b> (<a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a>.<a href="../Services/LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>), <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;An index named {0} already exists.&quot;</span>, <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>]);
+                }
+            }
+            <b>else</b>
+            {
+                <b>if</b> (!<a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a>.<a href="../Services/LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>), <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;An index named {0} doesn&#39;t exist.&quot;</span>, <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>]);
+                }
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#f8305578132caba2" class="i property">Cultures</a> = <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#1859a6b2d0a379f1" class="i method">GetCultures</a>(<a href="@1@System.Runtime/A.html#3185520d461b420f" class="t t">CultureTypes</a>.<a href="@1@System.Runtime/A.html#d9596b2e46386a0e" class="i field">AllCultures</a>)
+                    .<span class="i method">Select</span>(<span id="r39 rd" class="r39 r">x</span> =&gt; <b>new</b> <span class="t constructor">SelectListItem</span> { <span class="i property">Text</span> = <span class="r39 r">x</span>.<a href="@1@System.Runtime/A.html#a99dfd86b8014a4a" class="i property">Name</a> + <span class="s">&quot; (&quot;</span> + <span class="r39 r">x</span>.<a href="@1@System.Runtime/A.html#5c991b528f01e8d0" class="i property">DisplayName</a> + <span class="s">&quot;)&quot;</span>, <span class="i property">Value</span> = <span class="r39 r">x</span>.<a href="@1@System.Runtime/A.html#a99dfd86b8014a4a" class="i property">Name</a> }).<span class="i method">Prepend</span>(<b>new</b> <span class="t constructor">SelectListItem</span> { <span class="i property">Text</span> = <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;Any culture&quot;</span>], <span class="i property">Value</span> = <span class="s">&quot;any&quot;</span> });
+                <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#f862c00fb42b74ce" class="i property">Analyzers</a> = <a href="#223756c638520f65" class="i field">_luceneAnalyzerManager</a>.<a href="../Services/LuceneAnalyzerManager.cs.html#d6d3b7196a6e1481" class="i method">GetAnalyzers</a>()
+                    .<span class="i method">Select</span>(<span id="r40 rd" class="r40 r">x</span> =&gt; <b>new</b> <span class="t constructor">SelectListItem</span> { <span class="i property">Text</span> = <span class="r40 r">x</span>.<span class="i">Name</span>, <span class="i property">Value</span> = <span class="r40 r">x</span>.<span class="i">Name</span> });
+                <b>return</b> <span class="i method">View</span>(<span class="r37 r">model</span>);
+            }
+ 
+            <b>if</b> (<span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#cdd48224b87ab923" class="i property">IsCreate</a>)
+            {
+                <b>try</b>
+                {
+                    <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r41 rd" class="r41 r">settings</span> = <b>new</b> <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="t constructor">LuceneIndexSettings</a> { <a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>, <a href="../Model/LuceneIndexSettings.cs.html#1baa87c4c14424fc" class="i property">AnalyzerName</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#6ee8495bf61faaf2" class="i property">AnalyzerName</a>, <a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#bdba375a030d238d" class="i property">IndexLatest</a>, <a href="../Model/LuceneIndexSettings.cs.html#0f0aec348c89fa26" class="i property">IndexedContentTypes</a> = <span class="r38 r">indexedContentTypes</span>, <a href="../Model/LuceneIndexSettings.cs.html#5615f7c342b37b3c" class="i property">Culture</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#02830f928ae8aaa5" class="i property">Culture</a> ?? <span class="s">&quot;&quot;</span> };
+ 
+                    <span class="c">// We call Rebuild in order to reset the index state cursor too in case the same index</span>
+                    <span class="c">// name was also used previously.</span>
+                    <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#3fc6c0addc11c059" class="i method">CreateIndexAsync</a>(<span class="r41 r">settings</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r42 rd" class="r42 r">e</span>)
+                {
+                    <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;An error occurred while creating the index.&quot;</span>]);
+                    <a href="#e6589a96d928de9a" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r42 r">e</span>, <span class="s">&quot;An error occurred while creating an index.&quot;</span>);
+                    <b>return</b> <span class="i method">View</span>(<span class="r37 r">model</span>);
+                }
+ 
+                <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Index &lt;em&gt;{0}&lt;/em&gt; created successfully.&quot;</span>, <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>]);
+            }
+            <b>else</b>
+            {
+                <b>try</b>
+                {
+                    <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r43 rd" class="r43 r">settings</span> = <b>new</b> <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="t constructor">LuceneIndexSettings</a> { <a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>, <a href="../Model/LuceneIndexSettings.cs.html#1baa87c4c14424fc" class="i property">AnalyzerName</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#6ee8495bf61faaf2" class="i property">AnalyzerName</a>, <a href="../Model/LuceneIndexSettings.cs.html#03c909067c88c93a" class="i property">IndexLatest</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#bdba375a030d238d" class="i property">IndexLatest</a>, <a href="../Model/LuceneIndexSettings.cs.html#0f0aec348c89fa26" class="i property">IndexedContentTypes</a> = <span class="r38 r">indexedContentTypes</span>, <a href="../Model/LuceneIndexSettings.cs.html#5615f7c342b37b3c" class="i property">Culture</a> = <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#02830f928ae8aaa5" class="i property">Culture</a> ?? <span class="s">&quot;&quot;</span> };
+ 
+                    <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#e398102f780fdaaa" class="i method">UpdateIndexAsync</a>(<span class="r43 r">settings</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r44 rd" class="r44 r">e</span>)
+                {
+                    <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;An error occurred while editing the index.&quot;</span>]);
+                    <a href="#e6589a96d928de9a" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r44 r">e</span>, <span class="s">&quot;An error occurred while editing an index.&quot;</span>);
+                    <b>return</b> <span class="i method">View</span>(<span class="r37 r">model</span>);
+                }
+ 
+                <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Index &lt;em&gt;{0}&lt;/em&gt; modified successfully, &lt;strong&gt;please consider doing a rebuild on the index.&lt;/strong&gt;&quot;</span>, <span class="r37 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>]);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="07a4312890682c0c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Reset</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r46 rd" class="r46 r">luceneIndexSettings</span> = <b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#d458f0ed69accb9f" class="i method">GetSettingsAsync</a>(<span class="r45 r">id</span>);
+ 
+            <b>if</b> (<span class="r46 r">luceneIndexSettings</span> != <b>null</b>)
+            {
+                <b>if</b> (!<a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a>.<a href="../Services/LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r45 r">id</span>))
+                {
+                    <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#3fc6c0addc11c059" class="i method">CreateIndexAsync</a>(<span class="r46 r">luceneIndexSettings</span>);
+                    <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#4d6966c1670a9f3f" class="i method">ProcessContentItemsAsync</a>(<span class="r45 r">id</span>);
+                }
+                <b>else</b>
+                {
+                    <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#8c48ef39a1d31599" class="i method">ResetIndex</a>(<span class="r45 r">id</span>);
+                    <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#4d6966c1670a9f3f" class="i method">ProcessContentItemsAsync</a>(<span class="r45 r">id</span>);
+                }
+ 
+                <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Index &lt;em&gt;{0}&lt;/em&gt; reset successfully.&quot;</span>, <span class="r45 r">id</span>]);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="3919fe061b9c09c5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Rebuild</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r47 rd" class="r47 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r48 rd" class="r48 r">luceneIndexSettings</span> = <b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#d458f0ed69accb9f" class="i method">GetSettingsAsync</a>(<span class="r47 r">id</span>);
+ 
+            <b>if</b> (<span class="r48 r">luceneIndexSettings</span> != <b>null</b>)
+            {
+                <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#89fd1c981d82a520" class="i method">RebuildIndexAsync</a>(<span class="r47 r">id</span>);
+                <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#4d6966c1670a9f3f" class="i method">ProcessContentItemsAsync</a>(<span class="r47 r">id</span>);
+ 
+                <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Index &lt;em&gt;{0}&lt;/em&gt; rebuilt successfully.&quot;</span>, <span class="r47 r">id</span>]);
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="788c213043627dec" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Delete</a>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a> <span id="r49 rd" class="r49 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r50 rd" class="r50 r">luceneIndexSettings</span> = <b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#d458f0ed69accb9f" class="i method">GetSettingsAsync</a>(<span class="r49 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>);
+ 
+            <b>if</b> (<span class="r50 r">luceneIndexSettings</span> != <b>null</b>)
+            {
+                <b>try</b>
+                {
+                    <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#318ddada7f294c87" class="i method">DeleteIndexAsync</a>(<span class="r49 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>);
+ 
+                    <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Index &lt;em&gt;{0}&lt;/em&gt; deleted successfully.&quot;</span>, <span class="r49 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>]);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r51 rd" class="r51 r">e</span>)
+                {
+                    <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;An error occurred while deleting the index.&quot;</span>]);
+                    <a href="#e6589a96d928de9a" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;An error occurred while deleting the index &quot;</span> + <span class="r49 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>, <span class="r51 r">e</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="3dfa2185fdb392cc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Query</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r52 rd" class="r52 r">indexName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r53 rd" class="r53 r">query</span>)
+        {
+            <span class="r53 r">query</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r53 r">query</span>) ? <span class="s">&quot;&quot;</span> : <span class="i n">System</span>.<span class="i n">Text</span>.<a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<a href="@1@System.Runtime/A.html#7310c9cccfaecd17" class="i method">GetString</a>(<a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#08c34f52087ba624" class="i method">FromBase64String</a>(<span class="r53 r">query</span>));
+            <b>return</b> <a href="#beca9a222e2657e4" class="i method">Query</a>(<b>new</b> <a href="../ViewModels/AdminQueryViewModel.cs.html#bb80e855bd22918e" class="t constructor">AdminQueryViewModel</a> { <a href="../ViewModels/AdminQueryViewModel.cs.html#081f48264dd407a0" class="i property">IndexName</a> = <span class="r52 r">indexName</span>, <a href="../ViewModels/AdminQueryViewModel.cs.html#6d56e4ef46609d88" class="i property">DecodedQuery</a> = <span class="r53 r">query</span> });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="beca9a222e2657e4" href="../R/beca9a222e2657e4.html" target="n" data-glyph="72,1" class="i method">Query</a>(<a href="../ViewModels/AdminQueryViewModel.cs.html#bb80e855bd22918e" class="t t">AdminQueryViewModel</a> <span id="r54 rd" class="r54 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#0766c4c8205e9925" class="i property">Indices</a> = (<b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#be2c2197d07ad806" class="i method">GetSettingsAsync</a>()).<span class="i method">Select</span>(<span id="r55 rd" class="r55 r">x</span> =&gt; <span class="r55 r">x</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>).<span class="i method">ToArray</span>();
+ 
+            <span class="c">// Can&#39;t query if there are no indices</span>
+            <b>if</b> (<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#0766c4c8205e9925" class="i property">Indices</a>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 0)
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#081f48264dd407a0" class="i property">IndexName</a>))
+            {
+                <span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#081f48264dd407a0" class="i property">IndexName</a> = <span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#0766c4c8205e9925" class="i property">Indices</a>[0];
+            }
+ 
+            <b>if</b> (!<a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a>.<a href="../Services/LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#081f48264dd407a0" class="i property">IndexName</a>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#6d56e4ef46609d88" class="i property">DecodedQuery</a>))
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="r54 r">model</span>);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#79685a692703e9a4" class="i property">Parameters</a>))
+            {
+                <span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#79685a692703e9a4" class="i property">Parameters</a> = <span class="s">&quot;{ }&quot;</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#ceb0ba9cc88de82e" class="k">var</a> <span id="r56 rd" class="r56 r">stopwatch</span> = <b>new</b> <a href="@1@System.Runtime/A.html#e0a8bcc83e66a717" class="t constructor">Stopwatch</a>();
+            <span class="r56 r">stopwatch</span>.<a href="@1@System.Runtime/A.html#f56fda03f3c59486" class="i method">Start</a>();
+ 
+            <b>await</b> <a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a>.<span class="i">SearchAsync</span>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#081f48264dd407a0" class="i property">IndexName</a>, <b>async</b> <span id="r57 rd" class="r57 r">searcher</span> =&gt;
+            {
+                <b>var</b> <span id="r58 rd" class="r58 r">analyzer</span> = <a href="#223756c638520f65" class="i field">_luceneAnalyzerManager</a>.<a href="../Services/LuceneAnalyzerManager.cs.html#8cf6eba5f6c703ca" class="i method">CreateAnalyzer</a>(<b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#ff68306a37fbb923" class="i method">GetIndexAnalyzerAsync</a>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#081f48264dd407a0" class="i property">IndexName</a>));
+                <b>var</b> <span id="r59 rd" class="r59 r">context</span> = <b>new</b> <span class="i">LuceneQueryContext</span>(<span class="r57 r">searcher</span>, <a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t t">LuceneSettings</a>.<a href="../Model/LuceneSettings.cs.html#c9b5330dfed002de" class="i field">DefaultVersion</a>, <span class="r58 r">analyzer</span>);
+ 
+                <b>var</b> <span id="r60 rd" class="r60 r">parameters</span> = <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;&gt;(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#79685a692703e9a4" class="i property">Parameters</a>);
+ 
+                <b>var</b> <span id="r61 rd" class="r61 r">tokenizedContent</span> = <b>await</b> <a href="#50f4d0ce4f1438b4" class="i field">_liquidTemplateManager</a>.<span class="i">RenderStringAsync</span>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#6d56e4ef46609d88" class="i property">DecodedQuery</a>, <a href="#bb7d7fe08dabf5ae" class="i field">_javaScriptEncoder</a>, <span class="r60 r">parameters</span>.<span class="i">Select</span>(<span id="r62 rd" class="r62 r">x</span> =&gt; <b>new</b> <span class="t">KeyValuePair</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;(<span class="r62 r">x</span>.<span class="i">Key</span>, <span class="i">FluidValue</span>.<span class="i">Create</span>(<span class="r62 r">x</span>.<span class="i">Value</span>, <a href="#8d0fe846821915df" class="i field">_templateOptions</a>.<span class="i property">Value</span>))));
+ 
+                <b>try</b>
+                {
+                    <b>var</b> <span id="r63 rd" class="r63 r">parameterizedQuery</span> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r61 r">tokenizedContent</span>);
+                    <b>var</b> <span id="r64 rd" class="r64 r">luceneTopDocs</span> = <b>await</b> <a href="#99599c73ee24ed22" class="i field">_queryService</a>.<span class="i">SearchAsync</span>(<span class="r59 r">context</span>, <span class="r63 r">parameterizedQuery</span>);
+ 
+                    <b>if</b> (<span class="r64 r">luceneTopDocs</span> != <b>null</b>)
+                    {
+                        <span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#384d388db7ac7708" class="i property">Documents</a> = <span class="r64 r">luceneTopDocs</span>.<span class="i">TopDocs</span>.<span class="i">ScoreDocs</span>.<span class="i">Select</span>(<span id="r65 rd" class="r65 r">hit</span> =&gt; <span class="r57 r">searcher</span>.<span class="i">Doc</span>(<span class="r65 r">hit</span>.<span class="i">Doc</span>)).<span class="i">ToList</span>();
+                        <span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#2b51081d9dc28011" class="i property">Count</a> = <span class="r64 r">luceneTopDocs</span>.<span class="i">Count</span>;
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r66 rd" class="r66 r">e</span>)
+                {
+                    <a href="#e6589a96d928de9a" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r66 r">e</span>, <span class="s">&quot;Error while executing query&quot;</span>);
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#6d56e4ef46609d88" class="i property">DecodedQuery</a>), <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;Invalid query : {0}&quot;</span>, <span class="r66 r">e</span>.<a href="@1@System.Runtime/A.html#5fba0e16215b42a3" class="i property">Message</a>]);
+                }
+ 
+                <span class="r56 r">stopwatch</span>.<a href="@1@System.Runtime/A.html#9dd6cac7fc1e2117" class="i method">Stop</a>();
+                <span class="r54 r">model</span>.<a href="../ViewModels/AdminQueryViewModel.cs.html#286e1496df4a9bfa" class="i property">Elapsed</a> = <span class="r56 r">stopwatch</span>.<a href="@1@System.Runtime/A.html#60e03fb80c10ec79" class="i property">Elapsed</a>;
+            });
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r54 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.BulkAction&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="f182f2badd75b8f0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexPost</a>(<span class="i n">ViewModels</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#2c5e226c11af8d2e" class="t t">ContentOptions</a> <span id="r67 rd" class="r67 r">options</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r68 rd" class="r68 r">itemIds</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#054a5a1473b18498" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70f93203a6fb3d05" class="i field">ManageIndexes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="r68 r">itemIds</span>?.<span class="i method">Count</span>() &gt; 0)
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r69 rd" class="r69 r">luceneIndexSettings</span> = <b>await</b> <a href="#dff497ae770e79ad" class="i field">_luceneIndexSettingsService</a>.<a href="../Services/LuceneIndexSettingsService.cs.html#be2c2197d07ad806" class="i method">GetSettingsAsync</a>();
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r70 rd" class="r70 r">checkedContentItems</span> = <span class="r69 r">luceneIndexSettings</span>.<span class="i method">Where</span>(<span id="r71 rd" class="r71 r">x</span> =&gt; <span class="r68 r">itemIds</span>.<span class="i method">Contains</span>(<span class="r71 r">x</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>));
+                <b>switch</b> (<span class="r67 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#38bca95c27d66548" class="i property">BulkAction</a>)
+                {
+                    <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#f80f6e5a053e517b" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#24d54b33ee49d36f" class="i field">None</a>:
+                        <b>break</b>;
+                    <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#f80f6e5a053e517b" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#cc1ad84f2536fa77" class="i field">Remove</a>:
+                        <b>foreach</b> (<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r72 rd" class="r72 r">item</span> <b>in</b> <span class="r70 r">checkedContentItems</span>)
+                        {
+                            <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#318ddada7f294c87" class="i method">DeleteIndexAsync</a>(<span class="r72 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>);
+                        }
+                        <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Indices successfully removed.&quot;</span>]);
+                        <b>break</b>;
+                    <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#f80f6e5a053e517b" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#ef3ea7bd2f8a37d7" class="i field">Reset</a>:
+                        <b>foreach</b> (<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r73 rd" class="r73 r">item</span> <b>in</b> <span class="r70 r">checkedContentItems</span>)
+                        {
+                            <b>if</b> (!<a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a>.<a href="../Services/LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r73 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>))
+                            {
+                                <b>return</b> <span class="i method">NotFound</span>();
+                            }
+ 
+                            <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#8c48ef39a1d31599" class="i method">ResetIndex</a>(<span class="r73 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>);
+                            <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#4d6966c1670a9f3f" class="i method">ProcessContentItemsAsync</a>(<span class="r73 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>);
+ 
+                            <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Index &lt;em&gt;{0}&lt;/em&gt; reset successfully.&quot;</span>, <span class="r73 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>]);
+                        }
+                        <b>break</b>;
+                    <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#f80f6e5a053e517b" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#4f2ce567960b92d2" class="i field">Rebuild</a>:
+                        <b>foreach</b> (<a href="../Model/LuceneIndexSettings.cs.html#220ec8a7fdc8ffe9" class="k">var</a> <span id="r74 rd" class="r74 r">item</span> <b>in</b> <span class="r70 r">checkedContentItems</span>)
+                        {
+                            <b>if</b> (!<a href="#23f0c6355caaf9df" class="i field">_luceneIndexManager</a>.<a href="../Services/LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r74 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>))
+                            {
+                                <b>return</b> <span class="i method">NotFound</span>();
+                            }
+ 
+                            <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#89fd1c981d82a520" class="i method">RebuildIndexAsync</a>(<span class="r74 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>);
+                            <b>await</b> <a href="#3c5c862270c03bbf" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#4d6966c1670a9f3f" class="i method">ProcessContentItemsAsync</a>(<span class="r74 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>);
+ 
+                            <a href="#1b9c7fee3c1bdbc2" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#81224844a12378c1" class="i field">H</a>[<span class="s">&quot;Index &lt;em&gt;{0}&lt;/em&gt; rebuilt successfully.&quot;</span>, <span class="r74 r">item</span>.<a href="../Model/LuceneIndexSettings.cs.html#3efa6af2f8230a6b" class="i property">IndexName</a>]);
+                        }
+                        <b>break</b>;
+                    <b>default</b>:
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#337b690f0704f510" class="t constructor">ArgumentOutOfRangeException</a>();
+                }
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>private void</b> <a id="30aced7c85319bbc" href="../R/30aced7c85319bbc.html" target="n" data-glyph="76,1" class="i method">ValidateModel</a>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a> <span id="r75 rd" class="r75 r">model</span>)
+        {
+            <b>if</b> (<span class="r75 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#9cb8c69001f423ab" class="i property">IndexedContentTypes</a> == <b>null</b> || <span class="r75 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#9cb8c69001f423ab" class="i property">IndexedContentTypes</a>.<span class="i method">Count</span>() &lt; 1)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#9cb8c69001f423ab" class="i property">IndexedContentTypes</a>), <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;At least one content type selection is required.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r75 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>), <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;The index name is required.&quot;</span>]);
+            }
+            <b>else</b> <b>if</b> (<span class="r75 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>.<span class="i">ToSafeName</span>() != <span class="r75 r">model</span>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#160e08988b31a3ca" class="t t">LuceneIndexSettingsViewModel</a>.<a href="../ViewModels/LuceneIndexSettingsViewModel.cs.html#7c86b495935cb6a6" class="i property">IndexName</a>), <a href="#48a5b39ed6098fa9" class="i field">S</a>[<span class="s">&quot;The index name contains unallowed chars.&quot;</span>]);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html><head><title>LuceneIndexingState.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(73);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Services/LuceneIndexingState.cs" target="_top">Services\LuceneIndexingState.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This class persists the indexing state, a cursor, on the filesystem alongside the index itself.</span>
+    <span class="c">///</span><span class="c"> This state has to be on the filesystem as each node has its own local storage for the index.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="7b1e252a4aa9b81d" href="../R/7b1e252a4aa9b81d.html" target="n" data-glyph="0,0" class="t t">LuceneIndexingState</a>
+    {
+        <b>private readonly string</b> <a id="cef35d6d65185448" href="../R/cef35d6d65185448.html" target="n" data-glyph="46,1" class="i field">_indexSettingsFilename</a>;
+        <b>private readonly</b> <span class="i">JObject</span> <a id="e9cbafa6e80a0661" href="../R/e9cbafa6e80a0661.html" target="n" data-glyph="46,1" class="i field">_content</a>;
+ 
+        <b>public</b> <a id="1641eeaf6ea80fcf" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LuceneIndexingState</a>(
+            <span class="t t">IOptions</span>&lt;<span class="i">ShellOptions</span>&gt; <span id="r0 rd" class="r0 r">shellOptions</span>,
+            <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>
+            )
+        {
+            <a href="#cef35d6d65185448" class="i field">_indexSettingsFilename</a> = <span class="i">PathExtensions</span>.<span class="i">Combine</span>(
+                <span class="r0 r">shellOptions</span>.<span class="i property">Value</span>.<span class="i">ShellsApplicationDataPath</span>,
+                <span class="r0 r">shellOptions</span>.<span class="i property">Value</span>.<span class="i">ShellsContainerName</span>,
+                <span class="r1 r">shellSettings</span>.<span class="i">Name</span>,
+                <span class="s">&quot;lucene.status.json&quot;</span>);
+ 
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<a href="#cef35d6d65185448" class="i field">_indexSettingsFilename</a>))
+            {
+                <span class="t t">Directory</span>.<span class="i method">CreateDirectory</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<a href="#cef35d6d65185448" class="i field">_indexSettingsFilename</a>));
+ 
+                <span class="t t">File</span>.<span class="i">WriteAllText</span>(<a href="#cef35d6d65185448" class="i field">_indexSettingsFilename</a>, <b>new</b> <span class="i">JObject</span>().<span class="i">ToString</span>(<span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Formatting</span>.<span class="i">Indented</span>));
+            }
+ 
+            <a href="#e9cbafa6e80a0661" class="i field">_content</a> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="t t">File</span>.<span class="i method">ReadAllText</span>(<a href="#cef35d6d65185448" class="i field">_indexSettingsFilename</a>));
+        }
+ 
+        <b>public int</b> <a id="8ce2ab47761c8017" href="../R/8ce2ab47761c8017.html" target="n" data-glyph="72,1" class="i method">GetLastTaskId</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">indexName</span>)
+        {
+            <span class="i">JToken</span> <span id="r3 rd" class="r3 r">value</span>;
+            <b>if</b> (<a href="#e9cbafa6e80a0661" class="i field">_content</a>.<span class="i">TryGetValue</span>(<span class="r2 r">indexName</span>, <b>out</b> <span class="r3 r">value</span>))
+            {
+                <b>return</b> <span class="r3 r">value</span>.<span class="i">Value</span>&lt;<b>int</b>&gt;();
+            }
+            <b>else</b>
+            {
+                <b>lock</b> (<a href="#7b1e252a4aa9b81d" class="k">this</a>)
+                {
+                    <a href="#e9cbafa6e80a0661" class="i field">_content</a>.<span class="i">Add</span>(<b>new</b> <span class="i">JProperty</span>(<span class="r2 r">indexName</span>, 0));
+                }
+ 
+                <b>return</b> 0;
+            }
+        }
+ 
+        <b>public void</b> <a id="a06f45a410d4545c" href="../R/a06f45a410d4545c.html" target="n" data-glyph="72,1" class="i method">SetLastTaskId</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">indexName</span>, <b>int</b> <span id="r5 rd" class="r5 r">taskId</span>)
+        {
+            <b>lock</b> (<a href="#7b1e252a4aa9b81d" class="k">this</a>)
+            {
+                <a href="#e9cbafa6e80a0661" class="i field">_content</a>[<span class="r4 r">indexName</span>] = <span class="r5 r">taskId</span>;
+            }
+        }
+ 
+        <b>public void</b> <a id="6fd10830c53cf23b" href="../R/6fd10830c53cf23b.html" target="n" data-glyph="72,1" class="i method">Update</a>()
+        {
+            <b>lock</b> (<a href="#7b1e252a4aa9b81d" class="k">this</a>)
+            {
+                <span class="t t">File</span>.<span class="i">WriteAllText</span>(<a href="#cef35d6d65185448" class="i field">_indexSettingsFilename</a>, <a href="#e9cbafa6e80a0661" class="i field">_content</a>.<span class="i">ToString</span>(<span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Formatting</span>.<span class="i">Indented</span>));
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

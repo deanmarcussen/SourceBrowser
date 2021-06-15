@@ -1,0 +1,269 @@
+﻿<!DOCTYPE html>
+<html><head><title>RoleStore.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(260);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Roles/Services/RoleStore.cs" target="_top">Services\RoleStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Roles" target="_top">src\OrchardCore.Modules\OrchardCore.Roles\OrchardCore.Roles.csproj</a> (OrchardCore.Roles)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Roles</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Roles</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="99d27b073883c93d" href="../R/99d27b073883c93d.html" target="n" data-glyph="0,0" class="t t">RoleStore</a> : <span class="t t">IRoleClaimStore</span>&lt;<span class="i">IRole</span>&gt;, <span class="t t">IQueryableRoleStore</span>&lt;<span class="i">IRole</span>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="112cbd4ba42fe6bd" href="../R/112cbd4ba42fe6bd.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <span class="i">IDocumentManager</span>&lt;<a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="t t">RolesDocument</a>&gt; <a id="03d506e4ff3366e4" href="../R/03d506e4ff3366e4.html" target="n" data-glyph="46,1" class="i field">_documentManager</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="a986691aacfac70b" href="../R/a986691aacfac70b.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="cf2de83cb13e1be0" href="../R/cf2de83cb13e1be0.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private bool</b> <a id="0d8f5440b5650fe7" href="../R/0d8f5440b5650fe7.html" target="n" data-glyph="46,1" class="i field">_updating</a>;
+ 
+        <b>public</b> <a id="8ecf401e7ee4e6d9" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RoleStore</a>(
+            <span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">serviceProvider</span>,
+            <span class="i">IDocumentManager</span>&lt;<a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="t t">RolesDocument</a>&gt; <span id="r1 rd" class="r1 r">documentManager</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#99d27b073883c93d" class="t t">RoleStore</a>&gt; <span id="r2 rd" class="r2 r">stringLocalizer</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#99d27b073883c93d" class="t t">RoleStore</a>&gt; <span id="r3 rd" class="r3 r">logger</span>)
+        {
+            <a href="#112cbd4ba42fe6bd" class="i field">_serviceProvider</a> = <span class="r0 r">serviceProvider</span>;
+            <a href="#03d506e4ff3366e4" class="i field">_documentManager</a> = <span class="r1 r">documentManager</span>;
+            <a href="#a986691aacfac70b" class="i field">S</a> = <span class="r2 r">stringLocalizer</span>;
+            <a href="#cf2de83cb13e1be0" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+        }
+ 
+        <b>public</b> <span class="t t">IQueryable</span>&lt;<span class="i">IRole</span>&gt; <a id="56811465c1cf1c78" href="../R/56811465c1cf1c78.html" target="n" data-glyph="102,1" class="i property">Roles</a> =&gt; <a href="#0c36cc856a68b7c2" class="i method">GetRolesAsync</a>().<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>().<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">AsQueryable</span>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Loads the roles document from the store for updating and that should not be cached.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="t t">RolesDocument</a>&gt; <a id="175a1e29ca11fecb" href="../R/175a1e29ca11fecb.html" target="n" data-glyph="76,1" class="i method">LoadRolesAsync</a>() =&gt; <a href="#03d506e4ff3366e4" class="i field">_documentManager</a>.<span class="i">GetOrCreateMutableAsync</span>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets the roles document from the cache for sharing and that should not be updated.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="t t">RolesDocument</a>&gt; <a id="0c36cc856a68b7c2" href="../R/0c36cc856a68b7c2.html" target="n" data-glyph="76,1" class="i method">GetRolesAsync</a>() =&gt; <a href="#03d506e4ff3366e4" class="i field">_documentManager</a>.<span class="i">GetOrCreateImmutableAsync</span>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Updates the store with the provided roles document and then updates the cache.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="da2e857503dd7c5f" href="../R/da2e857503dd7c5f.html" target="n" data-glyph="76,1" class="i method">UpdateRolesAsync</a>(<a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="t t">RolesDocument</a> <span id="r4 rd" class="r4 r">roles</span>)
+        {
+            <a href="#0d8f5440b5650fe7" class="i field">_updating</a> = <b>true</b>;
+ 
+            <b>return</b> <a href="#03d506e4ff3366e4" class="i field">_documentManager</a>.<span class="i">UpdateAsync</span>(<span class="r4 r">roles</span>);
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IRoleStore&lt;IRole&gt;
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IdentityResult</span>&gt; <a id="856ad8c48a845627" href="../R/856ad8c48a845627.html" target="n" data-glyph="72,1" class="i method">CreateAsync</a>(<span class="i">IRole</span> <span id="r5 rd" class="r5 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r6 rd" class="r6 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r5 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r5 r">role</span>));
+            }
+ 
+            <a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="k">var</a> <span id="r7 rd" class="r7 r">roles</span> = <b>await</b> <a href="#175a1e29ca11fecb" class="i method">LoadRolesAsync</a>();
+            <span class="r7 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">Add</span>((<span class="i">Role</span>)<span class="r5 r">role</span>);
+            <b>await</b> <a href="#da2e857503dd7c5f" class="i method">UpdateRolesAsync</a>(<span class="r7 r">roles</span>);
+ 
+            <b>return</b> <span class="t t">IdentityResult</span>.<span class="i property">Success</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IdentityResult</span>&gt; <a id="e780ee29a9570a2a" href="../R/e780ee29a9570a2a.html" target="n" data-glyph="72,1" class="i method">DeleteAsync</a>(<span class="i">IRole</span> <span id="r8 rd" class="r8 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r9 rd" class="r9 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r8 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r8 r">role</span>));
+            }
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">roleToRemove</span> = (<span class="i">Role</span>)<span class="r8 r">role</span>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r10 r">roleToRemove</span>.<span class="i">NormalizedRoleName</span>, <span class="s">&quot;ANONYMOUS&quot;</span>) ||
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r10 r">roleToRemove</span>.<span class="i">NormalizedRoleName</span>, <span class="s">&quot;AUTHENTICATED&quot;</span>))
+            {
+                <b>return</b> <span class="t t">IdentityResult</span>.<span class="i method">Failed</span>(<b>new</b> <span class="t constructor">IdentityError</span> { <span class="i property">Description</span> = <a href="#a986691aacfac70b" class="i field">S</a>[<span class="s">&quot;Can&#39;t delete system roles.&quot;</span>] });
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r11 rd" class="r11 r">roleRemovedEventHandlers</span> = <a href="#112cbd4ba42fe6bd" class="i field">_serviceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IRoleRemovedEventHandler</span>&gt;&gt;();
+            <b>await</b> <span class="r11 r">roleRemovedEventHandlers</span>.<span class="i">InvokeAsync</span>((<span id="r12 rd" class="r12 r">handler</span>, <span id="r13 rd" class="r13 r">roleToRemove</span>) =&gt; <span class="r12 r">handler</span>.<span class="i">RoleRemovedAsync</span>(<span class="r13 r">roleToRemove</span>.<span class="i">RoleName</span>), <span class="r10 r">roleToRemove</span>, <a href="#cf2de83cb13e1be0" class="i field">_logger</a>);
+ 
+            <a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="k">var</a> <span id="r14 rd" class="r14 r">roles</span> = <b>await</b> <a href="#175a1e29ca11fecb" class="i method">LoadRolesAsync</a>();
+            <span class="r10 r">roleToRemove</span> = <span class="r14 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">FirstOrDefault</span>(<span id="r15 rd" class="r15 r">r</span> =&gt; <span class="r15 r">r</span>.<span class="i">RoleName</span> == <span class="r10 r">roleToRemove</span>.<span class="i">RoleName</span>);
+            <span class="r14 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">Remove</span>(<span class="r10 r">roleToRemove</span>);
+ 
+            <b>await</b> <a href="#da2e857503dd7c5f" class="i method">UpdateRolesAsync</a>(<span class="r14 r">roles</span>);
+ 
+            <b>return</b> <span class="t t">IdentityResult</span>.<span class="i property">Success</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">IRole</span>&gt; <a id="fae61c575cb433dc" href="../R/fae61c575cb433dc.html" target="n" data-glyph="72,1" class="i method">FindByIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">roleId</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r17 rd" class="r17 r">cancellationToken</span>)
+        {
+            <span class="c">// While updating find a role from the loaded document being mutated.</span>
+            <a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="k">var</a> <span id="r18 rd" class="r18 r">roles</span> = <a href="#0d8f5440b5650fe7" class="i field">_updating</a> ? <b>await</b> <a href="#175a1e29ca11fecb" class="i method">LoadRolesAsync</a>() : <b>await</b> <a href="#0c36cc856a68b7c2" class="i method">GetRolesAsync</a>();
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">role</span> = <span class="r18 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">FirstOrDefault</span>(<span id="r20 rd" class="r20 r">x</span> =&gt; <span class="r20 r">x</span>.<span class="i">RoleName</span> == <span class="r16 r">roleId</span>);
+ 
+            <b>if</b> (<span class="r19 r">role</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <a href="#0d8f5440b5650fe7" class="i field">_updating</a> ? <span class="r19 r">role</span> : <span class="r19 r">role</span>.<span class="i">Clone</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">IRole</span>&gt; <a id="39b27bfc03756c80" href="../R/39b27bfc03756c80.html" target="n" data-glyph="72,1" class="i method">FindByNameAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">normalizedRoleName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r22 rd" class="r22 r">cancellationToken</span>)
+        {
+            <span class="c">// While updating find a role from the loaded document being mutated.</span>
+            <a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="k">var</a> <span id="r23 rd" class="r23 r">roles</span> = <a href="#0d8f5440b5650fe7" class="i field">_updating</a> ? <b>await</b> <a href="#175a1e29ca11fecb" class="i method">LoadRolesAsync</a>() : <b>await</b> <a href="#0c36cc856a68b7c2" class="i method">GetRolesAsync</a>();
+ 
+            <b>var</b> <span id="r24 rd" class="r24 r">role</span> = <span class="r23 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">FirstOrDefault</span>(<span id="r25 rd" class="r25 r">x</span> =&gt; <span class="r25 r">x</span>.<span class="i">NormalizedRoleName</span> == <span class="r21 r">normalizedRoleName</span>);
+ 
+            <b>if</b> (<span class="r24 r">role</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <a href="#0d8f5440b5650fe7" class="i field">_updating</a> ? <span class="r24 r">role</span> : <span class="r24 r">role</span>.<span class="i">Clone</span>();
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="ad8c6f04bbf45808" href="../R/ad8c6f04bbf45808.html" target="n" data-glyph="72,1" class="i method">GetNormalizedRoleNameAsync</a>(<span class="i">IRole</span> <span id="r26 rd" class="r26 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r27 rd" class="r27 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r26 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r26 r">role</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>(((<span class="i">Role</span>)<span class="r26 r">role</span>).<span class="i">NormalizedRoleName</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="dd05de720d33dc0f" href="../R/dd05de720d33dc0f.html" target="n" data-glyph="72,1" class="i method">GetRoleIdAsync</a>(<span class="i">IRole</span> <span id="r28 rd" class="r28 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r29 rd" class="r29 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r28 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r28 r">role</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r28 r">role</span>.<span class="i">RoleName</span>.<span class="i">ToUpperInvariant</span>());
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="81cdef9ab7765cb9" href="../R/81cdef9ab7765cb9.html" target="n" data-glyph="72,1" class="i method">GetRoleNameAsync</a>(<span class="i">IRole</span> <span id="r30 rd" class="r30 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r31 rd" class="r31 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r30 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r30 r">role</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>(<span class="r30 r">role</span>.<span class="i">RoleName</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a49474f41db3bcc7" href="../R/a49474f41db3bcc7.html" target="n" data-glyph="72,1" class="i method">SetNormalizedRoleNameAsync</a>(<span class="i">IRole</span> <span id="r32 rd" class="r32 r">role</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r33 rd" class="r33 r">normalizedName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r34 rd" class="r34 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r32 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r32 r">role</span>));
+            }
+ 
+            ((<span class="i">Role</span>)<span class="r32 r">role</span>).<span class="i">NormalizedRoleName</span> = <span class="r33 r">normalizedName</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5ae4888ced78c9d0" href="../R/5ae4888ced78c9d0.html" target="n" data-glyph="72,1" class="i method">SetRoleNameAsync</a>(<span class="i">IRole</span> <span id="r35 rd" class="r35 r">role</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r36 rd" class="r36 r">roleName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r37 rd" class="r37 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r35 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r35 r">role</span>));
+            }
+ 
+            ((<span class="i">Role</span>)<span class="r35 r">role</span>).<span class="i">RoleName</span> = <span class="r36 r">roleName</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IdentityResult</span>&gt; <a id="c7cd4807a041a48b" href="../R/c7cd4807a041a48b.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="i">IRole</span> <span id="r38 rd" class="r38 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r39 rd" class="r39 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r38 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r38 r">role</span>));
+            }
+ 
+            <a href="../Models/RolesDocument.cs.html#01607c51d4f93de3" class="k">var</a> <span id="r40 rd" class="r40 r">roles</span> = <b>await</b> <a href="#175a1e29ca11fecb" class="i method">LoadRolesAsync</a>();
+            <b>var</b> <span id="r41 rd" class="r41 r">existingRole</span> = <span class="r40 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">FirstOrDefault</span>(<span id="r42 rd" class="r42 r">x</span> =&gt; <span class="r42 r">x</span>.<span class="i">RoleName</span> == <span class="r38 r">role</span>.<span class="i">RoleName</span>);
+            <span class="r40 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">Remove</span>(<span class="r41 r">existingRole</span>);
+            <span class="r40 r">roles</span>.<a href="../Models/RolesDocument.cs.html#80649d17a0f5f031" class="i property">Roles</a>.<span class="i method">Add</span>((<span class="i">Role</span>)<span class="r38 r">role</span>);
+ 
+            <b>await</b> <a href="#da2e857503dd7c5f" class="i method">UpdateRolesAsync</a>(<span class="r40 r">roles</span>);
+ 
+            <b>return</b> <span class="t t">IdentityResult</span>.<span class="i property">Success</span>;
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IRoleStore&lt;IRole&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IRoleClaimStore&lt;IRole&gt;
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c69da2243a22eb6a" href="../R/c69da2243a22eb6a.html" target="n" data-glyph="72,1" class="i method">AddClaimAsync</a>(<span class="i">IRole</span> <span id="r43 rd" class="r43 r">role</span>, <span class="t t">Claim</span> <span id="r44 rd" class="r44 r">claim</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r45 rd" class="r45 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r43 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r43 r">role</span>));
+            }
+ 
+            <b>if</b> (<span class="r44 r">claim</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r44 r">claim</span>));
+            }
+ 
+            ((<span class="i">Role</span>)<span class="r43 r">role</span>).<span class="i">RoleClaims</span>.<span class="i">Add</span>(<b>new</b> <span class="i">RoleClaim</span> { <span class="i">ClaimType</span> = <span class="r44 r">claim</span>.<span class="i property">Type</span>, <span class="i">ClaimValue</span> = <span class="r44 r">claim</span>.<span class="i property">Value</span> });
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<span class="t t">Claim</span>&gt;&gt; <a id="7bb027886063d6cc" href="../R/7bb027886063d6cc.html" target="n" data-glyph="72,1" class="i method">GetClaimsAsync</a>(<span class="i">IRole</span> <span id="r46 rd" class="r46 r">role</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r47 rd" class="r47 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r46 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r46 r">role</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<span class="t t">Claim</span>&gt;&gt;(((<span class="i">Role</span>)<span class="r46 r">role</span>).<span class="i">RoleClaims</span>.<span class="i">Select</span>(<span id="r48 rd" class="r48 r">x</span> =&gt; <span class="r48 r">x</span>.<span class="i">ToClaim</span>()).<span class="i">ToList</span>());
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="dce0da3387ac0d03" href="../R/dce0da3387ac0d03.html" target="n" data-glyph="72,1" class="i method">RemoveClaimAsync</a>(<span class="i">IRole</span> <span id="r49 rd" class="r49 r">role</span>, <span class="t t">Claim</span> <span id="r50 rd" class="r50 r">claim</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r51 rd" class="r51 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r49 r">role</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r49 r">role</span>));
+            }
+ 
+            <b>if</b> (<span class="r50 r">claim</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r50 r">claim</span>));
+            }
+ 
+            ((<span class="i">Role</span>)<span class="r49 r">role</span>).<span class="i">RoleClaims</span>.<span class="i">RemoveAll</span>(<span id="r52 rd" class="r52 r">x</span> =&gt; <span class="r52 r">x</span>.<span class="i">ClaimType</span> == <span class="r50 r">claim</span>.<span class="i property">Type</span> &amp;&amp; <span class="r52 r">x</span>.<span class="i">ClaimValue</span> == <span class="r50 r">claim</span>.<span class="i property">Value</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IRoleClaimStore&lt;IRole&gt;
+ 
+        <b>public void</b> <a id="b2eec5e114374690" href="../R/b2eec5e114374690.html" target="n" data-glyph="72,1" class="i method">Dispose</a>()
+        {
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

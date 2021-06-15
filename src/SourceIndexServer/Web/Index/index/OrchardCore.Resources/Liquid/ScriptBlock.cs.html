@@ -1,0 +1,187 @@
+﻿<!DOCTYPE html>
+<html><head><title>ScriptBlock.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(178);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Resources/Liquid/ScriptBlock.cs" target="_top">Liquid\ScriptBlock.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Resources" target="_top">src\OrchardCore.Modules\OrchardCore.Resources\OrchardCore.Resources.csproj</a> (OrchardCore.Resources)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Cysharp</span>.<span class="i">Text</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Ast</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ResourceManagement</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Resources</span>.<span class="i n">Liquid</span>
+{
+    <b>public class</b> <a id="14818bb6149ff7ae" href="../R/14818bb6149ff7ae.html" target="n" data-glyph="0,0" class="t t"><span id="1fc1e082d7c1fa5e">ScriptBlock</span></a>
+    {
+        <b>private static readonly char</b>[] <a id="0756bae0d0c517fa" href="../R/0756bae0d0c517fa.html" target="n" data-glyph="46,1" class="i field">Separators</a> = <b>new</b>[] {<span class="s">&#39;,&#39;</span>, <span class="s">&#39; &#39;</span>};
+ 
+        <b>public static async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">Completion</span>&gt; <a id="725c3c72b064c464" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">WriteToAsync</a>(<span class="t t">List</span>&lt;<span class="i">FilterArgument</span>&gt; <span id="r0 rd" class="r0 r">argumentsList</span>, <a href="@1@System.Runtime/A.html#b040fb780bdd59f4" class="t t">IReadOnlyList</a>&lt;<span class="i">Statement</span>&gt; <span id="r1 rd" class="r1 r">statements</span>, <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r2 rd" class="r2 r">writer</span>, <span class="t t">TextEncoder</span> <span id="r3 rd" class="r3 r">encoder</span>, <span class="i">TemplateContext</span> <span id="r4 rd" class="r4 r">context</span>)
+        {
+            <b>var</b> <span id="r5 rd" class="r5 r">services</span> = ((<span class="i">LiquidTemplateContext</span>)<span class="r4 r">context</span>).<span class="i">Services</span>;
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#e74e7986e124f65f" class="k">var</a> <span id="r6 rd" class="r6 r">resourceManager</span> = <span class="r5 r">services</span>.<span class="i">GetRequiredService</span>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#e74e7986e124f65f" class="t t">IResourceManager</a>&gt;();
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">name</span> = <b>null</b>;
+            <b>bool</b>? <span id="r8 rd" class="r8 r">useCdn</span> = <b>null</b>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">condition</span> = <b>null</b>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">culture</span> = <b>null</b>;
+            <b>bool</b>? <span id="r11 rd" class="r11 r">debug</span> = <b>null</b>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">dependsOn</span> = <b>null</b>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r13 rd" class="r13 r">version</span> = <b>null</b>;
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="k">var</a> <span id="r14 rd" class="r14 r">at</span> = <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#197599fa26784a64" class="i field">Unspecified</a>;
+ 
+            <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r15 rd" class="r15 r">customAttributes</span> = <b>null</b>;
+ 
+            <b>foreach</b> (<b>var</b> <span id="r16 rd" class="r16 r">argument</span> <b>in</b> <span class="r0 r">argumentsList</span>)
+            {
+                <b>switch</b> (<span class="r16 r">argument</span>.<span class="i">Name</span>)
+                {
+                    <b>case</b> <span class="s">&quot;name&quot;</span>: <span class="r7 r">name</span> = (<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToStringValue</span>(); <b>break</b>;
+                    <b>case</b> <span class="s">&quot;condition&quot;</span>: <span class="r9 r">condition</span> = (<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToStringValue</span>(); <b>break</b>;
+                    <b>case</b> <span class="s">&quot;culture&quot;</span>: <span class="r10 r">culture</span> = (<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToStringValue</span>(); <b>break</b>;
+                    <b>case</b> <span class="s">&quot;debug&quot;</span>: <span class="r11 r">debug</span> = (<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToBooleanValue</span>(); <b>break</b>;
+                    <b>case</b> <span class="s">&quot;depends_on&quot;</span>: <span class="r12 r">dependsOn</span> = (<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToStringValue</span>(); <b>break</b>;
+                    <b>case</b> <span class="s">&quot;version&quot;</span>: <span class="r13 r">version</span> = (<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToStringValue</span>(); <b>break</b>;
+                    <b>case</b> <span class="s">&quot;at&quot;</span>: <a href="@1@System.Runtime/A.html#36729210e317a805" class="t t">Enum</a>.<span class="i">TryParse</span>((<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToStringValue</span>(), <span class="i">ignoreCase</span>: <b>true</b>, <b>out</b> <span class="r14 r">at</span>); <b>break</b>;
+                    <b>default</b>: (<span class="r15 r">customAttributes</span> ??= <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;())[<span class="r16 r">argument</span>.<span class="i">Name</span>] = (<b>await</b> <span class="r16 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>)).<span class="i">ToStringValue</span>(); <b>break</b>;
+                }
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r7 r">name</span>))
+            {
+                <span class="c">// Resource required</span>
+ 
+                <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="k">var</a> <span id="r17 rd" class="r17 r">setting</span> = <span class="r6 r">resourceManager</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#62ca121db11ccd7a" class="i method">RegisterResource</a>(<span class="s">&quot;script&quot;</span>, <span class="r7 r">name</span>);
+ 
+                <b>if</b> (<span class="r14 r">at</span> != <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#197599fa26784a64" class="i field">Unspecified</a>)
+                {
+                    <span class="r17 r">setting</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#dec806dc5ec5c9a4" class="i method">AtLocation</a>(<span class="r14 r">at</span>);
+                }
+ 
+                <b>if</b> (<span class="r8 r">useCdn</span> != <b>null</b>)
+                {
+                    <span class="r17 r">setting</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8a760911fb844aa6" class="i method">UseCdn</a>(<span class="r8 r">useCdn</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+                }
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r9 r">condition</span>))
+                {
+                    <span class="r17 r">setting</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#3fe86c0ef2c3e4d4" class="i method">UseCondition</a>(<span class="r9 r">condition</span>);
+                }
+ 
+                <b>if</b> (<span class="r11 r">debug</span> != <b>null</b>)
+                {
+                    <span class="r17 r">setting</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#5494cb0d0019a778" class="i method">UseDebugMode</a>(<span class="r11 r">debug</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+                }
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">culture</span>))
+                {
+                    <span class="r17 r">setting</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#32a41270ce921bfa" class="i method">UseCulture</a>(<span class="r10 r">culture</span>);
+                }
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">version</span>))
+                {
+                    <span class="r17 r">setting</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#eb33fdb11ba6de05" class="i method">UseVersion</a>(<span class="r13 r">version</span>);
+                }
+ 
+                <span class="c">// This allows additions to the pre registered scripts dependencies.</span>
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r12 r">dependsOn</span>))
+                {
+                    <span class="r17 r">setting</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#41df82e5c411d612" class="i method">SetDependencies</a>(<span class="r12 r">dependsOn</span>.<a href="@1@System.Runtime/A.html#1ff97959e1d46a53" class="i method">Split</a>(<a href="#0756bae0d0c517fa" class="i field">Separators</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>));
+                }
+ 
+                <span class="c">// Allow Inline to work with both named scripts, and named inline scripts.</span>
+                <b>if</b> (<span class="r14 r">at</span> != <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#197599fa26784a64" class="i field">Unspecified</a>)
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">content</span> = <span class="s">&quot;&quot;</span>;
+ 
+                    <b>if</b> (<span class="r1 r">statements</span> != <b>null</b> &amp;&amp; <span class="r1 r">statements</span>.<a href="@1@System.Runtime/A.html#6f182bb82f68780e" class="i property">Count</a> &gt; 0)
+                    {
+                        <b>using</b> <b>var</b> <span id="r19 rd" class="r19 r">sw</span> = <b>new</b> <span class="i">ZStringWriter</span>();
+                        <b>var</b> <span id="r20 rd" class="r20 r">completion</span> = <b>await</b> <span class="r1 r">statements</span>.<span class="i">RenderStatementsAsync</span>(<span class="r19 r">sw</span>, <span class="r3 r">encoder</span>, <span class="r4 r">context</span>);
+ 
+                        <b>if</b> (<span class="r20 r">completion</span> != <span class="i">Completion</span>.<span class="i">Normal</span>)
+                        {
+                            <b>return</b> <span class="r20 r">completion</span>;
+                        }
+ 
+                        <span class="r18 r">content</span> = <span class="r19 r">sw</span>.<span class="i">ToString</span>();
+                    }
+ 
+                    <span class="c">// Named inline declaration.</span>
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r18 r">content</span>))
+                    {
+                        <span class="c">// Inline content definition</span>
+                        <span class="r6 r">resourceManager</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fcd09d9df0f63006" class="i property">InlineManifest</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#94d002c738a20cde" class="i method">DefineScript</a>(<span class="r7 r">name</span>).<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#a89d98af4211ace5" class="i method">SetInnerContent</a>(<span class="r18 r">content</span>);
+                    }
+ 
+                    <b>if</b> (<span class="r14 r">at</span> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#6b18792e2713ad01" class="i field">Inline</a>)
+                    {
+                        <span class="r6 r">resourceManager</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#5be56e471ccba0c8" class="i method">RenderLocalScript</a>(<span class="r17 r">setting</span>, <span class="r2 r">writer</span>);
+                    }
+                }
+                <b>else</b>
+                {
+                    <span class="r6 r">resourceManager</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#5be56e471ccba0c8" class="i method">RenderLocalScript</a>(<span class="r17 r">setting</span>, <span class="r2 r">writer</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <span class="c">// Custom script content</span>
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">content</span> = <span class="s">&quot;&quot;</span>;
+ 
+                <b>if</b> (<span class="r1 r">statements</span> != <b>null</b> &amp;&amp; <span class="r1 r">statements</span>.<a href="@1@System.Runtime/A.html#6f182bb82f68780e" class="i property">Count</a> &gt; 0)
+                {
+                    <b>using</b> <b>var</b> <span id="r22 rd" class="r22 r">sw</span> = <b>new</b> <span class="i">ZStringWriter</span>();
+                    <b>var</b> <span id="r23 rd" class="r23 r">completion</span> = <b>await</b> <span class="r1 r">statements</span>.<span class="i">RenderStatementsAsync</span>(<span class="r22 r">sw</span>, <span class="r3 r">encoder</span>, <span class="r4 r">context</span>);
+ 
+                    <b>if</b> (<span class="r23 r">completion</span> != <span class="i">Completion</span>.<span class="i">Normal</span>)
+                    {
+                        <b>return</b> <span class="r23 r">completion</span>;
+                    }
+ 
+                    <span class="r21 r">content</span> = <span class="r22 r">sw</span>.<span class="i">ToString</span>();
+                }
+ 
+                <b>var</b> <span id="r24 rd" class="r24 r">builder</span> = <b>new</b> <span class="t constructor">TagBuilder</span>(<span class="s">&quot;script&quot;</span>);
+                <span class="r24 r">builder</span>.<span class="i property">InnerHtml</span>.<span class="i method">AppendHtml</span>(<span class="r21 r">content</span>);
+                <span class="r24 r">builder</span>.<span class="i property">TagRenderMode</span> = <span class="t t">TagRenderMode</span>.<span class="i field">Normal</span>;
+ 
+                <b>if</b> (<span class="r15 r">customAttributes</span> != <b>null</b>)
+                {
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r25 rd" class="r25 r">attribute</span> <b>in</b> <span class="r15 r">customAttributes</span>)
+                    {
+                        <span class="r24 r">builder</span>.<span class="i property">Attributes</span>.<span class="i method">Add</span>(<span class="r25 r">attribute</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r25 r">attribute</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                    }
+                }
+ 
+                <b>if</b> (<span class="r14 r">at</span> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fab83ca1dce6a15e" class="i field">Head</a>)
+                {
+                    <span class="r6 r">resourceManager</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#a608e387676f4f61" class="i method">RegisterHeadScript</a>(<span class="r24 r">builder</span>);
+                }
+                <b>else</b> <b>if</b> (<span class="r14 r">at</span> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#6b18792e2713ad01" class="i field">Inline</a>)
+                {
+                    <span class="r24 r">builder</span>.<span class="i method">WriteTo</span>(<span class="r2 r">writer</span>, (<span class="t t">HtmlEncoder</span>)<span class="r3 r">encoder</span>);
+                }
+                <b>else</b>
+                {
+                    <span class="r6 r">resourceManager</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#d30a1425a8ad3add" class="i method">RegisterFootScript</a>(<span class="r24 r">builder</span>);
+                }
+            }
+ 
+            <b>return</b> <span class="i">Completion</span>.<span class="i">Normal</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

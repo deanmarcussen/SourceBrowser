@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html><head><title>MethodCallModelBinder.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(39);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.XmlRpc/MethodCallModelBinder.cs" target="_top">MethodCallModelBinder.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.XmlRpc" target="_top">src\OrchardCore.Modules\OrchardCore.XmlRpc\OrchardCore.XmlRpc.csproj</a> (OrchardCore.XmlRpc)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Xml</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">XmlRpc</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">XmlRpc</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">XmlRpc</span>
+{
+    <b>public class</b> <a id="270c3cc5e332b9ba" href="R/270c3cc5e332b9ba.html" target="n" data-glyph="0,0" class="t t"><span id="5b4db37111df963d">MethodCallModelBinder</span></a> : <span class="t t">IModelBinder</span>
+    {
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="59165d63babc92cf" href="R/59165d63babc92cf.html" target="n" data-glyph="72,1" class="i method">BindModelAsync</a>(<span class="t t">ModelBindingContext</span> <span id="r0 rd" class="r0 r">bindingContext</span>)
+        {
+            <b>if</b> (<span class="r0 r">bindingContext</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r0 r">bindingContext</span>));
+            }
+ 
+            <b>if</b> (<span class="r0 r">bindingContext</span>.<span class="i property">ModelType</span> == <b>typeof</b>(<a href="/OrchardCore.XmlRpc.Abstractions/A.html#5b3b62ff6d679933" class="t t">XRpcMethodCall</a>))
+            {
+                <a href="/OrchardCore.XmlRpc.Abstractions/A.html#f1e19ad5c28d7c69" class="k">var</a> <span id="r1 rd" class="r1 r">mapper</span> = <span class="r0 r">bindingContext</span>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.XmlRpc.Abstractions/A.html#f1e19ad5c28d7c69" class="t t">IXmlRpcReader</a>&gt;();
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r2 rd" class="r2 r">bodyTextContent</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                <span class="c">// For some reasons we can&#39;t use XElement.LoadAsync. This method fails on big request body. I tested this with a picture with 2 MB of size.</span>
+                <span class="c">// This code is maybe bad. Because if someone send a very big XML to this endpoint the server will die a out of memory exception.</span>
+                <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="t t">StreamReader</a> <span id="r3 rd" class="r3 r">reader</span> = <b>new</b> <a href="@1@System.Runtime/A.html#aa16b00d54a1b6a6" class="t constructor">StreamReader</a>(<span class="r0 r">bindingContext</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Body</span>, <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>, <b>true</b>, 1024, <b>true</b>))
+                {
+                    <span class="r2 r">bodyTextContent</span> = <b>await</b> <span class="r3 r">reader</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>();
+                }
+                <b>var</b> <span id="r4 rd" class="r4 r">element</span> = <span class="t t">XElement</span>.<span class="i method">Parse</span>(<span class="r2 r">bodyTextContent</span>);
+ 
+                <span class="r0 r">bindingContext</span>.<span class="i property">Result</span> = <span class="t t">ModelBindingResult</span>.<span class="i method">Success</span>(<span class="r1 r">mapper</span>.<a href="/OrchardCore.XmlRpc.Abstractions/A.html#b29f383b299efb9a" class="i method">MapToMethodCall</a>(<span class="r4 r">element</span>));
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html><head><title>SetupService.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(253);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Setup.Core/SetupService.cs" target="_top">SetupService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Setup.Core" target="_top">src\OrchardCore\OrchardCore.Setup.Core\OrchardCore.Setup.Core.csproj</a> (OrchardCore.Setup.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Abstractions</span>.<span class="i n">Setup</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Descriptor</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Descriptor</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">Events</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">Services</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Represents a setup service.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="88a67f749fde9847" href="R/88a67f749fde9847.html" target="n" data-glyph="0,0" class="t t">SetupService</a> : <a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <a id="39c4869855e20252" href="R/39c4869855e20252.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#14204d876fb7026c" class="t t">IShellContextFactory</a> <a id="4b694889828bddaa" href="R/4b694889828bddaa.html" target="n" data-glyph="46,1" class="i field">_shellContextFactory</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Setup.Abstractions/A.html#e27065692ed320e7" class="t t">ISetupUserIdGenerator</a> <a id="ea788877c0492c50" href="R/ea788877c0492c50.html" target="n" data-glyph="46,1" class="i field">_setupUserIdGenerator</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#a39c46a1ac0396ff" class="t t">IRecipeHarvester</a>&gt; <a id="6affadc7468a1663" href="R/6affadc7468a1663.html" target="n" data-glyph="46,1" class="i field">_recipeHarvesters</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="eea3d4f88d4f22ad" href="R/eea3d4f88d4f22ad.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="278137e0ef8fab64" href="R/278137e0ef8fab64.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">IHostApplicationLifetime</span> <a id="d0789992efd53cca" href="R/d0789992efd53cca.html" target="n" data-glyph="46,1" class="i field">_applicationLifetime</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="b13381e2ce804f59" href="R/b13381e2ce804f59.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly string</b> <a id="b07dda646ddf7fdb" href="R/b07dda646ddf7fdb.html" target="n" data-glyph="46,1" class="i field">_applicationName</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="t t">RecipeDescriptor</a>&gt; <a id="3ca49e2e4f011666" href="R/3ca49e2e4f011666.html" target="n" data-glyph="46,1" class="i field">_recipes</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a new instance of </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#88a67f749fde9847" class="t t">SetupService</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r0 r">shellHost</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r">hostingEnvironment</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IHostEnvironment</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r2 r">shellContextFactory</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#14204d876fb7026c" class="t t">IShellContextFactory</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r3 r">setupUserIdGenerator</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Setup.Abstractions/A.html#e27065692ed320e7" class="t t">ISetupUserIdGenerator</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r4 r">recipeHarvesters</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">A list of </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Recipes.Abstractions/A.html#a39c46a1ac0396ff" class="t t">IRecipeHarvester</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">s.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r5 r">logger</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">ILogger</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r6 r">stringLocalizer</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IStringLocalizer</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r7 r">applicationLifetime</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IHostApplicationLifetime</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r8 r">httpContextAccessor</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IHttpContextAccessor</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a id="2f20152af4ae1b8b" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SetupService</a>(
+            <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <span class="t t">IHostEnvironment</span> <span id="r1 rd" class="r1 r">hostingEnvironment</span>,
+            <a href="/OrchardCore.Abstractions/A.html#14204d876fb7026c" class="t t">IShellContextFactory</a> <span id="r2 rd" class="r2 r">shellContextFactory</span>,
+            <a href="/OrchardCore.Setup.Abstractions/A.html#e27065692ed320e7" class="t t">ISetupUserIdGenerator</a> <span id="r3 rd" class="r3 r">setupUserIdGenerator</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#a39c46a1ac0396ff" class="t t">IRecipeHarvester</a>&gt; <span id="r4 rd" class="r4 r">recipeHarvesters</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#88a67f749fde9847" class="t t">SetupService</a>&gt; <span id="r5 rd" class="r5 r">logger</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#88a67f749fde9847" class="t t">SetupService</a>&gt; <span id="r6 rd" class="r6 r">stringLocalizer</span>,
+            <span class="t t">IHostApplicationLifetime</span> <span id="r7 rd" class="r7 r">applicationLifetime</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r8 rd" class="r8 r">httpContextAccessor</span>)
+        {
+            <a href="#39c4869855e20252" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#b07dda646ddf7fdb" class="i field">_applicationName</a> = <span class="r1 r">hostingEnvironment</span>.<span class="i property">ApplicationName</span>;
+            <a href="#4b694889828bddaa" class="i field">_shellContextFactory</a> = <span class="r2 r">shellContextFactory</span>;
+            <a href="#ea788877c0492c50" class="i field">_setupUserIdGenerator</a> = <span class="r3 r">setupUserIdGenerator</span>;
+            <a href="#6affadc7468a1663" class="i field">_recipeHarvesters</a> = <span class="r4 r">recipeHarvesters</span>;
+            <a href="#eea3d4f88d4f22ad" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+            <a href="#278137e0ef8fab64" class="i field">S</a> = <span class="r6 r">stringLocalizer</span>;
+            <a href="#d0789992efd53cca" class="i field">_applicationLifetime</a> = <span class="r7 r">applicationLifetime</span>;
+            <a href="#b13381e2ce804f59" class="i field">_httpContextAccessor</a> = <span class="r8 r">httpContextAccessor</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheridoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="t t">RecipeDescriptor</a>&gt;&gt; <a id="c40982b11f8ad0b0" href="R/c40982b11f8ad0b0.html" target="n" data-glyph="72,1" class="i method">GetSetupRecipesAsync</a>()
+        {
+            <b>if</b> (<a href="#3ca49e2e4f011666" class="i field">_recipes</a> == <b>null</b>)
+            {
+                <b>var</b> <span id="r9 rd" class="r9 r">recipeCollections</span> = <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b6d43f186de3a867" class="i method">WhenAll</a>(<a href="#6affadc7468a1663" class="i field">_recipeHarvesters</a>.<span class="i method">Select</span>(<span id="r10 rd" class="r10 r">x</span> =&gt; <span class="r10 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c9f3a1f8fc37208a" class="i method">HarvestRecipesAsync</a>()));
+                <a href="#3ca49e2e4f011666" class="i field">_recipes</a> = <span class="r9 r">recipeCollections</span>.<span class="i method">SelectMany</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <span class="r11 r">x</span>).<span class="i method">Where</span>(<span id="r12 rd" class="r12 r">x</span> =&gt; <span class="r12 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#6c8f9889e4b2e522" class="i property">IsSetupRecipe</a>).<span class="i method">ToArray</span>();
+            }
+ 
+            <b>return</b> <a href="#3ca49e2e4f011666" class="i field">_recipes</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheridoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="eda3db2779e478b1" href="R/eda3db2779e478b1.html" target="n" data-glyph="72,1" class="i method">SetupAsync</a>(<a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="t t">SetupContext</a> <span id="r13 rd" class="r13 r">context</span>)
+        {
+            <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="k">var</a> <span id="r14 rd" class="r14 r">initialState</span> = <span class="r13 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a>;
+            <b>try</b>
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">executionId</span> = <b>await</b> <a href="#2a4dd47010b9b7cd" class="i method">SetupInternalAsync</a>(<span class="r13 r">context</span>);
+ 
+                <b>if</b> (<span class="r13 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>.<span class="i method">Any</span>())
+                {
+                    <span class="r13 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> = <span class="r14 r">initialState</span>;
+                }
+ 
+                <b>return</b> <span class="r15 r">executionId</span>;
+            }
+            <b>catch</b>
+            {
+                <span class="r13 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> = <span class="r14 r">initialState</span>;
+                <b>throw</b>;
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="2a4dd47010b9b7cd" href="R/2a4dd47010b9b7cd.html" target="n" data-glyph="76,1" class="i method">SetupInternalAsync</a>(<a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="t t">SetupContext</a> <span id="r16 rd" class="r16 r">context</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">executionId</span>;
+ 
+            <b>if</b> (<a href="#eea3d4f88d4f22ad" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#eea3d4f88d4f22ad" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Running setup for tenant &#39;{TenantName}&#39;.&quot;</span>, <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>);
+            }
+ 
+            <span class="c">// Features to enable for Setup</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r18 rd" class="r18 r">hardcoded</span> =
+            {
+                <a href="#b07dda646ddf7fdb" class="i field">_applicationName</a>,
+                <span class="s">&quot;OrchardCore.Features&quot;</span>,
+                <span class="s">&quot;OrchardCore.Scripting&quot;</span>,
+                <span class="s">&quot;OrchardCore.Recipes&quot;</span>
+            };
+ 
+            <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#5c4a5562e1cf7e7a" class="i property">EnabledFeatures</a> = <span class="r18 r">hardcoded</span>.<span class="i method">Union</span>(<span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#5c4a5562e1cf7e7a" class="i property">EnabledFeatures</a> ?? <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;()).<span class="i method">Distinct</span>().<span class="i method">ToList</span>();
+ 
+            <span class="c">// Set shell state to &quot;Initializing&quot; so that subsequent HTTP requests are responded to with &quot;Service Unavailable&quot; while Orchard is setting up.</span>
+            <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> = <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>;
+ 
+            <span class="c">// Due to database collation we normalize the userId to lower invariant.</span>
+            <span class="c">// During setup there are no users so we do not need to check unicity.</span>
+            <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#36354af8046bd7b0" class="i field">AdminUserId</a>] = <a href="#ea788877c0492c50" class="i field">_setupUserIdGenerator</a>.<a href="/OrchardCore.Setup.Abstractions/A.html#78e6cdba03fefda9" class="i method">GenerateUniqueId</a>().<a href="@1@System.Runtime/A.html#2d51c212cb09178e" class="i method">ToLowerInvariant</a>();
+ 
+            <a href="/OrchardCore.Recipes.Abstractions/A.html#04ed10b9027b1d9d" class="k">var</a> <span id="r19 rd" class="r19 r">recipeEnvironmentFeature</span> = <b>new</b> <a href="/OrchardCore.Recipes.Abstractions/A.html#04ed10b9027b1d9d" class="t constructor">RecipeEnvironmentFeature</a>();
+            <b>if</b> (<span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>.<span class="i method">TryGetValue</span>(<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#36354af8046bd7b0" class="i field">AdminUserId</a>, <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r20 rd" class="r20 r">adminUserId</span>))
+            {
+                <span class="r19 r">recipeEnvironmentFeature</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#06e402a891b4b4a0" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#36354af8046bd7b0" class="i field">AdminUserId</a>] = <span class="r20 r">adminUserId</span>;
+            }
+            <b>if</b> (<span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>.<span class="i method">TryGetValue</span>(<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#c5b4288afea079c6" class="i field">AdminUsername</a>, <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r21 rd" class="r21 r">adminUsername</span>))
+            {
+                <span class="r19 r">recipeEnvironmentFeature</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#06e402a891b4b4a0" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#c5b4288afea079c6" class="i field">AdminUsername</a>] = <span class="r21 r">adminUsername</span>;
+            }
+            <b>if</b> (<span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>.<span class="i method">TryGetValue</span>(<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#ccd60951383f9ba7" class="i field">SiteName</a>, <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r22 rd" class="r22 r">siteName</span>))
+            {
+                <span class="r19 r">recipeEnvironmentFeature</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#06e402a891b4b4a0" class="i property">Properties</a>[<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#ccd60951383f9ba7" class="i field">SiteName</a>] = <span class="r22 r">siteName</span>;
+            }
+ 
+            <a href="#b13381e2ce804f59" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">Features</span>.<span class="i method">Set</span>(<span class="r19 r">recipeEnvironmentFeature</span>);
+ 
+            <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r23 rd" class="r23 r">shellSettings</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#60508f3629a070d5" class="t constructor">ShellSettings</a>(<span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r23 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;DatabaseProvider&quot;</span>]))
+            {
+                <span class="r23 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;DatabaseProvider&quot;</span>] = <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>.<span class="i method">TryGetValue</span>(<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#98ec9f7e23646097" class="i field">DatabaseProvider</a>, <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r24 rd" class="r24 r">databaseProvider</span>) ? <span class="r24 r">databaseProvider</span>?.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                <span class="r23 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;ConnectionString&quot;</span>] = <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>.<span class="i method">TryGetValue</span>(<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#faba1de90a2e50ad" class="i field">DatabaseConnectionString</a>, <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r25 rd" class="r25 r">databaseConnectionString</span>) ? <span class="r25 r">databaseConnectionString</span>?.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                <span class="r23 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;TablePrefix&quot;</span>] = <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>.<span class="i method">TryGetValue</span>(<a href="/OrchardCore.Abstractions/A.html#777c0f1a92c8c997" class="t t">SetupConstants</a>.<a href="/OrchardCore.Abstractions/A.html#d70db8cfb0c97dc0" class="i field">DatabaseTablePrefix</a>, <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r26 rd" class="r26 r">databaseTablePrefix</span>) ? <span class="r26 r">databaseTablePrefix</span>?.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r23 r">shellSettings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="s">&quot;DatabaseProvider&quot;</span>]))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;DatabaseProvider is required&quot;</span>);
+            }
+ 
+            <span class="c">// Creating a standalone environment based on a &quot;minimum shell descriptor&quot;.</span>
+            <span class="c">// In theory this environment can be used to resolve any normal components by interface, and those</span>
+            <span class="c">// components will exist entirely in isolation - no crossover between the safemode container currently in effect</span>
+            <span class="c">// It is used to initialize the database before the recipe is run.</span>
+ 
+            <a href="/OrchardCore.Abstractions/A.html#0d18542e8e03ab41" class="k">var</a> <span id="r27 rd" class="r27 r">shellDescriptor</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#0d18542e8e03ab41" class="t constructor">ShellDescriptor</a>
+            {
+                <a href="/OrchardCore.Abstractions/A.html#91bfa6f604ba2afb" class="i property">Features</a> = <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#5c4a5562e1cf7e7a" class="i property">EnabledFeatures</a>.<span class="i method">Select</span>(<span id="r28 rd" class="r28 r">id</span> =&gt; <b>new</b> <a href="/OrchardCore.Abstractions/A.html#64518fb0ee624fa8" class="t constructor">ShellFeature</a> { <a href="/OrchardCore.Abstractions/A.html#c82012a63aed4fd8" class="i property">Id</a> = <span class="r28 r">id</span> }).<span class="i method">ToList</span>()
+            };
+ 
+            <b>using</b> (<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r29 rd" class="r29 r">shellContext</span> = <b>await</b> <a href="#4b694889828bddaa" class="i field">_shellContextFactory</a>.<a href="/OrchardCore.Abstractions/A.html#536eeeb67b467c33" class="i method">CreateDescribedContextAsync</a>(<span class="r23 r">shellSettings</span>, <span class="r27 r">shellDescriptor</span>))
+            {
+                <b>await</b> <span class="r29 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#1b416e9497f78ec4" class="i method">CreateScope</a>().<span class="i">UsingServiceScopeAsync</span>(<b>async</b> <span id="r30 rd" class="r30 r">scope</span> =&gt;
+                {
+                    <span class="i">IStore</span> <span id="r31 rd" class="r31 r">store</span>;
+ 
+                    <b>try</b>
+                    {
+                        <span class="r31 r">store</span> = <span class="r30 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IStore</span>&gt;();
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r32 rd" class="r32 r">e</span>)
+                    {
+                        <span class="c">// Tables already exist or database was not found</span>
+ 
+                        <span class="c">// The issue is that the user creation needs the tables to be present,</span>
+                        <span class="c">// if the user information is not valid, the next POST will try to recreate the</span>
+                        <span class="c">// tables. The tables should be rolled back if one of the steps is invalid,</span>
+                        <span class="c">// unless the recipe is executing?</span>
+ 
+                        <a href="#eea3d4f88d4f22ad" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r32 r">e</span>, <span class="s">&quot;An error occurred while initializing the datastore.&quot;</span>);
+                        <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>.<a href="@1@System.Runtime/A.html#380bc69e46a83183" class="i method">Add</a>(<span class="s">&quot;DatabaseProvider&quot;</span>, <a href="#278137e0ef8fab64" class="i field">S</a>[<span class="s">&quot;An error occurred while initializing the datastore: {0}&quot;</span>, <span class="r32 r">e</span>.<a href="@1@System.Runtime/A.html#5fba0e16215b42a3" class="i property">Message</a>]);
+                        <b>return</b>;
+                    }
+ 
+                    <span class="c">// Create the &quot;minimum shell descriptor&quot;</span>
+                    <b>await</b> <span class="r30 r">scope</span>
+                        .<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>
+                        .<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#3e54d670772c18fc" class="t t">IShellDescriptorManager</a>&gt;()
+                        .<a href="/OrchardCore.Abstractions/A.html#e0a0de81548456db" class="i method">UpdateShellDescriptorAsync</a>(0,
+                            <span class="r29 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#d014653d2e38149a" class="i property">Blueprint</a>.<a href="/OrchardCore.Abstractions/A.html#32f59a878ccc4927" class="i property">Descriptor</a>.<a href="/OrchardCore.Abstractions/A.html#91bfa6f604ba2afb" class="i property">Features</a>);
+                });
+ 
+                <b>if</b> (<span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>.<span class="i method">Any</span>())
+                {
+                    <b>return</b> <b>null</b>;
+                }
+ 
+                <span class="r17 r">executionId</span> = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#8015cb30da6ca742" class="i method">ToString</a>(<span class="s">&quot;n&quot;</span>);
+ 
+                <a href="/OrchardCore.Recipes.Abstractions/A.html#716873e2807084c0" class="k">var</a> <span id="r33 rd" class="r33 r">recipeExecutor</span> = <span class="r29 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#14806dab63c4713f" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#716873e2807084c0" class="t t">IRecipeExecutor</a>&gt;();
+ 
+                <b>await</b> <span class="r33 r">recipeExecutor</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#3cfd27eed1b76e98" class="i method">ExecuteAsync</a>(<span class="r17 r">executionId</span>, <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#374fdc99d51319ef" class="i property">Recipe</a>, <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>, <a href="#d0789992efd53cca" class="i field">_applicationLifetime</a>.<span class="i property">ApplicationStopping</span>);
+            }
+ 
+            <span class="c">// Reloading the shell context as the recipe has probably updated its features</span>
+            <b>await</b> (<b>await</b> <a href="#39c4869855e20252" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#ba40af19c73a5806" class="i method">GetScopeAsync</a>(<span class="r23 r">shellSettings</span>)).<a href="/OrchardCore.Abstractions/A.html#ae74d3684cfadb54" class="i method">UsingAsync</a>(<b>async</b> <span id="r34 rd" class="r34 r">scope</span> =&gt;
+            {
+                <b>void</b> <a id="94de6659f513d976" href="R/94de6659f513d976.html" target="n" data-glyph="76,3" class="i method">reportError</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">key</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r36 rd" class="r36 r">message</span>)
+                {
+                    <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r35 r">key</span>] = <span class="r36 r">message</span>;
+                }
+ 
+                <span class="c">// Invoke modules to react to the setup event</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r37 rd" class="r37 r">setupEventHandlers</span> = <span class="r34 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.Setup.Abstractions/A.html#3b0dd557dce19a1a" class="t t">ISetupEventHandler</a>&gt;();
+                <b>var</b> <span id="r38 rd" class="r38 r">logger</span> = <span class="r34 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#55a88f718c8bf968" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">ILogger</span>&lt;<a href="#88a67f749fde9847" class="t t">SetupService</a>&gt;&gt;();
+ 
+                <b>await</b> <span class="r37 r">setupEventHandlers</span>.<a href="/OrchardCore.Abstractions/A.html#2b3a2c38f5e2c75c" class="i method">InvokeAsync</a>((<span id="r39 rd" class="r39 r">handler</span>, <span id="r40 rd" class="r40 r">context</span>) =&gt; <span class="r39 r">handler</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#6148a4fa12719739" class="i method">Setup</a>(
+                    <span class="r40 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a>,
+                    <a href="#94de6659f513d976" class="i method">reportError</a>
+                ), <span class="r16 r">context</span>, <span class="r38 r">logger</span>);
+            });
+ 
+            <b>if</b> (<span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>.<span class="i method">Any</span>())
+            {
+                <span class="c">// So that the new registered shell is reverted back to the &#39;Uninitialized&#39; state.</span>
+                <span class="r16 r">context</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a> = <span class="r23 r">shellSettings</span>;
+ 
+                <b>return</b> <span class="r17 r">executionId</span>;
+            }
+ 
+            <span class="c">// Update the shell state</span>
+            <span class="r23 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> = <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#7466a57979de4d92" class="i field">Running</a>;
+            <b>await</b> <a href="#39c4869855e20252" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#50ed402345afd8d9" class="i method">UpdateShellSettingsAsync</a>(<span class="r23 r">shellSettings</span>);
+ 
+            <b>return</b> <span class="r17 r">executionId</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

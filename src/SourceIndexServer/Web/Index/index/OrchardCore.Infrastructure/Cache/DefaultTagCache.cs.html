@@ -1,0 +1,89 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultTagCache.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(80);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Infrastructure/Cache/DefaultTagCache.cs" target="_top">Cache\DefaultTagCache.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Infrastructure" target="_top">src\OrchardCore\OrchardCore.Infrastructure\OrchardCore.Infrastructure.csproj</a> (OrchardCore.Infrastructure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Cache</span>
+{
+    <b>public class</b> <a id="adc141a4c9c19ac4" href="../R/adc141a4c9c19ac4.html" target="n" data-glyph="0,0" class="t t">DefaultTagCache</a> : <a href="/OrchardCore.Infrastructure.Abstractions/A.html#f325fdd7b10a2e85" class="t t">ITagCache</a>
+    {
+        <b>private const string</b> <a id="fa508244f432b2e0" href="../R/fa508244f432b2e0.html" target="n" data-glyph="10,1" class="i field">CacheKey</a> = <b>nameof</b>(<a href="#adc141a4c9c19ac4" class="t t">DefaultTagCache</a>);
+ 
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="92e4ab71c52ba459" href="../R/92e4ab71c52ba459.html" target="n" data-glyph="46,1" class="i field">_dictionary</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#58bb71d0e12d692c" class="t t">ITagRemovedEventHandler</a>&gt; <a id="25da997e7bc29f18" href="../R/25da997e7bc29f18.html" target="n" data-glyph="46,1" class="i field">_tagRemovedEventHandlers</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="ee23154389a7e4fe" href="../R/ee23154389a7e4fe.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="f392f3e052f813af" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultTagCache</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#58bb71d0e12d692c" class="t t">ITagRemovedEventHandler</a>&gt; <span id="r0 rd" class="r0 r">tagRemovedEventHandlers</span>,
+            <span class="t t">IMemoryCache</span> <span id="r1 rd" class="r1 r">memoryCache</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#adc141a4c9c19ac4" class="t t">DefaultTagCache</a>&gt; <span id="r2 rd" class="r2 r">logger</span>)
+        {
+            <span class="c">// We use the memory cache as the state holder and keep this class transient as it has</span>
+            <span class="c">// dependencies on non-singletons</span>
+ 
+            <b>if</b> (!<span class="r1 r">memoryCache</span>.<span class="i method">TryGetValue</span>(<a href="#fa508244f432b2e0" class="i field">CacheKey</a>, <b>out</b> <a href="#92e4ab71c52ba459" class="i field">_dictionary</a>))
+            {
+                <a href="#92e4ab71c52ba459" class="i field">_dictionary</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+                <span class="r1 r">memoryCache</span>.<span class="i method">Set</span>(<a href="#fa508244f432b2e0" class="i field">CacheKey</a>, <a href="#92e4ab71c52ba459" class="i field">_dictionary</a>);
+            }
+ 
+            <a href="#25da997e7bc29f18" class="i field">_tagRemovedEventHandlers</a> = <span class="r0 r">tagRemovedEventHandlers</span>;
+            <a href="#ee23154389a7e4fe" class="i field">_logger</a> = <span class="r2 r">logger</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="1f0b444bd97e209f" href="../R/1f0b444bd97e209f.html" target="n" data-glyph="72,1" class="i method">TagAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">key</span>, <b>params string</b>[] <span id="r4 rd" class="r4 r">tags</span>)
+        {
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">tag</span> <b>in</b> <span class="r4 r">tags</span>)
+            {
+                <b>var</b> <span id="r6 rd" class="r6 r">set</span> = <a href="#92e4ab71c52ba459" class="i field">_dictionary</a>.<span class="i method">GetOrAdd</span>(<span class="r5 r">tag</span>, <span id="r7 rd" class="r7 r">x</span> =&gt; <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+ 
+                <b>lock</b> (<span class="r6 r">set</span>)
+                {
+                    <span class="r6 r">set</span>.<span class="i method">Add</span>(<span class="r3 r">key</span>);
+                }
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="757d404b06183894" href="../R/757d404b06183894.html" target="n" data-glyph="72,1" class="i method">GetTaggedItemsAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">tag</span>)
+        {
+            <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r9 rd" class="r9 r">set</span>;
+            <b>if</b> (<a href="#92e4ab71c52ba459" class="i field">_dictionary</a>.<span class="i method">TryGetValue</span>(<span class="r8 r">tag</span>, <b>out</b> <span class="r9 r">set</span>))
+            {
+                <b>lock</b> (<span class="r9 r">set</span>)
+                {
+                    <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r9 r">set</span>.<span class="i method">AsEnumerable</span>());
+                }
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="21706ea13ac8f092" href="../R/21706ea13ac8f092.html" target="n" data-glyph="72,1" class="i method">RemoveTagAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">tag</span>)
+        {
+            <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r11 rd" class="r11 r">set</span>;
+ 
+            <b>if</b> (<a href="#92e4ab71c52ba459" class="i field">_dictionary</a>.<span class="i method">TryRemove</span>(<span class="r10 r">tag</span>, <b>out</b> <span class="r11 r">set</span>))
+            {
+                <b>return</b> <a href="#25da997e7bc29f18" class="i field">_tagRemovedEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r12 rd" class="r12 r">handler</span>, <span id="r13 rd" class="r13 r">tag</span>, <span id="r14 rd" class="r14 r">set</span>) =&gt; <span class="r12 r">handler</span>.<span class="i">TagRemovedAsync</span>(<span class="r13 r">tag</span>, <span class="r14 r">set</span>), <span class="r10 r">tag</span>, <span class="r11 r">set</span>, <a href="#ee23154389a7e4fe" class="i field">_logger</a>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

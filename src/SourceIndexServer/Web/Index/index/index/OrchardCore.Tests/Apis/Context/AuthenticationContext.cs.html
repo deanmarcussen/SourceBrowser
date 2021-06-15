@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html><head><title>AuthenticationContext.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(73);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Apis/Context/AuthenticationContext.cs" target="_top">Apis\Context\AuthenticationContext.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Principal</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>.<span class="i">Permissions</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Apis</span>.<span class="i n">Context</span>
+{
+    <b>internal class</b> <a id="5b4fd6dba128e204" href="../../R/5b4fd6dba128e204.html" target="n" data-glyph="2,0" class="t t">PermissionContextAuthorizationHandler</a> : <span class="t t">AuthorizationHandler</span>&lt;<span class="i">PermissionRequirement</span>&gt;
+    {
+        <b>private readonly</b> <a href="#63987e9ae4c41091" class="t t">PermissionsContext</a> <a id="120fb80fca697b06" href="../../R/120fb80fca697b06.html" target="n" data-glyph="46,1" class="i field">_permissionsContext</a>;
+ 
+        <span class="c">// Used for http based graphql tests, marries a permission context to a request</span>
+        <b>public</b> <a id="3153d118ed1739bd" href="../../R/3153d118ed1739bd.html" target="n" data-glyph="72,1" class="t constructor">PermissionContextAuthorizationHandler</a>(<span class="t t">IHttpContextAccessor</span> <span id="r0 rd" class="r0 r">httpContextAccessor</span>, <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="#63987e9ae4c41091" class="t t">PermissionsContext</a>&gt; <span id="r1 rd" class="r1 r">permissionsContexts</span>)
+        {
+            <a href="#120fb80fca697b06" class="i field">_permissionsContext</a> = <b>new</b> <a href="#63987e9ae4c41091" class="t constructor">PermissionsContext</a>();
+ 
+            <b>var</b> <span id="r2 rd" class="r2 r">requestContext</span> = <span class="r0 r">httpContextAccessor</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>;
+ 
+            <b>if</b> (<span class="r2 r">requestContext</span>?.<span class="i property">Headers</span>.<a href="@1@System.Runtime/A.html#6105ae1e7c0835eb" class="i method">ContainsKey</a>(<span class="s">&quot;PermissionsContext&quot;</span>) == <b>true</b> &amp;&amp;
+                <span class="r1 r">permissionsContexts</span>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r2 r">requestContext</span>.<span class="i property">Headers</span>[<span class="s">&quot;PermissionsContext&quot;</span>], <b>out</b> <a href="#63987e9ae4c41091" class="k">var</a> <span id="r3 rd" class="r3 r">permissionsContext</span>))
+            {
+                <a href="#120fb80fca697b06" class="i field">_permissionsContext</a> = <span class="r3 r">permissionsContext</span>;
+            }
+        }
+ 
+        <span class="c">// Used for static graphql test; passes a permissionsContext directly</span>
+        <b>public</b> <a id="200ae13b17a0d6b8" href="../../R/200ae13b17a0d6b8.html" target="n" data-glyph="72,1" class="t constructor">PermissionContextAuthorizationHandler</a>(<a href="#63987e9ae4c41091" class="t t">PermissionsContext</a> <span id="r4 rd" class="r4 r">permissionsContext</span>)
+        {
+            <a href="#120fb80fca697b06" class="i field">_permissionsContext</a> = <span class="r4 r">permissionsContext</span>;
+        }
+ 
+        <b>protected override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f100f58fa84d40f8" href="../../R/f100f58fa84d40f8.html" target="n" data-glyph="75,1" class="i method">HandleRequirementAsync</a>(<span class="t t">AuthorizationHandlerContext</span> <span id="r5 rd" class="r5 r">context</span>, <span class="i">PermissionRequirement</span> <span id="r6 rd" class="r6 r">requirement</span>)
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">permissions</span> = (<a href="#120fb80fca697b06" class="i field">_permissionsContext</a>.<a href="#9e06b4123787a4f4" class="i property">AuthorizedPermissions</a> ?? <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<span class="i">Permission</span>&gt;()).<span class="i method">ToList</span>();
+ 
+            <b>if</b> (!<a href="#120fb80fca697b06" class="i field">_permissionsContext</a>.<a href="#70786fc0f9963548" class="i property">UsePermissionsContext</a>)
+            {
+                <span class="r5 r">context</span>.<span class="i">Succeed</span>(<span class="r6 r">requirement</span>);
+            }
+            <b>else</b> <b>if</b> (<span class="r7 r">permissions</span>.<span class="i">Contains</span>(<span class="r6 r">requirement</span>.<span class="i">Permission</span>))
+            {
+                <span class="r5 r">context</span>.<span class="i">Succeed</span>(<span class="r6 r">requirement</span>);
+            }
+            <b>else</b>
+            {
+                <span class="r5 r">context</span>.<span class="i method">Fail</span>();
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+    }
+ 
+    <b>public class</b> <a id="63987e9ae4c41091" href="../../R/63987e9ae4c41091.html" target="n" data-glyph="0,0" class="t t"><span id="714177bfb6d81784">PermissionsContext</span></a>
+    {
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">Permission</span>&gt; <a id="9e06b4123787a4f4" href="../../R/9e06b4123787a4f4.html" target="n" data-glyph="102,1" class="i property">AuthorizedPermissions</a> { <b>get</b>; <b>set</b>; } = <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<span class="i">Permission</span>&gt;();
+ 
+        <b>public bool</b> <a id="70786fc0f9963548" href="../../R/70786fc0f9963548.html" target="n" data-glyph="102,1" class="i property">UsePermissionsContext</a> { <b>get</b>; <b>set</b>; } = <b>false</b>;
+    }
+ 
+    <b>internal class</b> <a id="a48b84e892fae6b1" href="../../R/a48b84e892fae6b1.html" target="n" data-glyph="2,0" class="t t"><span id="dd387c2a28c2b840">StubIdentity</span></a> : <a href="@1@System.Runtime/A.html#76e73c1a6f198232" class="t t">IIdentity</a>
+    {
+        <b>public string</b> <a id="961778706e3f0293" href="../../R/961778706e3f0293.html" target="n" data-glyph="102,1" class="i property">AuthenticationType</a> =&gt; <span class="s">&quot;TEST TEST&quot;</span>;
+ 
+        <b>public bool</b> <a id="df469d3ac1836d35" href="../../R/df469d3ac1836d35.html" target="n" data-glyph="102,1" class="i property">IsAuthenticated</a> =&gt; <b>true</b>;
+ 
+        <b>public string</b> <a id="eced2652df83e54d" href="../../R/eced2652df83e54d.html" target="n" data-glyph="102,1" class="i property">Name</a> =&gt; <span class="s">&quot;Mr Robot&quot;</span>;
+    }
+}
+</pre></td></tr></table></div></body></html>

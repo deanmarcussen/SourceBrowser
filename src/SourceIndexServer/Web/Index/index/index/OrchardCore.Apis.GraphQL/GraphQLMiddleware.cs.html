@@ -1,0 +1,232 @@
+﻿<!DOCTYPE html>
+<html><head><title>GraphQLMiddleware.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(223);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Apis.GraphQL/GraphQLMiddleware.cs" target="_top">GraphQLMiddleware.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Apis.GraphQL" target="_top">src\OrchardCore.Modules\OrchardCore.Apis.GraphQL\OrchardCore.Apis.GraphQL.csproj</a> (OrchardCore.Apis.GraphQL)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">GraphQL</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Execution</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Validation</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Validation</span>.<span class="i">Complexity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authentication</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Formatters</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>.<span class="i n">Queries</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>.<span class="i n">ValidationRules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>
+{
+    <b>public class</b> <a id="8e06ccb2b00fdea7" href="R/8e06ccb2b00fdea7.html" target="n" data-glyph="0,0" class="t t">GraphQLMiddleware</a>
+    {
+        <b>private readonly</b> <span class="t t">RequestDelegate</span> <a id="1e3626fa19d3219a" href="R/1e3626fa19d3219a.html" target="n" data-glyph="46,1" class="i field">_next</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#28225b6230af4b01" class="t t">GraphQLSettings</a> <a id="53051424bbbac997" href="R/53051424bbbac997.html" target="n" data-glyph="46,1" class="i field">_settings</a>;
+        <b>private readonly</b> <span class="i">IDocumentExecuter</span> <a id="ae5c1fdee2aff244" href="R/ae5c1fdee2aff244.html" target="n" data-glyph="46,1" class="i field">_executer</a>;
+ 
+        <b>internal static readonly</b> <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a> <a id="d157a98023fbdae7" href="R/d157a98023fbdae7.html" target="n" data-glyph="44,1" class="i field">_utf8Encoding</a> = <b>new</b> <span class="t constructor">UTF8Encoding</span>(<b>false</b>);
+        <b>private readonly static</b> <span class="t t">MediaType</span> <a id="e3f13194c61f7676" href="R/e3f13194c61f7676.html" target="n" data-glyph="46,1" class="i field">_jsonMediaType</a> = <b>new</b> <span class="t constructor">MediaType</span>(<span class="s">&quot;application/json&quot;</span>);
+        <b>private readonly static</b> <span class="t t">MediaType</span> <a id="3e3bb02ba6d6a54f" href="R/3e3bb02ba6d6a54f.html" target="n" data-glyph="46,1" class="i field">_graphQlMediaType</a> = <b>new</b> <span class="t constructor">MediaType</span>(<span class="s">&quot;application/graphql&quot;</span>);
+ 
+        <b>public</b> <a id="42a0dddcde2b6fc2" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">GraphQLMiddleware</a>(
+            <span class="t t">RequestDelegate</span> <span id="r0 rd" class="r0 r">next</span>,
+            <a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#28225b6230af4b01" class="t t">GraphQLSettings</a> <span id="r1 rd" class="r1 r">settings</span>,
+            <span class="i">IDocumentExecuter</span> <span id="r2 rd" class="r2 r">executer</span>)
+        {
+            <a href="#1e3626fa19d3219a" class="i field">_next</a> = <span class="r0 r">next</span>;
+            <a href="#53051424bbbac997" class="i field">_settings</a> = <span class="r1 r">settings</span>;
+            <a href="#ae5c1fdee2aff244" class="i field">_executer</a> = <span class="r2 r">executer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="27c6e062934091a3" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Invoke</a>(<span class="t t">HttpContext</span> <span id="r3 rd" class="r3 r">context</span>, <span class="t t">IAuthorizationService</span> <span id="r4 rd" class="r4 r">authorizationService</span>, <span class="t t">IAuthenticationService</span> <span id="r5 rd" class="r5 r">authenticationService</span>, <a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#56d82e9a9b2d53bc" class="t t">ISchemaFactory</a> <span id="r6 rd" class="r6 r">schemaService</span>)
+        {
+            <b>if</b> (!<a href="#2a973144b8908660" class="i method">IsGraphQLRequest</a>(<span class="r3 r">context</span>))
+            {
+                <b>await</b> <a href="#1e3626fa19d3219a" class="i field">_next</a>(<span class="r3 r">context</span>);
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r7 rd" class="r7 r">authenticateResult</span> = <b>await</b> <span class="r5 r">authenticationService</span>.<span class="i method">AuthenticateAsync</span>(<span class="r3 r">context</span>, <span class="s">&quot;Api&quot;</span>);
+ 
+                <b>if</b> (<span class="r7 r">authenticateResult</span>.<span class="i property">Succeeded</span>)
+                {
+                    <span class="r3 r">context</span>.<span class="i property">User</span> = <span class="r7 r">authenticateResult</span>.<span class="i property">Principal</span>;
+                }
+ 
+                <b>var</b> <span id="r8 rd" class="r8 r">authorized</span> = <b>await</b> <span class="r4 r">authorizationService</span>.<span class="i">AuthorizeAsync</span>(<span class="r3 r">context</span>.<span class="i property">User</span>, <a href="Permissions.cs.html#a0ad515756919825" class="t t">Permissions</a>.<a href="Permissions.cs.html#870df3aab8c7152e" class="i field">ExecuteGraphQL</a>);
+ 
+                <b>if</b> (<span class="r8 r">authorized</span>)
+                {
+                    <b>await</b> <a href="#bb65be237088b05f" class="i method">ExecuteAsync</a>(<span class="r3 r">context</span>, <span class="r6 r">schemaService</span>);
+                }
+                <b>else</b>
+                {
+                    <b>await</b> <span class="r3 r">context</span>.<span class="i method">ChallengeAsync</span>(<span class="s">&quot;Api&quot;</span>);
+                }
+            }
+        }
+ 
+        <b>private bool</b> <a id="2a973144b8908660" href="R/2a973144b8908660.html" target="n" data-glyph="76,1" class="i method">IsGraphQLRequest</a>(<span class="t t">HttpContext</span> <span id="r9 rd" class="r9 r">context</span>)
+        {
+            <b>return</b> <span class="r9 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span>.<span class="i">StartsWithNormalizedSegments</span>(<a href="#53051424bbbac997" class="i field">_settings</a>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#3de8409c99787b25" class="i property">Path</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="bb65be237088b05f" href="R/bb65be237088b05f.html" target="n" data-glyph="76,1" class="i method">ExecuteAsync</a>(<span class="t t">HttpContext</span> <span id="r10 rd" class="r10 r">context</span>, <a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#56d82e9a9b2d53bc" class="t t">ISchemaFactory</a> <span id="r11 rd" class="r11 r">schemaService</span>)
+        {
+            <b>var</b> <span id="r12 rd" class="r12 r">schema</span> = <b>await</b> <span class="r11 r">schemaService</span>.<span class="i">GetSchemaAsync</span>();
+ 
+            <a href="GraphQLRequest.cs.html#05c198a35064619f" class="t t">GraphQLRequest</a> <span id="r13 rd" class="r13 r">request</span> = <b>null</b>;
+ 
+            <span class="c">// c.f. https://graphql.org/learn/serving-over-http/#post-request</span>
+ 
+            <b>if</b> (<span class="t t">HttpMethods</span>.<span class="i method">IsPost</span>(<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Method</span>))
+            {
+                <b>var</b> <span id="r14 rd" class="r14 r">mediaType</span> = <b>new</b> <span class="t constructor">MediaType</span>(<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">ContentType</span>);
+ 
+                <b>try</b>
+                {
+                    <b>if</b> (<span class="r14 r">mediaType</span>.<span class="i method">IsSubsetOf</span>(<a href="#e3f13194c61f7676" class="i field">_jsonMediaType</a>))
+                    {
+                        <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r15 rd" class="r15 r">sr</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Body</span>))
+                        {
+                            <span class="c">// Asynchronous read is mandatory.</span>
+                            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">json</span> = <b>await</b> <span class="r15 r">sr</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>();
+                            <span class="r13 r">request</span> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r16 r">json</span>).<span class="i">ToObject</span>&lt;<a href="GraphQLRequest.cs.html#05c198a35064619f" class="t t">GraphQLRequest</a>&gt;();
+                        }
+                    }
+                    <b>else</b> <b>if</b> (<span class="r14 r">mediaType</span>.<span class="i method">IsSubsetOf</span>(<a href="#3e3bb02ba6d6a54f" class="i field">_graphQlMediaType</a>))
+                    {
+                        <span class="r13 r">request</span> = <b>new</b> <a href="GraphQLRequest.cs.html#05c198a35064619f" class="t constructor">GraphQLRequest</a>();
+ 
+                        <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r17 rd" class="r17 r">sr</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Body</span>))
+                        {
+                            <span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#492bcf6f7cc010b1" class="i property">Query</a> = <b>await</b> <span class="r17 r">sr</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>();
+                        }
+                    }
+                    <b>else</b> <b>if</b> (<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>.<span class="i method">ContainsKey</span>(<span class="s">&quot;query&quot;</span>))
+                    {
+                        <span class="r13 r">request</span> = <b>new</b> <a href="GraphQLRequest.cs.html#05c198a35064619f" class="t constructor">GraphQLRequest</a>
+                        {
+                            <a href="GraphQLRequest.cs.html#492bcf6f7cc010b1" class="i property">Query</a> = <span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>[<span class="s">&quot;query&quot;</span>]
+                        };
+ 
+                        <b>if</b> (<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>.<span class="i method">ContainsKey</span>(<span class="s">&quot;variables&quot;</span>))
+                        {
+                            <span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#88458df3c9a77dc9" class="i property">Variables</a> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>[<span class="s">&quot;variables&quot;</span>]);
+                        }
+ 
+                        <b>if</b> (<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>.<span class="i method">ContainsKey</span>(<span class="s">&quot;operationName&quot;</span>))
+                        {
+                            <span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#70ef03b11d7ac2e5" class="i property">OperationName</a> = <span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>[<span class="s">&quot;operationName&quot;</span>];
+                        }
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r18 rd" class="r18 r">e</span>)
+                {
+                    <b>await</b> <a href="#f9fd27de54731353" class="i method">WriteErrorAsync</a>(<span class="r10 r">context</span>, <span class="s">&quot;An error occurred while processing the GraphQL query&quot;</span>, <span class="r18 r">e</span>);
+                    <b>return</b>;
+                }
+            }
+            <b>else</b> <b>if</b> (<span class="t t">HttpMethods</span>.<span class="i method">IsGet</span>(<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Method</span>))
+            {
+                <b>if</b> (!<span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>.<span class="i method">ContainsKey</span>(<span class="s">&quot;query&quot;</span>))
+                {
+                    <b>await</b> <a href="#f9fd27de54731353" class="i method">WriteErrorAsync</a>(<span class="r10 r">context</span>, <span class="s">&quot;The &#39;query&#39; query string parameter is missing&quot;</span>);
+                    <b>return</b>;
+                }
+ 
+                <span class="r13 r">request</span> = <b>new</b> <a href="GraphQLRequest.cs.html#05c198a35064619f" class="t constructor">GraphQLRequest</a>
+                {
+                    <a href="GraphQLRequest.cs.html#492bcf6f7cc010b1" class="i property">Query</a> = <span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Query</span>[<span class="s">&quot;query&quot;</span>]
+                };
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">queryToExecute</span> = <span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#492bcf6f7cc010b1" class="i property">Query</a>;
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#2aff76f0946e49a4" class="i property">NamedQuery</a>))
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r20 rd" class="r20 r">namedQueries</span> = <span class="r10 r">context</span>.<span class="i property">RequestServices</span>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#a7e30b30ea925e0c" class="t t">INamedQueryProvider</a>&gt;();
+ 
+                <b>var</b> <span id="r21 rd" class="r21 r">queries</span> = <span class="r20 r">namedQueries</span>
+                    .<span class="i method">SelectMany</span>(<span id="r22 rd" class="r22 r">dict</span> =&gt; <span class="r22 r">dict</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#eccd6a4a10926216" class="i method">Resolve</a>())
+                    .<span class="i method">ToDictionary</span>(<span id="r23 rd" class="r23 r">pair</span> =&gt; <span class="r23 r">pair</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span id="r24 rd" class="r24 r">pair</span> =&gt; <span class="r24 r">pair</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+ 
+                <span class="r19 r">queryToExecute</span> = <span class="r21 r">queries</span>[<span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#2aff76f0946e49a4" class="i property">NamedQuery</a>];
+            }
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">dataLoaderDocumentListener</span> = <span class="r10 r">context</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IDocumentExecutionListener</span>&gt;();
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">result</span> = <b>await</b> <a href="#ae5c1fdee2aff244" class="i field">_executer</a>.<span class="i">ExecuteAsync</span>(<span id="r27 rd" class="r27 r">_</span> =&gt;
+            {
+                <span class="r27 r">_</span>.<span class="i">Schema</span> = <span class="r12 r">schema</span>;
+                <span class="r27 r">_</span>.<span class="i">Query</span> = <span class="r19 r">queryToExecute</span>;
+                <span class="r27 r">_</span>.<span class="i">OperationName</span> = <span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#70ef03b11d7ac2e5" class="i property">OperationName</a>;
+                <span class="r27 r">_</span>.<span class="i">Inputs</span> = <span class="r13 r">request</span>.<a href="GraphQLRequest.cs.html#88458df3c9a77dc9" class="i property">Variables</a>.<span class="i">ToInputs</span>();
+                <span class="r27 r">_</span>.<span class="i">UserContext</span> = <a href="#53051424bbbac997" class="i field">_settings</a>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#fd50ee232ab2c677" class="i property">BuildUserContext</a>?.<a href="@1@System.Runtime/A.html#3c17e52b9e2c8f81" class="i method">Invoke</a>(<span class="r10 r">context</span>);
+                <span class="r27 r">_</span>.<span class="i">ExposeExceptions</span> = <a href="#53051424bbbac997" class="i field">_settings</a>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#6442d4970a4f2597" class="i property">ExposeExceptions</a>;
+                <span class="r27 r">_</span>.<span class="i">ValidationRules</span> = <span class="i">DocumentValidator</span>.<span class="i">CoreRules</span>()
+                                    .<span class="i">Concat</span>(<span class="r10 r">context</span>.<span class="i property">RequestServices</span>.<span class="i method">GetServices</span>&lt;<span class="i">IValidationRule</span>&gt;());
+                <span class="r27 r">_</span>.<span class="i">ComplexityConfiguration</span> = <b>new</b> <span class="i">ComplexityConfiguration</span>
+                {
+                    <span class="i">MaxDepth</span> = <a href="#53051424bbbac997" class="i field">_settings</a>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#a0250c7638db00b1" class="i property">MaxDepth</a>,
+                    <span class="i">MaxComplexity</span> = <a href="#53051424bbbac997" class="i field">_settings</a>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#4e6b80dbd9187c7a" class="i property">MaxComplexity</a>,
+                    <span class="i">FieldImpact</span> = <a href="#53051424bbbac997" class="i field">_settings</a>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#8e81d663736f2f85" class="i property">FieldImpact</a>
+                };
+                <span class="r27 r">_</span>.<span class="i">Listeners</span>.<span class="i">Add</span>(<span class="r25 r">dataLoaderDocumentListener</span>);
+            });
+ 
+            <span class="r10 r">context</span>.<span class="i property">Response</span>.<span class="i property">StatusCode</span> = (<b>int</b>)(<span class="r26 r">result</span>.<span class="i">Errors</span> == <b>null</b> || <span class="r26 r">result</span>.<span class="i">Errors</span>.<span class="i">Count</span> == 0
+                ? <span class="t t">HttpStatusCode</span>.<span class="i field">OK</span>
+                : <span class="r26 r">result</span>.<span class="i">Errors</span>.<span class="i">Any</span>(<span id="r28 rd" class="r28 r">x</span> =&gt; <span class="r28 r">x</span>.<span class="i">Code</span> == <a href="ValidationRules/RequiresPermissionValidationRule.cs.html#46205243a9409857" class="t t">RequiresPermissionValidationRule</a>.<a href="ValidationRules/RequiresPermissionValidationRule.cs.html#8edca41eb2a4ffaa" class="i field">ErrorCode</a>)
+                    ? <span class="t t">HttpStatusCode</span>.<span class="i field">Unauthorized</span>
+                    : <span class="t t">HttpStatusCode</span>.<span class="i field">BadRequest</span>);
+ 
+            <span class="r10 r">context</span>.<span class="i property">Response</span>.<span class="i property">ContentType</span> = <span class="s">&quot;application/json&quot;</span>;
+ 
+            <span class="c">// Asynchronous write to the response body is mandatory.</span>
+            <b>var</b> <span id="r29 rd" class="r29 r">encodedBytes</span> = <a href="#d157a98023fbdae7" class="i field">_utf8Encoding</a>.<span class="i">GetBytes</span>(<span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r26 r">result</span>).<span class="i">ToString</span>());
+            <b>await</b> <span class="r10 r">context</span>.<span class="i property">Response</span>.<span class="i property">Body</span>.<span class="i">WriteAsync</span>(<span class="r29 r">encodedBytes</span>, 0, <span class="r29 r">encodedBytes</span>.<span class="i">Length</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f9fd27de54731353" href="R/f9fd27de54731353.html" target="n" data-glyph="76,1" class="i method">WriteErrorAsync</a>(<span class="t t">HttpContext</span> <span id="r30 rd" class="r30 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">message</span>, <a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r32 rd" class="r32 r">e</span> = <b>null</b>)
+        {
+            <b>if</b> (<span class="r31 r">message</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r31 r">message</span>));
+            }
+ 
+            <b>var</b> <span id="r33 rd" class="r33 r">errorResult</span> = <b>new</b> <span class="i">ExecutionResult</span>
+            {
+                <span class="i">Errors</span> = <b>new</b> <span class="i">ExecutionErrors</span>()
+            };
+ 
+            <b>if</b> (<span class="r32 r">e</span> == <b>null</b>)
+            {
+                <span class="r33 r">errorResult</span>.<span class="i">Errors</span>.<span class="i">Add</span>(<b>new</b> <span class="i">ExecutionError</span>(<span class="r31 r">message</span>));
+            }
+            <b>else</b>
+            {
+                <span class="r33 r">errorResult</span>.<span class="i">Errors</span>.<span class="i">Add</span>(<b>new</b> <span class="i">ExecutionError</span>(<span class="r31 r">message</span>, <span class="r32 r">e</span>));
+            }
+ 
+            <span class="r30 r">context</span>.<span class="i property">Response</span>.<span class="i property">StatusCode</span> = (<b>int</b>)<span class="t t">HttpStatusCode</span>.<span class="i field">BadRequest</span>;
+            <span class="r30 r">context</span>.<span class="i property">Response</span>.<span class="i property">ContentType</span> = <span class="s">&quot;application/json&quot;</span>;
+ 
+            <span class="c">// Asynchronous write to the response body is mandatory.</span>
+            <b>var</b> <span id="r34 rd" class="r34 r">encodedBytes</span> = <a href="#d157a98023fbdae7" class="i field">_utf8Encoding</a>.<span class="i">GetBytes</span>(<span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r33 r">errorResult</span>).<span class="i">ToString</span>());
+            <b>await</b> <span class="r30 r">context</span>.<span class="i property">Response</span>.<span class="i property">Body</span>.<span class="i">WriteAsync</span>(<span class="r34 r">encodedBytes</span>, 0, <span class="r34 r">encodedBytes</span>.<span class="i">Length</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

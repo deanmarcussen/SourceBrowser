@@ -1,0 +1,208 @@
+﻿<!DOCTYPE html>
+<html><head><title>LuceneQueryFieldTypeProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(199);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/GraphQL/LuceneQueryFieldTypeProvider.cs" target="_top">GraphQL\LuceneQueryFieldTypeProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Types</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Apis</span>.<span class="i">GraphQL</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Apis</span>.<span class="i">GraphQL</span>.<span class="i">Resolvers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">GraphQL</span>.<span class="i n">Queries</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Queries</span>.<span class="i n">Lucene</span>.<span class="i n">GraphQL</span>.<span class="i n">Queries</span>
+{
+    <b>public class</b> <a id="81490ae6facb3610" href="../R/81490ae6facb3610.html" target="n" data-glyph="0,0" class="t t">LuceneQueryFieldTypeProvider</a> : <span class="i">ISchemaBuilder</span>
+    {
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="22e942fc44731c7b" href="../R/22e942fc44731c7b.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span>&lt;<a href="#81490ae6facb3610" class="t t">LuceneQueryFieldTypeProvider</a>&gt; <a id="5b69f55d92235d59" href="../R/5b69f55d92235d59.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="840e0fdf016dc3db" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LuceneQueryFieldTypeProvider</a>(<span class="t t">IHttpContextAccessor</span> <span id="r0 rd" class="r0 r">httpContextAccessor</span>, <span class="t t">ILogger</span>&lt;<a href="#81490ae6facb3610" class="t t">LuceneQueryFieldTypeProvider</a>&gt; <span id="r1 rd" class="r1 r">logger</span>)
+        {
+            <a href="#22e942fc44731c7b" class="i field">_httpContextAccessor</a> = <span class="r0 r">httpContextAccessor</span>;
+            <a href="#5b69f55d92235d59" class="i field">_logger</a> = <span class="r1 r">logger</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="42926dfe5ec51902" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetIdentifierAsync</a>()
+        {
+            <b>var</b> <span id="r2 rd" class="r2 r">queryManager</span> = <a href="#22e942fc44731c7b" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<span class="i">IQueryManager</span>&gt;();
+            <b>return</b> <span class="r2 r">queryManager</span>.<span class="i">GetIdentifierAsync</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ed51e880546ab445" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">BuildAsync</a>(<span class="i">ISchema</span> <span id="r3 rd" class="r3 r">schema</span>)
+        {
+            <b>var</b> <span id="r4 rd" class="r4 r">queryManager</span> = <a href="#22e942fc44731c7b" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<span class="i">IQueryManager</span>&gt;();
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">queries</span> = <b>await</b> <span class="r4 r">queryManager</span>.<span class="i">ListQueriesAsync</span>();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r6 rd" class="r6 r">query</span> <b>in</b> <span class="r5 r">queries</span>.<span class="i">OfType</span>&lt;<a href="../Services/LuceneQuery.cs.html#f33b923fb16807e8" class="t t">LuceneQuery</a>&gt;())
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r6 r">query</span>.<span class="i">Schema</span>))
+                    <b>continue</b>;
+ 
+                <b>var</b> <span id="r7 rd" class="r7 r">name</span> = <span class="r6 r">query</span>.<span class="i">Name</span>;
+ 
+                <b>try</b>
+                {
+                    <b>var</b> <span id="r8 rd" class="r8 r">querySchema</span> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r6 r">query</span>.<span class="i">Schema</span>);
+                    <b>if</b> (!<span class="r8 r">querySchema</span>.<span class="i">ContainsKey</span>(<span class="s">&quot;type&quot;</span>))
+                    {
+                        <a href="#5b69f55d92235d59" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="s">&quot;The Query &#39;{Name}&#39; schema is invalid, the &#39;type&#39; property was not found.&quot;</span>, <span class="r7 r">name</span>);
+                        <b>continue</b>;
+                    }
+                    <b>var</b> <span id="r9 rd" class="r9 r">type</span> = <span class="r8 r">querySchema</span>[<span class="s">&quot;type&quot;</span>].<span class="i">ToString</span>();
+                    <span class="i">FieldType</span> <span id="r10 rd" class="r10 r">fieldType</span>;
+ 
+                    <b>var</b> <span id="r11 rd" class="r11 r">fieldTypeName</span> = <span class="r8 r">querySchema</span>[<span class="s">&quot;fieldTypeName&quot;</span>]?.<span class="i">ToString</span>() ?? <span class="r6 r">query</span>.<span class="i">Name</span>;
+ 
+                    <b>if</b> (<span class="r6 r">query</span>.<span class="i">ReturnContentItems</span> &amp;&amp;
+                        <span class="r9 r">type</span>.<span class="i">StartsWith</span>(<span class="s">&quot;ContentItem/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                    {
+                        <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r12 rd" class="r12 r">contentType</span> = <span class="r9 r">type</span>.<span class="i">Remove</span>(0, 12);
+                        <span class="r10 r">fieldType</span> = <span class="i">BuildContentTypeFieldType</span>(<span class="r3 r">schema</span>, <span class="r12 r">contentType</span>, <span class="r6 r">query</span>, <span class="r11 r">fieldTypeName</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r10 r">fieldType</span> = <span class="i">BuildSchemaBasedFieldType</span>(<span class="r6 r">query</span>, <span class="r8 r">querySchema</span>, <span class="r11 r">fieldTypeName</span>);
+                    }
+ 
+                    <b>if</b> (<span class="r10 r">fieldType</span> != <b>null</b>)
+                    {
+                        <span class="r3 r">schema</span>.<span class="i">Query</span>.<span class="i">AddField</span>(<span class="r10 r">fieldType</span>);
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r13 rd" class="r13 r">e</span>)
+                {
+                    <a href="#5b69f55d92235d59" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="r13 r">e</span>, <span class="s">&quot;The Query &#39;{Name}&#39; has an invalid schema.&quot;</span>, <span class="r7 r">name</span>);
+                }
+            }
+        }
+ 
+        <b>private</b> <span class="i">FieldType</span> <a id="124868941f3cf2bd" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">BuildSchemaBasedFieldType</a>(<a href="../Services/LuceneQuery.cs.html#f33b923fb16807e8" class="t t">LuceneQuery</a> <span id="r14 rd" class="r14 r">query</span>, <span class="i">JToken</span> <span id="r15 rd" class="r15 r">querySchema</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">fieldTypeName</span>)
+        {
+            <b>var</b> <span id="r17 rd" class="r17 r">properties</span> = <span class="r15 r">querySchema</span>[<span class="s">&quot;properties&quot;</span>];
+            <b>if</b> (<span class="r17 r">properties</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r18 rd" class="r18 r">typetype</span> = <b>new</b> <span class="i">ObjectGraphType</span>&lt;<span class="i">JObject</span>&gt;
+            {
+                <span class="i">Name</span> = <span class="r16 r">fieldTypeName</span>
+            };
+ 
+            <b>foreach</b> (<span class="i">JProperty</span> <span id="r19 rd" class="r19 r">child</span> <b>in</b> <span class="r17 r">properties</span>.<span class="i">Children</span>())
+            {
+                <b>var</b> <span id="r20 rd" class="r20 r">name</span> = <span class="r19 r">child</span>.<span class="i">Name</span>;
+                <b>var</b> <span id="r21 rd" class="r21 r">nameLower</span> = <span class="r20 r">name</span>.<span class="i">Replace</span>(<span class="s">&#39;.&#39;</span>, <span class="s">&#39;_&#39;</span>);
+                <b>var</b> <span id="r22 rd" class="r22 r">type</span> = <span class="r19 r">child</span>.<span class="i">Value</span>[<span class="s">&quot;type&quot;</span>].<span class="i">ToString</span>();
+                <b>var</b> <span id="r23 rd" class="r23 r">description</span> = <span class="r19 r">child</span>.<span class="i">Value</span>[<span class="s">&quot;description&quot;</span>]?.<span class="i">ToString</span>();
+ 
+                <b>if</b> (<span class="r22 r">type</span> == <span class="s">&quot;string&quot;</span>)
+                {
+                    <b>var</b> <span id="r24 rd" class="r24 r">field</span> = <span class="r18 r">typetype</span>.<span class="i">Field</span>(
+                        <b>typeof</b>(<span class="i">StringGraphType</span>),
+                        <span class="r21 r">nameLower</span>,
+                        <span class="i">description</span>: <span class="r23 r">description</span>,
+                        <span class="i">resolve</span>: <span id="r25 rd" class="r25 r">context</span> =&gt;
+                        {
+                            <b>var</b> <span id="r26 rd" class="r26 r">source</span> = <span class="r25 r">context</span>.<span class="i">Source</span>;
+                            <b>return</b> <span class="r26 r">source</span>[<span class="r25 r">context</span>.<span class="i">FieldDefinition</span>.<span class="i">Metadata</span>[<span class="s">&quot;Name&quot;</span>].<span class="i">ToString</span>()].<span class="i">ToObject</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                        });
+                    <span class="r24 r">field</span>.<span class="i">Metadata</span>.<span class="i">Add</span>(<span class="s">&quot;Name&quot;</span>, <span class="r20 r">name</span>);
+                }
+                <b>else</b> <b>if</b> (<span class="r22 r">type</span> == <span class="s">&quot;integer&quot;</span>)
+                {
+                    <b>var</b> <span id="r27 rd" class="r27 r">field</span> = <span class="r18 r">typetype</span>.<span class="i">Field</span>(
+                        <b>typeof</b>(<span class="i">IntGraphType</span>),
+                        <span class="r21 r">nameLower</span>,
+                        <span class="i">description</span>: <span class="r23 r">description</span>,
+                        <span class="i">resolve</span>: <span id="r28 rd" class="r28 r">context</span> =&gt;
+                        {
+                            <b>var</b> <span id="r29 rd" class="r29 r">source</span> = <span class="r28 r">context</span>.<span class="i">Source</span>;
+                            <b>return</b> <span class="r29 r">source</span>[<span class="r28 r">context</span>.<span class="i">FieldDefinition</span>.<span class="i">Metadata</span>[<span class="s">&quot;Name&quot;</span>].<span class="i">ToString</span>()].<span class="i">ToObject</span>&lt;<b>int</b>&gt;();
+                        });
+                    <span class="r27 r">field</span>.<span class="i">Metadata</span>.<span class="i">Add</span>(<span class="s">&quot;Name&quot;</span>, <span class="r20 r">name</span>);
+                }
+            }
+ 
+            <b>var</b> <span id="r30 rd" class="r30 r">fieldType</span> = <b>new</b> <span class="i">FieldType</span>
+            {
+                <span class="i">Arguments</span> = <b>new</b> <span class="i">QueryArguments</span>(
+                    <b>new</b> <span class="i">QueryArgument</span>&lt;<span class="i">StringGraphType</span>&gt; { <span class="i">Name</span> = <span class="s">&quot;parameters&quot;</span> }
+                ),
+ 
+                <span class="i">Name</span> = <span class="r16 r">fieldTypeName</span>,
+                <span class="i">Description</span> = <span class="s">&quot;Represents the &quot;</span> + <span class="r14 r">query</span>.<span class="i">Source</span> + <span class="s">&quot; Query : &quot;</span> + <span class="r14 r">query</span>.<span class="i">Name</span>,
+                <span class="i">ResolvedType</span> = <b>new</b> <span class="i">ListGraphType</span>(<span class="r18 r">typetype</span>),
+                <span class="i">Resolver</span> = <b>new</b> <span class="i">LockedAsyncFieldResolver</span>&lt;<b>object</b>, <b>object</b>&gt;(<b>async</b> <span id="r31 rd" class="r31 r">context</span> =&gt;
+                {
+                    <b>var</b> <span id="r32 rd" class="r32 r">queryManager</span> = <span class="r31 r">context</span>.<span class="i">ResolveServiceProvider</span>().<span class="i">GetService</span>&lt;<span class="i">IQueryManager</span>&gt;();
+                    <b>var</b> <span id="r33 rd" class="r33 r">iquery</span> = <b>await</b> <span class="r32 r">queryManager</span>.<span class="i">GetQueryAsync</span>(<span class="r14 r">query</span>.<span class="i">Name</span>);
+ 
+                    <b>var</b> <span id="r34 rd" class="r34 r">parameters</span> = <span class="r31 r">context</span>.<span class="i">GetArgument</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;parameters&quot;</span>);
+ 
+                    <b>var</b> <span id="r35 rd" class="r35 r">queryParameters</span> = <span class="r34 r">parameters</span> != <b>null</b> ?
+                        <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;&gt;(<span class="r34 r">parameters</span>)
+                        : <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;();
+ 
+                    <b>var</b> <span id="r36 rd" class="r36 r">result</span> = <b>await</b> <span class="r32 r">queryManager</span>.<span class="i">ExecuteQueryAsync</span>(<span class="r33 r">iquery</span>, <span class="r35 r">queryParameters</span>);
+                    <b>return</b> <span class="r36 r">result</span>.<span class="i">Items</span>;
+                }),
+                <span class="i">Type</span> = <b>typeof</b>(<span class="i">ListGraphType</span>&lt;<span class="i">ObjectGraphType</span>&lt;<span class="i">JObject</span>&gt;&gt;)
+            };
+ 
+            <b>return</b> <span class="r30 r">fieldType</span>;
+        }
+ 
+        <b>private</b> <span class="i">FieldType</span> <a id="1ff99daf5e2bd01a" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">BuildContentTypeFieldType</a>(<span class="i">ISchema</span> <span id="r37 rd" class="r37 r">schema</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">contentType</span>, <a href="../Services/LuceneQuery.cs.html#f33b923fb16807e8" class="t t">LuceneQuery</a> <span id="r39 rd" class="r39 r">query</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r40 rd" class="r40 r">fieldTypeName</span>)
+        {
+            <b>var</b> <span id="r41 rd" class="r41 r">typetype</span> = <span class="r37 r">schema</span>.<span class="i">Query</span>.<span class="i">Fields</span>.<span class="i">OfType</span>&lt;<a href="/OrchardCore.ContentManagement.GraphQL/A.html#cf5f8cb02579f812" class="t t">ContentItemsFieldType</a>&gt;().<span class="i">FirstOrDefault</span>(<span id="r42 rd" class="r42 r">x</span> =&gt; <span class="r42 r">x</span>.<span class="i">Name</span> == <span class="r38 r">contentType</span>);
+            <b>if</b> (<span class="r41 r">typetype</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r43 rd" class="r43 r">fieldType</span> = <b>new</b> <span class="i">FieldType</span>
+            {
+                <span class="i">Arguments</span> = <b>new</b> <span class="i">QueryArguments</span>(
+                        <b>new</b> <span class="i">QueryArgument</span>&lt;<span class="i">StringGraphType</span>&gt; { <span class="i">Name</span> = <span class="s">&quot;parameters&quot;</span> }
+                    ),
+ 
+                <span class="i">Name</span> = <span class="r40 r">fieldTypeName</span>,
+                <span class="i">Description</span> = <span class="s">&quot;Represents the &quot;</span> + <span class="r39 r">query</span>.<span class="i">Source</span> + <span class="s">&quot; Query : &quot;</span> + <span class="r39 r">query</span>.<span class="i">Name</span>,
+                <span class="i">ResolvedType</span> = <span class="r41 r">typetype</span>.<span class="i">ResolvedType</span>,
+                <span class="i">Resolver</span> = <b>new</b> <span class="i">LockedAsyncFieldResolver</span>&lt;<b>object</b>, <b>object</b>&gt;(<b>async</b> <span id="r44 rd" class="r44 r">context</span> =&gt;
+                {
+                    <b>var</b> <span id="r45 rd" class="r45 r">queryManager</span> = <span class="r44 r">context</span>.<span class="i">ResolveServiceProvider</span>().<span class="i">GetService</span>&lt;<span class="i">IQueryManager</span>&gt;();
+                    <b>var</b> <span id="r46 rd" class="r46 r">iquery</span> = <b>await</b> <span class="r45 r">queryManager</span>.<span class="i">GetQueryAsync</span>(<span class="r39 r">query</span>.<span class="i">Name</span>);
+ 
+                    <b>var</b> <span id="r47 rd" class="r47 r">parameters</span> = <span class="r44 r">context</span>.<span class="i">GetArgument</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;parameters&quot;</span>);
+ 
+                    <b>var</b> <span id="r48 rd" class="r48 r">queryParameters</span> = <span class="r47 r">parameters</span> != <b>null</b> ?
+                        <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;&gt;(<span class="r47 r">parameters</span>)
+                        : <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;();
+ 
+                    <b>var</b> <span id="r49 rd" class="r49 r">result</span> = <b>await</b> <span class="r45 r">queryManager</span>.<span class="i">ExecuteQueryAsync</span>(<span class="r46 r">iquery</span>, <span class="r48 r">queryParameters</span>);
+                    <b>return</b> <span class="r49 r">result</span>.<span class="i">Items</span>;
+                }),
+                <span class="i">Type</span> = <span class="r41 r">typetype</span>.<span class="i">Type</span>
+            };
+ 
+            <b>return</b> <span class="r43 r">fieldType</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

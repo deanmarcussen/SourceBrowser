@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html><head><title>ImportController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(163);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Deployment/Controllers/ImportController.cs" target="_top">Controllers\ImportController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Deployment" target="_top">src\OrchardCore.Modules\OrchardCore.Deployment\OrchardCore.Deployment.csproj</a> (OrchardCore.Deployment)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>.<span class="i n">Compression</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Controllers</span>
+{
+    [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>]
+    <b>public class</b> <a id="347e03e0fbe2d5f7" href="../R/347e03e0fbe2d5f7.html" target="n" data-glyph="0,0" class="t t">ImportController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">IDeploymentManager</span> <a id="2ab798330c41a49d" href="../R/2ab798330c41a49d.html" target="n" data-glyph="46,1" class="i field">_deploymentManager</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="1e1461851ea9e4d0" href="../R/1e1461851ea9e4d0.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="309ef086e45ec8fc" href="../R/309ef086e45ec8fc.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="854f2f5809951545" href="../R/854f2f5809951545.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="90aa88ec1f0e428d" href="../R/90aa88ec1f0e428d.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="3d8314fe4aff9b29" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ImportController</a>(
+            <span class="i">IDeploymentManager</span> <span id="r0 rd" class="r0 r">deploymentManager</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r1 rd" class="r1 r">authorizationService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r2 rd" class="r2 r">notifier</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#347e03e0fbe2d5f7" class="t t">ImportController</a>&gt; <span id="r3 rd" class="r3 r">htmlLocalizer</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#347e03e0fbe2d5f7" class="t t">ImportController</a>&gt; <span id="r4 rd" class="r4 r">stringLocalizer</span>
+        )
+        {
+            <a href="#2ab798330c41a49d" class="i field">_deploymentManager</a> = <span class="r0 r">deploymentManager</span>;
+            <a href="#1e1461851ea9e4d0" class="i field">_authorizationService</a> = <span class="r1 r">authorizationService</span>;
+            <a href="#309ef086e45ec8fc" class="i field">_notifier</a> = <span class="r2 r">notifier</span>;
+ 
+            <a href="#854f2f5809951545" class="i field">H</a> = <span class="r3 r">htmlLocalizer</span>;
+            <a href="#90aa88ec1f0e428d" class="i field">S</a> = <span class="r4 r">stringLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="d28af3e0fad93a5d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#1e1461851ea9e4d0" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c00c2a647a9ab2de" class="i field">Import</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="7b7f83fd56679aea" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Import</a>(<span class="t t">IFormFile</span> <span id="r5 rd" class="r5 r">importedPackage</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#1e1461851ea9e4d0" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c00c2a647a9ab2de" class="i field">Import</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="r5 r">importedPackage</span> != <b>null</b>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">tempArchiveName</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3f28ce894873de0a" class="i method">GetTempFileName</a>() + <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f424e433705aeb09" class="i method">GetExtension</a>(<span class="r5 r">importedPackage</span>.<span class="i property">FileName</span>);
+                <b>var</b> <span id="r7 rd" class="r7 r">tempArchiveFolder</span> = <span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3a7a8c72321c6e1d" class="i method">GetTempPath</a>(), <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#efb113f637a6bb47" class="i method">GetRandomFileName</a>());
+ 
+                <b>try</b>
+                {
+                    <b>using</b> (<a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r8 rd" class="r8 r">stream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#66c00a58470ce47d" class="t constructor">FileStream</a>(<span class="r6 r">tempArchiveName</span>, <a href="@1@System.Runtime/A.html#c0cb6ba6af625b3a" class="t t">FileMode</a>.<a href="@1@System.Runtime/A.html#17684d43e30dc120" class="i field">Create</a>))
+                    {
+                        <b>await</b> <span class="r5 r">importedPackage</span>.<span class="i method">CopyToAsync</span>(<span class="r8 r">stream</span>);
+                    }
+ 
+                    <b>if</b> (<span class="r5 r">importedPackage</span>.<span class="i property">FileName</span>.<a href="@1@System.Runtime/A.html#cb74053b3f2d03f4" class="i method">EndsWith</a>(<span class="s">&quot;.zip&quot;</span>))
+                    {
+                        <span class="t t">ZipFile</span>.<span class="i">ExtractToDirectory</span>(<span class="r6 r">tempArchiveName</span>, <span class="r7 r">tempArchiveFolder</span>);
+                    }
+                    <b>else</b> <b>if</b> (<span class="r5 r">importedPackage</span>.<span class="i property">FileName</span>.<a href="@1@System.Runtime/A.html#cb74053b3f2d03f4" class="i method">EndsWith</a>(<span class="s">&quot;.json&quot;</span>))
+                    {
+                        <span class="t t">Directory</span>.<span class="i">CreateDirectory</span>(<span class="r7 r">tempArchiveFolder</span>);
+                        <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Move</span>(<span class="r6 r">tempArchiveName</span>, <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">Combine</span>(<span class="r7 r">tempArchiveFolder</span>, <span class="s">&quot;Recipe.json&quot;</span>));
+                    }
+                    <b>else</b>
+                    {
+                        <a href="#309ef086e45ec8fc" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#854f2f5809951545" class="i field">H</a>[<span class="s">&quot;Only zip or json files are supported.&quot;</span>]);
+ 
+                        <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+                    }
+ 
+                    <b>await</b> <a href="#2ab798330c41a49d" class="i field">_deploymentManager</a>.<span class="i">ImportDeploymentPackageAsync</span>(<b>new</b> <span class="t">PhysicalFileProvider</span>(<span class="r7 r">tempArchiveFolder</span>));
+ 
+                    <a href="#309ef086e45ec8fc" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#854f2f5809951545" class="i field">H</a>[<span class="s">&quot;Deployment package imported.&quot;</span>]);
+                }
+                <b>finally</b>
+                {
+                    <b>if</b> (<span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r6 r">tempArchiveName</span>))
+                    {
+                        <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r6 r">tempArchiveName</span>);
+                    }
+ 
+                    <b>if</b> (<span class="t t">Directory</span>.<span class="i">Exists</span>(<span class="r7 r">tempArchiveFolder</span>))
+                    {
+                        <span class="t t">Directory</span>.<span class="i">Delete</span>(<span class="r7 r">tempArchiveFolder</span>, <b>true</b>);
+                    }
+                }
+            }
+            <b>else</b>
+            {
+                <a href="#309ef086e45ec8fc" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#854f2f5809951545" class="i field">H</a>[<span class="s">&quot;Please add a file to import.&quot;</span>]);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="948023d2709f9ee0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Json</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#1e1461851ea9e4d0" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c00c2a647a9ab2de" class="i field">Import</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="6838f06bb8d17cb6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Json</a>(<a href="../ViewModels/ImportJsonViewModel.cs.html#740caa74aead9301" class="t t">ImportJsonViewModel</a> <span id="r9 rd" class="r9 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#1e1461851ea9e4d0" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c00c2a647a9ab2de" class="i field">Import</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<span class="r9 r">model</span>.<a href="../ViewModels/ImportJsonViewModel.cs.html#7fb54e3eb5e0ab2e" class="i property">Json</a>.<span class="i">IsJson</span>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r9 r">model</span>.<a href="../ViewModels/ImportJsonViewModel.cs.html#7fb54e3eb5e0ab2e" class="i property">Json</a>), <a href="#90aa88ec1f0e428d" class="i field">S</a>[<span class="s">&quot;The recipe is written in an incorrect json format.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>var</b> <span id="r10 rd" class="r10 r">tempArchiveFolder</span> = <span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3a7a8c72321c6e1d" class="i method">GetTempPath</a>(), <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#efb113f637a6bb47" class="i method">GetRandomFileName</a>());
+ 
+                <b>try</b>
+                {
+                    <span class="t t">Directory</span>.<span class="i">CreateDirectory</span>(<span class="r10 r">tempArchiveFolder</span>);
+                    <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">WriteAllText</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">Combine</span>(<span class="r10 r">tempArchiveFolder</span>, <span class="s">&quot;Recipe.json&quot;</span>), <span class="r9 r">model</span>.<a href="../ViewModels/ImportJsonViewModel.cs.html#7fb54e3eb5e0ab2e" class="i property">Json</a>);
+ 
+                    <b>await</b> <a href="#2ab798330c41a49d" class="i field">_deploymentManager</a>.<span class="i">ImportDeploymentPackageAsync</span>(<b>new</b> <span class="t">PhysicalFileProvider</span>(<span class="r10 r">tempArchiveFolder</span>));
+ 
+                    <a href="#309ef086e45ec8fc" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#854f2f5809951545" class="i field">H</a>[<span class="s">&quot;Recipe imported.&quot;</span>]);
+                }
+                <b>finally</b>
+                {
+                    <b>if</b> (<span class="t t">Directory</span>.<span class="i">Exists</span>(<span class="r10 r">tempArchiveFolder</span>))
+                    {
+                        <span class="t t">Directory</span>.<span class="i">Delete</span>(<span class="r10 r">tempArchiveFolder</span>, <b>true</b>);
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r9 r">model</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

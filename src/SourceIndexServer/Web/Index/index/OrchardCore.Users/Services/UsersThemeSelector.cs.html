@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html><head><title>UsersThemeSelector.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(76);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/Services/UsersThemeSelector.cs" target="_top">Services\UsersThemeSelector.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Theming</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Services</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Provides the theme defined in the site configuration for the current scope (request).</span>
+    <span class="c">///</span><span class="c"> This selector provides AdminTheme as default or fallback for Account|Registration|ResetPassword</span>
+    <span class="c">///</span><span class="c"> controllers based on SiteSettings.</span>
+    <span class="c">///</span><span class="c"> The same </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.DisplayManagement/A.html#e1a1eaa4bf2add51" class="t t">ThemeSelectorResult</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> is returned if called multiple times</span>
+    <span class="c">///</span><span class="c"> during the same scope.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="00e2e279478f4600" href="../R/00e2e279478f4600.html" target="n" data-glyph="0,0" class="t t">UsersThemeSelector</a> : <a href="/OrchardCore.DisplayManagement/A.html#5c1cab18db3d48ac" class="t t">IThemeSelector</a>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <a id="edfda01161df121d" href="../R/edfda01161df121d.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Admin.Abstractions/A.html#dbedb83751faa60a" class="t t">IAdminThemeService</a> <a id="243bf318bebd474f" href="../R/243bf318bebd474f.html" target="n" data-glyph="46,1" class="i field">_adminThemeService</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="0840d6387519fd93" href="../R/0840d6387519fd93.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+ 
+        <b>public</b> <a id="25309c9d071de1b8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UsersThemeSelector</a>(
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <span id="r0 rd" class="r0 r">siteService</span>,
+            <a href="/OrchardCore.Admin.Abstractions/A.html#dbedb83751faa60a" class="t t">IAdminThemeService</a> <span id="r1 rd" class="r1 r">adminThemeService</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>)
+        {
+            <a href="#edfda01161df121d" class="i field">_siteService</a> = <span class="r0 r">siteService</span>;
+            <a href="#243bf318bebd474f" class="i field">_adminThemeService</a> = <span class="r1 r">adminThemeService</span>;
+            <a href="#0840d6387519fd93" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#e1a1eaa4bf2add51" class="t t">ThemeSelectorResult</a>&gt; <a id="8eab24584492258d" href="../R/8eab24584492258d.html" target="n" data-glyph="72,1" class="i method">GetThemeAsync</a>()
+        {
+            <b>var</b> <span id="r3 rd" class="r3 r">routeValues</span> = <a href="#0840d6387519fd93" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">RouteValues</span>;
+ 
+            <b>if</b> (<span class="r3 r">routeValues</span>[<span class="s">&quot;area&quot;</span>]?.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>() == <span class="s">&quot;OrchardCore.Users&quot;</span>)
+            {
+                <b>bool</b> <span id="r4 rd" class="r4 r">useSiteTheme</span>;
+ 
+                <b>switch</b> (<span class="r3 r">routeValues</span>[<span class="s">&quot;controller&quot;</span>]?.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>())
+                {
+                    <b>case</b> <span class="s">&quot;Account&quot;</span>:
+                        <span class="r4 r">useSiteTheme</span> = (<b>await</b> <a href="#edfda01161df121d" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/LoginSettings.cs.html#e3d53be2d2ccd8ed" class="t t">LoginSettings</a>&gt;().<a href="../Models/LoginSettings.cs.html#3958ed42b1f015ab" class="i property">UseSiteTheme</a>;
+                        <b>break</b>;
+                    <b>case</b> <span class="s">&quot;Registration&quot;</span>:
+                        <span class="r4 r">useSiteTheme</span> = (<b>await</b> <a href="#edfda01161df121d" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;().<a href="../Models/RegistrationSettings.cs.html#d1b30e880bdf233d" class="i property">UseSiteTheme</a>;
+                        <b>break</b>;
+                    <b>case</b> <span class="s">&quot;ResetPassword&quot;</span>:
+                        <span class="r4 r">useSiteTheme</span> = (<b>await</b> <a href="#edfda01161df121d" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/ResetPasswordSettings.cs.html#7cbec55ce5e3c39e" class="t t">ResetPasswordSettings</a>&gt;().<a href="../Models/ResetPasswordSettings.cs.html#bd0c19c74b175100" class="i property">UseSiteTheme</a>;
+                        <b>break</b>;
+                    <b>default</b>:
+                        <b>return</b> <b>null</b>;
+                }
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">adminThemeName</span> = <b>await</b> <a href="#243bf318bebd474f" class="i field">_adminThemeService</a>.<a href="/OrchardCore.Admin.Abstractions/A.html#234c516b5fc512e7" class="i method">GetAdminThemeNameAsync</a>();
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r5 r">adminThemeName</span>))
+                {
+                    <b>return</b> <b>null</b>;
+                }
+ 
+                <b>return</b> <b>new</b> <a href="/OrchardCore.DisplayManagement/A.html#e1a1eaa4bf2add51" class="t constructor">ThemeSelectorResult</a>
+                {
+                    <a href="/OrchardCore.DisplayManagement/A.html#e729cc481355a7c7" class="i property">Priority</a> = <span class="r4 r">useSiteTheme</span> ? -100 : 100,
+                    <a href="/OrchardCore.DisplayManagement/A.html#35b37d2c01736cb1" class="i property">ThemeName</a> = <span class="r5 r">adminThemeName</span>
+                };
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html><head><title>GithubHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(41);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.GitHub/Configuration/GithubHandler.cs" target="_top">Configuration\GithubHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.GitHub" target="_top">src\OrchardCore.Modules\OrchardCore.GitHub\OrchardCore.GitHub.csproj</a> (OrchardCore.GitHub)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Http</span>.<span class="i n">Headers</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Json</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authentication</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authentication</span>.<span class="i n">OAuth</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">GitHub</span>.<span class="i n">Configuration</span>
+{
+    <b>public class</b> <a id="6d7c6ef3715d1311" href="../R/6d7c6ef3715d1311.html" target="n" data-glyph="0,0" class="t t">GitHubHandler</a> : <span class="t t">OAuthHandler</span>&lt;<a href="GithubOptions.cs.html#21ef0e7da66ff9e2" class="t t">GitHubOptions</a>&gt;
+    {
+        <b>public</b> <a id="94989c89150061f5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">GitHubHandler</a>(<span class="t t">IOptionsMonitor</span>&lt;<a href="GithubOptions.cs.html#21ef0e7da66ff9e2" class="t t">GitHubOptions</a>&gt; <span id="r0 rd" class="r0 r">options</span>, <span class="t t">ILoggerFactory</span> <span id="r1 rd" class="r1 r">logger</span>, <span class="t t">UrlEncoder</span> <span id="r2 rd" class="r2 r">encoder</span>, <span class="t t">ISystemClock</span> <span id="r3 rd" class="r3 r">clock</span>)
+            : <b>base</b>(<span class="r0 r">options</span>, <span class="r1 r">logger</span>, <span class="r2 r">encoder</span>, <span class="r3 r">clock</span>)
+        { }
+ 
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">AuthenticationTicket</span>&gt; <a id="40b6e6df56a29855" href="../R/40b6e6df56a29855.html" target="n" data-glyph="75,1" class="i method">CreateTicketAsync</a>(<span class="t t">ClaimsIdentity</span> <span id="r4 rd" class="r4 r">identity</span>, <span class="t t">AuthenticationProperties</span> <span id="r5 rd" class="r5 r">properties</span>, <span class="t t">OAuthTokenResponse</span> <span id="r6 rd" class="r6 r">tokens</span>)
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">request</span> = <b>new</b> <span class="t constructor">HttpRequestMessage</span>(<span class="t t">HttpMethod</span>.<span class="i property">Get</span>, <span class="i property">Options</span>.<span class="i property">UserInformationEndpoint</span>);
+            <span class="r7 r">request</span>.<span class="i property">Headers</span>.<span class="i property">Authorization</span> = <b>new</b> <span class="t constructor">AuthenticationHeaderValue</span>(<span class="s">&quot;Bearer&quot;</span>, <span class="r6 r">tokens</span>.<span class="i property">AccessToken</span>);
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">response</span> = <b>await</b> <span class="i property">Backchannel</span>.<span class="i method">SendAsync</span>(<span class="r7 r">request</span>, <span class="i property">Context</span>.<span class="i property">RequestAborted</span>);
+            <b>if</b> (!<span class="r8 r">response</span>.<span class="i property">IsSuccessStatusCode</span>)
+            {
+                <b>throw</b> <b>new</b> <span class="t constructor">HttpRequestException</span>(<span class="s">$&quot;</span><span class="s">An error occurred when retrieving GitHub user information (</span>{<span class="r8 r">response</span>.<span class="i property">StatusCode</span>}<span class="s">). Please check if the authentication information is correct in the corresponding GitHub Application.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">payload</span> = (<b>await</b> <span class="t t">JsonDocument</span>.<span class="i method">ParseAsync</span>(<b>await</b> <span class="r8 r">response</span>.<span class="i property">Content</span>.<span class="i method">ReadAsStreamAsync</span>())).<span class="i property">RootElement</span>;
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">context</span> = <b>new</b> <span class="t constructor">OAuthCreatingTicketContext</span>(<b>new</b> <span class="t constructor">ClaimsPrincipal</span>(<span class="r4 r">identity</span>), <span class="r5 r">properties</span>, <span class="i property">Context</span>, <span class="i property">Scheme</span>, <span class="i property">Options</span>, <span class="i property">Backchannel</span>, <span class="r6 r">tokens</span>, <span class="r9 r">payload</span>);
+            <span class="r10 r">context</span>.<span class="i method">RunClaimActions</span>();
+ 
+            <b>await</b> <span class="i property">Events</span>.<span class="i method">CreatingTicket</span>(<span class="r10 r">context</span>);
+            <b>return</b> <b>new</b> <span class="t constructor">AuthenticationTicket</span>(<span class="r10 r">context</span>.<span class="i property">Principal</span>, <span class="r10 r">context</span>.<span class="i property">Properties</span>, <span class="i property">Scheme</span>.<span class="i property">Name</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

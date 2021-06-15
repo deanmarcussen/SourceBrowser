@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html><head><title>ImportRemoteInstanceController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(87);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Deployment.Remote/Controllers/ImportRemoteInstanceController.cs" target="_top">Controllers\ImportRemoteInstanceController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Deployment.Remote" target="_top">src\OrchardCore.Modules\OrchardCore.Deployment.Remote\OrchardCore.Deployment.Remote.csproj</a> (OrchardCore.Deployment.Remote)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>.<span class="i n">Compression</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Remote</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Remote</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Remote</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="f3c4c8f0c1de6745" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">ImportRemoteInstanceController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <a href="../Services/RemoteClientService.cs.html#1b0ab0729810d7eb" class="t t">RemoteClientService</a> <a id="d9dfe69ac82605d1" href="../R/d9dfe69ac82605d1.html" target="n" data-glyph="46,1" class="i field">_remoteClientService</a>;
+        <b>private readonly</b> <span class="i">IDeploymentManager</span> <a id="be66b9bc3a1e4b07" href="../R/be66b9bc3a1e4b07.html" target="n" data-glyph="46,1" class="i field">_deploymentManager</a>;
+        <b>private readonly</b> <span class="t t">IDataProtector</span> <a id="70dcdefdb448e70a" href="../R/70dcdefdb448e70a.html" target="n" data-glyph="46,1" class="i field">_dataProtector</a>;
+ 
+        <b>public</b> <a id="f0f7e29a5fe8f4fd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ImportRemoteInstanceController</a>(
+            <span class="t t">IDataProtectionProvider</span> <span id="r0 rd" class="r0 r">dataProtectionProvider</span>,
+            <a href="../Services/RemoteClientService.cs.html#1b0ab0729810d7eb" class="t t">RemoteClientService</a> <span id="r1 rd" class="r1 r">remoteClientService</span>,
+            <span class="i">IDeploymentManager</span> <span id="r2 rd" class="r2 r">deploymentManager</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="ExportRemoteInstanceController.cs.html#81b862acea702b5c" class="t t">ExportRemoteInstanceController</a>&gt; <span id="r3 rd" class="r3 r">localizer</span>)
+        {
+            <a href="#be66b9bc3a1e4b07" class="i field">_deploymentManager</a> = <span class="r2 r">deploymentManager</span>;
+            <a href="#d9dfe69ac82605d1" class="i field">_remoteClientService</a> = <span class="r1 r">remoteClientService</span>;
+            <a href="#70dcdefdb448e70a" class="i field">_dataProtector</a> = <span class="r0 r">dataProtectionProvider</span>.<span class="i method">CreateProtector</span>(<span class="s">&quot;OrchardCore.Deployment&quot;</span>).<span class="i method">ToTimeLimitedDataProtector</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> We ignore the AFT as the service is called from external applications (they can&#39;t have valid ones) and</span>
+        <span class="c">///</span><span class="c"> we use a private API key to secure its calls.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">IgnoreAntiforgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="dc85d1980c041e14" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Import</a>(<a href="../ViewModels/ImportViewModel.cs.html#916765dbfb801b78" class="t t">ImportViewModel</a> <span id="r4 rd" class="r4 r">model</span>)
+        {
+            <a href="../Models/RemoteClientList.cs.html#51654ebba085b040" class="k">var</a> <span id="r5 rd" class="r5 r">remoteClientList</span> = <b>await</b> <a href="#d9dfe69ac82605d1" class="i field">_remoteClientService</a>.<a href="../Services/RemoteClientService.cs.html#431ad1b8657e9176" class="i method">GetRemoteClientListAsync</a>();
+ 
+            <a href="../Models/RemoteClient.cs.html#81efc64410553c44" class="k">var</a> <span id="r6 rd" class="r6 r">remoteClient</span> = <span class="r5 r">remoteClientList</span>.<a href="../Models/RemoteClientList.cs.html#05dca0277651babf" class="i property">RemoteClients</a>.<span class="i method">FirstOrDefault</span>(<span id="r7 rd" class="r7 r">x</span> =&gt; <span class="r7 r">x</span>.<a href="../Models/RemoteClient.cs.html#3dd7c3336022d17a" class="i property">ClientName</a> == <span class="r4 r">model</span>.<a href="../ViewModels/ImportViewModel.cs.html#10c7f0f0a1e09c38" class="i property">ClientName</a>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">apiKey</span> = <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<a href="@1@System.Runtime/A.html#7310c9cccfaecd17" class="i method">GetString</a>(<a href="#70dcdefdb448e70a" class="i field">_dataProtector</a>.<span class="i method">Unprotect</span>(<span class="r6 r">remoteClient</span>.<a href="../Models/RemoteClient.cs.html#8abe16a4da6f1651" class="i property">ProtectedApiKey</a>));
+ 
+            <b>if</b> (<span class="r6 r">remoteClient</span> == <b>null</b> || <span class="r4 r">model</span>.<a href="../ViewModels/ImportViewModel.cs.html#7884b2732d53e514" class="i property">ApiKey</a> != <span class="r8 r">apiKey</span> || <span class="r4 r">model</span>.<a href="../ViewModels/ImportViewModel.cs.html#10c7f0f0a1e09c38" class="i property">ClientName</a> != <span class="r6 r">remoteClient</span>.<a href="../Models/RemoteClient.cs.html#3dd7c3336022d17a" class="i property">ClientName</a>)
+            {
+                <b>return</b> <span class="i method">StatusCode</span>((<b>int</b>)<span class="t t">HttpStatusCode</span>.<span class="i field">BadRequest</span>, <span class="s">&quot;The Api Key was not recognized&quot;</span>);
+            }
+ 
+            <span class="c">// Create a temporary filename to save the archive</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">tempArchiveName</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3f28ce894873de0a" class="i method">GetTempFileName</a>() + <span class="s">&quot;.zip&quot;</span>;
+ 
+            <span class="c">// Create a temporary folder to extract the archive to</span>
+            <b>var</b> <span id="r10 rd" class="r10 r">tempArchiveFolder</span> = <span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3a7a8c72321c6e1d" class="i method">GetTempPath</a>(), <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#efb113f637a6bb47" class="i method">GetRandomFileName</a>());
+ 
+            <b>try</b>
+            {
+                <b>using</b> (<a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r11 rd" class="r11 r">fs</span> = <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Create</span>(<span class="r9 r">tempArchiveName</span>))
+                {
+                    <b>await</b> <span class="r4 r">model</span>.<a href="../ViewModels/ImportViewModel.cs.html#56f8d6d9bfccbe04" class="i property">Content</a>.<span class="i method">CopyToAsync</span>(<span class="r11 r">fs</span>);
+                }
+ 
+                <span class="t t">ZipFile</span>.<span class="i">ExtractToDirectory</span>(<span class="r9 r">tempArchiveName</span>, <span class="r10 r">tempArchiveFolder</span>);
+ 
+                <b>await</b> <a href="#be66b9bc3a1e4b07" class="i field">_deploymentManager</a>.<span class="i">ImportDeploymentPackageAsync</span>(<b>new</b> <span class="t">PhysicalFileProvider</span>(<span class="r10 r">tempArchiveFolder</span>));
+            }
+            <b>finally</b>
+            {
+                <b>if</b> (<span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r9 r">tempArchiveName</span>))
+                {
+                    <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r9 r">tempArchiveName</span>);
+                }
+ 
+                <b>if</b> (<span class="t t">Directory</span>.<span class="i">Exists</span>(<span class="r10 r">tempArchiveFolder</span>))
+                {
+                    <span class="t t">Directory</span>.<span class="i">Delete</span>(<span class="r10 r">tempArchiveFolder</span>, <b>true</b>);
+                }
+            }
+ 
+            <b>return</b> <span class="i method">Ok</span>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

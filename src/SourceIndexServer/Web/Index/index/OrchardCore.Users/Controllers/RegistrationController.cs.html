@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html><head><title>RegistrationController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(172);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/Controllers/RegistrationController.cs" target="_top">Controllers\RegistrationController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Email</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Controllers</span>
+{
+    [<span class="i">Feature</span>(<span class="s">&quot;OrchardCore.Users.Registration&quot;</span>)]
+    <b>public class</b> <a id="d7b4a40f0cf67a7c" href="../R/d7b4a40f0cf67a7c.html" target="n" data-glyph="0,0" class="t t">RegistrationController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <a id="b134eb632d6821c5" href="../R/b134eb632d6821c5.html" target="n" data-glyph="46,1" class="i field">_userManager</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="c00791ce0cae641a" href="../R/c00791ce0cae641a.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <a id="87133c4888a5ea41" href="../R/87133c4888a5ea41.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="ef3c1604c4001e40" href="../R/ef3c1604c4001e40.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <a id="37f1de0fd8f58077" href="../R/37f1de0fd8f58077.html" target="n" data-glyph="46,1" class="i field">_emailAddressValidator</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="9d5e71fd3eb257e2" href="../R/9d5e71fd3eb257e2.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="df98f84ffeb4f760" href="../R/df98f84ffeb4f760.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="9d924d59c3b1c8f0" href="../R/9d924d59c3b1c8f0.html" target="n" data-glyph="46,1" class="i field">H</a>;
+ 
+        <b>public</b> <a id="d34890d1edc51987" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RegistrationController</a>(
+            <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r0 rd" class="r0 r">userManager</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r1 rd" class="r1 r">authorizationService</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <span id="r2 rd" class="r2 r">siteService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r3 rd" class="r3 r">notifier</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <span id="r4 rd" class="r4 r">emailAddressValidator</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#d7b4a40f0cf67a7c" class="t t">RegistrationController</a>&gt; <span id="r5 rd" class="r5 r">logger</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#d7b4a40f0cf67a7c" class="t t">RegistrationController</a>&gt; <span id="r6 rd" class="r6 r">htmlLocalizer</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#d7b4a40f0cf67a7c" class="t t">RegistrationController</a>&gt; <span id="r7 rd" class="r7 r">stringLocalizer</span>)
+        {
+            <a href="#b134eb632d6821c5" class="i field">_userManager</a> = <span class="r0 r">userManager</span>;
+            <a href="#c00791ce0cae641a" class="i field">_authorizationService</a> = <span class="r1 r">authorizationService</span>;
+            <a href="#87133c4888a5ea41" class="i field">_siteService</a> = <span class="r2 r">siteService</span>;
+            <a href="#ef3c1604c4001e40" class="i field">_notifier</a> = <span class="r3 r">notifier</span>;
+            <a href="#37f1de0fd8f58077" class="i field">_emailAddressValidator</a> = <span class="r4 r">emailAddressValidator</span> ?? <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r4 r">emailAddressValidator</span>));
+            <a href="#9d5e71fd3eb257e2" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+            <a href="#9d924d59c3b1c8f0" class="i field">H</a> = <span class="r6 r">htmlLocalizer</span>;
+            <a href="#df98f84ffeb4f760" class="i field">S</a> = <span class="r7 r">stringLocalizer</span>;
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="35c4f12821837a39" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Register</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">returnUrl</span> = <b>null</b>)
+        {
+            <a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="k">var</a> <span id="r9 rd" class="r9 r">settings</span> = (<b>await</b> <a href="#87133c4888a5ea41" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;();
+            <b>if</b> (<span class="r9 r">settings</span>.<a href="../Models/RegistrationSettings.cs.html#6ebfb85c022e0166" class="i property">UsersCanRegister</a> != <a href="../Models/UserRegistrationType.cs.html#df1fd8775492708d" class="t t">UserRegistrationType</a>.<a href="../Models/UserRegistrationType.cs.html#550ab04dd88c919e" class="i field">AllowRegistration</a>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r8 r">returnUrl</span>;
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="c710fb20e2c22e6a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Register</a>(<a href="../ViewModels/RegisterViewModel.cs.html#4bf6d292d51da065" class="t t">RegisterViewModel</a> <span id="r10 rd" class="r10 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">returnUrl</span> = <b>null</b>)
+        {
+            <a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="k">var</a> <span id="r12 rd" class="r12 r">settings</span> = (<b>await</b> <a href="#87133c4888a5ea41" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>()).<a href="/OrchardCore.Infrastructure.Abstractions/A.html#b98cdb8ea8e7982d" class="i method">As</a>&lt;<a href="../Models/RegistrationSettings.cs.html#eef986e61603148a" class="t t">RegistrationSettings</a>&gt;();
+ 
+            <b>if</b> (<span class="r12 r">settings</span>.<a href="../Models/RegistrationSettings.cs.html#6ebfb85c022e0166" class="i property">UsersCanRegister</a> != <a href="../Models/UserRegistrationType.cs.html#df1fd8775492708d" class="t t">UserRegistrationType</a>.<a href="../Models/UserRegistrationType.cs.html#550ab04dd88c919e" class="i field">AllowRegistration</a>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">model</span>.<a href="../ViewModels/RegisterViewModel.cs.html#6bbcc01c9f54fef6" class="i property">Email</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Email&quot;</span>, <a href="#df98f84ffeb4f760" class="i field">S</a>[<span class="s">&quot;Email is required.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="#37f1de0fd8f58077" class="i field">_emailAddressValidator</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#20ced43e7c1e4aca" class="i method">Validate</a>(<span class="r10 r">model</span>.<a href="../ViewModels/RegisterViewModel.cs.html#6bbcc01c9f54fef6" class="i property">Email</a>))
+            {
+                <span class="c">// Check if user with same email already exists</span>
+                <b>var</b> <span id="r13 rd" class="r13 r">userWithEmail</span> = <b>await</b> <a href="#b134eb632d6821c5" class="i field">_userManager</a>.<span class="i method">FindByEmailAsync</span>(<span class="r10 r">model</span>.<a href="../ViewModels/RegisterViewModel.cs.html#6bbcc01c9f54fef6" class="i property">Email</a>);
+ 
+                <b>if</b> (<span class="r13 r">userWithEmail</span> != <b>null</b>)
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Email&quot;</span>, <a href="#df98f84ffeb4f760" class="i field">S</a>[<span class="s">&quot;A user with the same email already exists.&quot;</span>]);
+                }
+            }
+            <b>else</b>
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Email&quot;</span>, <a href="#df98f84ffeb4f760" class="i field">S</a>[<span class="s">&quot;Invalid email.&quot;</span>]);
+            }
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r11 r">returnUrl</span>;
+ 
+            <b>if</b> (<span class="i method">TryValidateModel</span>(<span class="r10 r">model</span>) &amp;&amp; <span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="c">// If we get a user, redirect to returnUrl</span>
+                <b>if</b> (<b>await</b> <a href="#d7b4a40f0cf67a7c" class="k">this</a>.<a href="ControllerExtensions.cs.html#ed333109b955b54f" class="i method">RegisterUser</a>(<span class="r10 r">model</span>, <a href="#df98f84ffeb4f760" class="i field">S</a>[<span class="s">&quot;Confirm your account&quot;</span>], <a href="#9d5e71fd3eb257e2" class="i field">_logger</a>) != <b>null</b>)
+                {
+                    <b>return</b> <a href="#1d0a9529b8195204" class="i method">RedirectToLocal</a>(<span class="r11 r">returnUrl</span>);
+                }
+            }
+ 
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r10 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        [<span class="t constructor">AllowAnonymous</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="44ba2438dc50ef49" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ConfirmEmail</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">userId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">code</span>)
+        {
+            <b>if</b> (<span class="r14 r">userId</span> == <b>null</b> || <span class="r15 r">code</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<a href="#d7b4a40f0cf67a7c" class="t t">RegistrationController</a>.<span class="i">Register</span>), <span class="s">&quot;Registration&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r16 rd" class="r16 r">user</span> = <b>await</b> <a href="#b134eb632d6821c5" class="i field">_userManager</a>.<span class="i method">FindByIdAsync</span>(<span class="r14 r">userId</span>);
+ 
+            <b>if</b> (<span class="r16 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">result</span> = <b>await</b> <a href="#b134eb632d6821c5" class="i field">_userManager</a>.<span class="i">ConfirmEmailAsync</span>(<span class="r16 r">user</span>, <span class="r15 r">code</span>);
+ 
+            <b>if</b> (<span class="r17 r">result</span>.<span class="i">Succeeded</span>)
+            {
+                <b>return</b> <span class="i method">View</span>();
+            }
+ 
+            <b>return</b> <span class="i method">NotFound</span>();
+        }
+ 
+        [<span class="t constructor">Authorize</span>]
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ValidateAntiForgeryToken</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="9044ba1a39bd8387" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SendVerificationEmail</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r18 rd" class="r18 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c00791ce0cae641a" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r19 rd" class="r19 r">user</span> = <b>await</b> <a href="#b134eb632d6821c5" class="i field">_userManager</a>.<span class="i method">FindByIdAsync</span>(<span class="r18 r">id</span>) <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+            <b>if</b> (<span class="r19 r">user</span> != <b>null</b>)
+            {
+                <b>await</b> <a href="#d7b4a40f0cf67a7c" class="k">this</a>.<a href="ControllerExtensions.cs.html#a37f42713b22fd78" class="i method">SendEmailConfirmationTokenAsync</a>(<span class="r19 r">user</span>, <a href="#df98f84ffeb4f760" class="i field">S</a>[<span class="s">&quot;Confirm your account&quot;</span>]);
+ 
+                <a href="#ef3c1604c4001e40" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#9d924d59c3b1c8f0" class="i field">H</a>[<span class="s">&quot;Verification email sent.&quot;</span>]);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<a href="AdminController.cs.html#ba32372e240bc7aa" class="t t">AdminController</a>.<span class="i">Index</span>), <span class="s">&quot;Admin&quot;</span>);
+        }
+ 
+        <b>private</b> <span class="t t">IActionResult</span> <a id="1d0a9529b8195204" href="../R/1d0a9529b8195204.html" target="n" data-glyph="76,1" class="i method">RedirectToLocal</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">returnUrl</span>)
+        {
+            <b>if</b> (<span class="i property">Url</span>.<span class="i method">IsLocalUrl</span>(<span class="r20 r">returnUrl</span>))
+            {
+                <b>return</b> <span class="i method">Redirect</span>(<span class="r20 r">returnUrl</span>);
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="i method">Redirect</span>(<span class="s">&quot;~/&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

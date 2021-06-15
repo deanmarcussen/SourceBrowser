@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html><head><title>SitemapController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(128);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Sitemaps/Controllers/SitemapController.cs" target="_top">Controllers\SitemapController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Sitemaps" target="_top">src\OrchardCore.Modules\OrchardCore.Sitemaps\OrchardCore.Sitemaps.csproj</a> (OrchardCore.Sitemaps)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Xml</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Sitemaps</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Sitemaps</span>.<span class="i n">Cache</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Sitemaps</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Sitemaps</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="985af1d759528996" href="../R/985af1d759528996.html" target="n" data-glyph="0,0" class="t t">SitemapController</a> : <span class="t t">Controller</span>
+    {
+        <b>private const int</b> <a id="22fe05c52059ede4" href="../R/22fe05c52059ede4.html" target="n" data-glyph="10,1" class="i field">WarningLength</a> = 47_185_920;
+        <b>private const int</b> <a id="c5c8a1cd5d807b82" href="../R/c5c8a1cd5d807b82.html" target="n" data-glyph="10,1" class="i field">ErrorLength</a> = 52_428_800;
+ 
+        <b>private static readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="t t">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt;&gt;&gt; <a id="4a45de27dbdd575b" href="../R/4a45de27dbdd575b.html" target="n" data-glyph="46,1" class="i field">Workers</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="t t">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt;&gt;&gt;(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Sitemaps.Abstractions/A.html#bd035e0cea359d06" class="t t">ISitemapManager</a> <a id="7c54b37593b4d64f" href="../R/7c54b37593b4d64f.html" target="n" data-glyph="46,1" class="i field">_sitemapManager</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="c0757623ab51f3c9" href="../R/c0757623ab51f3c9.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Sitemaps.Abstractions/A.html#4edfde6662e99200" class="t t">ISitemapBuilder</a> <a id="8a6e661498f58ee7" href="../R/8a6e661498f58ee7.html" target="n" data-glyph="46,1" class="i field">_sitemapBuilder</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Sitemaps.Abstractions/A.html#28d2d5c344f8d8b8" class="t t">ISitemapCacheProvider</a> <a id="4b443ea17388e14e" href="../R/4b443ea17388e14e.html" target="n" data-glyph="46,1" class="i field">_sitemapCacheProvider</a>;
+        <b>private readonly string</b> <a id="5b45a59745abdc49" href="../R/5b45a59745abdc49.html" target="n" data-glyph="46,1" class="i field">_tenantName</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="d2517eb0e4d84da9" href="../R/d2517eb0e4d84da9.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="76ae6af6fa0669dc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SitemapController</a>(
+            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#bd035e0cea359d06" class="t t">ISitemapManager</a> <span id="r0 rd" class="r0 r">sitemapManager</span>,
+            <span class="i">ISiteService</span> <span id="r1 rd" class="r1 r">siteService</span>,
+            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#4edfde6662e99200" class="t t">ISitemapBuilder</a> <span id="r2 rd" class="r2 r">sitemapBuilder</span>,
+            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#28d2d5c344f8d8b8" class="t t">ISitemapCacheProvider</a> <span id="r3 rd" class="r3 r">sitemapCacheProvider</span>,
+            <span class="i">ShellSettings</span> <span id="r4 rd" class="r4 r">shellSettings</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#985af1d759528996" class="t t">SitemapController</a>&gt; <span id="r5 rd" class="r5 r">logger</span>
+            )
+        {
+            <a href="#7c54b37593b4d64f" class="i field">_sitemapManager</a> = <span class="r0 r">sitemapManager</span>;
+            <a href="#c0757623ab51f3c9" class="i field">_siteService</a> = <span class="r1 r">siteService</span>;
+            <a href="#8a6e661498f58ee7" class="i field">_sitemapBuilder</a> = <span class="r2 r">sitemapBuilder</span>;
+            <a href="#4b443ea17388e14e" class="i field">_sitemapCacheProvider</a> = <span class="r3 r">sitemapCacheProvider</span>;
+            <a href="#5b45a59745abdc49" class="i field">_tenantName</a> = <span class="r4 r">shellSettings</span>.<span class="i">Name</span>;
+            <a href="#d2517eb0e4d84da9" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="0cd1f15161f74313" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r6 rd" class="r6 r">cancellationToken</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">sitemapId</span>)
+        {
+            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#7764c42de6023af8" class="k">var</a> <span id="r8 rd" class="r8 r">sitemap</span> = <b>await</b> <a href="#7c54b37593b4d64f" class="i field">_sitemapManager</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#74de77166acebfe7" class="i method">GetSitemapAsync</a>(<span class="r7 r">sitemapId</span>);
+            <b>if</b> (<span class="r8 r">sitemap</span> == <b>null</b> || !<span class="r8 r">sitemap</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#ebf90044be134944" class="i property">Enabled</a>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#dbfb6d0412742a64" class="k">var</a> <span id="r9 rd" class="r9 r">fileResolver</span> = <b>await</b> <a href="#4b443ea17388e14e" class="i field">_sitemapCacheProvider</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#a60a4d1fb6b032ff" class="i method">GetCachedSitemapAsync</a>(<span class="r8 r">sitemap</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#9c66e0d7b3a77c09" class="i property">CacheFileName</a>);
+            <b>if</b> (<span class="r9 r">fileResolver</span> != <b>null</b>)
+            {
+                <span class="c">// When multiple requests occur for the same sitemap it </span>
+                <span class="c">// may still be building, so we wait for it to complete.</span>
+                <b>if</b> (<a href="#4a45de27dbdd575b" class="i field">Workers</a>.<span class="i method">TryGetValue</span>(<a href="#5b45a59745abdc49" class="i field">_tenantName</a> + <span class="r8 r">sitemap</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#e61bf51f3239588c" class="i property">Path</a>, <b>out</b> <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="k">var</a> <span id="r10 rd" class="r10 r">writeTask</span>))
+                {
+                    <b>await</b> <span class="r10 r">writeTask</span>.<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>;
+                }
+ 
+                <span class="c">// File result will dispose of stream.</span>
+                <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r11 rd" class="r11 r">stream</span> = <b>await</b> <span class="r9 r">fileResolver</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#193e096e9ceaaa78" class="i method">OpenReadStreamAsync</a>();
+                <b>return</b> <span class="i method">File</span>(<span class="r11 r">stream</span>, <span class="s">&quot;application/xml&quot;</span>);
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r12 rd" class="r12 r">work</span> = <b>await</b> <a href="#4a45de27dbdd575b" class="i field">Workers</a>.<span class="i">GetOrAdd</span>(<a href="#5b45a59745abdc49" class="i field">_tenantName</a> + <span class="r8 r">sitemap</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#e61bf51f3239588c" class="i property">Path</a>, <span id="r13 rd" class="r13 r">x</span> =&gt; <b>new</b> <span class="t">Lazy</span>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt;&gt;(<b>async</b> () =&gt;
+                {
+                    <b>try</b>
+                    {
+                        <b>var</b> <span id="r14 rd" class="r14 r">siteSettings</span> = <b>await</b> <a href="#c0757623ab51f3c9" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+ 
+                        <a href="/OrchardCore.Sitemaps.Abstractions/A.html#7b51bf9d50332f8d" class="k">var</a> <span id="r15 rd" class="r15 r">context</span> = <b>new</b> <a href="/OrchardCore.Sitemaps.Abstractions/A.html#7b51bf9d50332f8d" class="t constructor">SitemapBuilderContext</a>()
+                        {
+                            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#33cbb82ef8b4706f" class="i property">HostPrefix</a> = <span class="r14 r">siteSettings</span>.<span class="i">BaseUrl</span>,
+                            <a href="/OrchardCore.Sitemaps.Abstractions/A.html#62751235c7909165" class="i property">UrlHelper</a> = <span class="i property">Url</span>
+                        };
+ 
+                        <b>var</b> <span id="r16 rd" class="r16 r">document</span> = <b>await</b> <a href="#8a6e661498f58ee7" class="i field">_sitemapBuilder</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#69d260545d929f73" class="i method">BuildAsync</a>(<span class="r8 r">sitemap</span>, <span class="r15 r">context</span>);
+ 
+                        <b>if</b> (<span class="r16 r">document</span> == <b>null</b>)
+                        {
+                            <b>return</b> <b>null</b>;
+                        }
+ 
+                        <span class="r16 r">document</span>.<span class="i property">Declaration</span> = <b>new</b> <span class="t constructor">XDeclaration</span>(<span class="s">&quot;1.0&quot;</span>, <span class="s">&quot;utf-8&quot;</span>, <b>null</b>);
+ 
+                        <a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r17 rd" class="r17 r">stream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>();
+                        <b>await</b> <span class="r16 r">document</span>.<span class="i method">SaveAsync</span>(<span class="r17 r">stream</span>, <span class="t t">SaveOptions</span>.<span class="i field">None</span>, <span class="r6 r">cancellationToken</span>);
+ 
+                        <b>if</b> (<span class="r17 r">stream</span>.<a href="@1@System.Runtime/A.html#af4720ccd5d86f14" class="i property">Length</a> &gt;= <a href="#c5c8a1cd5d807b82" class="i field">ErrorLength</a>)
+                        {
+                            <a href="#d2517eb0e4d84da9" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Sitemap 50MB maximum length limit exceeded&quot;</span>);
+                        }
+                        <b>else</b> <b>if</b> (<span class="r17 r">stream</span>.<a href="@1@System.Runtime/A.html#af4720ccd5d86f14" class="i property">Length</a> &gt;= <a href="#22fe05c52059ede4" class="i field">WarningLength</a>)
+                        {
+                            <a href="#d2517eb0e4d84da9" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Sitemap nearing 50MB length limit&quot;</span>);
+                        }
+ 
+                        <b>await</b> <a href="#4b443ea17388e14e" class="i field">_sitemapCacheProvider</a>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#3df179c6f87df026" class="i method">SetSitemapCacheAsync</a>(<span class="r17 r">stream</span>, <span class="r8 r">sitemap</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#9c66e0d7b3a77c09" class="i property">CacheFileName</a>, <span class="r6 r">cancellationToken</span>);
+ 
+                        <b>return</b> <span class="r17 r">stream</span>;
+                    }
+                    <b>finally</b>
+                    {
+                        <a href="#4a45de27dbdd575b" class="i field">Workers</a>.<span class="i method">TryRemove</span>(<a href="#5b45a59745abdc49" class="i field">_tenantName</a> + <span class="r8 r">sitemap</span>.<a href="/OrchardCore.Sitemaps.Abstractions/A.html#e61bf51f3239588c" class="i property">Path</a>, <b>out</b> <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="k">var</a> <span id="r18 rd" class="r18 r">writeCacheTask</span>);
+                    }
+                }, <a href="@1@System.Runtime/A.html#9d99e1ca53509514" class="t t">LazyThreadSafetyMode</a>.<a href="@1@System.Runtime/A.html#a0f06cbca5bbe6e6" class="i field">ExecutionAndPublication</a>)).<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>;
+ 
+                <b>if</b> (<span class="r12 r">work</span> == <b>null</b>)
+                {
+                    <b>return</b> <span class="i method">NotFound</span>();
+                }
+ 
+                <span class="r12 r">work</span>.<span class="i">Position</span> = 0;
+ 
+                <span class="c">// File result will dispose of stream.</span>
+                <b>return</b> <span class="i">File</span>(<span class="r12 r">work</span>, <span class="s">&quot;application/xml&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

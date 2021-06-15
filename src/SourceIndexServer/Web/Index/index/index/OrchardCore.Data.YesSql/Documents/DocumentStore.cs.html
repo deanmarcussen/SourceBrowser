@@ -1,0 +1,180 @@
+﻿<!DOCTYPE html>
+<html><head><title>DocumentStore.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(171);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Data.YesSql/Documents/DocumentStore.cs" target="_top">Documents\DocumentStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Data.YesSql" target="_top">src\OrchardCore\OrchardCore.Data.YesSql\OrchardCore.Data.YesSql.csproj</a> (OrchardCore.Data.YesSql)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Documents</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> An </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IDocumentStore</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> using the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">ISession</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="f5b0b67d8cf321b1" href="../R/f5b0b67d8cf321b1.html" target="n" data-glyph="0,0" class="t t">DocumentStore</a> : <span class="i">IDocumentStore</span>
+    {
+        <b>private readonly</b> <span class="i">ISession</span> <a id="8ec2b765d26e3995" href="../R/8ec2b765d26e3995.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+ 
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>, <b>object</b>&gt; <a id="11379f581af72e73" href="../R/11379f581af72e73.html" target="n" data-glyph="46,1" class="i field">_loaded</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>, <b>object</b>&gt;();
+ 
+        <b>private readonly</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>&gt; <a id="76634f54a48102c8" href="../R/76634f54a48102c8.html" target="n" data-glyph="46,1" class="i field">_afterCommitsSuccess</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>&gt;();
+        <b>private readonly</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>&gt; <a id="4feda2061b6c7042" href="../R/4feda2061b6c7042.html" target="n" data-glyph="46,1" class="i field">_afterCommitsFailure</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>&gt;();
+ 
+        <b>private</b> <span class="i">DocumentStoreCommitSuccessDelegate</span> <a id="2eb500097906ede6" href="../R/2eb500097906ede6.html" target="n" data-glyph="46,1" class="i field">_afterCommitSuccess</a>;
+        <b>private</b> <span class="i">DocumentStoreCommitFailureDelegate</span> <a id="5b4725cf60db5b05" href="../R/5b4725cf60db5b05.html" target="n" data-glyph="46,1" class="i field">_afterCommitFailure</a>;
+ 
+        <b>private bool</b> <a id="e64d27c4e9939a5f" href="../R/e64d27c4e9939a5f.html" target="n" data-glyph="46,1" class="i field">_canceled</a>;
+        <b>private bool</b> <a id="eec2d2582f231662" href="../R/eec2d2582f231662.html" target="n" data-glyph="46,1" class="i field">_committed</a>;
+ 
+        <b>public</b> <a id="4602da12241f51f2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DocumentStore</a>(<span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>)
+        {
+            <a href="#8ec2b765d26e3995" class="i field">_session</a> = <span class="r0 r">session</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r1 r t">T</span>&gt; <a id="8187e36d4c0802b6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetOrCreateMutableAsync</a>&lt;<span id="r1 rd t" class="r1 r t">T</span>&gt;(<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r1 r t">T</span>&gt;&gt; <span id="r2 rd" class="r2 r">factoryAsync</span> = <b>null</b>) <b>where</b> <span class="r1 r t">T</span> : <b>class</b>, <b>new</b>()
+        {
+            <b>if</b> (<a href="#11379f581af72e73" class="i field">_loaded</a>.<span class="i method">TryGetValue</span>(<b>typeof</b>(<span class="r1 r t">T</span>), <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r3 rd" class="r3 r">loaded</span>))
+            {
+                <b>return</b> <span class="r3 r">loaded</span> <b>as</b> <span class="r1 r t">T</span>;
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">document</span> = <b>await</b> <a href="#8ec2b765d26e3995" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r1 r t">T</span>&gt;().<span class="i">FirstOrDefaultAsync</span>()
+                ?? <b>await</b> (<span class="r2 r">factoryAsync</span>?.<a href="@1@System.Runtime/A.html#a7843bf4f3b2d594" class="i method">Invoke</a>() ?? <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="r1 r t">T</span>)<b>null</b>))
+                ?? <b>new</b> <span class="t">T</span>();
+ 
+            <a href="#11379f581af72e73" class="i field">_loaded</a>[<b>typeof</b>(<span class="r1 r t">T</span>)] = <span class="r4 r">document</span>;
+ 
+            <b>return</b> <span class="r4 r">document</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<b>bool</b>, <span class="r5 r t">T</span>)&gt; <a id="8a581ec1daacc6eb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetOrCreateImmutableAsync</a>&lt;<span id="r5 rd t" class="r5 r t">T</span>&gt;(<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r5 r t">T</span>&gt;&gt; <span id="r6 rd" class="r6 r">factoryAsync</span> = <b>null</b>) <b>where</b> <span class="r5 r t">T</span> : <b>class</b>, <b>new</b>()
+        {
+            <b>if</b> (<a href="#11379f581af72e73" class="i field">_loaded</a>.<span class="i method">TryGetValue</span>(<b>typeof</b>(<span class="r5 r t">T</span>), <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r7 rd" class="r7 r">loaded</span>))
+            {
+                <span class="c">// Return the already loaded document but indicating that it should not be cached.</span>
+                <b>return</b> (<b>false</b>, <span class="r7 r">loaded</span> <b>as</b> <span class="r5 r t">T</span>);
+            }
+ 
+            <span class="r5 r t">T</span> <span id="r8 rd" class="r8 r">document</span> = <b>null</b>;
+ 
+            <span class="c">// For consistency checking a document may be queried after &#39;SaveChangesAsync()&#39;.</span>
+            <b>if</b> (<a href="#eec2d2582f231662" class="i field">_committed</a>)
+            {
+                <span class="c">// So we create a new session to not get a cached version from &#39;YesSql&#39;.</span>
+                <b>await using</b> <b>var</b> <span id="r9 rd" class="r9 r">session</span> = <a href="#8ec2b765d26e3995" class="i field">_session</a>.<span class="i">Store</span>.<span class="i">CreateSession</span>();
+                <span class="r8 r">document</span> = <b>await</b> <span class="r9 r">session</span>.<span class="i">Query</span>&lt;<span class="r5 r t">T</span>&gt;().<span class="i">FirstOrDefaultAsync</span>();
+            }
+            <b>else</b>
+            {
+                <span class="r8 r">document</span> = <b>await</b> <a href="#8ec2b765d26e3995" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r5 r t">T</span>&gt;().<span class="i">FirstOrDefaultAsync</span>();
+            }
+ 
+            <b>if</b> (<span class="r8 r">document</span> != <b>null</b>)
+            {
+                <b>if</b> (!<a href="#eec2d2582f231662" class="i field">_committed</a>)
+                {
+                    <a href="#8ec2b765d26e3995" class="i field">_session</a>.<span class="i">Detach</span>(<span class="r8 r">document</span>);
+                }
+ 
+                <b>return</b> (<b>true</b>, <span class="r8 r">document</span>);
+            }
+ 
+            <b>return</b> (<b>true</b>, <b>await</b> (<span class="r6 r">factoryAsync</span>?.<a href="@1@System.Runtime/A.html#a7843bf4f3b2d594" class="i method">Invoke</a>() ?? <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="r5 r t">T</span>)<b>null</b>)) ?? <b>new</b> <span class="t">T</span>());
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5e2b39efd42d0961" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>&lt;<span id="r10 rd t" class="r10 r t">T</span>&gt;(<span class="r10 r t">T</span> <span id="r11 rd" class="r11 r">document</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="r10 r t">T</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt; <span id="r12 rd" class="r12 r">updateCache</span>, <b>bool</b> <span id="r13 rd" class="r13 r">checkConcurrency</span> = <b>false</b>)
+        {
+            <a href="#8ec2b765d26e3995" class="i field">_session</a>.<span class="i">Save</span>(<span class="r11 r">document</span>, <span class="r13 r">checkConcurrency</span>);
+ 
+            <span class="i">AfterCommitSuccess</span>&lt;<span class="r10 r t">T</span>&gt;(() =&gt;
+            {
+                <b>return</b> <span class="r12 r">updateCache</span>(<span class="r11 r">document</span>);
+            });
+ 
+            <span class="i">AfterCommitFailure</span>&lt;<span class="r10 r t">T</span>&gt;(<span id="r14 rd" class="r14 r">exception</span> =&gt;
+            {
+                <b>throw</b> <b>new</b> <span class="i">DocumentStoreCommitException</span>(
+                    <span class="s">$&quot;</span><span class="s">The &#39;</span>{<b>typeof</b>(<span class="r10 r t">T</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>}<span class="s">&#39; could not be persisted and cached as it has been changed by another process.</span><span class="s">&quot;</span>,
+                    <span class="r14 r">exception</span>);
+            });
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="dc74785cae29713f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CancelAsync</a>()
+        {
+            <a href="#e64d27c4e9939a5f" class="i field">_canceled</a> = <b>true</b>;
+            <b>await</b> <a href="#8ec2b765d26e3995" class="i field">_session</a>.<span class="i">CancelAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public void</b> <a id="6306a6fe216ca6e3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AfterCommitSuccess</a>&lt;<span id="r15 rd t" class="r15 r t">T</span>&gt;(<span class="i">DocumentStoreCommitSuccessDelegate</span> <span id="r16 rd" class="r16 r">afterCommitSuccess</span>)
+        {
+            <b>if</b> (!<a href="#76634f54a48102c8" class="i field">_afterCommitsSuccess</a>.<span class="i method">Contains</span>(<b>typeof</b>(<span class="r15 r t">T</span>)))
+            {
+                <a href="#76634f54a48102c8" class="i field">_afterCommitsSuccess</a>.<span class="i method">Add</span>(<b>typeof</b>(<span class="r15 r t">T</span>));
+                <a href="#2eb500097906ede6" class="i field">_afterCommitSuccess</a> += <span class="r16 r">afterCommitSuccess</span>;
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public void</b> <a id="b9dc20a4bc7e5f46" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AfterCommitFailure</a>&lt;<span id="r17 rd t" class="r17 r t">T</span>&gt;(<span class="i">DocumentStoreCommitFailureDelegate</span> <span id="r18 rd" class="r18 r">afterCommitFailure</span>)
+        {
+            <b>if</b> (!<a href="#4feda2061b6c7042" class="i field">_afterCommitsFailure</a>.<span class="i method">Contains</span>(<b>typeof</b>(<span class="r17 r t">T</span>)))
+            {
+                <a href="#4feda2061b6c7042" class="i field">_afterCommitsFailure</a>.<span class="i method">Add</span>(<b>typeof</b>(<span class="r17 r t">T</span>));
+                <a href="#5b4725cf60db5b05" class="i field">_afterCommitFailure</a> += <span class="r18 r">afterCommitFailure</span>;
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="fd9e22f8adaf0c18" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CommitAsync</a>()
+        {
+            <b>if</b> (<a href="#8ec2b765d26e3995" class="i field">_session</a> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>try</b>
+            {
+                <b>await</b> <a href="#8ec2b765d26e3995" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+ 
+                <a href="#eec2d2582f231662" class="i field">_committed</a> = <b>true</b>;
+                <a href="#11379f581af72e73" class="i field">_loaded</a>.<span class="i method">Clear</span>();
+ 
+                <b>if</b> (!<a href="#e64d27c4e9939a5f" class="i field">_canceled</a> &amp;&amp; <a href="#2eb500097906ede6" class="i field">_afterCommitSuccess</a> != <b>null</b>)
+                {
+                    <b>foreach</b> (<b>var</b> <span id="r19 rd" class="r19 r">d</span> <b>in</b> <a href="#2eb500097906ede6" class="i field">_afterCommitSuccess</a>.<span class="i">GetInvocationList</span>())
+                    {
+                        <b>await</b> ((<span class="i">DocumentStoreCommitSuccessDelegate</span>)<span class="r19 r">d</span>)();
+                    }
+                }
+            }
+            <b>catch</b> (<span class="i">ConcurrencyException</span> <span id="r20 rd" class="r20 r">exception</span>)
+            {
+                <b>if</b> (<a href="#5b4725cf60db5b05" class="i field">_afterCommitFailure</a> != <b>null</b>)
+                {
+                    <b>foreach</b> (<b>var</b> <span id="r21 rd" class="r21 r">d</span> <b>in</b> <a href="#5b4725cf60db5b05" class="i field">_afterCommitFailure</a>.<span class="i">GetInvocationList</span>())
+                    {
+                        <b>await</b> ((<span class="i">DocumentStoreCommitFailureDelegate</span>)<span class="r21 r">d</span>)(<span class="r20 r">exception</span>);
+                    }
+                }
+                <b>else</b>
+                {
+                    <b>throw</b>;
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

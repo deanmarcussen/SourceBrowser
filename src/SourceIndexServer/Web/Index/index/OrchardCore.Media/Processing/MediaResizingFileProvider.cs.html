@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html><head><title>MediaResizingFileProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(88);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Processing/MediaResizingFileProvider.cs" target="_top">Processing\MediaResizingFileProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+<b>using</b> <span class="i">SixLabors</span>.<span class="i">ImageSharp</span>.<span class="i">Web</span>;
+<b>using</b> <span class="i">SixLabors</span>.<span class="i">ImageSharp</span>.<span class="i">Web</span>.<span class="i">Commands</span>;
+<b>using</b> <span class="i">SixLabors</span>.<span class="i">ImageSharp</span>.<span class="i">Web</span>.<span class="i">Middleware</span>;
+<b>using</b> <span class="i">SixLabors</span>.<span class="i">ImageSharp</span>.<span class="i">Web</span>.<span class="i">Providers</span>;
+<b>using</b> <span class="i">SixLabors</span>.<span class="i">ImageSharp</span>.<span class="i">Web</span>.<span class="i">Resolvers</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Processing</span>
+{
+    <b>public class</b> <a id="12b34974453944d2" href="../R/12b34974453944d2.html" target="n" data-glyph="0,0" class="t t">MediaResizingFileProvider</a> : <span class="i">IImageProvider</span>
+    {
+        <b>private readonly</b> <span class="i">IMediaFileProvider</span> <a id="a699a193955eca60" href="../R/a699a193955eca60.html" target="n" data-glyph="46,1" class="i field">_mediaFileProvider</a>;
+        <b>private readonly</b> <span class="i">FormatUtilities</span> <a id="452366743ab4c476" href="../R/452366743ab4c476.html" target="n" data-glyph="46,1" class="i field">_formatUtilities</a>;
+        <b>private readonly</b> <span class="t t">PathString</span> <a id="f5a9538267b4bcb7" href="../R/f5a9538267b4bcb7.html" target="n" data-glyph="46,1" class="i field">_assetsRequestPath</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> A match function used by the resolver to identify itself as the correct resolver to use.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="t t">HttpContext</span>, <b>bool</b>&gt; <a id="497eca2007d89293" href="../R/497eca2007d89293.html" target="n" data-glyph="46,1" class="i field">_match</a>;
+ 
+        <b>public</b> <a id="1764625190862872" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">MediaResizingFileProvider</a>(
+            <span class="i">IMediaFileProvider</span> <span id="r0 rd" class="r0 r">mediaFileProvider</span>,
+            <span class="i">CommandParser</span> <span id="r1 rd" class="r1 r">commandParser</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">ImageSharpMiddlewareOptions</span>&gt; <span id="r2 rd" class="r2 r">imageSharpOptions</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">MediaOptions</span>&gt; <span id="r3 rd" class="r3 r">mediaOptions</span>
+            )
+        {
+            <a href="#a699a193955eca60" class="i field">_mediaFileProvider</a> = <span class="r0 r">mediaFileProvider</span>;
+            <a href="#452366743ab4c476" class="i field">_formatUtilities</a> = <b>new</b> <span class="i">FormatUtilities</span>(<span class="r2 r">imageSharpOptions</span>);
+            <a href="#f5a9538267b4bcb7" class="i field">_assetsRequestPath</a> = <span class="r3 r">mediaOptions</span>.<span class="i property">Value</span>.<span class="i">AssetsRequestPath</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="t t">HttpContext</span>, <b>bool</b>&gt; <a id="8e448185347d79aa" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Match</a>
+        {
+            <b>get</b> =&gt; <a href="#497eca2007d89293" class="i field">_match</a> ?? <a href="#084d2ee9a014ef3f" class="i method">IsMatch</a>;
+            <b>set</b> =&gt; <a href="#497eca2007d89293" class="i field">_match</a> = <b>value</b>;
+        }
+ 
+        <b>public</b> <span class="i">ProcessingBehavior</span> <a id="f0bacb03103feaba" href="../R/f0bacb03103feaba.html" target="n" data-glyph="102,1" class="i property">ProcessingBehavior</a> =&gt; <a href="#f0bacb03103feaba" class="i property">ProcessingBehavior</a>.<span class="i">CommandOnly</span>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public bool</b> <a id="a1d3472cbb9ba8f4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IsValidRequest</a>(<span class="t t">HttpContext</span> <span id="r4 rd" class="r4 r">context</span>)
+        {
+            <b>if</b> (<a href="#452366743ab4c476" class="i field">_formatUtilities</a>.<span class="i">GetExtensionFromUri</span>(<span class="r4 r">context</span>.<span class="i property">Request</span>.<span class="i method">GetDisplayUrl</span>()) == <b>null</b>)
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">IImageResolver</span>&gt; <a id="db5866de621d248f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetAsync</a>(<span class="t t">HttpContext</span> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <span class="c">// Remove assets request path.</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">path</span> = <span class="r5 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span>.<span class="i property">Value</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#f5a9538267b4bcb7" class="i field">_assetsRequestPath</a>.<span class="i property">Value</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">fileInfo</span> = <a href="#a699a193955eca60" class="i field">_mediaFileProvider</a>.<span class="i">GetFileInfo</span>(<span class="r6 r">path</span>);
+ 
+            <span class="c">// Check to see if the file exists.</span>
+            <b>if</b> (!<span class="r7 r">fileInfo</span>.<span class="i">Exists</span>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="i">IImageResolver</span>&gt;(<b>null</b>);
+            }
+ 
+            <span class="c">// We don&#39;t care about the content type nor cache control max age here.</span>
+            <b>var</b> <span id="r8 rd" class="r8 r">metadata</span> = <b>new</b> <span class="i">ImageMetadata</span>(<span class="r7 r">fileInfo</span>.<span class="i">LastModified</span>.<span class="i">UtcDateTime</span>, <span class="r7 r">fileInfo</span>.<span class="i">Length</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>&lt;<span class="i">IImageResolver</span>&gt;(<b>new</b> <span class="i">PhysicalFileSystemResolver</span>(<span class="r7 r">fileInfo</span>, <span class="r8 r">metadata</span>));
+        }
+ 
+        <b>private bool</b> <a id="084d2ee9a014ef3f" href="../R/084d2ee9a014ef3f.html" target="n" data-glyph="76,1" class="i method">IsMatch</a>(<span class="t t">HttpContext</span> <span id="r9 rd" class="r9 r">context</span>)
+        {
+            <b>if</b> (!<span class="r9 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span>.<span class="i">StartsWithNormalizedSegments</span>(<a href="#f5a9538267b4bcb7" class="i field">_assetsRequestPath</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

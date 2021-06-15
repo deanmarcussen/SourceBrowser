@@ -1,0 +1,250 @@
+﻿<!DOCTYPE html>
+<html><head><title>RecipeExecutor.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(241);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Recipes.Core/Services/RecipeExecutor.cs" target="_top">Services\RecipeExecutor.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Recipes.Core" target="_top">src\OrchardCore\OrchardCore.Recipes.Core\OrchardCore.Recipes.Core.csproj</a> (OrchardCore.Recipes.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Runtime</span>.<span class="i n">ExceptionServices</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Events</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Scripting</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="e536d63018e31272" href="../R/e536d63018e31272.html" target="n" data-glyph="0,0" class="t t">RecipeExecutor</a> : <a href="/OrchardCore.Recipes.Abstractions/A.html#716873e2807084c0" class="t t">IRecipeExecutor</a>
+    {
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="7ff9f2dfb50dd313" href="../R/7ff9f2dfb50dd313.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="7f5a005509c6ef2e" href="../R/7f5a005509c6ef2e.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#b34d451fcc74093a" class="t t">IRecipeEventHandler</a>&gt; <a id="db1f77165adddcc0" href="../R/db1f77165adddcc0.html" target="n" data-glyph="46,1" class="i field">_recipeEventHandlers</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="99e3aed013c28d66" href="../R/99e3aed013c28d66.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">List</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#1fce1e58408a9f7d" class="t t">IGlobalMethodProvider</a>&gt;&gt; <a id="951d51e53c79c9b8" href="../R/951d51e53c79c9b8.html" target="n" data-glyph="46,1" class="i field">_methodProviders</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">List</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#1fce1e58408a9f7d" class="t t">IGlobalMethodProvider</a>&gt;&gt;();
+ 
+        <b>public</b> <a id="fd9454853a5c02fc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RecipeExecutor</a>(
+            <span class="i">IShellHost</span> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#b34d451fcc74093a" class="t t">IRecipeEventHandler</a>&gt; <span id="r2 rd" class="r2 r">recipeEventHandlers</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#e536d63018e31272" class="t t">RecipeExecutor</a>&gt; <span id="r3 rd" class="r3 r">logger</span>)
+        {
+            <a href="#7ff9f2dfb50dd313" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#7f5a005509c6ef2e" class="i field">_shellSettings</a> = <span class="r1 r">shellSettings</span>;
+            <a href="#db1f77165adddcc0" class="i field">_recipeEventHandlers</a> = <span class="r2 r">recipeEventHandlers</span>;
+            <a href="#99e3aed013c28d66" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="ec0c94415b36854b" href="../R/ec0c94415b36854b.html" target="n" data-glyph="72,1" class="i method">ExecuteAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">executionId</span>, <a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="t t">RecipeDescriptor</a> <span id="r5 rd" class="r5 r">recipeDescriptor</span>, <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; <span id="r6 rd" class="r6 r">environment</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r7 rd" class="r7 r">cancellationToken</span>)
+        {
+            <b>await</b> <a href="#db1f77165adddcc0" class="i field">_recipeEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r8 rd" class="r8 r">handler</span>, <span id="r9 rd" class="r9 r">executionId</span>, <span id="r10 rd" class="r10 r">recipeDescriptor</span>) =&gt; <span class="r8 r">handler</span>.<span class="i">RecipeExecutingAsync</span>(<span class="r9 r">executionId</span>, <span class="r10 r">recipeDescriptor</span>), <span class="r4 r">executionId</span>, <span class="r5 r">recipeDescriptor</span>, <a href="#99e3aed013c28d66" class="i field">_logger</a>);
+ 
+            <b>try</b>
+            {
+                <b>var</b> <span id="r11 rd" class="r11 r">methodProviders</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#1fce1e58408a9f7d" class="t t">IGlobalMethodProvider</a>&gt;();
+                <a href="#951d51e53c79c9b8" class="i field">_methodProviders</a>.<span class="i method">Add</span>(<span class="r4 r">executionId</span>, <span class="r11 r">methodProviders</span>);
+ 
+                <span class="r11 r">methodProviders</span>.<span class="i method">Add</span>(<b>new</b> <a href="../ParametersMethodProvider.cs.html#34da055cd34caaaa" class="t constructor">ParametersMethodProvider</a>(<span class="r6 r">environment</span>));
+                <span class="r11 r">methodProviders</span>.<span class="i method">Add</span>(<b>new</b> <span class="t">ConfigurationMethodProvider</span>(<a href="#7f5a005509c6ef2e" class="i field">_shellSettings</a>.<span class="i">ShellConfiguration</span>));
+ 
+                <a href="/OrchardCore.Recipes.Abstractions/A.html#f60882046dd568e9" class="k">var</a> <span id="r12 rd" class="r12 r">result</span> = <b>new</b> <a href="/OrchardCore.Recipes.Abstractions/A.html#f60882046dd568e9" class="t constructor">RecipeResult</a> { <a href="/OrchardCore.Recipes.Abstractions/A.html#3cb8c5e31031466a" class="i property">ExecutionId</a> = <span class="r4 r">executionId</span> };
+ 
+                <b>using</b> (<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r13 rd" class="r13 r">stream</span> = <span class="r5 r">recipeDescriptor</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#9ab16c40e79bac09" class="i property">RecipeFileInfo</a>.<span class="i method">CreateReadStream</span>())
+                {
+                    <b>using</b> <a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r14 rd" class="r14 r">file</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r13 r">stream</span>);
+                    <b>using</b> <b>var</b> <span id="r15 rd" class="r15 r">reader</span> = <b>new</b> <span class="i">JsonTextReader</span>(<span class="r14 r">file</span>);
+ 
+                    <span class="c">// Go to Steps, then iterate.</span>
+                    <b>while</b> (<b>await</b> <span class="r15 r">reader</span>.<span class="i">ReadAsync</span>())
+                    {
+                        <b>if</b> (<span class="r15 r">reader</span>.<span class="i">Path</span> == <span class="s">&quot;variables&quot;</span>)
+                        {
+                            <b>await</b> <span class="r15 r">reader</span>.<span class="i">ReadAsync</span>();
+ 
+                            <b>var</b> <span id="r16 rd" class="r16 r">variables</span> = <b>await</b> <span class="i">JObject</span>.<span class="i">LoadAsync</span>(<span class="r15 r">reader</span>);
+ 
+                            <span class="r11 r">methodProviders</span>.<span class="i method">Add</span>(<b>new</b> <span class="t">VariablesMethodProvider</span>(<span class="r16 r">variables</span>, <span class="r11 r">methodProviders</span>));
+                        }
+ 
+                        <b>if</b> (<span class="r15 r">reader</span>.<span class="i">Path</span> == <span class="s">&quot;steps&quot;</span> &amp;&amp; <span class="r15 r">reader</span>.<span class="i">TokenType</span> == <span class="i">JsonToken</span>.<span class="i">StartArray</span>)
+                        {
+                            <b>while</b> (<b>await</b> <span class="r15 r">reader</span>.<span class="i">ReadAsync</span>() &amp;&amp; <span class="r15 r">reader</span>.<span class="i">Depth</span> &gt; 1)
+                            {
+                                <b>if</b> (<span class="r15 r">reader</span>.<span class="i">Depth</span> == 2)
+                                {
+                                    <b>var</b> <span id="r17 rd" class="r17 r">child</span> = <b>await</b> <span class="i">JObject</span>.<span class="i">LoadAsync</span>(<span class="r15 r">reader</span>);
+ 
+                                    <a href="/OrchardCore.Recipes.Abstractions/A.html#62144c85232f4f1c" class="k">var</a> <span id="r18 rd" class="r18 r">recipeStep</span> = <b>new</b> <a href="/OrchardCore.Recipes.Abstractions/A.html#62144c85232f4f1c" class="t constructor">RecipeExecutionContext</a>
+                                    {
+                                        <a href="/OrchardCore.Recipes.Abstractions/A.html#21252a5abe295c58" class="i property">Name</a> = <span class="r17 r">child</span>.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;name&quot;</span>),
+                                        <a href="/OrchardCore.Recipes.Abstractions/A.html#615c9d45aa327ca8" class="i property">Step</a> = <span class="r17 r">child</span>,
+                                        <a href="/OrchardCore.Recipes.Abstractions/A.html#1e7647138c5eb4c1" class="i property">ExecutionId</a> = <span class="r4 r">executionId</span>,
+                                        <a href="/OrchardCore.Recipes.Abstractions/A.html#c430f4d3d4037e1d" class="i property">Environment</a> = <span class="r6 r">environment</span>,
+                                        <a href="/OrchardCore.Recipes.Abstractions/A.html#c3cc6c3c90d6f044" class="i property">RecipeDescriptor</a> = <span class="r5 r">recipeDescriptor</span>
+                                    };
+ 
+                                    <b>if</b> (<span class="r7 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+                                    {
+                                        <a href="#99e3aed013c28d66" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Recipe interrupted by cancellation token.&quot;</span>);
+                                        <b>return</b> <b>null</b>;
+                                    }
+ 
+                                    <a href="/OrchardCore.Recipes.Abstractions/A.html#df4f909c4f983383" class="k">var</a> <span id="r19 rd" class="r19 r">stepResult</span> = <b>new</b> <a href="/OrchardCore.Recipes.Abstractions/A.html#df4f909c4f983383" class="t constructor">RecipeStepResult</a> { <a href="/OrchardCore.Recipes.Abstractions/A.html#ad59a36c92fe9fb4" class="i property">StepName</a> = <span class="r18 r">recipeStep</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#21252a5abe295c58" class="i property">Name</a> };
+                                    <span class="r12 r">result</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#852000a047bb89a0" class="i property">Steps</a>.<span class="i method">Add</span>(<span class="r19 r">stepResult</span>);
+ 
+                                    <a href="@1@System.Runtime/A.html#1443447025759846" class="t t">ExceptionDispatchInfo</a> <span id="r20 rd" class="r20 r">capturedException</span> = <b>null</b>;
+                                    <b>try</b>
+                                    {
+                                        <b>await</b> <a href="#28bd34b32027f2b2" class="i method">ExecuteStepAsync</a>(<span class="r18 r">recipeStep</span>);
+                                        <span class="r19 r">stepResult</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#969461c51e0059e0" class="i property">IsSuccessful</a> = <b>true</b>;
+                                    }
+                                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r21 rd" class="r21 r">e</span>)
+                                    {
+                                        <span class="r19 r">stepResult</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#969461c51e0059e0" class="i property">IsSuccessful</a> = <b>false</b>;
+                                        <span class="r19 r">stepResult</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#d9eb6f45885d20c1" class="i property">ErrorMessage</a> = <span class="r21 r">e</span>.<a href="@1@System.Runtime/A.html#e2e19f4ed8da81aa" class="i method">ToString</a>();
+ 
+                                        <span class="c">// Because we can&#39;t do some async processing the in catch or finally</span>
+                                        <span class="c">// blocks, we store the exception to throw it later.</span>
+ 
+                                        <span class="r20 r">capturedException</span> = <a href="@1@System.Runtime/A.html#1443447025759846" class="t t">ExceptionDispatchInfo</a>.<a href="@1@System.Runtime/A.html#139923899a417d5a" class="i method">Capture</a>(<span class="r21 r">e</span>);
+                                    }
+ 
+                                    <span class="r19 r">stepResult</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#6fa5b9afc55d6b7a" class="i property">IsCompleted</a> = <b>true</b>;
+ 
+                                    <b>if</b> (<span class="r19 r">stepResult</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#969461c51e0059e0" class="i property">IsSuccessful</a> == <b>false</b>)
+                                    {
+                                        <span class="r20 r">capturedException</span>.<a href="@1@System.Runtime/A.html#fc3b312e2d0ab87a" class="i method">Throw</a>();
+                                    }
+ 
+                                    <b>if</b> (<span class="r18 r">recipeStep</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#525ecf349c8603af" class="i property">InnerRecipes</a> != <b>null</b>)
+                                    {
+                                        <b>foreach</b> (<a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="k">var</a> <span id="r22 rd" class="r22 r">descriptor</span> <b>in</b> <span class="r18 r">recipeStep</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#525ecf349c8603af" class="i property">InnerRecipes</a>)
+                                        {
+                                            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">innerExecutionId</span> = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>();
+                                            <b>await</b> <a href="#ec0c94415b36854b" class="i method">ExecuteAsync</a>(<span class="r23 r">innerExecutionId</span>, <span class="r22 r">descriptor</span>, <span class="r6 r">environment</span>, <span class="r7 r">cancellationToken</span>);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+ 
+                <b>await</b> <a href="#db1f77165adddcc0" class="i field">_recipeEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r24 rd" class="r24 r">handler</span>, <span id="r25 rd" class="r25 r">executionId</span>, <span id="r26 rd" class="r26 r">recipeDescriptor</span>) =&gt; <span class="r24 r">handler</span>.<span class="i">RecipeExecutedAsync</span>(<span class="r25 r">executionId</span>, <span class="r26 r">recipeDescriptor</span>), <span class="r4 r">executionId</span>, <span class="r5 r">recipeDescriptor</span>, <a href="#99e3aed013c28d66" class="i field">_logger</a>);
+ 
+                <b>return</b> <span class="r4 r">executionId</span>;
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a>)
+            {
+                <b>await</b> <a href="#db1f77165adddcc0" class="i field">_recipeEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r27 rd" class="r27 r">handler</span>, <span id="r28 rd" class="r28 r">executionId</span>, <span id="r29 rd" class="r29 r">recipeDescriptor</span>) =&gt; <span class="r27 r">handler</span>.<span class="i">ExecutionFailedAsync</span>(<span class="r28 r">executionId</span>, <span class="r29 r">recipeDescriptor</span>), <span class="r4 r">executionId</span>, <span class="r5 r">recipeDescriptor</span>, <a href="#99e3aed013c28d66" class="i field">_logger</a>);
+ 
+                <b>throw</b>;
+            }
+            <b>finally</b>
+            {
+                <a href="#951d51e53c79c9b8" class="i field">_methodProviders</a>.<span class="i method">Remove</span>(<span class="r4 r">executionId</span>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="28bd34b32027f2b2" href="../R/28bd34b32027f2b2.html" target="n" data-glyph="76,1" class="i method">ExecuteStepAsync</a>(<a href="/OrchardCore.Recipes.Abstractions/A.html#62144c85232f4f1c" class="t t">RecipeExecutionContext</a> <span id="r30 rd" class="r30 r">recipeStep</span>)
+        {
+            <b>var</b> <span id="r31 rd" class="r31 r">shellScope</span> = <span class="r30 r">recipeStep</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c3cc6c3c90d6f044" class="i property">RecipeDescriptor</a>.<a href="/OrchardCore.Recipes.Abstractions/A.html#f516c7282d0fa490" class="i property">RequireNewScope</a>
+                ? <b>await</b> <a href="#7ff9f2dfb50dd313" class="i field">_shellHost</a>.<span class="i">GetScopeAsync</span>(<a href="#7f5a005509c6ef2e" class="i field">_shellSettings</a>)
+                : <span class="i">ShellScope</span>.<span class="i">Current</span>;
+ 
+            <b>await</b> <span class="r31 r">shellScope</span>.<span class="i">UsingAsync</span>(<b>async</b> <span id="r32 rd" class="r32 r">scope</span> =&gt;
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r33 rd" class="r33 r">recipeStepHandlers</span> = <span class="r32 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetServices</span>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#30c546cf8f65a6eb" class="t t">IRecipeStepHandler</a>&gt;();
+                <a href="/OrchardCore.Infrastructure.Abstractions/A.html#a5f6556b5a7b743a" class="k">var</a> <span id="r34 rd" class="r34 r">scriptingManager</span> = <span class="r32 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetRequiredService</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#a5f6556b5a7b743a" class="t t">IScriptingManager</a>&gt;();
+ 
+                <span class="c">// Substitutes the script elements by their actual values</span>
+                <span class="i">EvaluateJsonTree</span>(<span class="r34 r">scriptingManager</span>, <span class="r30 r">recipeStep</span>, <span class="r30 r">recipeStep</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#615c9d45aa327ca8" class="i property">Step</a>);
+ 
+                <b>if</b> (<a href="#99e3aed013c28d66" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+                {
+                    <a href="#99e3aed013c28d66" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Executing recipe step &#39;{RecipeName}&#39;.&quot;</span>, <span class="r30 r">recipeStep</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#21252a5abe295c58" class="i property">Name</a>);
+                }
+ 
+                <b>await</b> <a href="#db1f77165adddcc0" class="i field">_recipeEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r35 rd" class="r35 r">handler</span>, <span id="r36 rd" class="r36 r">recipeStep</span>) =&gt; <span class="r35 r">handler</span>.<span class="i">RecipeStepExecutingAsync</span>(<span class="r36 r">recipeStep</span>), <span class="r30 r">recipeStep</span>, <a href="#99e3aed013c28d66" class="i field">_logger</a>);
+ 
+                <b>foreach</b> (<a href="/OrchardCore.Recipes.Abstractions/A.html#30c546cf8f65a6eb" class="k">var</a> <span id="r37 rd" class="r37 r">recipeStepHandler</span> <b>in</b> <span class="r33 r">recipeStepHandlers</span>)
+                {
+                    <b>await</b> <span class="r37 r">recipeStepHandler</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#5c0596c94b067262" class="i method">ExecuteAsync</a>(<span class="r30 r">recipeStep</span>);
+                }
+ 
+                <b>await</b> <a href="#db1f77165adddcc0" class="i field">_recipeEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r38 rd" class="r38 r">handler</span>, <span id="r39 rd" class="r39 r">recipeStep</span>) =&gt; <span class="r38 r">handler</span>.<span class="i">RecipeStepExecutedAsync</span>(<span class="r39 r">recipeStep</span>), <span class="r30 r">recipeStep</span>, <a href="#99e3aed013c28d66" class="i field">_logger</a>);
+ 
+                <b>if</b> (<a href="#99e3aed013c28d66" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+                {
+                    <a href="#99e3aed013c28d66" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Finished executing recipe step &#39;{RecipeName}&#39;.&quot;</span>, <span class="r30 r">recipeStep</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#21252a5abe295c58" class="i property">Name</a>);
+                }
+            });
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Traverse all the nodes of the json document and replaces their value if they are scripted.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private void</b> <a id="3206d9355542590c" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">EvaluateJsonTree</a>(<a href="/OrchardCore.Infrastructure.Abstractions/A.html#a5f6556b5a7b743a" class="t t">IScriptingManager</a> <span id="r40 rd" class="r40 r">scriptingManager</span>, <a href="/OrchardCore.Recipes.Abstractions/A.html#62144c85232f4f1c" class="t t">RecipeExecutionContext</a> <span id="r41 rd" class="r41 r">context</span>, <span class="i">JToken</span> <span id="r42 rd" class="r42 r">node</span>)
+        {
+            <b>switch</b> (<span class="r42 r">node</span>.<span class="i">Type</span>)
+            {
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Array</span>:
+                    <b>var</b> <span id="r43 rd" class="r43 r">array</span> = (<span class="i">JArray</span>)<span class="r42 r">node</span>;
+                    <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r44 rd" class="r44 r">i</span> = 0; <span class="r44 r">i</span> &lt; <span class="r43 r">array</span>.<span class="i">Count</span>; <span class="r44 r">i</span>++)
+                    {
+                        <span class="i">EvaluateJsonTree</span>(<span class="r40 r">scriptingManager</span>, <span class="r41 r">context</span>, <span class="r43 r">array</span>[<span class="r44 r">i</span>]);
+                    }
+ 
+                    <b>break</b>;
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Object</span>:
+                    <b>foreach</b> (<b>var</b> <span id="r45 rd" class="r45 r">property</span> <b>in</b> (<span class="i">JObject</span>)<span class="r42 r">node</span>)
+                    {
+                        <span class="i">EvaluateJsonTree</span>(<span class="r40 r">scriptingManager</span>, <span class="r41 r">context</span>, <span class="r45 r">property</span>.<span class="i">Value</span>);
+                    }
+ 
+                    <b>break</b>;
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">String</span>:
+                    <b>const char</b> <span id="r46 rd" class="r46 r">scriptSeparator</span> = <span class="s">&#39;:&#39;</span>;
+                    <b>var</b> <span id="r47 rd" class="r47 r">value</span> = <span class="r42 r">node</span>.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+                    <span class="c">// Evaluate the expression while the result is another expression</span>
+                    <b>while</b> (<span class="r47 r">value</span>.<span class="i">StartsWith</span>(<span class="s">&#39;[&#39;</span>) &amp;&amp; <span class="r47 r">value</span>.<span class="i">EndsWith</span>(<span class="s">&#39;]&#39;</span>))
+                    {
+                        <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r48 rd" class="r48 r">scriptSeparatorIndex</span> = <span class="r47 r">value</span>.<span class="i">IndexOf</span>(<span class="r46 r">scriptSeparator</span>);
+                        <span class="c">// Only remove brackets if this is a valid script expression, e.g. &#39;[js:xxx]&#39;, or &#39;[file:xxx]&#39;</span>
+                        <b>if</b> (!(<span class="r48 r">scriptSeparatorIndex</span> &gt; -1 &amp;&amp; <span class="r47 r">value</span>[1..<span class="r48 r">scriptSeparatorIndex</span>].<span class="i">All</span>(<span id="r49 rd" class="r49 r">c</span> =&gt; <a href="@1@System.Runtime/A.html#02f2b1a33b09362d" class="t t">Char</a>.<span class="i">IsLetter</span>(<span class="r49 r">c</span>))))
+                        {
+                            <b>break</b>;
+                        }
+ 
+                        <span class="r47 r">value</span> = <span class="r47 r">value</span>.<span class="i">Trim</span>(<span class="s">&#39;[&#39;</span>, <span class="s">&#39;]&#39;</span>);
+ 
+                        <span class="r47 r">value</span> = (<span class="r40 r">scriptingManager</span>.<span class="i">Evaluate</span>(
+                            <span class="r47 r">value</span>,
+                            <span class="r41 r">context</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c3cc6c3c90d6f044" class="i property">RecipeDescriptor</a>.<a href="/OrchardCore.Recipes.Abstractions/A.html#a00fd06476ccdc31" class="i property">FileProvider</a>,
+                            <span class="r41 r">context</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c3cc6c3c90d6f044" class="i property">RecipeDescriptor</a>.<a href="/OrchardCore.Recipes.Abstractions/A.html#54cff118760f8671" class="i property">BasePath</a>,
+                            <a href="#951d51e53c79c9b8" class="i field">_methodProviders</a>[<span class="r41 r">context</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#1e7647138c5eb4c1" class="i property">ExecutionId</a>])
+                            ?? <span class="s">&quot;&quot;</span>).<span class="i">ToString</span>();
+ 
+                        ((<span class="i">JValue</span>)<span class="r42 r">node</span>).<span class="i">Value</span> = <span class="r47 r">value</span>;
+                    }
+ 
+                    <b>break</b>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

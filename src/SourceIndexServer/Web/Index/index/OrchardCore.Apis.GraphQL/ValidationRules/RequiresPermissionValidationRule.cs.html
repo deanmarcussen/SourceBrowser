@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html><head><title>RequiresPermissionValidationRule.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(68);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Apis.GraphQL/ValidationRules/RequiresPermissionValidationRule.cs" target="_top">ValidationRules\RequiresPermissionValidationRule.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Apis.GraphQL" target="_top">src\OrchardCore.Modules\OrchardCore.Apis.GraphQL\OrchardCore.Apis.GraphQL.csproj</a> (OrchardCore.Apis.GraphQL)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Language</span>.<span class="i">AST</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Types</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Validation</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>.<span class="i n">ValidationRules</span>
+{
+    <b>public class</b> <a id="46205243a9409857" href="../R/46205243a9409857.html" target="n" data-glyph="0,0" class="t t"><span id="88ce83ec947e21a5">RequiresPermissionValidationRule</span></a> : <span class="i">IValidationRule</span>
+    {
+        <b>public static readonly string</b> <a id="8edca41eb2a4ffaa" href="../R/8edca41eb2a4ffaa.html" target="n" data-glyph="42,1" class="i field">ErrorCode</a> = <span class="s">&quot;Unauthorized&quot;</span>;
+ 
+        <b>public</b> <span class="i">INodeVisitor</span> <a id="58492ac821eb2c8c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Validate</a>(<span class="i">ValidationContext</span> <span id="r0 rd" class="r0 r">validationContext</span>)
+        {
+            <a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#436b5317d04f5eb3" class="k">var</a> <span id="r1 rd" class="r1 r">context</span> = (<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#436b5317d04f5eb3" class="t t">GraphQLContext</a>)<span class="r0 r">validationContext</span>.<span class="i">UserContext</span>;
+ 
+            <b>return</b> <b>new</b> <span class="i">EnterLeaveListener</span>(<span id="r2 rd" class="r2 r">_</span> =&gt;
+            {
+                <span class="r2 r">_</span>.<span class="i">Match</span>&lt;<span class="i">Operation</span>&gt;(<span id="r3 rd" class="r3 r">op</span> =&gt;
+                {
+                    <b>if</b> (<span class="r3 r">op</span>.<span class="i">OperationType</span> == <span class="i">OperationType</span>.<span class="i">Mutation</span>)
+                    {
+                        <b>var</b> <span id="r4 rd" class="r4 r">authorizationManager</span> = <span class="r1 r">context</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#0c5a244ea954394c" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IAuthorizationService</span>&gt;();
+ 
+                        <b>if</b> (!<span class="r4 r">authorizationManager</span>.<span class="i">AuthorizeAsync</span>(<span class="r1 r">context</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#9473f4ed234b53ae" class="i property">User</a>, <a href="../Permissions.cs.html#a0ad515756919825" class="t t">Permissions</a>.<a href="../Permissions.cs.html#70c9e0f0744845b8" class="i field">ExecuteGraphQLMutations</a>).<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>())
+                        {
+                            <b>var</b> <span id="r5 rd" class="r5 r">localizer</span> = <span class="r1 r">context</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#0c5a244ea954394c" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IStringLocalizer</span>&lt;<a href="#46205243a9409857" class="t t">RequiresPermissionValidationRule</a>&gt;&gt;();
+ 
+                            <span class="r0 r">validationContext</span>.<span class="i">ReportError</span>(<b>new</b> <span class="i">ValidationError</span>(
+                                <span class="r0 r">validationContext</span>.<span class="i">OriginalQuery</span>,
+                                <a href="#8edca41eb2a4ffaa" class="i field">ErrorCode</a>,
+                                <span class="r5 r">localizer</span>[<span class="s">&quot;Authorization is required to access {0}.&quot;</span>, <span class="r3 r">op</span>.<span class="i">Name</span>],
+                                <span class="r3 r">op</span>));
+                        }
+                    }
+                });
+ 
+                <span class="r2 r">_</span>.<span class="i">Match</span>&lt;<span class="i">Field</span>&gt;(<span id="r6 rd" class="r6 r">fieldAst</span> =&gt;
+                {
+                    <b>var</b> <span id="r7 rd" class="r7 r">fieldDef</span> = <span class="r0 r">validationContext</span>.<span class="i">TypeInfo</span>.<span class="i">GetFieldDef</span>();
+ 
+                    <b>if</b> (<span class="r7 r">fieldDef</span>.<span class="i">HasPermissions</span>() &amp;&amp; !<span class="i">Authorize</span>(<span class="r7 r">fieldDef</span>, <span class="r1 r">context</span>))
+                    {
+                        <b>var</b> <span id="r8 rd" class="r8 r">localizer</span> = <span class="r1 r">context</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#0c5a244ea954394c" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IStringLocalizer</span>&lt;<a href="#46205243a9409857" class="t t">RequiresPermissionValidationRule</a>&gt;&gt;();
+ 
+                        <span class="r0 r">validationContext</span>.<span class="i">ReportError</span>(<b>new</b> <span class="i">ValidationError</span>(
+                            <span class="r0 r">validationContext</span>.<span class="i">OriginalQuery</span>,
+                            <a href="#8edca41eb2a4ffaa" class="i field">ErrorCode</a>,
+                            <span class="r8 r">localizer</span>[<span class="s">&quot;Authorization is required to access the field. {0}&quot;</span>, <span class="r6 r">fieldAst</span>.<span class="i">Name</span>],
+                            <span class="r6 r">fieldAst</span>));
+                    }
+                });
+            });
+        }
+ 
+        <b>private static bool</b> <a id="d60105926019d58f" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">Authorize</a>(<span class="i">IProvideMetadata</span> <span id="r9 rd" class="r9 r">type</span>, <a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#436b5317d04f5eb3" class="t t">GraphQLContext</a> <span id="r10 rd" class="r10 r">context</span>)
+        {
+            <b>var</b> <span id="r11 rd" class="r11 r">authorizationManager</span> = <span class="r10 r">context</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#0c5a244ea954394c" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IAuthorizationService</span>&gt;();
+ 
+            <span class="c">// awaitable IValidationRule in graphql dotnet is coming soon:</span>
+            <span class="c">// https://github.com/graphql-dotnet/graphql-dotnet/issues/1140</span>
+            <b>return</b> <span class="r9 r">type</span>.<span class="i">GetPermissions</span>().<span class="i">All</span>(<span id="r12 rd" class="r12 r">x</span> =&gt; <span class="r11 r">authorizationManager</span>.<span class="i">AuthorizeAsync</span>(<span class="r10 r">context</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#9473f4ed234b53ae" class="i property">User</a>, <span class="r12 r">x</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#b65289d5e80d136c" class="i property">Permission</a>, <span class="r12 r">x</span>.<a href="/OrchardCore.Apis.GraphQL.Abstractions/A.html#feb7456553463235" class="i property">Resource</a>).<a href="@1@System.Runtime/A.html#e1d639f68b66715a" class="i method">GetAwaiter</a>().<a href="@1@System.Runtime/A.html#c2597ba59f71d619" class="i method">GetResult</a>());
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html>
+<html><head><title>CacheTag.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(139);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid/Cache/CacheTag.cs" target="_top">Cache\CacheTag.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid" target="_top">src\OrchardCore\OrchardCore.DisplayManagement.Liquid\OrchardCore.DisplayManagement.Liquid.csproj</a> (OrchardCore.DisplayManagement.Liquid)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Ast</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Cache</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DynamicCache</span>.<span class="i n">Liquid</span>
+{
+    <b>public class</b> <a id="c8e6e65778177b3f" href="../R/c8e6e65778177b3f.html" target="n" data-glyph="0,0" class="t t"><span id="cca3a1931379dcfb">CacheTag</span></a>
+    {
+        <b>private static readonly char</b>[] <a id="4c3143041bd7c710" href="../R/4c3143041bd7c710.html" target="n" data-glyph="46,1" class="i field">SplitChars</a> = <b>new</b>[] { <span class="s">&#39;,&#39;</span>, <span class="s">&#39; &#39;</span> };
+ 
+        <b>public static async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">Completion</span>&gt; <a id="1aacce6bb384ea65" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">WriteToAsync</a>(<span class="t t">List</span>&lt;<span class="i">FilterArgument</span>&gt; <span id="r0 rd" class="r0 r">arguments</span>, <a href="@1@System.Runtime/A.html#b040fb780bdd59f4" class="t t">IReadOnlyList</a>&lt;<span class="i">Statement</span>&gt; <span id="r1 rd" class="r1 r">statements</span>, <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r2 rd" class="r2 r">writer</span>, <span class="t t">TextEncoder</span> <span id="r3 rd" class="r3 r">encoder</span>, <span class="i">TemplateContext</span> <span id="r4 rd" class="r4 r">context</span>)
+        {
+            <b>var</b> <span id="r5 rd" class="r5 r">services</span> = ((<a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a>)<span class="r4 r">context</span>).<a href="/OrchardCore.Liquid.Abstractions/A.html#35b8fed4ca686dda" class="i property">Services</a>;
+ 
+            <a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="k">var</a> <span id="r6 rd" class="r6 r">dynamicCache</span> = <span class="r5 r">services</span>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a>&gt;();
+            <b>var</b> <span id="r7 rd" class="r7 r">cacheScopeManager</span> = <span class="r5 r">services</span>.<span class="i method">GetService</span>&lt;<span class="i">ICacheScopeManager</span>&gt;();
+            <b>var</b> <span id="r8 rd" class="r8 r">loggerFactory</span> = <span class="r5 r">services</span>.<span class="i method">GetService</span>&lt;<span class="t t">ILoggerFactory</span>&gt;();
+            <b>var</b> <span id="r9 rd" class="r9 r">logger</span> = <span class="r8 r">loggerFactory</span>.<span class="i method">CreateLogger</span>&lt;<a href="#c8e6e65778177b3f" class="t t">CacheTag</a>&gt;();
+            <b>var</b> <span id="r10 rd" class="r10 r">cacheOptions</span> = <span class="r5 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IOptions</span>&lt;<span class="i">CacheOptions</span>&gt;&gt;().<span class="i property">Value</span>;
+ 
+            <b>if</b> (<span class="r6 r">dynamicCache</span> == <b>null</b> || <span class="r7 r">cacheScopeManager</span> == <b>null</b>)
+            {
+                <span class="r9 r">logger</span>.<span class="i method">LogInformation</span>(<span class="s">@&quot;Liquid cache block entered without an available IDynamicCacheService or ICacheScopeManager.
+                                        The contents of the cache block will not be cached.
+                                        To enable caching, make sure that a feature that contains an implementation of IDynamicCacheService and ICacheScopeManager is enabled (for example, &#39;Dynamic Cache&#39;).&quot;</span>);
+ 
+                <b>if</b> (<span class="r1 r">statements</span> != <b>null</b> &amp;&amp; <span class="r1 r">statements</span>.<a href="@1@System.Runtime/A.html#6f182bb82f68780e" class="i property">Count</a> &gt; 0)
+                {
+                    <b>var</b> <span id="r11 rd" class="r11 r">completion</span> = <b>await</b> <span class="r1 r">statements</span>.<span class="i">RenderStatementsAsync</span>(<span class="r2 r">writer</span>, <span class="r3 r">encoder</span>, <span class="r4 r">context</span>);
+ 
+                    <b>if</b> (<span class="r11 r">completion</span> != <span class="i">Completion</span>.<span class="i">Normal</span>)
+                    {
+                        <b>return</b> <span class="r11 r">completion</span>;
+                    }
+                }
+ 
+                <b>return</b> <span class="i">Completion</span>.<span class="i">Normal</span>;
+            }
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">filterArguments</span> = <b>new</b> <span class="i">FilterArguments</span>();
+            <b>foreach</b> (<b>var</b> <span id="r13 rd" class="r13 r">argument</span> <b>in</b> <span class="r0 r">arguments</span>)
+            {
+                <span class="r12 r">filterArguments</span>.<span class="i">Add</span>(<span class="r13 r">argument</span>.<span class="i">Name</span>, <b>await</b> <span class="r13 r">argument</span>.<span class="i">Expression</span>.<span class="i">EvaluateAsync</span>(<span class="r4 r">context</span>));
+            }
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">cacheKey</span> = <span class="r12 r">filterArguments</span>.<span class="i">At</span>(0).<span class="i">ToStringValue</span>();
+            <b>var</b> <span id="r15 rd" class="r15 r">contexts</span> = <span class="r12 r">filterArguments</span>[<span class="s">&quot;vary_by&quot;</span>].<span class="i">ToStringValue</span>();
+            <b>var</b> <span id="r16 rd" class="r16 r">tags</span> = <span class="r12 r">filterArguments</span>[<span class="s">&quot;dependencies&quot;</span>].<span class="i">ToStringValue</span>();
+            <b>var</b> <span id="r17 rd" class="r17 r">durationString</span> = <span class="r12 r">filterArguments</span>[<span class="s">&quot;expires_after&quot;</span>].<span class="i">ToStringValue</span>();
+            <b>var</b> <span id="r18 rd" class="r18 r">slidingDurationString</span> = <span class="r12 r">filterArguments</span>[<span class="s">&quot;expires_sliding&quot;</span>].<span class="i">ToStringValue</span>();
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">cacheContext</span> = <b>new</b> <span class="i">CacheContext</span>(<span class="r14 r">cacheKey</span>)
+                .<span class="i">AddContext</span>(<span class="r15 r">contexts</span>.<span class="i">Split</span>(<a href="#4c3143041bd7c710" class="i field">SplitChars</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>))
+                .<span class="i">AddTag</span>(<span class="r16 r">tags</span>.<span class="i">Split</span>(<a href="#4c3143041bd7c710" class="i field">SplitChars</a>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>));
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<span class="i">TryParse</span>(<span class="r17 r">durationString</span>, <b>out</b> <b>var</b> <span id="r20 rd" class="r20 r">duration</span>))
+            {
+                <span class="r19 r">cacheContext</span>.<span class="i">WithExpiryAfter</span>(<span class="r20 r">duration</span>);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<span class="i">TryParse</span>(<span class="r18 r">slidingDurationString</span>, <b>out</b> <b>var</b> <span id="r21 rd" class="r21 r">slidingDuration</span>))
+            {
+                <span class="r19 r">cacheContext</span>.<span class="i">WithExpirySliding</span>(<span class="r21 r">slidingDuration</span>);
+            }
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">cacheResult</span> = <b>await</b> <span class="r6 r">dynamicCache</span>.<span class="i">GetCachedValueAsync</span>(<span class="r19 r">cacheContext</span>);
+            <b>if</b> (<span class="r22 r">cacheResult</span> != <b>null</b>)
+            {
+                <b>await</b> <span class="r2 r">writer</span>.<span class="i">WriteAsync</span>(<span class="r22 r">cacheResult</span>);
+ 
+                <b>return</b> <span class="i">Completion</span>.<span class="i">Normal</span>;
+            }
+ 
+            <span class="r7 r">cacheScopeManager</span>.<span class="i">EnterScope</span>(<span class="r19 r">cacheContext</span>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">content</span> = <span class="s">&quot;&quot;</span>;
+            <b>try</b>
+            {
+                <b>if</b> (<span class="r1 r">statements</span> != <b>null</b> || <span class="r1 r">statements</span>.<a href="@1@System.Runtime/A.html#6f182bb82f68780e" class="i property">Count</a> &gt; 0)
+                {
+                    <b>using</b> <a href="/OrchardCore.DisplayManagement/A.html#d4a545a0dc67cb23" class="k">var</a> <span id="r24 rd" class="r24 r">sb</span> = <a href="/OrchardCore.DisplayManagement/A.html#d4a545a0dc67cb23" class="t t">StringBuilderPool</a>.<a href="/OrchardCore.DisplayManagement/A.html#e8c2c86c2f516fa5" class="i method">GetInstance</a>();
+                    <b>using</b> (<a href="@1@System.Runtime/A.html#fd76db5d443fe076" class="k">var</a> <span id="r25 rd" class="r25 r">render</span> = <b>new</b> <a href="@1@System.Runtime/A.html#08914a995cb77251" class="t constructor">StringWriter</a>(<span class="r24 r">sb</span>.<a href="/OrchardCore.DisplayManagement/A.html#b2a3149661920a1a" class="i field">Builder</a>))
+                    {
+                        <b>foreach</b> (<b>var</b> <span id="r26 rd" class="r26 r">statement</span> <b>in</b> <span class="r1 r">statements</span>)
+                        {
+                            <b>await</b> <span class="r26 r">statement</span>.<span class="i">WriteToAsync</span>(<span class="r25 r">render</span>, <span class="r3 r">encoder</span>, <span class="r4 r">context</span>);
+                        }
+ 
+                        <b>await</b> <span class="r25 r">render</span>.<a href="@1@System.Runtime/A.html#e3c5f8f3eba3d174" class="i method">FlushAsync</a>();
+                    }
+ 
+                    <span class="r23 r">content</span> = <span class="r24 r">sb</span>.<a href="/OrchardCore.DisplayManagement/A.html#b2a3149661920a1a" class="i field">Builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+                }
+            }
+            <b>finally</b>
+            {
+                <span class="r7 r">cacheScopeManager</span>.<span class="i">ExitScope</span>();
+            }
+ 
+            <b>if</b> (<span class="r10 r">cacheOptions</span>.<span class="i">DebugMode</span>)
+            {
+                <span class="c">// No need to optimize this code as it will be used for debugging purpose.</span>
+                <a href="@1@System.Runtime/A.html#fd76db5d443fe076" class="k">var</a> <span id="r27 rd" class="r27 r">debugContent</span> = <b>new</b> <a href="@1@System.Runtime/A.html#23770c70900ea7f0" class="t constructor">StringWriter</a>();
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#d2497198aa8f74c0" class="i method">WriteLine</a>();
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">$&quot;</span><span class="s">&lt;!-- CACHE BLOCK: </span>{<span class="r19 r">cacheContext</span>.<span class="i">CacheId</span>}<span class="s"> (</span>{<a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>()}<span class="s">)</span><span class="s">&quot;</span>);
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">$&quot;</span><span class="s">         VARY BY: </span>{<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r19 r">cacheContext</span>.<span class="i">Contexts</span>)}<span class="s">&quot;</span>);
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">$&quot;</span><span class="s">    DEPENDENCIES: </span>{<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r19 r">cacheContext</span>.<span class="i">Tags</span>)}<span class="s">&quot;</span>);
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">$&quot;</span><span class="s">      EXPIRES ON: </span>{<span class="r19 r">cacheContext</span>.<span class="i">ExpiresOn</span>}<span class="s">&quot;</span>);
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">$&quot;</span><span class="s">   EXPIRES AFTER: </span>{<span class="r19 r">cacheContext</span>.<span class="i">ExpiresAfter</span>}<span class="s">&quot;</span>);
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">$&quot;</span><span class="s"> EXPIRES SLIDING: </span>{<span class="r19 r">cacheContext</span>.<span class="i">ExpiresSliding</span>}<span class="s">&quot;</span>);
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">&quot;--&gt;&quot;</span>);
+ 
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="r23 r">content</span>);
+ 
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#d2497198aa8f74c0" class="i method">WriteLine</a>();
+                <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="s">$&quot;</span><span class="s">&lt;!-- END CACHE BLOCK: </span>{<span class="r19 r">cacheContext</span>.<span class="i">CacheId</span>}<span class="s"> --&gt;</span><span class="s">&quot;</span>);
+ 
+                <span class="r23 r">content</span> = <span class="r27 r">debugContent</span>.<a href="@1@System.Runtime/A.html#dd992896cbb21320" class="i method">ToString</a>();
+            }
+ 
+            <b>await</b> <span class="r6 r">dynamicCache</span>.<span class="i">SetCachedValueAsync</span>(<span class="r19 r">cacheContext</span>, <span class="r23 r">content</span>);
+ 
+            <b>await</b> <span class="r2 r">writer</span>.<a href="@1@System.Runtime/A.html#9866245f0059e043" class="i method">WriteAsync</a>(<span class="r23 r">content</span>);
+ 
+            <b>return</b> <span class="i">Completion</span>.<span class="i">Normal</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

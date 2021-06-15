@@ -1,0 +1,114 @@
+﻿<!DOCTYPE html>
+<html><head><title>FeatureAwareServiceCollection.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(105);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Shell/Builders/FeatureAwareServiceCollection.cs" target="_top">Shell\Builders\FeatureAwareServiceCollection.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>.<span class="i n">Features</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> A service collection that keeps track of the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> for each added service.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="e4a46f545e8189a4" href="../../R/e4a46f545e8189a4.html" target="n" data-glyph="0,0" class="t t">FeatureAwareServiceCollection</a> : <span class="t t">IServiceCollection</span>
+    {
+        <b>private readonly</b> <span class="t t">IServiceCollection</span> <a id="42e072f422fc251b" href="../../R/42e072f422fc251b.html" target="n" data-glyph="46,1" class="i field">_innerServiceCollection</a>;
+ 
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>, <span class="t t">ServiceCollection</span>&gt; <a id="375fab12b9308072" href="../../R/375fab12b9308072.html" target="n" data-glyph="46,1" class="i field">_featureServiceCollections</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>, <span class="t t">ServiceCollection</span>&gt;();
+        <b>private</b> <span class="t t">ServiceCollection</span> <a id="71d7b7882ce70c5b" href="../../R/71d7b7882ce70c5b.html" target="n" data-glyph="46,1" class="i field">_currentFeatureServiceCollection</a>;
+ 
+        <b>public</b> <a id="f8f2d276f502d504" href="../../R/f8f2d276f502d504.html" target="n" data-glyph="72,1" class="t constructor">FeatureAwareServiceCollection</a>(<span class="t t">IServiceCollection</span> <span id="r0 rd" class="r0 r">innerServiceCollection</span>)
+        {
+            <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a> = <span class="r0 r">innerServiceCollection</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> A collection of services grouped by their feature information.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a>, <span class="t t">ServiceCollection</span>&gt; <a id="d0af1c173e7eb8b4" href="../../R/d0af1c173e7eb8b4.html" target="n" data-glyph="102,1" class="i property">FeatureCollections</a> =&gt; <a href="#375fab12b9308072" class="i field">_featureServiceCollections</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Sets the current feature that services will be assigned when added to this collection.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r">feature</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The feature for services to be assigned.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public void</b> <a id="da3dcfcf1c0141f3" href="../../R/da3dcfcf1c0141f3.html" target="n" data-glyph="72,1" class="i method">SetCurrentFeature</a>(<a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a> <span id="r1 rd" class="r1 r">feature</span>)
+        {
+            <b>if</b> (!<a href="#375fab12b9308072" class="i field">_featureServiceCollections</a>.<span class="i method">TryGetValue</span>(<span class="r1 r">feature</span>, <b>out</b> <a href="#71d7b7882ce70c5b" class="i field">_currentFeatureServiceCollection</a>))
+            {
+                <a href="#375fab12b9308072" class="i field">_featureServiceCollections</a>.<span class="i method">Add</span>(<span class="r1 r">feature</span>, <a href="#71d7b7882ce70c5b" class="i field">_currentFeatureServiceCollection</a> = <b>new</b> <span class="t constructor">ServiceCollection</span>());
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#893e8cdebffde2da" class="t t">IEnumerator</a>&lt;<span class="t t">ServiceDescriptor</span>&gt; <a id="da5732f33b93e169" href="../../R/da5732f33b93e169.html" target="n" data-glyph="72,1" class="i method">GetEnumerator</a>()
+        {
+            <b>return</b> <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#a242475701b655b2" class="i method">GetEnumerator</a>();
+        }
+ 
+        <a href="@1@System.Runtime/A.html#6624f38cb955bfe0" class="t t">IEnumerator</a> <a href="@1@System.Runtime/A.html#9be451ac13d86a97" class="t t">IEnumerable</a>.<a href="@1@System.Runtime/A.html#02a44b09e26b964f" class="i method">GetEnumerator</a>()
+        {
+            <b>return</b> <a href="#da5732f33b93e169" class="i method">GetEnumerator</a>();
+        }
+ 
+        <b>void</b> <a href="@1@System.Runtime/A.html#a9bf1395d3addc77" class="t t">ICollection</a>&lt;<span class="t t">ServiceDescriptor</span>&gt;.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="t t">ServiceDescriptor</span> <span id="r2 rd" class="r2 r">item</span>)
+        {
+            <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r2 r">item</span>);
+            <a href="#71d7b7882ce70c5b" class="i field">_currentFeatureServiceCollection</a>?.<span class="i method">Add</span>(<span class="r2 r">item</span>);
+        }
+ 
+        <b>public void</b> <a id="111cd34eef83d6f9" href="../../R/111cd34eef83d6f9.html" target="n" data-glyph="72,1" class="i method">Clear</a>()
+        {
+            <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#6144bc2a22ce28c4" class="i method">Clear</a>();
+            <a href="#375fab12b9308072" class="i field">_featureServiceCollections</a>.<span class="i method">Clear</span>();
+        }
+ 
+        <b>public bool</b> <a id="2b6d8bf23035afb5" href="../../R/2b6d8bf23035afb5.html" target="n" data-glyph="72,1" class="i method">Contains</a>(<span class="t t">ServiceDescriptor</span> <span id="r3 rd" class="r3 r">item</span>)
+        {
+            <b>return</b> <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#8f74065d140cfe04" class="i method">Contains</a>(<span class="r3 r">item</span>);
+        }
+ 
+        <b>public void</b> <a id="40f6157692deb3f2" href="../../R/40f6157692deb3f2.html" target="n" data-glyph="72,1" class="i method">CopyTo</a>(<span class="t t">ServiceDescriptor</span>[] <span id="r4 rd" class="r4 r">array</span>, <b>int</b> <span id="r5 rd" class="r5 r">arrayIndex</span>)
+        {
+            <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#e60f08f14be7e099" class="i method">CopyTo</a>(<span class="r4 r">array</span>, <span class="r5 r">arrayIndex</span>);
+        }
+ 
+        <b>public bool</b> <a id="2213ea601e9731aa" href="../../R/2213ea601e9731aa.html" target="n" data-glyph="72,1" class="i method">Remove</a>(<span class="t t">ServiceDescriptor</span> <span id="r6 rd" class="r6 r">item</span>)
+        {
+            <b>return</b> <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#12ab6cfa5ca2ceec" class="i method">Remove</a>(<span class="r6 r">item</span>);
+        }
+ 
+        <b>public int</b> <a id="a1089c1eca5ab003" href="../../R/a1089c1eca5ab003.html" target="n" data-glyph="102,1" class="i property">Count</a> =&gt; <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#3d6c21c4e9bd5f63" class="i property">Count</a>;
+ 
+        <b>public bool</b> <a id="70f3b4f16eb3ba71" href="../../R/70f3b4f16eb3ba71.html" target="n" data-glyph="102,1" class="i property">IsReadOnly</a> =&gt; <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#30768a81e456ea74" class="i property">IsReadOnly</a>;
+ 
+        <b>public int</b> <a id="9f3d2149b8294ea0" href="../../R/9f3d2149b8294ea0.html" target="n" data-glyph="72,1" class="i method">IndexOf</a>(<span class="t t">ServiceDescriptor</span> <span id="r7 rd" class="r7 r">item</span>)
+        {
+            <b>return</b> <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#5fd4a456a7fab8b0" class="i method">IndexOf</a>(<span class="r7 r">item</span>);
+        }
+ 
+        <b>public void</b> <a id="41451730bed74057" href="../../R/41451730bed74057.html" target="n" data-glyph="72,1" class="i method">Insert</a>(<b>int</b> <span id="r8 rd" class="r8 r">index</span>, <span class="t t">ServiceDescriptor</span> <span id="r9 rd" class="r9 r">item</span>)
+        {
+            <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#11453faf8022b027" class="i method">Insert</a>(<span class="r8 r">index</span>, <span class="r9 r">item</span>);
+            <a href="#71d7b7882ce70c5b" class="i field">_currentFeatureServiceCollection</a>?.<span class="i method">Add</span>(<span class="r9 r">item</span>);
+        }
+ 
+        <b>public void</b> <a id="2bc7f55d592a6d3d" href="../../R/2bc7f55d592a6d3d.html" target="n" data-glyph="72,1" class="i method">RemoveAt</a>(<b>int</b> <span id="r10 rd" class="r10 r">index</span>)
+        {
+            <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a>.<a href="@1@System.Runtime/A.html#3d7a8bddfaa22596" class="i method">RemoveAt</a>(<span class="r10 r">index</span>);
+        }
+ 
+        <b>public</b> <span class="t t">ServiceDescriptor</span> <a id="9ce3038cdbf82d5d" href="../../R/9ce3038cdbf82d5d.html" target="n" data-glyph="102,1" class="k">this</a>[<b>int</b> <span id="r11 rd" class="r11 r">index</span>]
+        {
+            <b>get</b> =&gt; <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a><a href="@1@System.Runtime/A.html#396bb785d31f5979">[</a><span class="r11 r">index</span>];
+            <b>set</b> =&gt; <a href="#42e072f422fc251b" class="i field">_innerServiceCollection</a><a href="@1@System.Runtime/A.html#396bb785d31f5979">[</a><span class="r11 r">index</span>] = <b>value</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

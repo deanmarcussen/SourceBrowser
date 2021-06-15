@@ -1,0 +1,543 @@
+﻿<!DOCTYPE html>
+<html><head><title>AdminController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(534);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/Controllers/AdminController.cs" target="_top">Controllers\AdminController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Security</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Filters</span>.<span class="i">Query</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="ba32372e240bc7aa" href="../R/ba32372e240bc7aa.html" target="n" data-glyph="0,0" class="t t">AdminController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <a id="d558206c8abe4994" href="../R/d558206c8abe4994.html" target="n" data-glyph="46,1" class="i field">_userManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#3210eac404b61aa1" class="t t">IDisplayManager</a>&lt;<a href="/OrchardCore.Users.Core/A.html#d6f4ea408b8f1b1d" class="t t">UserIndexOptions</a>&gt; <a id="6a0506c5258b15d4" href="../R/6a0506c5258b15d4.html" target="n" data-glyph="46,1" class="i field">_userOptionsDisplayManager</a>;
+        <b>private readonly</b> <span class="t t">SignInManager</span>&lt;<span class="i">IUser</span>&gt; <a id="c1609a343bfd0ac2" href="../R/c1609a343bfd0ac2.html" target="n" data-glyph="46,1" class="i field">_signInManager</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="bcdbafba903b8847" href="../R/bcdbafba903b8847.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="1ee6cdd1aa412ac5" href="../R/1ee6cdd1aa412ac5.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <a id="315000c97f3626d9" href="../R/315000c97f3626d9.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#3210eac404b61aa1" class="t t">IDisplayManager</a>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>&gt; <a id="a0caf7547fd19397" href="../R/a0caf7547fd19397.html" target="n" data-glyph="46,1" class="i field">_userDisplayManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="ed0b34626e108d36" href="../R/ed0b34626e108d36.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="i">IUserService</span> <a id="7df8b3a06b52e866" href="../R/7df8b3a06b52e866.html" target="n" data-glyph="46,1" class="i field">_userService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <a id="7e30b497dc8b7ff4" href="../R/7e30b497dc8b7ff4.html" target="n" data-glyph="46,1" class="i field">_roleService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Users.Core/A.html#959666a1e2c80138" class="t t">IUsersAdminListQueryService</a> <a id="502ee74c1799d8bb" href="../R/502ee74c1799d8bb.html" target="n" data-glyph="46,1" class="i field">_usersAdminListQueryService</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="039267e75676e248" href="../R/039267e75676e248.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <a id="3e32d4aab0e277a7" href="../R/3e32d4aab0e277a7.html" target="n" data-glyph="46,1" class="i field">_shapeFactory</a>;
+ 
+        <b>private readonly dynamic</b> <a id="d0ec1856491769cc" href="../R/d0ec1856491769cc.html" target="n" data-glyph="46,1" class="i field">New</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="fae3a95d15527a6b" href="../R/fae3a95d15527a6b.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="208e49cc37bbfa35" href="../R/208e49cc37bbfa35.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="2d9266057be5361a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AdminController</a>(
+            <a href="/OrchardCore.DisplayManagement/A.html#3210eac404b61aa1" class="t t">IDisplayManager</a>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>&gt; <span id="r0 rd" class="r0 r">userDisplayManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#3210eac404b61aa1" class="t t">IDisplayManager</a>&lt;<a href="/OrchardCore.Users.Core/A.html#d6f4ea408b8f1b1d" class="t t">UserIndexOptions</a>&gt; <span id="r1 rd" class="r1 r">userOptionsDisplayManager</span>,
+            <span class="t t">SignInManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r2 rd" class="r2 r">signInManager</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r3 rd" class="r3 r">authorizationService</span>,
+            <span class="i">ISession</span> <span id="r4 rd" class="r4 r">session</span>,
+            <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r5 rd" class="r5 r">userManager</span>,
+            <span class="i">IUserService</span> <span id="r6 rd" class="r6 r">userService</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <span id="r7 rd" class="r7 r">roleService</span>,
+            <a href="/OrchardCore.Users.Core/A.html#959666a1e2c80138" class="t t">IUsersAdminListQueryService</a> <span id="r8 rd" class="r8 r">usersAdminListQueryService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r9 rd" class="r9 r">notifier</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <span id="r10 rd" class="r10 r">siteService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r11 rd" class="r11 r">shapeFactory</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#ba32372e240bc7aa" class="t t">AdminController</a>&gt; <span id="r12 rd" class="r12 r">htmlLocalizer</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#ba32372e240bc7aa" class="t t">AdminController</a>&gt; <span id="r13 rd" class="r13 r">stringLocalizer</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r14 rd" class="r14 r">updateModelAccessor</span>)
+        {
+            <a href="#a0caf7547fd19397" class="i field">_userDisplayManager</a> = <span class="r0 r">userDisplayManager</span>;
+            <a href="#6a0506c5258b15d4" class="i field">_userOptionsDisplayManager</a> = <span class="r1 r">userOptionsDisplayManager</span>;
+            <a href="#c1609a343bfd0ac2" class="i field">_signInManager</a> = <span class="r2 r">signInManager</span>;
+            <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a> = <span class="r3 r">authorizationService</span>;
+            <a href="#bcdbafba903b8847" class="i field">_session</a> = <span class="r4 r">session</span>;
+            <a href="#d558206c8abe4994" class="i field">_userManager</a> = <span class="r5 r">userManager</span>;
+            <a href="#ed0b34626e108d36" class="i field">_notifier</a> = <span class="r9 r">notifier</span>;
+            <a href="#315000c97f3626d9" class="i field">_siteService</a> = <span class="r10 r">siteService</span>;
+            <a href="#7df8b3a06b52e866" class="i field">_userService</a> = <span class="r6 r">userService</span>;
+            <a href="#7e30b497dc8b7ff4" class="i field">_roleService</a> = <span class="r7 r">roleService</span>;
+            <a href="#502ee74c1799d8bb" class="i field">_usersAdminListQueryService</a> = <span class="r8 r">usersAdminListQueryService</span>;
+            <a href="#039267e75676e248" class="i field">_updateModelAccessor</a> = <span class="r14 r">updateModelAccessor</span>;
+            <a href="#3e32d4aab0e277a7" class="i field">_shapeFactory</a> = <span class="r11 r">shapeFactory</span>;
+ 
+            <a href="#d0ec1856491769cc" class="i field">New</a> = <span class="r11 r">shapeFactory</span>;
+            <a href="#fae3a95d15527a6b" class="i field">H</a> = <span class="r12 r">htmlLocalizer</span>;
+            <a href="#208e49cc37bbfa35" class="i field">S</a> = <span class="r13 r">stringLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="bec02476fdee4db2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>([<span class="t constructor">ModelBinder</span>(<span class="i property">BinderType</span> = <b>typeof</b>(<a href="/OrchardCore.Users.Core/A.html#05b0359bfe2e0170" class="t t">UserFilterEngineModelBinder</a>), <span class="i property">Name</span> = <span class="s">&quot;q&quot;</span>)] <span class="i">QueryFilterResult</span>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>&gt; <span id="r15 rd" class="r15 r">queryFilterResult</span>, <a href="/OrchardCore.Navigation.Core/A.html#51c8763abc99132d" class="t t">PagerParameters</a> <span id="r16 rd" class="r16 r">pagerParameters</span>)
+        {
+            <span class="c">// Check a dummy user account to see if the current user has permission to view users.</span>
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r17 rd" class="r17 r">authUser</span> = <b>new</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t constructor">User</a>();
+ 
+            <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#f17b872f1cb00bc1" class="i field">ViewUsers</a>, <span class="r17 r">authUser</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.Users.Core/A.html#d6f4ea408b8f1b1d" class="k">var</a> <span id="r18 rd" class="r18 r">options</span> = <b>new</b> <a href="/OrchardCore.Users.Core/A.html#d6f4ea408b8f1b1d" class="t constructor">UserIndexOptions</a>();
+ 
+            <span class="c">// Populate route values to maintain previous route data when generating page links</span>
+            <span class="c">// await _userOptionsDisplayManager.UpdateEditorAsync(options, _updateModelAccessor.ModelUpdater, false);</span>
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#fd7af0a2290a1013" class="i property">FilterResult</a> = <span class="r15 r">queryFilterResult</span>;
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#fd7af0a2290a1013" class="i property">FilterResult</a>.<span class="i">MapTo</span>(<span class="r18 r">options</span>);
+ 
+            <span class="c">// With the options populated we filter the query, allowing the filters to alter the options.</span>
+            <b>var</b> <span id="r19 rd" class="r19 r">users</span> = <b>await</b> <a href="#502ee74c1799d8bb" class="i field">_usersAdminListQueryService</a>.<span class="i">QueryAsync</span>(<span class="r18 r">options</span>, <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+ 
+            <span class="c">// The search text is provided back to the UI.</span>
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#a450f2ad72b4c785" class="i property">SearchText</a> = <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#fd7af0a2290a1013" class="i property">FilterResult</a>.<span class="i">ToString</span>();
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#6b02f9a7ab846d60" class="i property">OriginalSearchText</a> = <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#a450f2ad72b4c785" class="i property">SearchText</a>;
+ 
+            <span class="c">// Populate route values to maintain previous route data when generating page links.</span>
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#d103b7a9d365f4cf" class="i property">RouteValues</a>.<span class="i">TryAdd</span>(<span class="s">&quot;q&quot;</span>, <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#fd7af0a2290a1013" class="i property">FilterResult</a>.<span class="i">ToString</span>());
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">routeData</span> = <b>new</b> <span class="t constructor">RouteData</span>(<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#d103b7a9d365f4cf" class="i property">RouteValues</a>);
+ 
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e627b55b9075d808" class="k">var</a> <span id="r21 rd" class="r21 r">siteSettings</span> = <b>await</b> <a href="#315000c97f3626d9" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>();
+            <a href="/OrchardCore.Navigation.Core/A.html#e6e879b28e4fdee2" class="k">var</a> <span id="r22 rd" class="r22 r">pager</span> = <b>new</b> <a href="/OrchardCore.Navigation.Core/A.html#752edecafc0b21e5" class="t constructor">Pager</a>(<span class="r16 r">pagerParameters</span>, <span class="r21 r">siteSettings</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#aae31982ea725462" class="i property">PageSize</a>);
+ 
+            <b>var</b> <span id="r23 rd" class="r23 r">count</span> = <b>await</b> <span class="r19 r">users</span>.<span class="i">CountAsync</span>();
+ 
+            <b>var</b> <span id="r24 rd" class="r24 r">results</span> = <b>await</b> <span class="r19 r">users</span>
+                .<span class="i">Skip</span>(<span class="r22 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#985e078e8039ce3c" class="i method">GetStartIndex</a>())
+                .<span class="i">Take</span>(<span class="r22 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2ca905c9c05191b1" class="i property">PageSize</a>)
+                .<span class="i">ListAsync</span>();
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">pagerShape</span> = (<b>await</b> <a href="#d0ec1856491769cc" class="i field">New</a>.<span class="i">Pager</span>(<span class="r22 r">pager</span>)).<span class="i">TotalItemCount</span>(<span class="r23 r">count</span>).<span class="i">RouteData</span>(<span class="r20 r">routeData</span>);
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">userEntries</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="../ViewModels/UsersIndexViewModel.cs.html#20ea957a136333d5" class="t t">UserEntry</a>&gt;();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r27 rd" class="r27 r">user</span> <b>in</b> <span class="r24 r">results</span>)
+            {
+                <span class="r26 r">userEntries</span>.<span class="i method">Add</span>(<b>new</b> <a href="../ViewModels/UsersIndexViewModel.cs.html#20ea957a136333d5" class="t constructor">UserEntry</a>
+                {
+                    <a href="../ViewModels/UsersIndexViewModel.cs.html#4f312d980f70bc8e" class="i property">UserId</a> = <span class="r27 r">user</span>.<span class="i">UserId</span>,
+                    <a href="../ViewModels/UsersIndexViewModel.cs.html#84bbd82847e342ef" class="i property">Shape</a> = <b>await</b> <a href="#a0caf7547fd19397" class="i field">_userDisplayManager</a>.<span class="i">BuildDisplayAsync</span>(<span class="r27 r">user</span>, <span class="i">updater</span>: <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">displayType</span>: <span class="s">&quot;SummaryAdmin&quot;</span>)
+                }
+                );
+            }
+ 
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#cdb3513251382d51" class="i property">UserFilters</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;()
+            {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;All Users&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#163d58f01143ef21" class="t t">UsersFilter</a>.<a href="/OrchardCore.Users.Core/A.html#a6adaac24c883814" class="i field">All</a>), <span class="i property">Selected</span> = (<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#9d8c0bbabe19b6f2" class="i property">Filter</a> == <a href="/OrchardCore.Users.Core/A.html#163d58f01143ef21" class="t t">UsersFilter</a>.<a href="/OrchardCore.Users.Core/A.html#a6adaac24c883814" class="i field">All</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Enabled Users&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#163d58f01143ef21" class="t t">UsersFilter</a>.<a href="/OrchardCore.Users.Core/A.html#78055c8d87d9a720" class="i field">Enabled</a>), <span class="i property">Selected</span> = (<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#9d8c0bbabe19b6f2" class="i property">Filter</a> == <a href="/OrchardCore.Users.Core/A.html#163d58f01143ef21" class="t t">UsersFilter</a>.<a href="/OrchardCore.Users.Core/A.html#78055c8d87d9a720" class="i field">Enabled</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Disabled Users&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#163d58f01143ef21" class="t t">UsersFilter</a>.<a href="/OrchardCore.Users.Core/A.html#db449d08f0fbfe58" class="i field">Disabled</a>), <span class="i property">Selected</span> = (<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#9d8c0bbabe19b6f2" class="i property">Filter</a> == <a href="/OrchardCore.Users.Core/A.html#163d58f01143ef21" class="t t">UsersFilter</a>.<a href="/OrchardCore.Users.Core/A.html#db449d08f0fbfe58" class="i field">Disabled</a>) }
+                <span class="c">//new SelectListItem() { Text = S[&quot;Approved&quot;], Value = nameof(UsersFilter.Approved) },</span>
+                <span class="c">//new SelectListItem() { Text = S[&quot;Email pending&quot;], Value = nameof(UsersFilter.EmailPending) },</span>
+                <span class="c">//new SelectListItem() { Text = S[&quot;Pending&quot;], Value = nameof(UsersFilter.Pending) }</span>
+            };
+ 
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#efd70e4b3f287b5e" class="i property">UserSorts</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;()
+            {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Name&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#eb98a96e1f502e80" class="t t">UsersOrder</a>.<a href="/OrchardCore.Users.Core/A.html#d5ca1615956bc34a" class="i field">Name</a>), <span class="i property">Selected</span> = (<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#b21e8e4b953444ea" class="i property">Order</a> == <a href="/OrchardCore.Users.Core/A.html#eb98a96e1f502e80" class="t t">UsersOrder</a>.<a href="/OrchardCore.Users.Core/A.html#d5ca1615956bc34a" class="i field">Name</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Email&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#eb98a96e1f502e80" class="t t">UsersOrder</a>.<a href="/OrchardCore.Users.Core/A.html#cd7c820f4aa98f23" class="i field">Email</a>), <span class="i property">Selected</span> = (<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#b21e8e4b953444ea" class="i property">Order</a> == <a href="/OrchardCore.Users.Core/A.html#eb98a96e1f502e80" class="t t">UsersOrder</a>.<a href="/OrchardCore.Users.Core/A.html#cd7c820f4aa98f23" class="i field">Email</a>) },
+                <span class="c">//new SelectListItem() { Text = S[&quot;Created date&quot;], Value = nameof(UsersOrder.CreatedUtc) },</span>
+                <span class="c">//new SelectListItem() { Text = S[&quot;Last Login date&quot;], Value = nameof(UsersOrder.LastLoginUtc) }</span>
+            };
+ 
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#0482bc9e0515713d" class="i property">UsersBulkAction</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;()
+            {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Approve&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#d47c7d4225030b43" class="i field">Approve</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Enable&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#ccd1a5075990e56b" class="i field">Enable</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Disable&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#5456d1170d0de9b3" class="i field">Disable</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Delete&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#79eec29f32de6134" class="i field">Delete</a>) }
+            };
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r28 rd" class="r28 r">allRoles</span> = (<b>await</b> <a href="#7e30b497dc8b7ff4" class="i field">_roleService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#c0d6f9800c7eea42" class="i method">GetRoleNamesAsync</a>())
+                .<span class="i method">Except</span>(<b>new</b>[] { <span class="s">&quot;Anonymous&quot;</span>, <span class="s">&quot;Authenticated&quot;</span> }, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+ 
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#b972458bfe2d3f49" class="i property">UserRoleFilters</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;()
+            {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;All roles&quot;</span>], <span class="i property">Value</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <span class="i property">Selected</span> = (<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#a482ebe38d2673e8" class="i property">SelectedRole</a> == <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#208e49cc37bbfa35" class="i field">S</a>[<span class="s">&quot;Authenticated (no roles)&quot;</span>], <span class="i property">Value</span> = <span class="s">&quot;Authenticated&quot;</span>, <span class="i property">Selected</span> = (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#a482ebe38d2673e8" class="i property">SelectedRole</a>, <span class="s">&quot;Authenticated&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)) }
+            };
+ 
+            <span class="c">// TODO Candidate for dynamic localization.</span>
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#b972458bfe2d3f49" class="i property">UserRoleFilters</a>.<span class="i method">AddRange</span>(<span class="r28 r">allRoles</span>.<span class="i method">Select</span>(<span id="r29 rd" class="r29 r">x</span> =&gt; <b>new</b> <span class="t constructor">SelectListItem</span> { <span class="i property">Text</span> = <span class="r29 r">x</span>, <span class="i property">Value</span> = <span class="r29 r">x</span>, <span class="i property">Selected</span> = (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#a482ebe38d2673e8" class="i property">SelectedRole</a>, <span class="r29 r">x</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)) }));
+ 
+            <span class="c">// Populate options pager summary values.</span>
+            <b>var</b> <span id="r30 rd" class="r30 r">startIndex</span> = (<span class="r25 r">pagerShape</span>.<span class="i">Page</span> - 1) * (<span class="r25 r">pagerShape</span>.<span class="i">PageSize</span>) + 1;
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#68ddaca6a756fdb8" class="i property">StartIndex</a> = <span class="r30 r">startIndex</span>;
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#7eae42fac481e370" class="i property">EndIndex</a> = <span class="r30 r">startIndex</span> + <span class="r26 r">userEntries</span>.<span class="i property">Count</span> - 1;
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#8c4abb915e53b0f8" class="i property">UsersCount</a> = <span class="r26 r">userEntries</span>.<span class="i property">Count</span>;
+            <span class="r18 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#3b7af971c4464e57" class="i property">TotalItemCount</a> = <span class="r25 r">pagerShape</span>.<span class="i">TotalItemCount</span>;
+ 
+            <b>var</b> <span id="r31 rd" class="r31 r">header</span> = <b>await</b> <a href="#6a0506c5258b15d4" class="i field">_userOptionsDisplayManager</a>.<span class="i">BuildEditorAsync</span>(<span class="r18 r">options</span>, <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <b>false</b>);
+ 
+            <b>var</b> <span id="r32 rd" class="r32 r">shapeViewModel</span> = <b>await</b> <a href="#3e32d4aab0e277a7" class="i field">_shapeFactory</a>.<a href="/OrchardCore.DisplayManagement/A.html#80c464e99d001f08" class="i method">CreateAsync</a>&lt;<a href="../ViewModels/UsersIndexViewModel.cs.html#5ad6ad0d9a03f2c7" class="t t">UsersIndexViewModel</a>&gt;(<span class="s">&quot;UsersAdminList&quot;</span>, <span id="r33 rd" class="r33 r">viewModel</span> =&gt;
+            {
+                <span class="r33 r">viewModel</span>.<a href="../ViewModels/UsersIndexViewModel.cs.html#f647056979d38ce7" class="i property">Users</a> = <span class="r26 r">userEntries</span>;
+                <span class="r33 r">viewModel</span>.<a href="../ViewModels/UsersIndexViewModel.cs.html#6bed65ddb69e413f" class="i property">Pager</a> = <span class="r25 r">pagerShape</span>;
+                <span class="r33 r">viewModel</span>.<a href="../ViewModels/UsersIndexViewModel.cs.html#6277b6faa4f4e508" class="i property">Options</a> = <span class="r18 r">options</span>;
+                <span class="r33 r">viewModel</span>.<a href="../ViewModels/UsersIndexViewModel.cs.html#5f99a002b3de7d6a" class="i property">Header</a> = <span class="r31 r">header</span>;
+            });
+ 
+            <b>return</b> <span class="i">View</span>(<span class="r32 r">shapeViewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Filter&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="5bb2145cb3ede73c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexFilterPOST</a>(<a href="/OrchardCore.Users.Core/A.html#d6f4ea408b8f1b1d" class="t t">UserIndexOptions</a> <span id="r34 rd" class="r34 r">options</span>)
+        {
+            <span class="c">// When the user has typed something into the search input no further evaluation of the form post is required.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r34 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#a450f2ad72b4c785" class="i property">SearchText</a>, <span class="r34 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#6b02f9a7ab846d60" class="i property">OriginalSearchText</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>), <b>new</b> <span class="t constructor">RouteValueDictionary</span> { { <span class="s">&quot;q&quot;</span>, <span class="r34 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#a450f2ad72b4c785" class="i property">SearchText</a> } });
+            }
+ 
+            <span class="c">// Evaluate the values provided in the form post and map them to the filter result and route values.</span>
+            <b>await</b> <a href="#6a0506c5258b15d4" class="i field">_userOptionsDisplayManager</a>.<span class="i">UpdateEditorAsync</span>(<span class="r34 r">options</span>, <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <b>false</b>);
+ 
+            <span class="c">// The route value must always be added after the editors have updated the models.</span>
+            <span class="r34 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#d103b7a9d365f4cf" class="i property">RouteValues</a>.<span class="i">TryAdd</span>(<span class="s">&quot;q&quot;</span>, <span class="r34 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#fd7af0a2290a1013" class="i property">FilterResult</a>.<span class="i">ToString</span>());
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>), <span class="r34 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#d103b7a9d365f4cf" class="i property">RouteValues</a>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.BulkAction&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="3e5ef6008ba80b6c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexPOST</a>(<a href="/OrchardCore.Users.Core/A.html#d6f4ea408b8f1b1d" class="t t">UserIndexOptions</a> <span id="r35 rd" class="r35 r">options</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r36 rd" class="r36 r">itemIds</span>)
+        {
+            <span class="c">// Check a dummy user account to see if the current user has permission to manage it.</span>
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r37 rd" class="r37 r">authUser</span> = <b>new</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t constructor">User</a>();
+ 
+            <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r37 r">authUser</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="r36 r">itemIds</span>?.<span class="i method">Count</span>() &gt; 0)
+            {
+                <b>var</b> <span id="r38 rd" class="r38 r">checkedUsers</span> = <b>await</b> <a href="#bcdbafba903b8847" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>, <a href="/OrchardCore.Users.Core/A.html#c095c28c73aca951" class="t t">UserIndex</a>&gt;().<span class="i">Where</span>(<span id="r39 rd" class="r39 r">x</span> =&gt; <span class="r39 r">x</span>.<span class="i">UserId</span>.<span class="i">IsIn</span>(<span class="r36 r">itemIds</span>)).<span class="i">ListAsync</span>();
+ 
+                <span class="c">// Bulk actions require the ManageUsers permission on all the checked users.</span>
+                <span class="c">// To prevent html injection we authorize each user before performing any operations.</span>
+                <b>foreach</b> (<b>var</b> <span id="r40 rd" class="r40 r">user</span> <b>in</b> <span class="r38 r">checkedUsers</span>)
+                {
+                    <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r40 r">user</span>))
+                    {
+                        <b>return</b> <span class="i method">Forbid</span>();
+                    }
+                }
+ 
+                <b>switch</b> (<span class="r35 r">options</span>.<a href="/OrchardCore.Users.Core/A.html#ca92cd7bb5e77ab4" class="i property">BulkAction</a>)
+                {
+                    <b>case</b> <a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#efaf1dd595368d81" class="i field">None</a>:
+                        <b>break</b>;
+                    <b>case</b> <a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#d47c7d4225030b43" class="i field">Approve</a>:
+                        <b>foreach</b> (<b>var</b> <span id="r41 rd" class="r41 r">user</span> <b>in</b> <span class="r38 r">checkedUsers</span>)
+                        {
+                            <b>if</b> (!<b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">IsEmailConfirmedAsync</span>(<span class="r41 r">user</span>))
+                            {
+                                <b>var</b> <span id="r42 rd" class="r42 r">token</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">GenerateEmailConfirmationTokenAsync</span>(<span class="r41 r">user</span>);
+                                <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">ConfirmEmailAsync</span>(<span class="r41 r">user</span>, <span class="r42 r">token</span>);
+                                <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;User {0} successfully approved.&quot;</span>, <span class="r41 r">user</span>.<span class="i">UserName</span>]);
+                            }
+                        }
+                        <b>break</b>;
+                    <b>case</b> <a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#79eec29f32de6134" class="i field">Delete</a>:
+                        <b>foreach</b> (<b>var</b> <span id="r43 rd" class="r43 r">user</span> <b>in</b> <span class="r38 r">checkedUsers</span>)
+                        {
+                            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r43 r">user</span>.<span class="i">UserId</span>, <span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                            {
+                                <b>continue</b>;
+                            }
+                            <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">DeleteAsync</span>(<span class="r43 r">user</span>);
+                            <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;User {0} successfully deleted.&quot;</span>, <span class="r43 r">user</span>.<span class="i">UserName</span>]);
+                        }
+                        <b>break</b>;
+                    <b>case</b> <a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#5456d1170d0de9b3" class="i field">Disable</a>:
+                        <b>foreach</b> (<b>var</b> <span id="r44 rd" class="r44 r">user</span> <b>in</b> <span class="r38 r">checkedUsers</span>)
+                        {
+                            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r44 r">user</span>.<span class="i">UserId</span>, <span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                            {
+                                <b>continue</b>;
+                            }
+                            <span class="r44 r">user</span>.<span class="i">IsEnabled</span> = <b>false</b>;
+                            <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">UpdateAsync</span>(<span class="r44 r">user</span>);
+                            <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;User {0} successfully disabled.&quot;</span>, <span class="r44 r">user</span>.<span class="i">UserName</span>]);
+                        }
+                        <b>break</b>;
+                    <b>case</b> <a href="/OrchardCore.Users.Core/A.html#a2899cc6f0d085fb" class="t t">UsersBulkAction</a>.<a href="/OrchardCore.Users.Core/A.html#ccd1a5075990e56b" class="i field">Enable</a>:
+                        <b>foreach</b> (<b>var</b> <span id="r45 rd" class="r45 r">user</span> <b>in</b> <span class="r38 r">checkedUsers</span>)
+                        {
+                            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r45 r">user</span>.<span class="i">UserId</span>, <span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                            {
+                                <b>continue</b>;
+                            }
+                            <span class="r45 r">user</span>.<span class="i">IsEnabled</span> = <b>true</b>;
+                            <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">UpdateAsync</span>(<span class="r45 r">user</span>);
+                            <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;User {0} successfully enabled.&quot;</span>, <span class="r45 r">user</span>.<span class="i">UserName</span>]);
+                        }
+                        <b>break</b>;
+                    <b>default</b>:
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#337b690f0704f510" class="t constructor">ArgumentOutOfRangeException</a>();
+                }
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="4f82dd7a0c30cf9c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>()
+        {
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r46 rd" class="r46 r">user</span> = <b>new</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t constructor">User</a>();
+ 
+            <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#f17b872f1cb00bc1" class="i field">ViewUsers</a>, <span class="r46 r">user</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r47 rd" class="r47 r">shape</span> = <b>await</b> <a href="#a0caf7547fd19397" class="i field">_userDisplayManager</a>.<span class="i">BuildEditorAsync</span>(<span class="r46 r">user</span>, <span class="i">updater</span>: <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>true</b>);
+ 
+            <b>return</b> <span class="i">View</span>(<span class="r47 r">shape</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Create</span>))]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="c98d950d97496730" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreatePost</a>()
+        {
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r48 rd" class="r48 r">user</span> = <b>new</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t constructor">User</a>();
+ 
+            <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#f17b872f1cb00bc1" class="i field">ViewUsers</a>, <span class="r48 r">user</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r49 rd" class="r49 r">shape</span> = <b>await</b> <a href="#a0caf7547fd19397" class="i field">_userDisplayManager</a>.<span class="i">UpdateEditorAsync</span>(<span class="r48 r">user</span>, <span class="i">updater</span>: <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>true</b>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>return</b> <span class="i">View</span>(<span class="r49 r">shape</span>);
+            }
+ 
+            <b>await</b> <a href="#7df8b3a06b52e866" class="i field">_userService</a>.<span class="i">CreateUserAsync</span>(<span class="r48 r">user</span>, <b>null</b>, <span class="i property">ModelState</span>.<span class="i">AddModelError</span>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>return</b> <span class="i">View</span>(<span class="r49 r">shape</span>);
+            }
+ 
+            <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;User created successfully.&quot;</span>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="7d9c5c1d54cbd1cc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r50 rd" class="r50 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r51 rd" class="r51 r">returnUrl</span>)
+        {
+            <span class="c">// When no id is provided we assume the user is trying to edit their own profile.</span>
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r52 rd" class="r52 r">editingOwnUser</span> = <b>false</b>;
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r50 r">id</span>))
+            {
+                <span class="r50 r">id</span> = <span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>);
+                <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fb22f47064d6e6cc" class="i field">ManageOwnUserInformation</a>))
+                {
+                    <b>return</b> <span class="i method">Forbid</span>();
+                }
+                <span class="r52 r">editingOwnUser</span> = <b>true</b>;
+            }
+ 
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r53 rd" class="r53 r">user</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i method">FindByIdAsync</span>(<span class="r50 r">id</span>) <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+            <b>if</b> (<span class="r53 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<span class="r52 r">editingOwnUser</span> &amp;&amp; !<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#f17b872f1cb00bc1" class="i field">ViewUsers</a>, <span class="r53 r">user</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r54 rd" class="r54 r">shape</span> = <b>await</b> <a href="#a0caf7547fd19397" class="i field">_userDisplayManager</a>.<span class="i">BuildEditorAsync</span>(<span class="r53 r">user</span>, <span class="i">updater</span>: <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>false</b>);
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r51 r">returnUrl</span>;
+ 
+            <b>return</b> <span class="i">View</span>(<span class="r54 r">shape</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Edit</span>))]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="1d18f809da5f59ee" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPost</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r55 rd" class="r55 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r56 rd" class="r56 r">returnUrl</span>)
+        {
+            <span class="c">// When no id is provided we assume the user is trying to edit their own profile.</span>
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r57 rd" class="r57 r">editingOwnUser</span> = <b>false</b>;
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r55 r">id</span>))
+            {
+                <span class="r57 r">editingOwnUser</span> = <b>true</b>;
+                <span class="r55 r">id</span> = <span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>);
+                <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fb22f47064d6e6cc" class="i field">ManageOwnUserInformation</a>))
+                {
+                    <b>return</b> <span class="i method">Forbid</span>();
+                }
+            }
+ 
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r58 rd" class="r58 r">user</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i method">FindByIdAsync</span>(<span class="r55 r">id</span>) <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+            <b>if</b> (<span class="r58 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<span class="r57 r">editingOwnUser</span> &amp;&amp; !<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#f17b872f1cb00bc1" class="i field">ViewUsers</a>, <span class="r58 r">user</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r59 rd" class="r59 r">shape</span> = <b>await</b> <a href="#a0caf7547fd19397" class="i field">_userDisplayManager</a>.<span class="i">UpdateEditorAsync</span>(<span class="r58 r">user</span>, <span class="i">updater</span>: <a href="#039267e75676e248" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>false</b>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>return</b> <span class="i">View</span>(<span class="r59 r">shape</span>);
+            }
+ 
+            <b>var</b> <span id="r60 rd" class="r60 r">result</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">UpdateAsync</span>(<span class="r58 r">user</span>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r61 rd" class="r61 r">error</span> <b>in</b> <span class="r60 r">result</span>.<span class="i">Errors</span>)
+            {
+                <span class="i property">ModelState</span>.<span class="i">AddModelError</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <span class="r61 r">error</span>.<span class="i">Description</span>);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>return</b> <span class="i">View</span>(<span class="r59 r">shape</span>);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <span class="r58 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>await</b> <a href="#c1609a343bfd0ac2" class="i field">_signInManager</a>.<span class="i">RefreshSignInAsync</span>(<span class="r58 r">user</span>);
+            }
+ 
+            <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;User updated successfully.&quot;</span>]);
+ 
+            <b>if</b> (<span class="r57 r">editingOwnUser</span>)
+            {
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r56 r">returnUrl</span>))
+                {
+                    <b>return</b> <span class="i method">LocalRedirect</span>(<span class="r56 r">returnUrl</span>);
+                }
+ 
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>));
+            }
+            <b>else</b>
+            {
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r56 r">returnUrl</span>))
+                {
+                    <b>return</b> <span class="i method">LocalRedirect</span>(<span class="r56 r">returnUrl</span>);
+                }
+ 
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="eea094dd93d527f4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Delete</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r62 rd" class="r62 r">id</span>)
+        {
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r63 rd" class="r63 r">user</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i method">FindByIdAsync</span>(<span class="r62 r">id</span>) <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+ 
+            <b>if</b> (<span class="r63 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r63 r">user</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r64 rd" class="r64 r">result</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">DeleteAsync</span>(<span class="r63 r">user</span>);
+ 
+            <b>if</b> (<span class="r64 r">result</span>.<span class="i">Succeeded</span>)
+            {
+                <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;User deleted successfully.&quot;</span>]);
+            }
+            <b>else</b>
+            {
+                <b>await</b> <a href="#bcdbafba903b8847" class="i field">_session</a>.<span class="i">CancelAsync</span>();
+ 
+                <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;Could not delete the user.&quot;</span>]);
+ 
+                <b>foreach</b> (<b>var</b> <span id="r65 rd" class="r65 r">error</span> <b>in</b> <span class="r64 r">result</span>.<span class="i">Errors</span>)
+                {
+                    <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="r65 r">error</span>.<span class="i">Description</span>]);
+                }
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="c16e97ca44ee5a68" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPassword</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r66 rd" class="r66 r">id</span>)
+        {
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r67 rd" class="r67 r">user</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i method">FindByIdAsync</span>(<span class="r66 r">id</span>) <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+ 
+            <b>if</b> (<span class="r67 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r67 r">user</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/ResetPasswordViewModel.cs.html#6608e65c9f4871d2" class="k">var</a> <span id="r68 rd" class="r68 r">model</span> = <b>new</b> <a href="../ViewModels/ResetPasswordViewModel.cs.html#6608e65c9f4871d2" class="t constructor">ResetPasswordViewModel</a> { <a href="../ViewModels/ResetPasswordViewModel.cs.html#7ee007ea4dfc2b25" class="i property">Email</a> = <span class="r67 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#a74bfba9045d0dd7" class="i property">Email</a> };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r68 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="d8c478777c3dbafb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPassword</a>(<a href="../ViewModels/ResetPasswordViewModel.cs.html#6608e65c9f4871d2" class="t t">ResetPasswordViewModel</a> <span id="r69 rd" class="r69 r">model</span>)
+        {
+            <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="k">var</a> <span id="r70 rd" class="r70 r">user</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i method">FindByEmailAsync</span>(<span class="r69 r">model</span>.<a href="../ViewModels/ResetPasswordViewModel.cs.html#7ee007ea4dfc2b25" class="i property">Email</a>) <b>as</b> <a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>;
+ 
+            <b>if</b> (<span class="r70 r">user</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#1ee6cdd1aa412ac5" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>, <span class="r70 r">user</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>var</b> <span id="r71 rd" class="r71 r">token</span> = <b>await</b> <a href="#d558206c8abe4994" class="i field">_userManager</a>.<span class="i">GeneratePasswordResetTokenAsync</span>(<span class="r70 r">user</span>);
+ 
+                <b>if</b> (<b>await</b> <a href="#7df8b3a06b52e866" class="i field">_userService</a>.<span class="i">ResetPasswordAsync</span>(<span class="r69 r">model</span>.<a href="../ViewModels/ResetPasswordViewModel.cs.html#7ee007ea4dfc2b25" class="i property">Email</a>, <span class="r71 r">token</span>, <span class="r69 r">model</span>.<a href="../ViewModels/ResetPasswordViewModel.cs.html#84655783b8be3df9" class="i property">NewPassword</a>, <span class="i property">ModelState</span>.<span class="i">AddModelError</span>))
+                {
+                    <a href="#ed0b34626e108d36" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#fae3a95d15527a6b" class="i field">H</a>[<span class="s">&quot;Password updated correctly.&quot;</span>]);
+ 
+                    <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+                }
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r69 r">model</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

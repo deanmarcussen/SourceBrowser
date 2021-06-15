@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html><head><title>MatchPhraseFilterProvider.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(65);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene.Core/QueryProviders/Filters/MatchPhraseFilterProvider.cs" target="_top">QueryProviders\Filters\MatchPhraseFilterProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene.Core" target="_top">src\OrchardCore\OrchardCore.Lucene.Core\OrchardCore.Lucene.Core.csproj</a> (OrchardCore.Lucene.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Index</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">QueryProviders</span>.<span class="i n">Filters</span>
+{
+    <b>public class</b> <a id="150dd7710edde2b4" href="../../R/150dd7710edde2b4.html" target="n" data-glyph="0,0" class="t t"><span id="d722e0e1162dbe62">MatchPhraseFilterProvider</span></a> : <a href="ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="t t">ILuceneBooleanFilterProvider</a>
+    {
+        <b>public</b> <span class="i">FilteredQuery</span> <a id="2eaefafbbb03258f" href="../../R/2eaefafbbb03258f.html" target="n" data-glyph="72,1" class="i method">CreateFilteredQuery</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a> <span id="r0 rd" class="r0 r">builder</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r1 rd" class="r1 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">type</span>, <span class="i">JToken</span> <span id="r3 rd" class="r3 r">filter</span>, <span class="i">Query</span> <span id="r4 rd" class="r4 r">toFilter</span>)
+        {
+            <b>if</b> (<span class="r2 r">type</span> != <span class="s">&quot;match_phrase&quot;</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (!(<span class="r4 r">toFilter</span> <b>is</b> <span class="i">BooleanQuery</span> <span id="r5 rd" class="r5 r">booleanQuery</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">queryObj</span> = <span class="r3 r">filter</span> <b>as</b> <span class="i">JObject</span>;
+            <b>var</b> <span id="r7 rd" class="r7 r">first</span> = <span class="r6 r">queryObj</span>.<span class="i">Properties</span>().<span class="i">First</span>();
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">phraseQuery</span> = <b>new</b> <span class="i">PhraseQuery</span>();
+            <span class="i">JToken</span> <span id="r9 rd" class="r9 r">value</span>;
+ 
+            <b>switch</b> (<span class="r7 r">first</span>.<span class="i">Value</span>.<span class="i">Type</span>)
+            {
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">String</span>:
+                    <span class="r9 r">value</span> = <span class="r7 r">first</span>.<span class="i">Value</span>;
+                    <b>break</b>;
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Object</span>:
+                    <b>var</b> <span id="r10 rd" class="r10 r">obj</span> = (<span class="i">JObject</span>)<span class="r7 r">first</span>.<span class="i">Value</span>;
+ 
+                    <b>if</b> (!<span class="r10 r">obj</span>.<span class="i">TryGetValue</span>(<span class="s">&quot;value&quot;</span>, <b>out</b> <span class="r9 r">value</span>))
+                    {
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Missing value in match phrase query&quot;</span>);
+                    }
+ 
+                    <span class="c">// TODO: read &quot;analyzer&quot; property</span>
+ 
+                    <b>if</b> (<span class="r10 r">obj</span>.<span class="i">TryGetValue</span>(<span class="s">&quot;slop&quot;</span>, <b>out</b> <b>var</b> <span id="r11 rd" class="r11 r">slop</span>))
+                    {
+                        <span class="r8 r">phraseQuery</span>.<span class="i">Slop</span> = <span class="r11 r">slop</span>.<span class="i">Value</span>&lt;<b>int</b>&gt;();
+                    }
+ 
+                    <b>break</b>;
+                <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Invalid wildcard query&quot;</span>);
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">term</span> <b>in</b> <a href="../../LuceneQueryService.cs.html#fd8acd53da39f5a7" class="t t">LuceneQueryService</a>.<span class="i">Tokenize</span>(<span class="r7 r">first</span>.<span class="i">Name</span>, <span class="r9 r">value</span>.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(), <span class="r1 r">context</span>.<a href="/OrchardCore.Lucene.Abstractions/A.html#f97ed9294a957943" class="i property">DefaultAnalyzer</a>))
+            {
+                <span class="r8 r">phraseQuery</span>.<span class="i">Add</span>(<b>new</b> <span class="i">Term</span>(<span class="r7 r">first</span>.<span class="i">Name</span>, <span class="r12 r">term</span>));
+            }
+ 
+            <span class="r5 r">booleanQuery</span>.<span class="i">Add</span>(<span class="r8 r">phraseQuery</span>, <span class="i">Occur</span>.<span class="i">MUST</span>);
+            <b>var</b> <span id="r13 rd" class="r13 r">queryFilter</span> = <b>new</b> <span class="i">QueryWrapperFilter</span>(<span class="r8 r">phraseQuery</span>);
+ 
+            <b>return</b> <b>new</b> <span class="i">FilteredQuery</span>(<span class="r5 r">booleanQuery</span>, <span class="r13 r">queryFilter</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

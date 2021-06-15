@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html><head><title>UserAuthorizationHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(114);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/Services/UserAuthorizationHandler.cs" target="_top">Services\UserAuthorizationHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Security</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Security</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Services</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This provides authorization when the permission request is ManageUsers and the current authenticated User</span>
+    <span class="c">///</span><span class="c"> has permission to edit any of the roles the user being managed is a member of.</span>
+    <span class="c">///</span><span class="c"> Callers should supply a </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IUser</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> resource</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This handler will not be triggered when only requesting ManagerUsers permission with supplying an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">href</span><span class="c">=</span><span class="c">&quot;</span><span class="c">IUser</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="8701e13ef33f6042" href="../R/8701e13ef33f6042.html" target="n" data-glyph="0,0" class="t t">UserAuthorizationHandler</a> : <span class="t t">AuthorizationHandler</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#d4adcff54275ecd5" class="t t">PermissionRequirement</a>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="c8d5a8320d833505" href="../R/c8d5a8320d833505.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <a id="5d573044aeba3d26" href="../R/5d573044aeba3d26.html" target="n" data-glyph="46,1" class="i field">_userManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <a id="0325a70bd48efdf7" href="../R/0325a70bd48efdf7.html" target="n" data-glyph="46,1" class="i field">_roleService</a>;
+ 
+        <b>public</b> <a id="1905178ca9687cf2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UserAuthorizationHandler</a>(
+            <span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">serviceProvider</span>, 
+            <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r1 rd" class="r1 r">userManager</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <span id="r2 rd" class="r2 r">roleService</span>)
+        {
+            <a href="#c8d5a8320d833505" class="i field">_serviceProvider</a> = <span class="r0 r">serviceProvider</span>;
+            <a href="#5d573044aeba3d26" class="i field">_userManager</a> = <span class="r1 r">userManager</span>;
+            <a href="#0325a70bd48efdf7" class="i field">_roleService</a> = <span class="r2 r">roleService</span>;
+        }
+ 
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b8d542929cbe89f5" href="../R/b8d542929cbe89f5.html" target="n" data-glyph="75,1" class="i method">HandleRequirementAsync</a>(<span class="t t">AuthorizationHandlerContext</span> <span id="r3 rd" class="r3 r">context</span>, <a href="/OrchardCore.Infrastructure.Abstractions/A.html#d4adcff54275ecd5" class="t t">PermissionRequirement</a> <span id="r4 rd" class="r4 r">requirement</span>)
+        {
+            <b>if</b> (<span class="r3 r">context</span>.<span class="i property">HasSucceeded</span>)
+            {
+                <span class="c">// This handler is not revoking any pre-existing grants.</span>
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r3 r">context</span>.<span class="i property">Resource</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r4 r">requirement</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#ef727c36ec51781a" class="i property">Permission</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#d9b8e7eb610cd806" class="i property">Name</a>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#fd04f846d49ef138" class="i field">ManageUsers</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#d9b8e7eb610cd806" class="i property">Name</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">user</span> = <span class="r3 r">context</span>.<span class="i property">Resource</span> <b>as</b> <span class="i">IUser</span>;
+ 
+            <b>if</b> (<span class="r5 r">user</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Lazy load to prevent circular dependencies</span>
+            <b>var</b> <span id="r6 rd" class="r6 r">authorizationService</span> = <a href="#c8d5a8320d833505" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IAuthorizationService</span>&gt;();
+ 
+            <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r7 rd" class="r7 r">userRoleNames</span> = <b>await</b> <a href="#5d573044aeba3d26" class="i field">_userManager</a>.<span class="i method">GetRolesAsync</span>(<span class="r5 r">user</span>);
+ 
+            <b>if</b> (<span class="r7 r">userRoleNames</span>.<span class="i method">Any</span>())
+            {
+                <span class="c">// When the user has roles we check to see if any of these roles are not authorized before succeeding.</span>
+                <b>if</b> (<b>await</b> <a href="#74a727050abbc206" class="i method">AuthorizeRolesAsync</a>(<span class="r6 r">authorizationService</span>, <span class="r3 r">context</span>.<span class="i property">User</span>, <span class="r7 r">userRoleNames</span>))
+                {
+                    <span class="r3 r">context</span>.<span class="i method">Succeed</span>(<span class="r4 r">requirement</span>);
+                }
+            }
+            <b>else</b> 
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r8 rd" class="r8 r">roleNames</span> = <b>await</b> <a href="#0325a70bd48efdf7" class="i field">_roleService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#c0d6f9800c7eea42" class="i method">GetRoleNamesAsync</a>();
+                <span class="c">// When the user is in no roles, we check to see if the current user can manage any roles.</span>
+                <b>if</b> (<b>await</b> <a href="#c682d78a0296357b" class="i method">HasAuthorizationToManageAnyRoleAsync</a>(<span class="r6 r">authorizationService</span>, <span class="r3 r">context</span>.<span class="i property">User</span>, <span class="r8 r">roleNames</span>))
+                {
+                    <span class="r3 r">context</span>.<span class="i method">Succeed</span>(<span class="r4 r">requirement</span>);
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="74a727050abbc206" href="../R/74a727050abbc206.html" target="n" data-glyph="76,1" class="i method">AuthorizeRolesAsync</a>(<span class="t t">IAuthorizationService</span> <span id="r9 rd" class="r9 r">authorizationService</span>, <span class="t t">ClaimsPrincipal</span> <span id="r10 rd" class="r10 r">user</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r11 rd" class="r11 r">roleNames</span>)
+        {
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">roleName</span> <b>in</b> <span class="r11 r">roleNames</span>)
+            {
+                <b>if</b> (!<b>await</b> <span class="r9 r">authorizationService</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="r10 r">user</span>, <a href="/OrchardCore.Users.Core/A.html#99a72761e9f208ad" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Users.Core/A.html#8c6822a2c5b6992c" class="i method">CreatePermissionForManageUsersInRole</a>(<span class="r12 r">roleName</span>)))
+                {
+                    <b>return</b> <b>false</b>;
+                }
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="c682d78a0296357b" href="../R/c682d78a0296357b.html" target="n" data-glyph="76,1" class="i method">HasAuthorizationToManageAnyRoleAsync</a>(<span class="t t">IAuthorizationService</span> <span id="r13 rd" class="r13 r">authorizationService</span>, <span class="t t">ClaimsPrincipal</span> <span id="r14 rd" class="r14 r">user</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r15 rd" class="r15 r">roleNames</span>)
+        {
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">roleName</span> <b>in</b> <span class="r15 r">roleNames</span>)
+            {
+                <b>if</b> (<b>await</b> <span class="r13 r">authorizationService</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="r14 r">user</span>, <a href="/OrchardCore.Users.Core/A.html#99a72761e9f208ad" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Users.Core/A.html#8c6822a2c5b6992c" class="i method">CreatePermissionForManageUsersInRole</a>(<span class="r16 r">roleName</span>)))
+                {
+                    <b>return</b> <b>true</b>;
+                }
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }        
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+<html><head><title>LuceneQueryService.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(152);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene.Core/LuceneQueryService.cs" target="_top">LuceneQueryService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene.Core" target="_top">src\OrchardCore\OrchardCore.Lucene.Core\OrchardCore.Lucene.Core.csproj</a> (OrchardCore.Lucene.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Analysis</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Analysis</span>.<span class="i">TokenAttributes</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>
+{
+    <b>public class</b> <a id="fd8acd53da39f5a7" href="R/fd8acd53da39f5a7.html" target="n" data-glyph="0,0" class="t t">LuceneQueryService</a> : <a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Lucene.Abstractions/A.html#fe150d221b555d91" class="t t">ILuceneQueryProvider</a>&gt; <a id="31631de3cac07cb8" href="R/31631de3cac07cb8.html" target="n" data-glyph="46,1" class="i field">_queryProviders</a>;
+ 
+        <b>public</b> <a id="d1c79552b8ec0983" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LuceneQueryService</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Lucene.Abstractions/A.html#fe150d221b555d91" class="t t">ILuceneQueryProvider</a>&gt; <span id="r0 rd" class="r0 r">queryProviders</span>)
+        {
+            <a href="#31631de3cac07cb8" class="i field">_queryProviders</a> = <span class="r0 r">queryProviders</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Lucene.Abstractions/A.html#67d36c4555b7adbc" class="t t">LuceneTopDocs</a>&gt; <a id="6e3f67acfeb9ec77" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SearchAsync</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r1 rd" class="r1 r">context</span>, <span class="i">JObject</span> <span id="r2 rd" class="r2 r">queryObj</span>)
+        {
+            <b>var</b> <span id="r3 rd" class="r3 r">queryProp</span> = <span class="r2 r">queryObj</span>[<span class="s">&quot;query&quot;</span>] <b>as</b> <span class="i">JObject</span>;
+ 
+            <b>if</b> (<span class="r3 r">queryProp</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Query DSL requires a [query] property&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">query</span> = <a href="#ba612b3d97803d1e" class="i method">CreateQueryFragment</a>(<span class="r1 r">context</span>, <span class="r3 r">queryProp</span>);
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">sortProperty</span> = <span class="r2 r">queryObj</span>[<span class="s">&quot;sort&quot;</span>];
+            <b>var</b> <span id="r6 rd" class="r6 r">fromProperty</span> = <span class="r2 r">queryObj</span>[<span class="s">&quot;from&quot;</span>];
+            <b>var</b> <span id="r7 rd" class="r7 r">sizeProperty</span> = <span class="r2 r">queryObj</span>[<span class="s">&quot;size&quot;</span>];
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">size</span> = <span class="r7 r">sizeProperty</span>?.<span class="i">Value</span>&lt;<b>int</b>&gt;() ?? 50;
+            <b>var</b> <span id="r9 rd" class="r9 r">from</span> = <span class="r6 r">fromProperty</span>?.<span class="i">Value</span>&lt;<b>int</b>&gt;() ?? 0;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">sortField</span> = <b>null</b>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">sortOrder</span> = <b>null</b>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">sortType</span> = <b>null</b>;
+            <b>var</b> <span id="r13 rd" class="r13 r">sortFields</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">SortField</span>&gt;();
+ 
+            <b>if</b> (<span class="r5 r">sortProperty</span> != <b>null</b>)
+            {
+                <b>if</b> (<span class="r5 r">sortProperty</span>.<span class="i">Type</span> == <span class="i">JTokenType</span>.<span class="i">String</span>)
+                {
+                    <span class="r10 r">sortField</span> = <span class="r5 r">sortProperty</span>.<span class="i">ToString</span>();
+                    <span class="r13 r">sortFields</span>.<span class="i method">Add</span>(<b>new</b> <span class="i">SortField</span>(<span class="r10 r">sortField</span>, <span class="i">SortFieldType</span>.<span class="i">STRING</span>, <span class="r11 r">sortOrder</span> == <span class="s">&quot;desc&quot;</span>));
+                }
+                <b>else</b> <b>if</b> (<span class="r5 r">sortProperty</span>.<span class="i">Type</span> == <span class="i">JTokenType</span>.<span class="i">Object</span>)
+                {
+                    <span class="r10 r">sortField</span> = ((<span class="i">JProperty</span>)<span class="r5 r">sortProperty</span>.<span class="i">First</span>).<span class="i">Name</span>;
+                    <span class="r11 r">sortOrder</span> = ((<span class="i">JProperty</span>)<span class="r5 r">sortProperty</span>.<span class="i">First</span>).<span class="i">Value</span>[<span class="s">&quot;order&quot;</span>].<span class="i">ToString</span>();
+                    <span class="r12 r">sortType</span> = ((<span class="i">JProperty</span>)<span class="r5 r">sortProperty</span>.<span class="i">First</span>).<span class="i">Value</span>[<span class="s">&quot;type&quot;</span>]?.<span class="i">ToString</span>();
+                    <b>var</b> <span id="r14 rd" class="r14 r">sortFieldType</span> = <span class="i">SortFieldType</span>.<span class="i">STRING</span>;
+                    <b>if</b> (<span class="r12 r">sortType</span> != <b>null</b>)
+                    {
+                        <span class="r14 r">sortFieldType</span> = (<span class="i">SortFieldType</span>)<a href="@1@System.Runtime/A.html#36729210e317a805" class="t t">Enum</a>.<a href="@1@System.Runtime/A.html#6c84f29508754e27" class="i method">Parse</a>(<b>typeof</b>(<span class="i">SortFieldType</span>), <span class="r12 r">sortType</span>.<a href="@1@System.Runtime/A.html#d536cbe70a300b01" class="i method">ToUpper</a>());
+                    }
+ 
+                    <span class="r13 r">sortFields</span>.<span class="i method">Add</span>(<b>new</b> <span class="i">SortField</span>(<span class="r10 r">sortField</span>, <span class="r14 r">sortFieldType</span>, <span class="r11 r">sortOrder</span> == <span class="s">&quot;desc&quot;</span>));
+                }
+                <b>else</b> <b>if</b> (<span class="r5 r">sortProperty</span>.<span class="i">Type</span> == <span class="i">JTokenType</span>.<span class="i">Array</span>)
+                {
+                    <b>foreach</b> (<b>var</b> <span id="r15 rd" class="r15 r">item</span> <b>in</b> <span class="r5 r">sortProperty</span>.<span class="i">Children</span>())
+                    {
+                        <span class="r10 r">sortField</span> = ((<span class="i">JProperty</span>)<span class="r15 r">item</span>.<span class="i">First</span>).<span class="i">Name</span>;
+                        <span class="r11 r">sortOrder</span> = ((<span class="i">JProperty</span>)<span class="r15 r">item</span>.<span class="i">First</span>).<span class="i">Value</span>[<span class="s">&quot;order&quot;</span>].<span class="i">ToString</span>();
+                        <span class="r12 r">sortType</span> = ((<span class="i">JProperty</span>)<span class="r15 r">item</span>.<span class="i">First</span>).<span class="i">Value</span>[<span class="s">&quot;type&quot;</span>]?.<span class="i">ToString</span>();
+                        <b>var</b> <span id="r16 rd" class="r16 r">sortFieldType</span> = <span class="i">SortFieldType</span>.<span class="i">STRING</span>;
+                        <b>if</b> (<span class="r12 r">sortType</span> != <b>null</b>)
+                        {
+                            <span class="r16 r">sortFieldType</span> = (<span class="i">SortFieldType</span>)<a href="@1@System.Runtime/A.html#36729210e317a805" class="t t">Enum</a>.<a href="@1@System.Runtime/A.html#6c84f29508754e27" class="i method">Parse</a>(<b>typeof</b>(<span class="i">SortFieldType</span>), <span class="r12 r">sortType</span>.<a href="@1@System.Runtime/A.html#d536cbe70a300b01" class="i method">ToUpper</a>());
+                        }
+ 
+                        <span class="r13 r">sortFields</span>.<span class="i method">Add</span>(<b>new</b> <span class="i">SortField</span>(<span class="r10 r">sortField</span>, <span class="r16 r">sortFieldType</span>, <span class="r11 r">sortOrder</span> == <span class="s">&quot;desc&quot;</span>));
+                    }
+                }
+            }
+ 
+            <a href="/OrchardCore.Lucene.Abstractions/A.html#67d36c4555b7adbc" class="t t">LuceneTopDocs</a> <span id="r17 rd" class="r17 r">result</span> = <b>null</b>;
+            <span class="i">TopDocs</span> <span id="r18 rd" class="r18 r">topDocs</span> = <b>null</b>;
+ 
+            <b>if</b> (<span class="r8 r">size</span> &gt; 0)
+            {
+                <span class="r18 r">topDocs</span> = <span class="r1 r">context</span>.<a href="/OrchardCore.Lucene.Abstractions/A.html#923ffee01cf85d7a" class="i property">IndexSearcher</a>.<span class="i">Search</span>(
+                    <span class="r4 r">query</span>,
+                    <span class="r8 r">size</span> + <span class="r9 r">from</span>,
+                    <span class="r10 r">sortField</span> == <b>null</b> ? <span class="i">Sort</span>.<span class="i">RELEVANCE</span> : <b>new</b> <span class="i">Sort</span>(<span class="r13 r">sortFields</span>.<span class="i method">ToArray</span>())
+                );
+ 
+                <b>if</b> (<span class="r9 r">from</span> &gt; 0)
+                {
+                    <span class="r18 r">topDocs</span> = <b>new</b> <span class="i">TopDocs</span>(<span class="r18 r">topDocs</span>.<span class="i">TotalHits</span> - <span class="r9 r">from</span>, <span class="r18 r">topDocs</span>.<span class="i">ScoreDocs</span>.<span class="i">Skip</span>(<span class="r9 r">from</span>).<span class="i">ToArray</span>(), <span class="r18 r">topDocs</span>.<span class="i">MaxScore</span>);
+                }
+ 
+                <b>var</b> <span id="r19 rd" class="r19 r">collector</span> = <b>new</b> <span class="i">TotalHitCountCollector</span>();
+                <span class="r1 r">context</span>.<a href="/OrchardCore.Lucene.Abstractions/A.html#923ffee01cf85d7a" class="i property">IndexSearcher</a>.<span class="i">Search</span>(<span class="r4 r">query</span>, <span class="r19 r">collector</span>);
+ 
+                <span class="r17 r">result</span> = <b>new</b> <a href="/OrchardCore.Lucene.Abstractions/A.html#67d36c4555b7adbc" class="t constructor">LuceneTopDocs</a>() { <a href="/OrchardCore.Lucene.Abstractions/A.html#e1e395aa942a3f2f" class="i property">TopDocs</a> = <span class="r18 r">topDocs</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#315023b37c414c43" class="i property">Count</a> = <span class="r19 r">collector</span>.<span class="i">TotalHits</span> };
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r17 r">result</span>);
+        }
+ 
+        <b>public</b> <span class="i">Query</span> <a id="ba612b3d97803d1e" href="R/ba612b3d97803d1e.html" target="n" data-glyph="72,1" class="i method">CreateQueryFragment</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r20 rd" class="r20 r">context</span>, <span class="i">JObject</span> <span id="r21 rd" class="r21 r">queryObj</span>)
+        {
+            <b>var</b> <span id="r22 rd" class="r22 r">first</span> = <span class="r21 r">queryObj</span>.<span class="i">Properties</span>().<span class="i">First</span>();
+ 
+            <span class="i">Query</span> <span id="r23 rd" class="r23 r">query</span> = <b>null</b>;
+ 
+            <b>foreach</b> (<a href="/OrchardCore.Lucene.Abstractions/A.html#fe150d221b555d91" class="k">var</a> <span id="r24 rd" class="r24 r">queryProvider</span> <b>in</b> <a href="#31631de3cac07cb8" class="i field">_queryProviders</a>)
+            {
+                <span class="r23 r">query</span> = <span class="r24 r">queryProvider</span>.<span class="i">CreateQuery</span>(<a href="#fd8acd53da39f5a7" class="k">this</a>, <span class="r20 r">context</span>, <span class="r22 r">first</span>.<span class="i">Name</span>, (<span class="i">JObject</span>)<span class="r22 r">first</span>.<span class="i">Value</span>);
+ 
+                <b>if</b> (<span class="r23 r">query</span> != <b>null</b>)
+                {
+                    <b>break</b>;
+                }
+            }
+ 
+            <b>return</b> <span class="r23 r">query</span>;
+        }
+ 
+        <b>public static</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="113f23315503a960" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Tokenize</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">fieldName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">text</span>, <span class="i">Analyzer</span> <span id="r27 rd" class="r27 r">analyzer</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r26 r">text</span>))
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            }
+ 
+            <b>var</b> <span id="r28 rd" class="r28 r">result</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            <b>using</b> (<b>var</b> <span id="r29 rd" class="r29 r">tokenStream</span> = <span class="r27 r">analyzer</span>.<span class="i">GetTokenStream</span>(<span class="r25 r">fieldName</span>, <span class="r26 r">text</span>))
+            {
+                <span class="r29 r">tokenStream</span>.<span class="i">Reset</span>();
+                <b>while</b> (<span class="r29 r">tokenStream</span>.<span class="i">IncrementToken</span>())
+                {
+                    <b>var</b> <span id="r30 rd" class="r30 r">termAttribute</span> = <span class="r29 r">tokenStream</span>.<span class="i">GetAttribute</span>&lt;<span class="i">ICharTermAttribute</span>&gt;();
+ 
+                    <b>if</b> (<span class="r30 r">termAttribute</span> != <b>null</b>)
+                    {
+                        <span class="r28 r">result</span>.<span class="i">Add</span>(<span class="r30 r">termAttribute</span>.<span class="i">ToString</span>());
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="r28 r">result</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

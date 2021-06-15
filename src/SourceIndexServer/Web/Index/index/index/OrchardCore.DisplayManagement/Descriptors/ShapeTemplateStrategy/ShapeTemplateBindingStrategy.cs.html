@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShapeTemplateBindingStrategy.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(168);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/Descriptors/ShapeTemplateStrategy/ShapeTemplateBindingStrategy.cs" target="_top">Descriptors\ShapeTemplateStrategy\ShapeTemplateBindingStrategy.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Extensions</span>.<span class="i">Features</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Mvc</span>.<span class="i n">FileProviders</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Descriptors</span>.<span class="i n">ShapeTemplateStrategy</span>
+{
+    <b>public class</b> <a id="674e0ade07d9a3ec" href="../../R/674e0ade07d9a3ec.html" target="n" data-glyph="0,0" class="t t">ShapeTemplateBindingStrategy</a> : <a href="../Interfaces.cs.html#5172c54cd1d3325e" class="t t">IShapeTableHarvester</a>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IShapeTemplateHarvester.cs.html#2e77008b73d6eabd" class="t t">IShapeTemplateHarvester</a>&gt; <a id="92f510fb6e772c97" href="../../R/92f510fb6e772c97.html" target="n" data-glyph="46,1" class="i field">_harvesters</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="t t">IShapeTemplateViewEngine</a>&gt; <a id="eddbbe35e40bd54d" href="../../R/eddbbe35e40bd54d.html" target="n" data-glyph="46,1" class="i field">_shapeTemplateViewEngines</a>;
+        <b>private readonly</b> <a href="IShapeTemplateFileProviderAccessor.cs.html#75cb94110be19792" class="t t">IShapeTemplateFileProviderAccessor</a> <a id="693225376d6a39d3" href="../../R/693225376d6a39d3.html" target="n" data-glyph="46,1" class="i field">_fileProviderAccessor</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="9c7aebd34041b6c6" href="../../R/9c7aebd34041b6c6.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="i">IShellFeaturesManager</span> <a id="b048333fde693b91" href="../../R/b048333fde693b91.html" target="n" data-glyph="46,1" class="i field">_shellFeaturesManager</a>;
+ 
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="t t">IShapeTemplateViewEngine</a>&gt; <a id="3ecf25369b653cc0" href="../../R/3ecf25369b653cc0.html" target="n" data-glyph="46,1" class="i field">_viewEnginesByExtension</a> =
+            <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="t t">IShapeTemplateViewEngine</a>&gt;(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+ 
+        <b>public</b> <a id="33f22a7d288ee302" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShapeTemplateBindingStrategy</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IShapeTemplateHarvester.cs.html#2e77008b73d6eabd" class="t t">IShapeTemplateHarvester</a>&gt; <span id="r0 rd" class="r0 r">harvesters</span>,
+            <span class="i">IShellFeaturesManager</span> <span id="r1 rd" class="r1 r">shellFeaturesManager</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="t t">IShapeTemplateViewEngine</a>&gt; <span id="r2 rd" class="r2 r">shapeTemplateViewEngines</span>,
+            <a href="IShapeTemplateFileProviderAccessor.cs.html#75cb94110be19792" class="t t">IShapeTemplateFileProviderAccessor</a> <span id="r3 rd" class="r3 r">fileProviderAccessor</span>,
+            <span class="t t">ILogger</span>&lt;<a href="../DefaultShapeTableManager.cs.html#210f06bcde0d997a" class="t t">DefaultShapeTableManager</a>&gt; <span id="r4 rd" class="r4 r">logger</span>)
+        {
+            <a href="#92f510fb6e772c97" class="i field">_harvesters</a> = <span class="r0 r">harvesters</span>;
+            <a href="#b048333fde693b91" class="i field">_shellFeaturesManager</a> = <span class="r1 r">shellFeaturesManager</span>;
+            <a href="#eddbbe35e40bd54d" class="i field">_shapeTemplateViewEngines</a> = <span class="r2 r">shapeTemplateViewEngines</span>;
+            <a href="#693225376d6a39d3" class="i field">_fileProviderAccessor</a> = <span class="r3 r">fileProviderAccessor</span>;
+            <a href="#9c7aebd34041b6c6" class="i field">_logger</a> = <span class="r4 r">logger</span>;
+        }
+ 
+        <b>public bool</b> <a id="b8cbb6f8cba002e4" href="../../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">DisableMonitoring</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IExtensionInfo</span>&gt; <a id="27928eace4a65f59" href="../../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">Once</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IFeatureInfo</span>&gt; <span id="r5 rd" class="r5 r">featureDescriptors</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">once</span> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;();
+            <b>return</b> <span class="r5 r">featureDescriptors</span>.<span class="i method">Select</span>(<span id="r7 rd" class="r7 r">x</span> =&gt; <span class="r7 r">x</span>.<span class="i">Extension</span>).<span class="i method">Where</span>(<span id="r8 rd" class="r8 r">ed</span> =&gt; <span class="r6 r">once</span>.<span class="i">TryAdd</span>(<span class="r8 r">ed</span>.<span class="i">Id</span>, <b>null</b>)).<span class="i method">ToList</span>();
+        }
+ 
+        <b>public void</b> <a id="1eb903c9a1a3826e" href="../../R/1eb903c9a1a3826e.html" target="n" data-glyph="72,1" class="i method">Discover</a>(<a href="../ShapeTableBuilder.cs.html#2dceb447d3fdae18" class="t t">ShapeTableBuilder</a> <span id="r9 rd" class="r9 r">builder</span>)
+        {
+            <b>if</b> (<a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Start discovering shapes&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">harvesterInfos</span> = <a href="#92f510fb6e772c97" class="i field">_harvesters</a>
+                .<span class="i method">Select</span>(<span id="r11 rd" class="r11 r">harvester</span> =&gt; <b>new</b> { <span class="r11 r">harvester</span>, <a href="#8e62623c479ad60a" class="i property">subPaths</a> = <span class="r11 r">harvester</span>.<a href="IShapeTemplateHarvester.cs.html#e2781918b4942d33" class="i method">SubPaths</a>() })
+                .<span class="i method">ToList</span>();
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">enabledFeatures</span> = <a href="#b048333fde693b91" class="i field">_shellFeaturesManager</a>.<span class="i">GetEnabledFeaturesAsync</span>().<span class="i">GetAwaiter</span>().<span class="i">GetResult</span>();
+            <b>var</b> <span id="r13 rd" class="r13 r">enabledFeatureIds</span> = <span class="r12 r">enabledFeatures</span>.<span class="i">Select</span>(<span id="r14 rd" class="r14 r">f</span> =&gt; <span class="r14 r">f</span>.<span class="i">Id</span>).<span class="i">ToArray</span>();
+ 
+            <span class="c">// Excludes the extensions whose templates are already associated to an excluded feature that is still enabled.</span>
+            <b>var</b> <span id="r15 rd" class="r15 r">activeExtensions</span> = <span class="i">Once</span>(<span class="r12 r">enabledFeatures</span>)
+                .<span class="i method">Where</span>(<span id="r16 rd" class="r16 r">e</span> =&gt; !<span class="r16 r">e</span>.<span class="i">Features</span>.<span class="i">Any</span>(<span id="r17 rd" class="r17 r">f</span> =&gt; <span class="r9 r">builder</span>.<a href="../ShapeTableBuilder.cs.html#f1ee01feb43809a6" class="i property">ExcludedFeatureIds</a>.<span class="i">Contains</span>(<span class="r17 r">f</span>.<span class="i">Id</span>) &amp;&amp; <span class="r13 r">enabledFeatureIds</span>.<span class="i">Contains</span>(<span class="r17 r">f</span>.<span class="i">Id</span>)))
+                .<span class="i method">ToArray</span>();
+ 
+            <b>if</b> (!<a href="#3ecf25369b653cc0" class="i field">_viewEnginesByExtension</a>.<span class="i method">Any</span>())
+            {
+                <b>foreach</b> (<a href="IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="k">var</a> <span id="r18 rd" class="r18 r">viewEngine</span> <b>in</b> <a href="#eddbbe35e40bd54d" class="i field">_shapeTemplateViewEngines</a>)
+                {
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">extension</span> <b>in</b> <span class="r18 r">viewEngine</span>.<a href="IShapeTemplateViewEngine.cs.html#b176fa3c85567091" class="i property">TemplateFileExtensions</a>)
+                    {
+                        <b>if</b> (!<a href="#3ecf25369b653cc0" class="i field">_viewEnginesByExtension</a>.<span class="i method">ContainsKey</span>(<span class="r19 r">extension</span>))
+                        {
+                            <a href="#3ecf25369b653cc0" class="i field">_viewEnginesByExtension</a>[<span class="r19 r">extension</span>] = <span class="r18 r">viewEngine</span>;
+                        }
+                    }
+                }
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r20 rd" class="r20 r">hits</span> = <span class="r15 r">activeExtensions</span>.<span class="i method">Select</span>(<span id="r21 rd" class="r21 r">extensionDescriptor</span> =&gt;
+            {
+                <b>if</b> (<a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+                {
+                    <a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Start discovering candidate views filenames&quot;</span>);
+                }
+ 
+                <b>var</b> <span id="r22 rd" class="r22 r">pathContexts</span> = <span class="r10 r">harvesterInfos</span>.<span class="i method">SelectMany</span>(<span id="r23 rd" class="r23 r">harvesterInfo</span> =&gt; <span class="r23 r">harvesterInfo</span>.<a href="#8e62623c479ad60a" class="i property">subPaths</a>.<span class="i method">Select</span>(<span id="r24 rd" class="r24 r">subPath</span> =&gt;
+                {
+                    <b>var</b> <span id="r25 rd" class="r25 r">filePaths</span> = <a href="#693225376d6a39d3" class="i field">_fileProviderAccessor</a>.<a href="IShapeTemplateFileProviderAccessor.cs.html#a4e5b47f1d99a4ed" class="i property">FileProvider</a>.<a href="/OrchardCore.Mvc.Core/A.html#818898e9c71ffdcb" class="i method">GetViewFilePaths</a>(
+                        <a href="/OrchardCore.Infrastructure.Abstractions/A.html#b8d8e19aa0e2bd29" class="t t">PathExtensions</a>.<span class="i">Combine</span>(<span class="r21 r">extensionDescriptor</span>.<span class="i">SubPath</span>, <span class="r24 r">subPath</span>),
+                        <a href="#3ecf25369b653cc0" class="i field">_viewEnginesByExtension</a>.<span class="i property">Keys</span>.<span class="i method">ToArray</span>(),
+                        <span class="r26 r">inViewsFolder</span>: <b>true</b>, <span class="r27 r">inDepth</span>: <b>false</b>).<span class="i method">ToArray</span>();
+ 
+                    <b>return</b> <b>new</b> { <span class="r23 r">harvesterInfo</span>.<a href="#2defbaa733cb314f" class="i property">harvester</a>, <span class="r24 r">subPath</span>, <span class="r25 r">filePaths</span> };
+                }))
+                .<span class="i method">ToList</span>();
+ 
+                <b>if</b> (<a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+                {
+                    <a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Done discovering candidate views filenames&quot;</span>);
+                }
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r28 rd" class="r28 r">fileContexts</span> = <span class="r22 r">pathContexts</span>.<span class="i method">SelectMany</span>(<span id="r29 rd" class="r29 r">pathContext</span> =&gt; <a href="#eddbbe35e40bd54d" class="i field">_shapeTemplateViewEngines</a>.<span class="i method">SelectMany</span>(<span id="r30 rd" class="r30 r">ve</span> =&gt;
+                {
+                    <b>return</b> <span class="r29 r">pathContext</span>.<a href="#ece2526bf813397e" class="i property">filePaths</a>.<span class="i method">Select</span>(
+                        <span id="r31 rd" class="r31 r">filePath</span> =&gt; <b>new</b>
+                        {
+                            <a href="#617efa966afdb6c6" class="i property">fileName</a> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#e36b3edc1f3e2c8d" class="i method">GetFileNameWithoutExtension</a>(<span class="r31 r">filePath</span>),
+                            <a href="#64172473d79fae68" class="i property">relativePath</a> = <span class="r31 r">filePath</span>,
+                            <span class="r29 r">pathContext</span>
+                        });
+                }));
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r32 rd" class="r32 r">shapeContexts</span> = <span class="r28 r">fileContexts</span>.<span class="i method">SelectMany</span>(<span id="r33 rd" class="r33 r">fileContext</span> =&gt;
+                {
+                    <a href="HarvestShapeInfo.cs.html#141b918f93c3b47a" class="k">var</a> <span id="r34 rd" class="r34 r">harvestShapeInfo</span> = <b>new</b> <a href="HarvestShapeInfo.cs.html#141b918f93c3b47a" class="t constructor">HarvestShapeInfo</a>
+                    {
+                        <a href="HarvestShapeInfo.cs.html#55b396e85225afb9" class="i property">SubPath</a> = <span class="r33 r">fileContext</span>.<a href="#f686a9ff3d4e132e" class="i property">pathContext</a>.<a href="#d97a7a9af5ed99e4" class="i property">subPath</a>,
+                        <a href="HarvestShapeInfo.cs.html#1f60acc69f78d634" class="i property">FileName</a> = <span class="r33 r">fileContext</span>.<a href="#617efa966afdb6c6" class="i property">fileName</a>,
+                        <a href="HarvestShapeInfo.cs.html#0b51951434af9e92" class="i property">RelativePath</a> = <span class="r33 r">fileContext</span>.<a href="#64172473d79fae68" class="i property">relativePath</a>,
+                        <a href="HarvestShapeInfo.cs.html#078c091c1ab632b3" class="i property">Extension</a> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f424e433705aeb09" class="i method">GetExtension</a>(<span class="r33 r">fileContext</span>.<a href="#64172473d79fae68" class="i property">relativePath</a>)
+                    };
+                    <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r35 rd" class="r35 r">harvestShapeHits</span> = <span class="r33 r">fileContext</span>.<a href="#f686a9ff3d4e132e" class="i property">pathContext</a>.<a href="#2defbaa733cb314f" class="i property">harvester</a>.<a href="IShapeTemplateHarvester.cs.html#cc77c582016dff00" class="i method">HarvestShape</a>(<span class="r34 r">harvestShapeInfo</span>);
+                    <b>return</b> <span class="r35 r">harvestShapeHits</span>.<span class="i method">Select</span>(<span id="r36 rd" class="r36 r">harvestShapeHit</span> =&gt; <b>new</b> { <span class="r34 r">harvestShapeInfo</span>, <span class="r36 r">harvestShapeHit</span>, <span class="r33 r">fileContext</span> });
+                });
+ 
+                <b>return</b> <span class="r32 r">shapeContexts</span>.<span class="i method">Select</span>(<span id="r37 rd" class="r37 r">shapeContext</span> =&gt; <b>new</b> { <span class="r21 r">extensionDescriptor</span>, <span class="r37 r">shapeContext</span> }).<span class="i method">ToList</span>();
+            }).<span class="i method">SelectMany</span>(<span id="r38 rd" class="r38 r">hits2</span> =&gt; <span class="r38 r">hits2</span>);
+ 
+            <b>foreach</b> (<a href="#dfe3b8f435c41279" class="k">var</a> <span id="r39 rd" class="r39 r">iter</span> <b>in</b> <span class="r20 r">hits</span>)
+            {
+                <a href="#dfe3b8f435c41279" class="k">var</a> <span id="r40 rd" class="r40 r">hit</span> = <span class="r39 r">iter</span>;
+ 
+                <span class="c">// The template files of an active module need to be associated to one of its enabled feature.</span>
+                <b>var</b> <span id="r41 rd" class="r41 r">feature</span> = <span class="r40 r">hit</span>.<a href="#59433b1f835c41fa" class="i property">extensionDescriptor</a>.<span class="i">Features</span>.<span class="i">First</span>(<span id="r42 rd" class="r42 r">f</span> =&gt; <span class="r13 r">enabledFeatureIds</span>.<span class="i">Contains</span>(<span class="r42 r">f</span>.<span class="i">Id</span>));
+ 
+                <b>if</b> (<a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                {
+                    <a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i">LogDebug</span>(<span class="s">&quot;Binding &#39;{TemplatePath}&#39; as shape &#39;{ShapeType}&#39; for feature &#39;{FeatureName}&#39;&quot;</span>,
+                        <span class="r40 r">hit</span>.<a href="#f234d042b84248e6" class="i property">shapeContext</a>.<a href="#fa0ee4ac93169556" class="i property">harvestShapeInfo</a>.<a href="HarvestShapeInfo.cs.html#0b51951434af9e92" class="i property">RelativePath</a>,
+                        <span class="r39 r">iter</span>.<a href="#f234d042b84248e6" class="i property">shapeContext</a>.<a href="#42c17038550621a9" class="i property">harvestShapeHit</a>.<a href="HarvestShapeHit.cs.html#bbf873434acb7a29" class="i property">ShapeType</a>,
+                        <span class="r41 r">feature</span>.<span class="i">Id</span>);
+                }
+ 
+                <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r43 rd" class="r43 r">viewEngineType</span> = <a href="#3ecf25369b653cc0" class="i field">_viewEnginesByExtension</a>[<span class="r39 r">iter</span>.<a href="#f234d042b84248e6" class="i property">shapeContext</a>.<a href="#fa0ee4ac93169556" class="i property">harvestShapeInfo</a>.<a href="HarvestShapeInfo.cs.html#078c091c1ab632b3" class="i property">Extension</a>].<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>();
+ 
+                <span class="r9 r">builder</span>.<a href="../ShapeTableBuilder.cs.html#367d1e27b6144761" class="i method">Describe</a>(<span class="r39 r">iter</span>.<a href="#f234d042b84248e6" class="i property">shapeContext</a>.<a href="#42c17038550621a9" class="i property">harvestShapeHit</a>.<a href="HarvestShapeHit.cs.html#bbf873434acb7a29" class="i property">ShapeType</a>)
+                    .<span class="i">From</span>(<span class="r41 r">feature</span>)
+                    .<a href="../ShapeAlterationBuilder.cs.html#08159412e05b71a7" class="i method">BoundAs</a>(
+                        <span class="r40 r">hit</span>.<a href="#f234d042b84248e6" class="i property">shapeContext</a>.<a href="#fa0ee4ac93169556" class="i property">harvestShapeInfo</a>.<a href="HarvestShapeInfo.cs.html#0b51951434af9e92" class="i property">RelativePath</a>, <span id="r44 rd" class="r44 r">displayContext</span> =&gt;
+                        {
+                            <a href="IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="k">var</a> <span id="r45 rd" class="r45 r">viewEngine</span> = <span class="r44 r">displayContext</span>.<a href="../../Implementation/DisplayContext.cs.html#02d0ad56ed4bc997" class="i property">ServiceProvider</a>
+                                .<span class="i method">GetServices</span>&lt;<a href="IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="t t">IShapeTemplateViewEngine</a>&gt;()
+                                .<span class="i method">FirstOrDefault</span>(<span id="r46 rd" class="r46 r">e</span> =&gt; <span class="r46 r">e</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>() == <span class="r43 r">viewEngineType</span>);
+ 
+                            <b>return</b> <span class="r45 r">viewEngine</span>.<a href="IShapeTemplateViewEngine.cs.html#6f8d3493a57890a8" class="i method">RenderAsync</a>(<span class="r40 r">hit</span>.<a href="#f234d042b84248e6" class="i property">shapeContext</a>.<a href="#fa0ee4ac93169556" class="i property">harvestShapeInfo</a>.<a href="HarvestShapeInfo.cs.html#0b51951434af9e92" class="i property">RelativePath</a>, <span class="r44 r">displayContext</span>);
+                        });
+            }
+ 
+            <b>if</b> (<a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#9c7aebd34041b6c6" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Done discovering shapes&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html><head><title>CustomSettingsService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(123);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.CustomSettings/Services/CustomSettingsService.cs" target="_top">Services\CustomSettingsService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.CustomSettings" target="_top">src\OrchardCore.Modules\OrchardCore.CustomSettings\OrchardCore.CustomSettings.csproj</a> (OrchardCore.CustomSettings)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">CustomSettings</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="f041c24485017889" href="../R/f041c24485017889.html" target="n" data-glyph="0,0" class="t t">CustomSettingsService</a>
+    {
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="da6494b8a530ca8d" href="../R/da6494b8a530ca8d.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <a id="cb15704543f25101" href="../R/cb15704543f25101.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="5abe27b9b7ce9436" href="../R/5abe27b9b7ce9436.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="51508a87bd246897" href="../R/51508a87bd246897.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="0a761d636e9f2d02" href="../R/0a761d636e9f2d02.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="t t">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a>&gt;&gt; <a id="436a27f75afe594d" href="../R/436a27f75afe594d.html" target="n" data-glyph="46,1" class="i field">_settingsTypes</a>;
+ 
+        <b>public</b> <a id="e05037b7d352b21a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">CustomSettingsService</a>(
+            <span class="i">ISiteService</span> <span id="r0 rd" class="r0 r">siteService</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <span id="r1 rd" class="r1 r">contentManager</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r3 rd" class="r3 r">authorizationService</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r4 rd" class="r4 r">contentDefinitionManager</span>)
+        {
+            <a href="#da6494b8a530ca8d" class="i field">_siteService</a> = <span class="r0 r">siteService</span>;
+            <a href="#cb15704543f25101" class="i field">_contentManager</a> = <span class="r1 r">contentManager</span>;
+            <a href="#5abe27b9b7ce9436" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+            <a href="#51508a87bd246897" class="i field">_authorizationService</a> = <span class="r3 r">authorizationService</span>;
+            <a href="#0a761d636e9f2d02" class="i field">_contentDefinitionManager</a> = <span class="r4 r">contentDefinitionManager</span>;
+            <a href="#436a27f75afe594d" class="i field">_settingsTypes</a> = <b>new</b> <a href="@1@System.Runtime/A.html#c0f7b98bacad370a" class="t constructor">Lazy</a>&lt;<a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a>&gt;&gt;(
+                () =&gt; <a href="#0a761d636e9f2d02" class="i field">_contentDefinitionManager</a>
+                     .<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0f21bc30e5015995" class="i method">ListTypeDefinitions</a>()
+                     .<span class="i method">Where</span>(<span id="r5 rd" class="r5 r">x</span> =&gt; <span class="r5 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#51306a656d4fca2d" class="i property">Stereotype</a> == <span class="s">&quot;CustomSettings&quot;</span>)
+                     .<span class="i method">ToDictionary</span>(<span id="r6 rd" class="r6 r">x</span> =&gt; <span class="r6 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>));
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="3bb531d96cb7e9ff" href="../R/3bb531d96cb7e9ff.html" target="n" data-glyph="72,1" class="i method">GetAllSettingsTypeNames</a>()
+        {
+            <b>return</b> <a href="#436a27f75afe594d" class="i field">_settingsTypes</a>.<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#6141d2484c7e5c1a" class="i property">Keys</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a>&gt; <a id="14ce71f51f70cc38" href="../R/14ce71f51f70cc38.html" target="n" data-glyph="72,1" class="i method">GetAllSettingsTypes</a>()
+        {
+            <b>return</b> <a href="#436a27f75afe594d" class="i field">_settingsTypes</a>.<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#81fedd966b885f90" class="i property">Values</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a>&gt; <a id="754eccc944730085" href="../R/754eccc944730085.html" target="n" data-glyph="72,1" class="i method">GetSettingsTypes</a>(<b>params string</b>[] <span id="r7 rd" class="r7 r">settingsTypeNames</span>)
+        {
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">settingsTypeName</span> <b>in</b> <span class="r7 r">settingsTypeNames</span>)
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r9 rd" class="r9 r">settingsType</span>;
+                <b>if</b> (<a href="#436a27f75afe594d" class="i field">_settingsTypes</a>.<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r8 r">settingsTypeName</span>, <b>out</b> <span class="r9 r">settingsType</span>))
+                {
+                    <b>yield</b> <b>return</b> <span class="r9 r">settingsType</span>;
+                }
+            }
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <a id="89f06c6bab6ed842" href="../R/89f06c6bab6ed842.html" target="n" data-glyph="72,1" class="i method">GetSettingsType</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">settingsTypeName</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r11 rd" class="r11 r">settingsType</span>;
+ 
+            <a href="#436a27f75afe594d" class="i field">_settingsTypes</a>.<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r10 r">settingsTypeName</span>, <b>out</b> <span class="r11 r">settingsType</span>);
+ 
+            <b>return</b> <span class="r11 r">settingsType</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="4bf4ba71a4ecedcd" href="../R/4bf4ba71a4ecedcd.html" target="n" data-glyph="72,1" class="i method">CanUserCreateSettingsAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r12 rd" class="r12 r">settingsType</span>)
+        {
+            <b>var</b> <span id="r13 rd" class="r13 r">user</span> = <a href="#5abe27b9b7ce9436" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>;
+ 
+            <b>return</b> <a href="#51508a87bd246897" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r13 r">user</span>, <a href="../Permissions.cs.html#aedb5feb7ebc71c0" class="t t">Permissions</a>.<a href="../Permissions.cs.html#378041486cb8f9e3" class="i method">CreatePermissionForType</a>(<span class="r12 r">settingsType</span>));
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="df701da0eaea699f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetSettingsAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">settingsTypeName</span>, <a href="@1@System.Runtime/A.html#9147ae6f76643aae" class="t t">Action</a> <span id="r15 rd" class="r15 r">isNew</span> = <b>null</b>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r16 rd" class="r16 r">settingsType</span> = <a href="#89f06c6bab6ed842" class="i method">GetSettingsType</a>(<span class="r14 r">settingsTypeName</span>);
+            <b>if</b> (<span class="r16 r">settingsType</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;(<b>null</b>);
+            }
+ 
+            <b>return</b> <a href="#590c1910fe6db8e1" class="i method">GetSettingsAsync</a>(<span class="r16 r">settingsType</span>, <span class="r15 r">isNew</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="590c1910fe6db8e1" href="../R/590c1910fe6db8e1.html" target="n" data-glyph="72,1" class="i method">GetSettingsAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r17 rd" class="r17 r">settingsType</span>, <a href="@1@System.Runtime/A.html#9147ae6f76643aae" class="t t">Action</a> <span id="r18 rd" class="r18 r">isNew</span> = <b>null</b>)
+        {
+            <b>var</b> <span id="r19 rd" class="r19 r">site</span> = <b>await</b> <a href="#da6494b8a530ca8d" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+ 
+            <b>return</b> <b>await</b> <span class="i">GetSettingsAsync</span>(<span class="r19 r">site</span>, <span class="r17 r">settingsType</span>, <span class="r18 r">isNew</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <a id="681a445e60de7b5f" href="../R/681a445e60de7b5f.html" target="n" data-glyph="72,1" class="i method">GetSettingsAsync</a>(<span class="i">ISite</span> <span id="r20 rd" class="r20 r">site</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r21 rd" class="r21 r">settingsType</span>, <a href="@1@System.Runtime/A.html#9147ae6f76643aae" class="t t">Action</a> <span id="r22 rd" class="r22 r">isNew</span> = <b>null</b>)
+        {
+            <span class="i">JToken</span> <span id="r23 rd" class="r23 r">property</span>;
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r24 rd" class="r24 r">contentItem</span>;
+ 
+            <b>if</b> (<span class="r20 r">site</span>.<span class="i">Properties</span>.<span class="i">TryGetValue</span>(<span class="r21 r">settingsType</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <b>out</b> <span class="r23 r">property</span>))
+            {
+                <b>var</b> <span id="r25 rd" class="r25 r">existing</span> = <span class="r23 r">property</span>.<span class="i">ToObject</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;();
+ 
+                <span class="c">// Create a new item to take into account the current type definition.</span>
+                <span class="r24 r">contentItem</span> = <b>await</b> <a href="#cb15704543f25101" class="i field">_contentManager</a>.<span class="i">NewAsync</span>(<span class="r25 r">existing</span>.<span class="i">ContentType</span>);
+                <span class="r24 r">contentItem</span>.<span class="i">Merge</span>(<span class="r25 r">existing</span>);
+            }
+            <b>else</b>
+            {
+                <span class="r24 r">contentItem</span> = <b>await</b> <a href="#cb15704543f25101" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f72e0fd5ee4423f" class="i method">NewAsync</a>(<span class="r21 r">settingsType</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>);
+                <span class="r22 r">isNew</span>?.<a href="@1@System.Runtime/A.html#6fbb51427c383a3a" class="i method">Invoke</a>();
+            }
+ 
+            <b>return</b> <span class="r24 r">contentItem</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

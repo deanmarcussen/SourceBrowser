@@ -1,0 +1,160 @@
+﻿<!DOCTYPE html>
+<html><head><title>FileDocumentStore.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(151);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Data/Documents/FileDocumentStore.cs" target="_top">Documents\FileDocumentStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Data" target="_top">src\OrchardCore\OrchardCore.Data\OrchardCore.Data.csproj</a> (OrchardCore.Data)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Scope</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Documents</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> A singleton service using the file system to store document files under the tenant folder, and that is in sync</span>
+    <span class="c">///</span><span class="c"> with the ambient transaction, any file is updated after a successful </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Data.Abstractions/A.html#a202a4811fda6752" class="t t">IDocumentStore</a>.<a href="/OrchardCore.Data.Abstractions/A.html#e3808e539272f60c" class="i method">CommitAsync</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="55ff035c48d181dd" href="../R/55ff035c48d181dd.html" target="n" data-glyph="0,0" class="t t">FileDocumentStore</a> : <a href="/OrchardCore.Data.Abstractions/A.html#6a69955270b9c8b4" class="t t">IFileDocumentStore</a>
+    {
+        <b>private readonly string</b> <a id="ef574bf199456673" href="../R/ef574bf199456673.html" target="n" data-glyph="46,1" class="i field">_tenantPath</a>;
+ 
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="e0b1fb614ef81087" href="../R/e0b1fb614ef81087.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>public</b> <a id="6d2b6983a17ca3f2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">FileDocumentStore</a>(<span class="t t">IOptions</span>&lt;<a href="/OrchardCore.Abstractions/A.html#ebc95ddc7c81801d" class="t t">ShellOptions</a>&gt; <span id="r0 rd" class="r0 r">shellOptions</span>, <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r1 rd" class="r1 r">shellSettings</span>)
+        {
+            <a href="#ef574bf199456673" class="i field">_tenantPath</a> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#b24651eb14e8aa68" class="i method">Combine</a>(
+                <span class="r0 r">shellOptions</span>.<span class="i property">Value</span>.<a href="/OrchardCore.Abstractions/A.html#0bcef61aa83475f1" class="i property">ShellsApplicationDataPath</a>,
+                <span class="r0 r">shellOptions</span>.<span class="i property">Value</span>.<a href="/OrchardCore.Abstractions/A.html#eb0db96807f58227" class="i property">ShellsContainerName</a>,
+                <span class="r1 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>) + <span class="s">&quot;/&quot;</span>;
+ 
+            <span class="t t">Directory</span>.<span class="i method">CreateDirectory</span>(<a href="#ef574bf199456673" class="i field">_tenantPath</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r2 r t">T</span>&gt; <a id="c5a62b0aabedd200" href="../R/c5a62b0aabedd200.html" target="n" data-glyph="72,1" class="i method">GetOrCreateMutableAsync</a>&lt;<span id="r2 rd t" class="r2 r t">T</span>&gt;(<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r2 r t">T</span>&gt;&gt; <span id="r3 rd" class="r3 r">factoryAsync</span> = <b>null</b>) <b>where</b> <span class="r2 r t">T</span> : <b>class</b>, <b>new</b>()
+        {
+            <span class="r2 r t">var</span> <span id="r4 rd" class="r4 r">loaded</span> = <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#d3738dfc1c0528cf" class="i method">Get</a>&lt;<span class="r2 r t">T</span>&gt;(<b>typeof</b>(<span class="r2 r t">T</span>));
+ 
+            <b>if</b> (<span class="r4 r">loaded</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="r4 r">loaded</span>;
+            }
+ 
+            <span class="r2 r t">var</span> <span id="r5 rd" class="r5 r">document</span> = <b>await</b> <a href="#8a584f6507b41f41" class="i method">GetDocumentAsync</a>&lt;<span class="r2 r t">T</span>&gt;()
+                ?? <b>await</b> (<span class="r3 r">factoryAsync</span>?.<a href="@1@System.Runtime/A.html#a7843bf4f3b2d594" class="i method">Invoke</a>() ?? <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="r2 r t">T</span>)<b>null</b>))
+                ?? <b>new</b> <span class="t">T</span>();
+ 
+            <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#62d3bc6dad5bb8bd" class="i method">Set</a>(<b>typeof</b>(<span class="r2 r t">T</span>), <span class="r5 r">document</span>);
+ 
+            <b>return</b> <span class="r5 r">document</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<b>bool</b>, <span class="r6 r t">T</span>)&gt; <a id="55de713223dbe2a5" href="../R/55de713223dbe2a5.html" target="n" data-glyph="72,1" class="i method">GetOrCreateImmutableAsync</a>&lt;<span id="r6 rd t" class="r6 r t">T</span>&gt;(<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r6 r t">T</span>&gt;&gt; <span id="r7 rd" class="r7 r">factoryAsync</span> = <b>null</b>) <b>where</b> <span class="r6 r t">T</span> : <b>class</b>, <b>new</b>()
+        {
+            <span class="r6 r t">var</span> <span id="r8 rd" class="r8 r">loaded</span> = <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#d3738dfc1c0528cf" class="i method">Get</a>&lt;<span class="r6 r t">T</span>&gt;(<b>typeof</b>(<span class="r6 r t">T</span>));
+ 
+            <b>if</b> (<span class="r8 r">loaded</span> != <b>null</b>)
+            {
+                <span class="c">// Return the already loaded document but indicating that it should not be cached.</span>
+                <b>return</b> (<b>false</b>, <span class="r8 r">loaded</span> <b>as</b> <span class="r6 r t">T</span>);
+            }
+ 
+            <b>return</b> (<b>true</b>, <b>await</b> <a href="#8a584f6507b41f41" class="i method">GetDocumentAsync</a>&lt;<span class="r6 r t">T</span>&gt;() ?? <b>await</b> (<span class="r7 r">factoryAsync</span>?.<a href="@1@System.Runtime/A.html#a7843bf4f3b2d594" class="i method">Invoke</a>() ?? <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="r6 r t">T</span>)<b>null</b>)) ?? <b>new</b> <span class="t">T</span>());
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c74430fe7de52773" href="../R/c74430fe7de52773.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>&lt;<span id="r9 rd t" class="r9 r t">T</span>&gt;(<span class="r9 r t">T</span> <span id="r10 rd" class="r10 r">document</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="r9 r t">T</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt; <span id="r11 rd" class="r11 r">updateCache</span>, <b>bool</b> <span id="r12 rd" class="r12 r">checkConcurrency</span> = <b>false</b>)
+        {
+            <a href="/OrchardCore.Data.Abstractions/A.html#a202a4811fda6752" class="k">var</a> <span id="r13 rd" class="r13 r">documentStore</span> = <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#996415403af48612" class="i property">Services</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Data.Abstractions/A.html#a202a4811fda6752" class="t t">IDocumentStore</a>&gt;();
+ 
+            <span class="r13 r">documentStore</span>.<a href="/OrchardCore.Data.Abstractions/A.html#6256e75512a6c9e8" class="i method">AfterCommitSuccess</a>&lt;<span class="r9 r t">T</span>&gt;(<b>async</b> () =&gt;
+            {
+                <b>await</b> <a href="#3d33648d7b636ff8" class="i method">SaveDocumentAsync</a>(<span class="r10 r">document</span>);
+                <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#62d3bc6dad5bb8bd" class="i method">Set</a>(<b>typeof</b>(<span class="r9 r t">T</span>), <b>null</b>);
+                <b>await</b> <span class="r11 r">updateCache</span>(<span class="r10 r">document</span>);
+            });
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="bed7f2f60ed33a78" href="../R/bed7f2f60ed33a78.html" target="n" data-glyph="72,1" class="i method">CancelAsync</a>() =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#085d4139ffb78d13" class="t constructor">NotImplementedException</a>();
+        <b>public void</b> <a id="1a27509d077ad2a8" href="../R/1a27509d077ad2a8.html" target="n" data-glyph="72,1" class="i method">AfterCommitSuccess</a>&lt;<span id="r14 rd t" class="r14 r t">T</span>&gt;(<a href="/OrchardCore.Data.Abstractions/A.html#1cca2d805353d9ac" class="t t">DocumentStoreCommitSuccessDelegate</a> <span id="r15 rd" class="r15 r">afterCommitSuccess</span>) =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#085d4139ffb78d13" class="t constructor">NotImplementedException</a>();
+        <b>public void</b> <a id="3c3f58c1e297f607" href="../R/3c3f58c1e297f607.html" target="n" data-glyph="72,1" class="i method">AfterCommitFailure</a>&lt;<span id="r16 rd t" class="r16 r t">T</span>&gt;(<a href="/OrchardCore.Data.Abstractions/A.html#66f4383fa2357fb5" class="t t">DocumentStoreCommitFailureDelegate</a> <span id="r17 rd" class="r17 r">afterCommitFailure</span>) =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#085d4139ffb78d13" class="t constructor">NotImplementedException</a>();
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c49e8c0cac999ca0" href="../R/c49e8c0cac999ca0.html" target="n" data-glyph="72,1" class="i method">CommitAsync</a>() =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#085d4139ffb78d13" class="t constructor">NotImplementedException</a>();
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r18 r t">T</span>&gt; <a id="8a584f6507b41f41" href="../R/8a584f6507b41f41.html" target="n" data-glyph="76,1" class="i method">GetDocumentAsync</a>&lt;<span id="r18 rd t" class="r18 r t">T</span>&gt;()
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">typeName</span> = <b>typeof</b>(<span class="r18 r t">T</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>;
+ 
+            <a href="/OrchardCore.Data.Abstractions/A.html#d2044773bd3d444a" class="k">var</a> <span id="r20 rd" class="r20 r">attribute</span> = <b>typeof</b>(<span class="r18 r t">T</span>).<a href="@1@System.Runtime/A.html#0497c27b6539bfd9" class="i method">GetCustomAttribute</a>&lt;<a href="/OrchardCore.Data.Abstractions/A.html#d2044773bd3d444a" class="t t">FileDocumentStoreAttribute</a>&gt;();
+            <b>if</b> (<span class="r20 r">attribute</span> != <b>null</b>)
+            {
+                <span class="r19 r">typeName</span> = <span class="r20 r">attribute</span>.<a href="/OrchardCore.Data.Abstractions/A.html#76800451d9ef41f3" class="i property">FileName</a> ?? <span class="r19 r">typeName</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">filename</span> = <a href="#ef574bf199456673" class="i field">_tenantPath</a> + <span class="r19 r">typeName</span> + <span class="s">&quot;.json&quot;</span>;
+ 
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r21 r">filename</span>))
+            {
+                <b>return</b> <b>default</b>;
+            }
+ 
+            <b>await</b> <a href="#e0b1fb614ef81087" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <span class="r18 r t">T</span> <span id="r22 rd" class="r22 r">document</span>;
+ 
+                <b>using</b> <a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r23 rd" class="r23 r">file</span> = <span class="t t">File</span>.<span class="i method">OpenText</span>(<span class="r21 r">filename</span>);
+                <b>var</b> <span id="r24 rd" class="r24 r">serializer</span> = <b>new</b> <span class="i">JsonSerializer</span>();
+                <span class="r22 r">document</span> = (<span class="r18 r t">T</span>)<span class="r24 r">serializer</span>.<span class="i">Deserialize</span>(<span class="r23 r">file</span>, <b>typeof</b>(<span class="r18 r t">T</span>));
+ 
+                <b>return</b> <span class="r22 r">document</span>;
+            }
+            <b>finally</b>
+            {
+                <a href="#e0b1fb614ef81087" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="3d33648d7b636ff8" href="../R/3d33648d7b636ff8.html" target="n" data-glyph="76,1" class="i method">SaveDocumentAsync</a>&lt;<span id="r25 rd t" class="r25 r t">T</span>&gt;(<span class="r25 r t">T</span> <span id="r26 rd" class="r26 r">document</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r27 rd" class="r27 r">typeName</span> = <b>typeof</b>(<span class="r25 r t">T</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>;
+ 
+            <a href="/OrchardCore.Data.Abstractions/A.html#d2044773bd3d444a" class="k">var</a> <span id="r28 rd" class="r28 r">attribute</span> = <b>typeof</b>(<span class="r25 r t">T</span>).<a href="@1@System.Runtime/A.html#0497c27b6539bfd9" class="i method">GetCustomAttribute</a>&lt;<a href="/OrchardCore.Data.Abstractions/A.html#d2044773bd3d444a" class="t t">FileDocumentStoreAttribute</a>&gt;();
+            <b>if</b> (<span class="r28 r">attribute</span> != <b>null</b>)
+            {
+                <span class="r27 r">typeName</span> = <span class="r28 r">attribute</span>.<a href="/OrchardCore.Data.Abstractions/A.html#76800451d9ef41f3" class="i property">FileName</a> ?? <span class="r27 r">typeName</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r29 rd" class="r29 r">filename</span> = <a href="#ef574bf199456673" class="i field">_tenantPath</a> + <span class="r27 r">typeName</span> + <span class="s">&quot;.json&quot;</span>;
+ 
+            <b>await</b> <a href="#e0b1fb614ef81087" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>using</b> <a href="@1@System.Runtime/A.html#9e38cb1c84769eba" class="k">var</a> <span id="r30 rd" class="r30 r">file</span> = <span class="t t">File</span>.<span class="i method">CreateText</span>(<span class="r29 r">filename</span>);
+                <b>var</b> <span id="r31 rd" class="r31 r">serializer</span> = <b>new</b> <span class="i">JsonSerializer</span>
+                {
+                    <span class="i">Formatting</span> = <span class="i">Formatting</span>.<span class="i">Indented</span>
+                };
+ 
+                <span class="r31 r">serializer</span>.<span class="i">Serialize</span>(<span class="r30 r">file</span>, <span class="r26 r">document</span>);
+            }
+            <b>finally</b>
+            {
+                <a href="#e0b1fb614ef81087" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

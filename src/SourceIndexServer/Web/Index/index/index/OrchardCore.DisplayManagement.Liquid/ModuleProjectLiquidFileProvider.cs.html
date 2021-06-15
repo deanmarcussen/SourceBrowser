@@ -1,0 +1,114 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModuleProjectLiquidFileProvider.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(105);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid/ModuleProjectLiquidFileProvider.cs" target="_top">ModuleProjectLiquidFileProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid" target="_top">src\OrchardCore\OrchardCore.DisplayManagement.Liquid\OrchardCore.DisplayManagement.Liquid.csproj</a> (OrchardCore.DisplayManagement.Liquid)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Physical</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This custom </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IFileProvider</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> implementation provides the file contents</span>
+    <span class="c">///</span><span class="c"> of Module Project Liquid files while in a development environment.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="b01239d9e15a020f" href="R/b01239d9e15a020f.html" target="n" data-glyph="0,0" class="t t">ModuleProjectLiquidFileProvider</a> : <span class="t t">IFileProvider</span>
+    {
+        <b>private static</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="e9901c06d939b76e" href="R/e9901c06d939b76e.html" target="n" data-glyph="46,1" class="i field">_paths</a>;
+        <b>private static readonly object</b> <a id="230d8a7732ae7e97" href="R/230d8a7732ae7e97.html" target="n" data-glyph="46,1" class="i field">_synLock</a> = <b>new</b> <b>object</b>();
+ 
+        <b>public</b> <a id="40e1c77e62c0e048" href="R/40e1c77e62c0e048.html" target="n" data-glyph="72,1" class="t constructor">ModuleProjectLiquidFileProvider</a>(<span class="i">IApplicationContext</span> <span id="r0 rd" class="r0 r">applicationContext</span>)
+        {
+            <b>if</b> (<a href="#e9901c06d939b76e" class="i field">_paths</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>lock</b> (<a href="#230d8a7732ae7e97" class="i field">_synLock</a>)
+            {
+                <b>if</b> (<a href="#e9901c06d939b76e" class="i field">_paths</a> == <b>null</b>)
+                {
+                    <b>var</b> <span id="r1 rd" class="r1 r">assets</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Asset</span>&gt;();
+                    <b>var</b> <span id="r2 rd" class="r2 r">application</span> = <span class="r0 r">applicationContext</span>.<span class="i">Application</span>;
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r3 rd" class="r3 r">module</span> <b>in</b> <span class="r2 r">application</span>.<span class="i">Modules</span>)
+                    {
+                        <span class="c">// If the module and the application assemblies are not at the same location,</span>
+                        <span class="c">// this means that the module is referenced as a package, not as a project in dev.</span>
+                        <b>if</b> (<span class="r3 r">module</span>.<span class="i">Assembly</span> == <b>null</b> || <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">GetDirectoryName</span>(<span class="r3 r">module</span>.<span class="i">Assembly</span>.<span class="i">Location</span>)
+                            != <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">GetDirectoryName</span>(<span class="r2 r">application</span>.<span class="i">Assembly</span>.<span class="i">Location</span>))
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <span class="c">// Get module assets which are liquid template files.</span>
+                        <span class="r1 r">assets</span>.<span class="i">AddRange</span>(<span class="r3 r">module</span>.<span class="i">Assets</span>.<span class="i">Where</span>(<span id="r4 rd" class="r4 r">a</span> =&gt; <span class="r4 r">a</span>.<span class="i">ModuleAssetPath</span>
+                            .<span class="i">EndsWith</span>(<span class="s">&quot;.liquid&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>)));
+                    }
+ 
+                    <span class="c">// Init the mapping between module and project asset paths.</span>
+                    <a href="#e9901c06d939b76e" class="i field">_paths</a> = <span class="r1 r">assets</span>.<span class="i method">ToDictionary</span>(<span id="r5 rd" class="r5 r">a</span> =&gt; <span class="r5 r">a</span>.<span class="i">ModuleAssetPath</span>, <span id="r6 rd" class="r6 r">a</span> =&gt; <span class="r6 r">a</span>.<span class="i">ProjectAssetPath</span>);
+                }
+            }
+        }
+ 
+        <b>public</b> <span class="t t">IDirectoryContents</span> <a id="e6f55cd59cc8811b" href="R/e6f55cd59cc8811b.html" target="n" data-glyph="72,1" class="i method">GetDirectoryContents</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">subpath</span>)
+        {
+            <b>return</b> <span class="t t">NotFoundDirectoryContents</span>.<span class="i property">Singleton</span>;
+        }
+ 
+        <b>public</b> <span class="t t">IFileInfo</span> <a id="e52e9ef40c26a81a" href="R/e52e9ef40c26a81a.html" target="n" data-glyph="72,1" class="i method">GetFileInfo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">subpath</span>)
+        {
+            <b>if</b> (<span class="r8 r">subpath</span> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r8 r">subpath</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">path</span> = <a href="#819bc3ed08854217" class="i method">NormalizePath</a>(<span class="r8 r">subpath</span>);
+ 
+            <span class="c">// Map the module asset path to the project asset path.</span>
+            <b>if</b> (<a href="#e9901c06d939b76e" class="i field">_paths</a>.<span class="i method">TryGetValue</span>(<span class="r9 r">path</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">projectAssetPath</span>))
+            {
+                <span class="c">// Serve the project asset from the physical file system.</span>
+                <b>return</b> <b>new</b> <span class="t constructor">PhysicalFileInfo</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<span class="r10 r">projectAssetPath</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r8 r">subpath</span>);
+        }
+ 
+        <b>public</b> <span class="t t">IChangeToken</span> <a id="7f0de215731a71fc" href="R/7f0de215731a71fc.html" target="n" data-glyph="72,1" class="i method">Watch</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">filter</span>)
+        {
+            <b>if</b> (<span class="r11 r">filter</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">path</span> = <a href="#819bc3ed08854217" class="i method">NormalizePath</a>(<span class="r11 r">filter</span>);
+ 
+            <span class="c">// Map the module asset path to the project asset path.</span>
+            <b>if</b> (<a href="#e9901c06d939b76e" class="i field">_paths</a>.<span class="i method">TryGetValue</span>(<span class="r12 r">path</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">projectAssetPath</span>))
+            {
+                <span class="c">// Watch the project asset from the physical file system.</span>
+                <b>return</b> <b>new</b> <span class="t constructor">PollingFileChangeToken</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<span class="r13 r">projectAssetPath</span>));
+            }
+ 
+            <b>return</b> <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+        }
+ 
+        <b>private string</b> <a id="819bc3ed08854217" href="R/819bc3ed08854217.html" target="n" data-glyph="76,1" class="i method">NormalizePath</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">path</span>)
+        {
+            <b>return</b> <span class="r14 r">path</span>.<a href="@1@System.Runtime/A.html#987da5dfb39f1927" class="i method">Replace</a>(<span class="s">&#39;\\&#39;</span>, <span class="s">&#39;/&#39;</span>).<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

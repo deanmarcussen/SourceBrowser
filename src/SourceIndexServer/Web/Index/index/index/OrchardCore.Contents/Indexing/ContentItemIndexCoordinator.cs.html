@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentItemIndexCoordinator.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(83);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Indexing/ContentItemIndexCoordinator.cs" target="_top">Indexing\ContentItemIndexCoordinator.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Indexing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Indexing</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Enumerates all parts and fields of content item to extract indexed properties.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="af977f5a58defaf5" href="../R/af977f5a58defaf5.html" target="n" data-glyph="0,0" class="t t">ContentItemIndexCoordinator</a> : <a href="/OrchardCore.Indexing.Abstractions/A.html#33f535f791f6941b" class="t t">IContentItemIndexHandler</a>
+    {
+        <b>private readonly</b> <span class="i">IContentDefinitionManager</span> <a id="5c17b592f60361d5" href="../R/5c17b592f60361d5.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="i">ITypeActivatorFactory</span>&lt;<span class="i">ContentPart</span>&gt; <a id="7759f875b7aa3226" href="../R/7759f875b7aa3226.html" target="n" data-glyph="46,1" class="i field">_contentPartFactory</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#d17781887b83d515" class="t t">IContentPartIndexHandler</a>&gt; <a id="5a2b97cc57070c09" href="../R/5a2b97cc57070c09.html" target="n" data-glyph="46,1" class="i field">_partIndexHandlers</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b7a759bc88ee38d3" class="t t">IContentFieldIndexHandler</a>&gt; <a id="a0d389a4a8bb7e69" href="../R/a0d389a4a8bb7e69.html" target="n" data-glyph="46,1" class="i field">_fieldIndexHandlers</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="807f644851b848e9" href="../R/807f644851b848e9.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="22eda0f32518640d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentItemIndexCoordinator</a>(
+            <span class="i">IContentDefinitionManager</span> <span id="r0 rd" class="r0 r">contentDefinitionManager</span>,
+            <span class="i">ITypeActivatorFactory</span>&lt;<span class="i">ContentPart</span>&gt; <span id="r1 rd" class="r1 r">contentPartFactory</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#d17781887b83d515" class="t t">IContentPartIndexHandler</a>&gt; <span id="r2 rd" class="r2 r">partIndexHandlers</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b7a759bc88ee38d3" class="t t">IContentFieldIndexHandler</a>&gt; <span id="r3 rd" class="r3 r">fieldIndexHandlers</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#af977f5a58defaf5" class="t t">ContentItemIndexCoordinator</a>&gt; <span id="r4 rd" class="r4 r">logger</span>)
+        {
+            <a href="#5c17b592f60361d5" class="i field">_contentDefinitionManager</a> = <span class="r0 r">contentDefinitionManager</span>;
+            <a href="#7759f875b7aa3226" class="i field">_contentPartFactory</a> = <span class="r1 r">contentPartFactory</span>;
+            <a href="#5a2b97cc57070c09" class="i field">_partIndexHandlers</a> = <span class="r2 r">partIndexHandlers</span>;
+            <a href="#a0d389a4a8bb7e69" class="i field">_fieldIndexHandlers</a> = <span class="r3 r">fieldIndexHandlers</span>;
+            <a href="#807f644851b848e9" class="i field">_logger</a> = <span class="r4 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4889fb3332f2ca42" href="../R/4889fb3332f2ca42.html" target="n" data-glyph="72,1" class="i method">BuildIndexAsync</a>(<a href="/OrchardCore.Indexing.Abstractions/A.html#0c8f7540208faa00" class="t t">BuildIndexContext</a> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">contentTypeDefinition</span> = <a href="#5c17b592f60361d5" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r5 r">context</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#9b82d70e39908e65" class="i property">ContentItem</a>.<span class="i">ContentType</span>);
+ 
+            <b>if</b> (<span class="r6 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r7 rd" class="r7 r">contentTypePartDefinition</span> <b>in</b> <span class="r6 r">contentTypeDefinition</span>.<span class="i">Parts</span>)
+            {
+                <b>var</b> <span id="r8 rd" class="r8 r">partName</span> = <span class="r7 r">contentTypePartDefinition</span>.<span class="i">Name</span>;
+                <b>var</b> <span id="r9 rd" class="r9 r">partTypeName</span> = <span class="r7 r">contentTypePartDefinition</span>.<span class="i">PartDefinition</span>.<span class="i">Name</span>;
+                <b>var</b> <span id="r10 rd" class="r10 r">partActivator</span> = <a href="#7759f875b7aa3226" class="i field">_contentPartFactory</a>.<span class="i">GetTypeActivator</span>(<span class="r9 r">partTypeName</span>);
+                <b>var</b> <span id="r11 rd" class="r11 r">part</span> = (<span class="i">ContentPart</span>)<span class="r5 r">context</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#9b82d70e39908e65" class="i property">ContentItem</a>.<span class="i">Get</span>(<span class="r10 r">partActivator</span>.<span class="i">Type</span>, <span class="r8 r">partName</span>);
+ 
+                <b>var</b> <span id="r12 rd" class="r12 r">typePartIndexSettings</span> = <span class="r7 r">contentTypePartDefinition</span>.<span class="i">GetSettings</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#17df9e14b8b8cf97" class="t t">ContentIndexSettings</a>&gt;();
+ 
+                <span class="c">// Skip this part if it&#39;s not included in the index and it&#39;s not the default type part</span>
+                <b>if</b> (<span class="r8 r">partName</span> != <span class="r9 r">partTypeName</span> &amp;&amp; !<span class="r12 r">typePartIndexSettings</span>.<span class="i">Included</span>)
+                {
+                    <b>continue</b>;
+                }
+ 
+                <b>await</b> <a href="#5a2b97cc57070c09" class="i field">_partIndexHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r13 rd" class="r13 r">handler</span>, <span id="r14 rd" class="r14 r">part</span>, <span id="r15 rd" class="r15 r">contentTypePartDefinition</span>, <span id="r16 rd" class="r16 r">context</span>, <span id="r17 rd" class="r17 r">typePartIndexSettings</span>) =&gt;
+                    <span class="r13 r">handler</span>.<span class="i">BuildIndexAsync</span>(<span class="r14 r">part</span>, <span class="r15 r">contentTypePartDefinition</span>, <span class="r16 r">context</span>, <span class="r17 r">typePartIndexSettings</span>),
+                        <span class="r11 r">part</span>, <span class="r7 r">contentTypePartDefinition</span>, <span class="r5 r">context</span>, <span class="r12 r">typePartIndexSettings</span>, <a href="#807f644851b848e9" class="i field">_logger</a>);
+ 
+                <b>foreach</b> (<b>var</b> <span id="r18 rd" class="r18 r">contentPartFieldDefinition</span> <b>in</b> <span class="r7 r">contentTypePartDefinition</span>.<span class="i">PartDefinition</span>.<span class="i">Fields</span>)
+                {
+                    <b>var</b> <span id="r19 rd" class="r19 r">partFieldIndexSettings</span> = <span class="r18 r">contentPartFieldDefinition</span>.<span class="i">GetSettings</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#17df9e14b8b8cf97" class="t t">ContentIndexSettings</a>&gt;();
+ 
+                    <b>if</b> (!<span class="r19 r">partFieldIndexSettings</span>.<span class="i">Included</span>)
+                    {
+                        <b>continue</b>;
+                    }
+ 
+                    <b>await</b> <a href="#a0d389a4a8bb7e69" class="i field">_fieldIndexHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r20 rd" class="r20 r">handler</span>, <span id="r21 rd" class="r21 r">part</span>, <span id="r22 rd" class="r22 r">contentTypePartDefinition</span>, <span id="r23 rd" class="r23 r">contentPartFieldDefinition</span>, <span id="r24 rd" class="r24 r">context</span>, <span id="r25 rd" class="r25 r">partFieldIndexSettings</span>) =&gt;
+                        <span class="r20 r">handler</span>.<span class="i">BuildIndexAsync</span>(<span class="r21 r">part</span>, <span class="r22 r">contentTypePartDefinition</span>, <span class="r23 r">contentPartFieldDefinition</span>, <span class="r24 r">context</span>, <span class="r25 r">partFieldIndexSettings</span>),
+                            <span class="r11 r">part</span>, <span class="r7 r">contentTypePartDefinition</span>, <span class="r18 r">contentPartFieldDefinition</span>, <span class="r5 r">context</span>, <span class="r19 r">partFieldIndexSettings</span>, <a href="#807f644851b848e9" class="i field">_logger</a>);
+                }
+            }
+ 
+            <b>return</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

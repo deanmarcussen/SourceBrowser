@@ -1,0 +1,111 @@
+﻿<!DOCTYPE html>
+<html><head><title>ApiController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(102);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Controllers/ApiController.cs" target="_top">Controllers\ApiController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Model</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Controllers</span>
+{
+    [<span class="t constructor">Route</span>(<span class="s">&quot;api/lucene&quot;</span>)]
+    [<span class="t constructor">ApiController</span>]
+    [<span class="t constructor">Authorize</span>(<span class="i property">AuthenticationSchemes</span> = <span class="s">&quot;Api&quot;</span>), <span class="t constructor">IgnoreAntiforgeryToken</span>, <span class="t constructor">AllowAnonymous</span>]
+    <b>public class</b> <a id="892a60a963b76d9c" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">ApiController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="40be511d077449c1" href="../R/40be511d077449c1.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="../Services/LuceneQuerySource.cs.html#04326579e104fa69" class="t t">LuceneQuerySource</a> <a id="c248178f23b54528" href="../R/c248178f23b54528.html" target="n" data-glyph="46,1" class="i field">_luceneQuerySource</a>;
+ 
+        <b>public</b> <a id="ebe8647cf61b97cb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ApiController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <a href="../Services/LuceneQuerySource.cs.html#04326579e104fa69" class="t t">LuceneQuerySource</a> <span id="r1 rd" class="r1 r">luceneQuerySource</span>)
+        {
+            <a href="#40be511d077449c1" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#c248178f23b54528" class="i field">_luceneQuerySource</a> = <span class="r1 r">luceneQuerySource</span>;
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        [<span class="t constructor">Route</span>(<span class="s">&quot;content&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="4e2f66a3154f651a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Content</a>([<span class="t constructor">FromQuery</span>] <a href="../Model/LuceneQueryModel.cs.html#dc421676f8802ff4" class="t t">LuceneQueryModel</a> <span id="r2 rd" class="r2 r">queryModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#40be511d077449c1" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#54c2feee146504d0" class="i field">QueryLuceneApi</a>))
+            {
+                <b>return</b> <a href="#892a60a963b76d9c" class="k">this</a>.<span class="i">ChallengeOrForbid</span>(<span class="s">&quot;Api&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">result</span> = <b>await</b> <a href="#9e1c487f39a46be4" class="i method">LuceneQueryApiAsync</a>(<span class="r2 r">queryModel</span>, <span class="r4 r">returnContentItems</span>: <b>true</b>);
+ 
+            <b>return</b> <b>new</b> <span class="t">ObjectResult</span>(<span class="r3 r">result</span>);
+        }
+        
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">Route</span>(<span class="s">&quot;content&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="e3e70c43159f1929" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ContentPost</a>(<a href="../Model/LuceneQueryModel.cs.html#dc421676f8802ff4" class="t t">LuceneQueryModel</a> <span id="r5 rd" class="r5 r">queryModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#40be511d077449c1" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#54c2feee146504d0" class="i field">QueryLuceneApi</a>))
+            {
+                <b>return</b> <a href="#892a60a963b76d9c" class="k">this</a>.<span class="i">ChallengeOrForbid</span>();
+            }
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">result</span> = <b>await</b> <a href="#9e1c487f39a46be4" class="i method">LuceneQueryApiAsync</a>(<span class="r5 r">queryModel</span>, <span class="r4 r">returnContentItems</span>: <b>true</b>);
+ 
+            <b>return</b> <b>new</b> <span class="t">ObjectResult</span>(<span class="r6 r">result</span>);
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        [<span class="t constructor">Route</span>(<span class="s">&quot;documents&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="a08ecf6975578998" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Documents</a>([<span class="t constructor">FromQuery</span>] <a href="../Model/LuceneQueryModel.cs.html#dc421676f8802ff4" class="t t">LuceneQueryModel</a> <span id="r7 rd" class="r7 r">queryModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#40be511d077449c1" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#54c2feee146504d0" class="i field">QueryLuceneApi</a>))
+            {
+                <b>return</b> <a href="#892a60a963b76d9c" class="k">this</a>.<span class="i">ChallengeOrForbid</span>();
+            } 
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">result</span> = <b>await</b> <a href="#9e1c487f39a46be4" class="i method">LuceneQueryApiAsync</a>(<span class="r7 r">queryModel</span>);
+ 
+            <b>return</b> <b>new</b> <span class="t">ObjectResult</span>(<span class="r8 r">result</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">Route</span>(<span class="s">&quot;documents&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="d366bbe2c57cb1cc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DocumentsPost</a>(<a href="../Model/LuceneQueryModel.cs.html#dc421676f8802ff4" class="t t">LuceneQueryModel</a> <span id="r9 rd" class="r9 r">queryModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#40be511d077449c1" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#67878b2550fa5398" class="t t">Permissions</a>.<a href="../Permissions.cs.html#54c2feee146504d0" class="i field">QueryLuceneApi</a>))
+            {
+                <b>return</b> <a href="#892a60a963b76d9c" class="k">this</a>.<span class="i">ChallengeOrForbid</span>(<span class="s">&quot;Api&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">result</span> = <b>await</b> <a href="#9e1c487f39a46be4" class="i method">LuceneQueryApiAsync</a>(<span class="r9 r">queryModel</span>);
+ 
+            <b>return</b> <b>new</b> <span class="t">ObjectResult</span>(<span class="r10 r">result</span>);
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i n">Queries</span>.<span class="i">IQueryResults</span>&gt; <a id="9e1c487f39a46be4" href="../R/9e1c487f39a46be4.html" target="n" data-glyph="76,1" class="i method">LuceneQueryApiAsync</a>(<a href="../Model/LuceneQueryModel.cs.html#dc421676f8802ff4" class="t t">LuceneQueryModel</a> <span id="r11 rd" class="r11 r">queryModel</span>, <b>bool</b> <span id="r4 rd" class="r4 r">returnContentItems</span> = <b>false</b>)
+        {
+            <a href="../Services/LuceneQuery.cs.html#f33b923fb16807e8" class="k">var</a> <span id="r12 rd" class="r12 r">luceneQuery</span> = <b>new</b> <a href="../Services/LuceneQuery.cs.html#5e6bf136a00f03cb" class="t constructor">LuceneQuery</a>
+            {
+                <a href="../Services/LuceneQuery.cs.html#e351fd97661904a2" class="i property">Index</a> = <span class="r11 r">queryModel</span>.<a href="../Model/LuceneQueryModel.cs.html#10c0da55159b83b4" class="i property">IndexName</a>,
+                <a href="../Services/LuceneQuery.cs.html#4166fced29188cf1" class="i property">Template</a> = <span class="r11 r">queryModel</span>.<a href="../Model/LuceneQueryModel.cs.html#43e2487f9e786b62" class="i property">Query</a>,
+                <a href="../Services/LuceneQuery.cs.html#e2d56f9a90718df0" class="i property">ReturnContentItems</a> = <span class="r4 r">returnContentItems</span>
+            };
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">queryParameters</span> = <span class="r11 r">queryModel</span>.<a href="../Model/LuceneQueryModel.cs.html#df89ded101fb1669" class="i property">Parameters</a> != <b>null</b> ?
+                <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;&gt;(<span class="r11 r">queryModel</span>.<a href="../Model/LuceneQueryModel.cs.html#df89ded101fb1669" class="i property">Parameters</a>)
+                : <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;();
+ 
+            <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="k">var</a> <span id="r14 rd" class="r14 r">result</span> = <a href="#c248178f23b54528" class="i field">_luceneQuerySource</a>.<span class="i">ExecuteQueryAsync</span>(<span class="r12 r">luceneQuery</span>, <span class="r13 r">queryParameters</span>);
+            <b>return</b> <span class="r14 r">result</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

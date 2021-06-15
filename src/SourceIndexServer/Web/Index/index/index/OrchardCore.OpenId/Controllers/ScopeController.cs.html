@@ -1,0 +1,289 @@
+﻿<!DOCTYPE html>
+<html><head><title>ScopeController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(280);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId/Controllers/ScopeController.cs" target="_top">Controllers\ScopeController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId" target="_top">src\OrchardCore.Modules\OrchardCore.OpenId\OrchardCore.OpenId.csproj</a> (OrchardCore.OpenId)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Descriptor</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Descriptors</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Managers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Controllers</span>
+{
+    [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>, <span class="i">Feature</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#b0e247f8196e91a5" class="t t">Features</a>.<a href="/OrchardCore.OpenId.Core/A.html#f78fb8fab9e6f5c4" class="i field">Management</a>)]
+    <b>public class</b> <a id="ead273c07ae9f27d" href="../R/ead273c07ae9f27d.html" target="n" data-glyph="0,0" class="t t">ScopeController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="28b275ca08766876" href="../R/28b275ca08766876.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="4dcd196b0eda6ad7" href="../R/4dcd196b0eda6ad7.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <a href="/OrchardCore.OpenId.Core/A.html#2849ab6754687c18" class="t t">IOpenIdScopeManager</a> <a id="06ff1e080b1c6b3a" href="../R/06ff1e080b1c6b3a.html" target="n" data-glyph="46,1" class="i field">_scopeManager</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="3d3871dfb918b5ce" href="../R/3d3871dfb918b5ce.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="c78754414512b9cf" href="../R/c78754414512b9cf.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="i">ShellDescriptor</span> <a id="074bed357fc6f320" href="../R/074bed357fc6f320.html" target="n" data-glyph="46,1" class="i field">_shellDescriptor</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="2fe531c49cd51dba" href="../R/2fe531c49cd51dba.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="f281f1b96cec73e5" href="../R/f281f1b96cec73e5.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly dynamic</b> <a id="dd65590e3339b3a8" href="../R/dd65590e3339b3a8.html" target="n" data-glyph="46,1" class="i field">New</a>;
+ 
+        <b>public</b> <a id="828929ee35dad7e4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ScopeController</a>(
+            <a href="/OrchardCore.OpenId.Core/A.html#2849ab6754687c18" class="t t">IOpenIdScopeManager</a> <span id="r0 rd" class="r0 r">scopeManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r1 rd" class="r1 r">shapeFactory</span>,
+            <span class="i">ISiteService</span> <span id="r2 rd" class="r2 r">siteService</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#ead273c07ae9f27d" class="t t">ScopeController</a>&gt; <span id="r3 rd" class="r3 r">stringLocalizer</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r4 rd" class="r4 r">authorizationService</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#ead273c07ae9f27d" class="t t">ScopeController</a>&gt; <span id="r5 rd" class="r5 r">htmlLocalizer</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r6 rd" class="r6 r">notifier</span>,
+            <span class="i">ShellDescriptor</span> <span id="r7 rd" class="r7 r">shellDescriptor</span>,
+            <span class="i">ShellSettings</span> <span id="r8 rd" class="r8 r">shellSettings</span>,
+            <span class="i">IShellHost</span> <span id="r9 rd" class="r9 r">shellHost</span>)
+        {
+            <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a> = <span class="r0 r">scopeManager</span>;
+            <a href="#dd65590e3339b3a8" class="i field">New</a> = <span class="r1 r">shapeFactory</span>;
+            <a href="#3d3871dfb918b5ce" class="i field">_siteService</a> = <span class="r2 r">siteService</span>;
+            <a href="#4dcd196b0eda6ad7" class="i field">S</a> = <span class="r3 r">stringLocalizer</span>;
+            <a href="#28b275ca08766876" class="i field">_authorizationService</a> = <span class="r4 r">authorizationService</span>;
+            <a href="#c78754414512b9cf" class="i field">_notifier</a> = <span class="r6 r">notifier</span>;
+            <a href="#074bed357fc6f320" class="i field">_shellDescriptor</a> = <span class="r7 r">shellDescriptor</span>;
+            <a href="#2fe531c49cd51dba" class="i field">_shellSettings</a> = <span class="r8 r">shellSettings</span>;
+            <a href="#f281f1b96cec73e5" class="i field">_shellHost</a> = <span class="r9 r">shellHost</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="8d2d67bf52e7c5e6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="/OrchardCore.Navigation.Core/A.html#51c8763abc99132d" class="t t">PagerParameters</a> <span id="r10 rd" class="r10 r">pagerParameters</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#28b275ca08766876" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#f6b5c6a3540d9977" class="t t">Permissions</a>.<a href="../Permissions.cs.html#3d9eb5a5d10f9fbb" class="i field">ManageScopes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">siteSettings</span> = <b>await</b> <a href="#3d3871dfb918b5ce" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+            <a href="/OrchardCore.Navigation.Core/A.html#e6e879b28e4fdee2" class="k">var</a> <span id="r12 rd" class="r12 r">pager</span> = <b>new</b> <span class="t">Pager</span>(<span class="r10 r">pagerParameters</span>, <span class="r11 r">siteSettings</span>.<span class="i">PageSize</span>);
+            <b>var</b> <span id="r13 rd" class="r13 r">count</span> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">CountAsync</span>();
+ 
+            <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#c0e79f0e9c78f05f" class="k">var</a> <span id="r14 rd" class="r14 r">model</span> = <b>new</b> <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#c0e79f0e9c78f05f" class="t constructor">OpenIdScopeIndexViewModel</a>
+            {
+                <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#9242c56582325044" class="i property">Pager</a> = (<b>await</b> <a href="#dd65590e3339b3a8" class="i field">New</a>.<span class="i">Pager</span>(<span class="r12 r">pager</span>)).<span class="i">TotalItemCount</span>(<span class="r13 r">count</span>)
+            };
+ 
+            <b>await</b> <b>foreach</b> (<b>var</b> <span id="r15 rd" class="r15 r">scope</span> <b>in</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">ListAsync</span>(<span class="r12 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2ca905c9c05191b1" class="i property">PageSize</a>, <span class="r12 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#985e078e8039ce3c" class="i method">GetStartIndex</a>()))
+            {
+                <span class="r14 r">model</span>.<a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#5b2d62dc3c8dcc02" class="i property">Scopes</a>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<b>new</b> <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#266a8fb8fac45bc2" class="t constructor">OpenIdScopeEntry</a>
+                {
+                    <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#c78af721b1c48999" class="i property">Description</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetDescriptionAsync</span>(<span class="r15 r">scope</span>),
+                    <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#3bbb7848428461e2" class="i property">DisplayName</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetDisplayNameAsync</span>(<span class="r15 r">scope</span>),
+                    <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#ee830b0b243cfc55" class="i property">Id</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetPhysicalIdAsync</span>(<span class="r15 r">scope</span>),
+                    <a href="../ViewModels/OpenIdScopeIndexViewModel.cs.html#4db5ccd1be99af8f" class="i property">Name</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetNameAsync</span>(<span class="r15 r">scope</span>)
+                });
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r14 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="3fd0d6a66f8c4708" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#28b275ca08766876" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#f6b5c6a3540d9977" class="t t">Permissions</a>.<a href="../Permissions.cs.html#3d9eb5a5d10f9fbb" class="i field">ManageScopes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#048266f9efbd20d9" class="k">var</a> <span id="r17 rd" class="r17 r">model</span> = <b>new</b> <a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#048266f9efbd20d9" class="t constructor">CreateOpenIdScopeViewModel</a>();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r18 rd" class="r18 r">tenant</span> <b>in</b> <a href="#f281f1b96cec73e5" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>().<span class="i">Where</span>(<span id="r19 rd" class="r19 r">s</span> =&gt; <span class="r19 r">s</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Running</span>))
+            {
+                <span class="r17 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#d21c4a273a11fb15" class="i property">Tenants</a>.<span class="i method">Add</span>(<b>new</b> <a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#048266f9efbd20d9" class="t t">CreateOpenIdScopeViewModel</a>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#8323ee8aeee92c67" class="t constructor">TenantEntry</a>
+                {
+                    <a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#23bf7cfba4eeaddb" class="i property">Current</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(<span class="r18 r">tenant</span>.<span class="i">Name</span>, <a href="#2fe531c49cd51dba" class="i field">_shellSettings</a>.<span class="i">Name</span>),
+                    <a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#3622e2168db0a838" class="i property">Name</a> = <span class="r18 r">tenant</span>.<span class="i">Name</span>
+                });
+            }
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r16 r">returnUrl</span>;
+            <b>return</b> <span class="i method">View</span>(<span class="r17 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="a0caacce741070b7" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#048266f9efbd20d9" class="t t">CreateOpenIdScopeViewModel</a> <span id="r20 rd" class="r20 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#28b275ca08766876" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#f6b5c6a3540d9977" class="t t">Permissions</a>.<a href="../Permissions.cs.html#3d9eb5a5d10f9fbb" class="i field">ManageScopes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">FindByNameAsync</span>(<span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#2019cf53a43a1d8b" class="i property">Name</a>) != <b>null</b>)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#2019cf53a43a1d8b" class="i property">Name</a>), <a href="#4dcd196b0eda6ad7" class="i field">S</a>[<span class="s">&quot;The name is already taken by another scope.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r21 r">returnUrl</span>;
+                <b>return</b> <span class="i method">View</span>(<span class="r20 r">model</span>);
+            }
+ 
+            <a href="/OrchardCore.OpenId.Core/A.html#522669ffae6af936" class="k">var</a> <span id="r22 rd" class="r22 r">descriptor</span> = <b>new</b> <a href="/OrchardCore.OpenId.Core/A.html#522669ffae6af936" class="t constructor">OpenIdScopeDescriptor</a>
+            {
+                <span class="i">Description</span> = <span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#0fc1795da5d1a3c9" class="i property">Description</a>,
+                <span class="i">DisplayName</span> = <span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#675779c6a2d31065" class="i property">DisplayName</a>,
+                <span class="i">Name</span> = <span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#2019cf53a43a1d8b" class="i property">Name</a>
+            };
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#75acc66c7a891b01" class="i property">Resources</a>))
+            {
+                <span class="r22 r">descriptor</span>.<span class="i">Resources</span>.<span class="i">UnionWith</span>(<span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#75acc66c7a891b01" class="i property">Resources</a>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39; &#39;</span>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>));
+            }
+ 
+            <span class="r22 r">descriptor</span>.<span class="i">Resources</span>.<span class="i">UnionWith</span>(<span class="r20 r">model</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#d21c4a273a11fb15" class="i property">Tenants</a>
+                .<span class="i method">Where</span>(<span id="r23 rd" class="r23 r">tenant</span> =&gt; <span class="r23 r">tenant</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#a7525fe8cacf5ef3" class="i property">Selected</a>)
+                .<span class="i method">Where</span>(<span id="r24 rd" class="r24 r">tenant</span> =&gt; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(<span class="r24 r">tenant</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#3622e2168db0a838" class="i property">Name</a>, <a href="#2fe531c49cd51dba" class="i field">_shellSettings</a>.<span class="i">Name</span>))
+                .<span class="i method">Select</span>(<span id="r25 rd" class="r25 r">tenant</span> =&gt; <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#70a05db26ae04a93" class="t t">Prefixes</a>.<a href="/OrchardCore.OpenId.Core/A.html#03c10ba0056de799" class="i field">Tenant</a> + <span class="r25 r">tenant</span>.<a href="../ViewModels/CreateOpenIdScopeViewModel.cs.html#3622e2168db0a838" class="i property">Name</a>));
+ 
+            <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">CreateAsync</span>(<span class="r22 r">descriptor</span>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r21 r">returnUrl</span>))
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<span class="s">&quot;Index&quot;</span>);
+            }
+ 
+            <b>return</b> <span class="i method">LocalRedirect</span>(<span class="r21 r">returnUrl</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="1900a64f5a1aaab6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#28b275ca08766876" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#f6b5c6a3540d9977" class="t t">Permissions</a>.<a href="../Permissions.cs.html#3d9eb5a5d10f9fbb" class="i field">ManageScopes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r28 rd" class="r28 r">scope</span> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<a href="/OrchardCore.OpenId.Core/A.html#01c938c25a7a2613" class="i method">FindByPhysicalIdAsync</a>(<span class="r26 r">id</span>);
+            <b>if</b> (<span class="r28 r">scope</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#92d9d19002e33eac" class="k">var</a> <span id="r29 rd" class="r29 r">model</span> = <b>new</b> <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#92d9d19002e33eac" class="t constructor">EditOpenIdScopeViewModel</a>
+            {
+                <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#63994aea7a7675b7" class="i property">Description</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetDescriptionAsync</span>(<span class="r28 r">scope</span>),
+                <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#cb5d270963ed6c47" class="i property">DisplayName</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetDisplayNameAsync</span>(<span class="r28 r">scope</span>),
+                <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#f6edde942e1e7081" class="i property">Id</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<a href="/OrchardCore.OpenId.Core/A.html#082c102617b1299b" class="i method">GetPhysicalIdAsync</a>(<span class="r28 r">scope</span>),
+                <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#9a937832533c0c4c" class="i property">Name</a> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetNameAsync</span>(<span class="r28 r">scope</span>)
+            };
+ 
+            <b>var</b> <span id="r30 rd" class="r30 r">resources</span> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetResourcesAsync</span>(<span class="r28 r">scope</span>);
+ 
+            <span class="r29 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#76e32bb8f8e8a128" class="i property">Resources</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Join</span>(<span class="s">&quot; &quot;</span>,
+                <b>from</b> <span class="i">resource</span> <b>in</b> <span class="r30 r">resources</span>
+                <b>where</b> !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="i">resource</span>) &amp;&amp; !<span class="i">resource</span>.<span class="i">StartsWith</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#70a05db26ae04a93" class="t t">Prefixes</a>.<a href="/OrchardCore.OpenId.Core/A.html#03c10ba0056de799" class="i field">Tenant</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>)
+                <b>select</b> <span class="i">resource</span>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r31 rd" class="r31 r">tenant</span> <b>in</b> <a href="#f281f1b96cec73e5" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>().<span class="i">Where</span>(<span id="r32 rd" class="r32 r">s</span> =&gt; <span class="r32 r">s</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Running</span>))
+            {
+                <span class="r29 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#2563adedc6bcbe71" class="i property">Tenants</a>.<span class="i method">Add</span>(<b>new</b> <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#92d9d19002e33eac" class="t t">EditOpenIdScopeViewModel</a>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#22a093acbe5c986c" class="t constructor">TenantEntry</a>
+                {
+                    <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#b4e674136e7cbbdc" class="i property">Current</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(<span class="r31 r">tenant</span>.<span class="i">Name</span>, <a href="#2fe531c49cd51dba" class="i field">_shellSettings</a>.<span class="i">Name</span>),
+                    <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#9e91194c0f5ce7e6" class="i property">Name</a> = <span class="r31 r">tenant</span>.<span class="i">Name</span>,
+                    <a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#3e007931a1ef5ffc" class="i property">Selected</a> = <span class="r30 r">resources</span>.<span class="i">Contains</span>(<a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#70a05db26ae04a93" class="t t">Prefixes</a>.<a href="/OrchardCore.OpenId.Core/A.html#03c10ba0056de799" class="i field">Tenant</a> + <span class="r31 r">tenant</span>.<span class="i">Name</span>)
+                });
+            }
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r27 r">returnUrl</span>;
+            <b>return</b> <span class="i method">View</span>(<span class="r29 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="b3e4f496f4608746" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#92d9d19002e33eac" class="t t">EditOpenIdScopeViewModel</a> <span id="r33 rd" class="r33 r">model</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r34 rd" class="r34 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#28b275ca08766876" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#f6b5c6a3540d9977" class="t t">Permissions</a>.<a href="../Permissions.cs.html#3d9eb5a5d10f9fbb" class="i field">ManageScopes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r35 rd" class="r35 r">scope</span> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<a href="/OrchardCore.OpenId.Core/A.html#01c938c25a7a2613" class="i method">FindByPhysicalIdAsync</a>(<span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#f6edde942e1e7081" class="i property">Id</a>);
+            <b>if</b> (<span class="r35 r">scope</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>var</b> <span id="r36 rd" class="r36 r">other</span> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">FindByNameAsync</span>(<span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#9a937832533c0c4c" class="i property">Name</a>);
+                <b>if</b> (<span class="r36 r">other</span> != <b>null</b> &amp;&amp; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(
+                    <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetIdAsync</span>(<span class="r36 r">other</span>),
+                    <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">GetIdAsync</span>(<span class="r35 r">scope</span>)))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#9a937832533c0c4c" class="i property">Name</a>), <a href="#4dcd196b0eda6ad7" class="i field">S</a>[<span class="s">&quot;The name is already taken by another scope.&quot;</span>]);
+                }
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r34 r">returnUrl</span>;
+                <b>return</b> <span class="i method">View</span>(<span class="r33 r">model</span>);
+            }
+ 
+            <a href="/OrchardCore.OpenId.Core/A.html#522669ffae6af936" class="k">var</a> <span id="r37 rd" class="r37 r">descriptor</span> = <b>new</b> <a href="/OrchardCore.OpenId.Core/A.html#522669ffae6af936" class="t constructor">OpenIdScopeDescriptor</a>();
+            <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">PopulateAsync</span>(<span class="r37 r">descriptor</span>, <span class="r35 r">scope</span>);
+ 
+            <span class="r37 r">descriptor</span>.<span class="i">Description</span> = <span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#63994aea7a7675b7" class="i property">Description</a>;
+            <span class="r37 r">descriptor</span>.<span class="i">DisplayName</span> = <span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#cb5d270963ed6c47" class="i property">DisplayName</a>;
+            <span class="r37 r">descriptor</span>.<span class="i">Name</span> = <span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#9a937832533c0c4c" class="i property">Name</a>;
+ 
+            <span class="r37 r">descriptor</span>.<span class="i">Resources</span>.<span class="i">Clear</span>();
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#76e32bb8f8e8a128" class="i property">Resources</a>))
+            {
+                <span class="r37 r">descriptor</span>.<span class="i">Resources</span>.<span class="i">UnionWith</span>(<span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#76e32bb8f8e8a128" class="i property">Resources</a>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39; &#39;</span>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>));
+            }
+ 
+            <span class="r37 r">descriptor</span>.<span class="i">Resources</span>.<span class="i">UnionWith</span>(<span class="r33 r">model</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#2563adedc6bcbe71" class="i property">Tenants</a>
+                .<span class="i method">Where</span>(<span id="r38 rd" class="r38 r">tenant</span> =&gt; <span class="r38 r">tenant</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#3e007931a1ef5ffc" class="i property">Selected</a>)
+                .<span class="i method">Where</span>(<span id="r39 rd" class="r39 r">tenant</span> =&gt; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(<span class="r39 r">tenant</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#9e91194c0f5ce7e6" class="i property">Name</a>, <a href="#2fe531c49cd51dba" class="i field">_shellSettings</a>.<span class="i">Name</span>))
+                .<span class="i method">Select</span>(<span id="r40 rd" class="r40 r">tenant</span> =&gt; <a href="/OrchardCore.OpenId.Core/A.html#fccd8503b7a327a6" class="t t">OpenIdConstants</a>.<a href="/OrchardCore.OpenId.Core/A.html#70a05db26ae04a93" class="t t">Prefixes</a>.<a href="/OrchardCore.OpenId.Core/A.html#03c10ba0056de799" class="i field">Tenant</a> + <span class="r40 r">tenant</span>.<a href="../ViewModels/EditOpenIdScopeViewModel.cs.html#9e91194c0f5ce7e6" class="i property">Name</a>));
+ 
+            <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">UpdateAsync</span>(<span class="r35 r">scope</span>, <span class="r37 r">descriptor</span>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r34 r">returnUrl</span>))
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<span class="s">&quot;Index&quot;</span>);
+            }
+ 
+            <b>return</b> <span class="i method">LocalRedirect</span>(<span class="r34 r">returnUrl</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="c01c84cf63281620" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Delete</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r41 rd" class="r41 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#28b275ca08766876" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#f6b5c6a3540d9977" class="t t">Permissions</a>.<a href="../Permissions.cs.html#3d9eb5a5d10f9fbb" class="i field">ManageScopes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r42 rd" class="r42 r">scope</span> = <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<a href="/OrchardCore.OpenId.Core/A.html#01c938c25a7a2613" class="i method">FindByPhysicalIdAsync</a>(<span class="r41 r">id</span>);
+            <b>if</b> (<span class="r42 r">scope</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>await</b> <a href="#06ff1e080b1c6b3a" class="i field">_scopeManager</a>.<span class="i">DeleteAsync</span>(<span class="r42 r">scope</span>);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

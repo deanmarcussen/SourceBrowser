@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html><head><title>DeploymentPlanDeploymentSource.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(75);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Deployment/Deployment/DeploymentPlanDeploymentSource.cs" target="_top">Deployment\DeploymentPlanDeploymentSource.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Deployment" target="_top">src\OrchardCore.Modules\OrchardCore.Deployment\OrchardCore.Deployment.csproj</a> (OrchardCore.Deployment)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Deployment</span>
+{
+    <b>public class</b> <a id="f83b023db8da2863" href="../R/f83b023db8da2863.html" target="n" data-glyph="0,0" class="t t">DeploymentPlanDeploymentSource</a> : <span class="i">IDeploymentSource</span>
+    {
+        <b>private readonly</b> <span class="i">IDeploymentPlanService</span> <a id="78b3cb41881d263b" href="../R/78b3cb41881d263b.html" target="n" data-glyph="46,1" class="i field">_deploymentPlanService</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IDeploymentStepFactory</span>&gt; <a id="d4eca0119ba26f26" href="../R/d4eca0119ba26f26.html" target="n" data-glyph="46,1" class="i field">_deploymentStepFactories</a>;
+ 
+        <b>public</b> <a id="296498315db19089" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DeploymentPlanDeploymentSource</a>(
+            <span class="i">IDeploymentPlanService</span> <span id="r0 rd" class="r0 r">deploymentPlanService</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IDeploymentStepFactory</span>&gt; <span id="r1 rd" class="r1 r">deploymentStepFactories</span>)
+        {
+            <a href="#78b3cb41881d263b" class="i field">_deploymentPlanService</a> = <span class="r0 r">deploymentPlanService</span>;
+            <a href="#d4eca0119ba26f26" class="i field">_deploymentStepFactories</a> = <span class="r1 r">deploymentStepFactories</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9fe63fe9c57a0445" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ProcessDeploymentStepAsync</a>(<span class="i">DeploymentStep</span> <span id="r2 rd" class="r2 r">deploymentStep</span>, <span class="i">DeploymentPlanResult</span> <span id="r3 rd" class="r3 r">result</span>)
+        {
+            <b>if</b> (!(<span class="r2 r">deploymentStep</span> <b>is</b> <a href="DeploymentPlanDeploymentStep.cs.html#5bce4dd6b5a7e4dd" class="t t">DeploymentPlanDeploymentStep</a> <span id="r4 rd" class="r4 r">deploymentPlanStep</span>))
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#78b3cb41881d263b" class="i field">_deploymentPlanService</a>.<span class="i">DoesUserHavePermissionsAsync</span>())
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">deploymentStepFactories</span> = <a href="#d4eca0119ba26f26" class="i field">_deploymentStepFactories</a>.<span class="i method">ToDictionary</span>(<span id="r6 rd" class="r6 r">f</span> =&gt; <span class="r6 r">f</span>.<span class="i">Name</span>);
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">deploymentPlans</span> = <span class="r4 r">deploymentPlanStep</span>.<a href="DeploymentPlanDeploymentStep.cs.html#64f6975ae560b5b3" class="i property">IncludeAll</a>
+                ? (<b>await</b> <a href="#78b3cb41881d263b" class="i field">_deploymentPlanService</a>.<span class="i">GetAllDeploymentPlansAsync</span>()).<span class="i">ToArray</span>()
+                : (<b>await</b> <a href="#78b3cb41881d263b" class="i field">_deploymentPlanService</a>.<span class="i">GetDeploymentPlansAsync</span>(<span class="r4 r">deploymentPlanStep</span>.<a href="DeploymentPlanDeploymentStep.cs.html#09aeb8738ce1f624" class="i property">DeploymentPlanNames</a>)).<span class="i">ToArray</span>();
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">plans</span> = (<b>from</b> <span class="i">plan</span> <b>in</b> <span class="r7 r">deploymentPlans</span>
+                         <b>select</b> <b>new</b>
+                         {
+                             <span class="i">plan</span>.<span class="i">Name</span>,
+                             <a href="#a18ad40fc7239b9b" class="i property">Steps</a> = (<b>from</b> <span class="i">step</span> <b>in</b> <span class="i">plan</span>.<span class="i">DeploymentSteps</span>
+                                      <b>select</b> <b>new</b>
+                                      {
+                                          <a href="#32b3e9d53a6e4af0" class="i property">Type</a> = <span class="i">GetStepType</span>(<span class="r5 r">deploymentStepFactories</span>, <span class="i">step</span>),
+                                          <a href="#4465277d3a471fb5" class="i property">Step</a> = <span class="i">step</span>
+                                      }).<span class="i">ToArray</span>()
+                         }).<span class="i">ToArray</span>();
+ 
+            <span class="c">// Adding deployment plans</span>
+            <span class="r3 r">result</span>.<span class="i">Steps</span>.<span class="i">Add</span>(<b>new</b> <span class="i">JObject</span>(
+                <b>new</b> <span class="i">JProperty</span>(<span class="s">&quot;name&quot;</span>, <span class="s">&quot;deployment&quot;</span>),
+                <b>new</b> <span class="i">JProperty</span>(<span class="s">&quot;Plans&quot;</span>, <span class="i">JArray</span>.<span class="i">FromObject</span>(<span class="r8 r">plans</span>))
+            ));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> A Site Settings Step is generic and the name is mapped to the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IDeploymentStepFactory</span>.<span class="i">Name</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> so its &#39;Type&#39; should be determined though a lookup.</span>
+        <span class="c">///</span><span class="c"> A normal steps name is not mapped to the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IDeploymentStepFactory</span>.<span class="i">Name</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> and should use its type.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private string</b> <a id="d24270ecb506a5b6" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">GetStepType</a>(<a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">IDeploymentStepFactory</span>&gt; <span id="r9 rd" class="r9 r">deploymentStepFactories</span>, <span class="i">DeploymentStep</span> <span id="r10 rd" class="r10 r">step</span>)
+        {
+            <b>if</b> (<span class="r9 r">deploymentStepFactories</span>.<span class="i">TryGetValue</span>(<span class="r10 r">step</span>.<span class="i">Name</span>, <b>out</b> <b>var</b> <span id="r11 rd" class="r11 r">deploymentStepFactory</span>))
+            {
+                <b>return</b> <span class="r11 r">deploymentStepFactory</span>.<span class="i">Name</span>;
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="r10 r">step</span>.<span class="i">GetType</span>().<span class="i">Name</span>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

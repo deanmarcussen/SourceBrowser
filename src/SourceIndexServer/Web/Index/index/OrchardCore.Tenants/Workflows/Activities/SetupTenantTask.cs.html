@@ -1,0 +1,230 @@
+﻿<!DOCTYPE html>
+<html><head><title>SetupTenantTask.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(221);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tenants/Workflows/Activities/SetupTenantTask.cs" target="_top">Workflows\Activities\SetupTenantTask.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tenants" target="_top">src\OrchardCore.Modules\OrchardCore.Tenants\OrchardCore.Tenants.csproj</a> (OrchardCore.Tenants)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Abstractions</span>.<span class="i">Setup</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Email</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Abstractions</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Activities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tenants</span>.<span class="i n">Workflows</span>.<span class="i n">Activities</span>
+{
+    <b>public class</b> <a id="15a9172018d83b8c" href="../../R/15a9172018d83b8c.html" target="n" data-glyph="0,0" class="t t">SetupTenantTask</a> : <a href="TenantTask.cs.html#3556e3b0037f9f8e" class="t t">TenantTask</a>
+    {
+        <b>private readonly</b> <span class="i">IClock</span> <a id="4ae04b8433cf2d0c" href="../../R/4ae04b8433cf2d0c.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="2ca57db840010244" href="../../R/2ca57db840010244.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <a id="2a32edd69c6ffe52" href="../../R/2a32edd69c6ffe52.html" target="n" data-glyph="46,1" class="i field">_emailAddressValidator</a>;
+        <b>private readonly</b> <span class="t t">IdentityOptions</span> <a id="64ef8984bf8895d0" href="../../R/64ef8984bf8895d0.html" target="n" data-glyph="46,1" class="i field">_identityOptions</a>;
+ 
+        <b>public</b> <a id="fec7c71c2bb16b04" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SetupTenantTask</a>(
+            <span class="i">IClock</span> <span id="r0 rd" class="r0 r">clock</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r1 rd" class="r1 r">updateModelAccessor</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <span id="r2 rd" class="r2 r">emailAddressValidator</span>,
+            <span class="t t">IOptions</span>&lt;<span class="t t">IdentityOptions</span>&gt; <span id="r3 rd" class="r3 r">identityOptions</span>,
+            <span class="i">IShellSettingsManager</span> <span id="r4 rd" class="r4 r">shellSettingsManager</span>,
+            <span class="i">IShellHost</span> <span id="r5 rd" class="r5 r">shellHost</span>,
+            <a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a> <span id="r6 rd" class="r6 r">setupService</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#3d648d89c6aacd19" class="t t">IWorkflowExpressionEvaluator</a> <span id="r7 rd" class="r7 r">expressionEvaluator</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#bcfb58591c1b1350" class="t t">IWorkflowScriptEvaluator</a> <span id="r8 rd" class="r8 r">scriptEvaluator</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#15a9172018d83b8c" class="t t">SetupTenantTask</a>&gt; <span id="r9 rd" class="r9 r">localizer</span>)
+            : <a href="TenantTask.cs.html#c7d9cc1fd140aba8" class="k">base</a>(<span class="r4 r">shellSettingsManager</span>, <span class="r5 r">shellHost</span>, <span class="r7 r">expressionEvaluator</span>, <span class="r8 r">scriptEvaluator</span>, <span class="r9 r">localizer</span>)
+        {
+            <a href="#2cbf6db73057980c" class="i property">SetupService</a> = <span class="r6 r">setupService</span>;
+            <a href="#4ae04b8433cf2d0c" class="i field">_clock</a> = <span class="r0 r">clock</span>;
+            <a href="#2ca57db840010244" class="i field">_updateModelAccessor</a> = <span class="r1 r">updateModelAccessor</span>;
+            <a href="#2a32edd69c6ffe52" class="i field">_emailAddressValidator</a> = <span class="r2 r">emailAddressValidator</span>;
+            <a href="#64ef8984bf8895d0" class="i field">_identityOptions</a> = <span class="r3 r">identityOptions</span>.<span class="i property">Value</span>;
+        }
+ 
+        <b>protected</b> <a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a> <a id="2cbf6db73057980c" href="../../R/2cbf6db73057980c.html" target="n" data-glyph="105,1" class="i property">SetupService</a> { <b>get</b>; }
+ 
+        <b>public override string</b> <a id="250f8d3b87f06663" href="../../R/250f8d3b87f06663.html" target="n" data-glyph="102,1" class="i property">Name</a> =&gt; <b>nameof</b>(<a href="#15a9172018d83b8c" class="t t">SetupTenantTask</a>);
+ 
+        <b>public override</b> <span class="t t">LocalizedString</span> <a id="890353e2840d5bc2" href="../../R/890353e2840d5bc2.html" target="n" data-glyph="102,1" class="i property">Category</a> =&gt; <a href="TenantActivity.cs.html#eaed634cc7303d2c" class="i field">S</a>[<span class="s">&quot;Tenant&quot;</span>];
+ 
+        <b>public override</b> <span class="t t">LocalizedString</span> <a id="88b8d2980b7ce899" href="../../R/88b8d2980b7ce899.html" target="n" data-glyph="102,1" class="i property">DisplayText</a> =&gt; <a href="TenantActivity.cs.html#eaed634cc7303d2c" class="i field">S</a>[<span class="s">&quot;Setup Tenant Task&quot;</span>];
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="53622ca468568f53" href="../../R/53622ca468568f53.html" target="n" data-glyph="102,1" class="i property">SiteName</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="9ac3dc2ded060e0d" href="../../R/9ac3dc2ded060e0d.html" target="n" data-glyph="102,1" class="i property">AdminUsername</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="e14066fa527d6dc4" href="../../R/e14066fa527d6dc4.html" target="n" data-glyph="102,1" class="i property">AdminEmail</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="e526adac4aebf0d6" href="../../R/e526adac4aebf0d6.html" target="n" data-glyph="102,1" class="i property">AdminPassword</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="5958e6482dca65e2" href="../../R/5958e6482dca65e2.html" target="n" data-glyph="102,1" class="i property">DatabaseProvider</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="b919dfeab0ac37a0" href="../../R/b919dfeab0ac37a0.html" target="n" data-glyph="102,1" class="i property">DatabaseConnectionString</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="f34e672351aaa586" href="../../R/f34e672351aaa586.html" target="n" data-glyph="102,1" class="i property">DatabaseTablePrefix</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="ca314e5fb489b9fe" href="../../R/ca314e5fb489b9fe.html" target="n" data-glyph="102,1" class="i property">RecipeName</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#896cd41950be540c" class="t t">Outcome</a>&gt; <a id="e5accc0bed805e68" href="../../R/e5accc0bed805e68.html" target="n" data-glyph="72,1" class="i method">GetPossibleOutcomes</a>(<a href="/OrchardCore.Workflows.Abstractions/A.html#6f67695a3f6cde25" class="t t">WorkflowExecutionContext</a> <span id="r10 rd" class="r10 r">workflowContext</span>, <a href="/OrchardCore.Workflows.Abstractions/A.html#9e67ef319c1dd26d" class="t t">ActivityContext</a> <span id="r11 rd" class="r11 r">activityContext</span>)
+        {
+            <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#6be3d9fbf6cdd83d" class="i method">Outcomes</a>(<a href="TenantActivity.cs.html#eaed634cc7303d2c" class="i field">S</a>[<span class="s">&quot;Done&quot;</span>], <a href="TenantActivity.cs.html#eaed634cc7303d2c" class="i field">S</a>[<span class="s">&quot;Failed&quot;</span>]);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#d58e24256eaeafa5" class="t t">ActivityExecutionResult</a>&gt; <a id="b438ab57908748a4" href="../../R/b438ab57908748a4.html" target="n" data-glyph="72,1" class="i method">ExecuteAsync</a>(<a href="/OrchardCore.Workflows.Abstractions/A.html#6f67695a3f6cde25" class="t t">WorkflowExecutionContext</a> <span id="r12 rd" class="r12 r">workflowContext</span>, <a href="/OrchardCore.Workflows.Abstractions/A.html#9e67ef319c1dd26d" class="t t">ActivityContext</a> <span id="r13 rd" class="r13 r">activityContext</span>)
+        {
+            <b>if</b> (<span class="i">ShellScope</span>.<span class="i">Context</span>.<span class="i">Settings</span>.<span class="i">Name</span> != <span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>)
+            {
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">tenantName</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="TenantActivity.cs.html#0d60ced847f0e52b" class="i property">TenantName</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r14 r">tenantName</span>))
+            {
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <b>if</b> (!<a href="TenantActivity.cs.html#f1384fd94ef55c05" class="i property">ShellHost</a>.<span class="i">TryGetSettings</span>(<span class="r14 r">tenantName</span>, <b>out</b> <b>var</b> <span id="r15 rd" class="r15 r">shellSettings</span>))
+            {
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <b>if</b> (<span class="r15 r">shellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Running</span>)
+            {
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <b>if</b> (<span class="r15 r">shellSettings</span>.<span class="i">State</span> != <span class="i">TenantState</span>.<span class="i">Uninitialized</span>)
+            {
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">siteName</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#53622ca468568f53" class="i property">SiteName</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">adminUsername</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#9ac3dc2ded060e0d" class="i property">AdminUsername</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">adminEmail</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#e14066fa527d6dc4" class="i property">AdminEmail</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r17 r">adminUsername</span>) || <span class="r17 r">adminUsername</span>.<span class="i method">Any</span>(<span id="r19 rd" class="r19 r">c</span> =&gt; !<a href="#64ef8984bf8895d0" class="i field">_identityOptions</a>.<span class="i property">User</span>.<span class="i property">AllowedUserNameCharacters</span>.<a href="@1@System.Runtime/A.html#98876d0c1980f5ef" class="i method">Contains</a>(<span class="r19 r">c</span>)))
+            {
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r18 r">adminEmail</span>) || !<a href="#2a32edd69c6ffe52" class="i field">_emailAddressValidator</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#20ced43e7c1e4aca" class="i method">Validate</a>(<span class="r18 r">adminEmail</span>))
+            {
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">adminPassword</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#e526adac4aebf0d6" class="i property">AdminPassword</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">databaseProvider</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#5958e6482dca65e2" class="i property">DatabaseProvider</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">databaseConnectionString</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#b919dfeab0ac37a0" class="i property">DatabaseConnectionString</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">databaseTablePrefix</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#f34e672351aaa586" class="i property">DatabaseTablePrefix</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r24 rd" class="r24 r">recipeName</span> = (<b>await</b> <a href="TenantActivity.cs.html#03ea2770c2937666" class="i property">ExpressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#ca314e5fb489b9fe" class="i property">RecipeName</a>, <span class="r12 r">workflowContext</span>, <b>null</b>))?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>();
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r21 r">databaseProvider</span>))
+            {
+                <span class="r21 r">databaseProvider</span> = <span class="r15 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>];
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r22 r">databaseConnectionString</span>))
+            {
+                <span class="r22 r">databaseConnectionString</span> = <span class="r15 r">shellSettings</span>[<span class="s">&quot;ConnectionString&quot;</span>];
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r23 r">databaseTablePrefix</span>))
+            {
+                <span class="r23 r">databaseTablePrefix</span> = <span class="r15 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>];
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r24 r">recipeName</span>))
+            {
+                <span class="r24 r">recipeName</span> = <span class="r15 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>];
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r25 rd" class="r25 r">recipes</span> = <b>await</b> <a href="#2cbf6db73057980c" class="i property">SetupService</a>.<a href="/OrchardCore.Setup.Abstractions/A.html#ae01aaaec25167ae" class="i method">GetSetupRecipesAsync</a>();
+            <a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="k">var</a> <span id="r26 rd" class="r26 r">recipe</span> = <span class="r25 r">recipes</span>.<span class="i method">FirstOrDefault</span>(<span id="r27 rd" class="r27 r">r</span> =&gt; <span class="r27 r">r</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#7158f1f797da090d" class="i property">Name</a> == <span class="r24 r">recipeName</span>);
+ 
+            <a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="k">var</a> <span id="r28 rd" class="r28 r">setupContext</span> = <b>new</b> <a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="t constructor">SetupContext</a>
+            {
+                <a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a> = <span class="r15 r">shellSettings</span>,
+                <a href="/OrchardCore.Setup.Abstractions/A.html#5c4a5562e1cf7e7a" class="i property">EnabledFeatures</a> = <b>null</b>,
+                <a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(),
+                <a href="/OrchardCore.Setup.Abstractions/A.html#374fdc99d51319ef" class="i property">Recipe</a> = <span class="r26 r">recipe</span>,
+                <a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;
+                {
+                    { <span class="i">SetupConstants</span>.<span class="i">SiteName</span>, <span class="r16 r">siteName</span> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminUsername</span>, <span class="r17 r">adminUsername</span> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminEmail</span>, <a href="#e14066fa527d6dc4" class="i property">AdminEmail</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminPassword</span>, <span class="r20 r">adminPassword</span> },
+                    { <span class="i">SetupConstants</span>.<span class="i">SiteTimeZone</span>, <a href="#4ae04b8433cf2d0c" class="i field">_clock</a>.<span class="i">GetSystemTimeZone</span>().<span class="i">TimeZoneId</span> },
+                    { <span class="i">SetupConstants</span>.<span class="i">DatabaseProvider</span>, <span class="r21 r">databaseProvider</span> },
+                    { <span class="i">SetupConstants</span>.<span class="i">DatabaseConnectionString</span>, <span class="r22 r">databaseConnectionString</span> },
+                    { <span class="i">SetupConstants</span>.<span class="i">DatabaseTablePrefix</span>, <span class="r23 r">databaseTablePrefix</span> },
+                }
+            };
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r29 rd" class="r29 r">executionId</span> = <b>await</b> <a href="#2cbf6db73057980c" class="i property">SetupService</a>.<a href="/OrchardCore.Setup.Abstractions/A.html#16ade5dbf324eb8c" class="i method">SetupAsync</a>(<span class="r28 r">setupContext</span>);
+ 
+            <span class="c">// Check if a component in the Setup failed</span>
+            <b>if</b> (<span class="r28 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>.<span class="i method">Any</span>())
+            {
+                <b>var</b> <span id="r30 rd" class="r30 r">updater</span> = <a href="#2ca57db840010244" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>;
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r31 rd" class="r31 r">error</span> <b>in</b> <span class="r28 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>)
+                {
+                    <span class="r30 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<span class="r31 r">error</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r31 r">error</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                }
+ 
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+            }
+ 
+            <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Done&quot;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

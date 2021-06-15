@@ -1,0 +1,454 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentItemDisplayCoordinator.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(445);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentManagement.Display/ContentDisplay/ContentItemDisplayCoordinator.cs" target="_top">ContentDisplay\ContentItemDisplayCoordinator.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentManagement.Display" target="_top">src\OrchardCore\OrchardCore.ContentManagement.Display\OrchardCore.ContentManagement.Display.csproj</a> (OrchardCore.ContentManagement.Display)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Zones</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Provides a concrete implementation of a display handler coordinating part, field and content item drivers.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="20407fc0b848587e" href="../R/20407fc0b848587e.html" target="n" data-glyph="0,0" class="t t">ContentItemDisplayCoordinator</a> : <a href="IContentDisplayHandler.cs.html#c19e5af489380288" class="t t">IContentDisplayHandler</a>
+    {
+        <b>private readonly</b> <a href="IContentPartDisplayDriverResolver.cs.html#aab835f4bf107752" class="t t">IContentPartDisplayDriverResolver</a> <a id="9cd438dd27fc521c" href="../R/9cd438dd27fc521c.html" target="n" data-glyph="46,1" class="i field">_contentPartDisplayDriverResolver</a>;
+        <b>private readonly</b> <a href="IContentFieldDisplayDriverResolver.cs.html#bf8a44185dbb5b93" class="t t">IContentFieldDisplayDriverResolver</a> <a id="14f2371bf67fce33" href="../R/14f2371bf67fce33.html" target="n" data-glyph="46,1" class="i field">_contentFieldDisplayDriverResolver</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IContentDisplayDriver.cs.html#230306fca9011b42" class="t t">IContentDisplayDriver</a>&gt; <a id="7ff114e8799cb9f3" href="../R/7ff114e8799cb9f3.html" target="n" data-glyph="46,1" class="i field">_displayDrivers</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="t t">IContentFieldDisplayDriver</a>&gt; <a id="01eaaa802dc8ef1e" href="../R/01eaaa802dc8ef1e.html" target="n" data-glyph="46,1" class="i field">_fieldDisplayDrivers</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IContentPartDisplayDriver.cs.html#6c339ccf96bcd625" class="t t">IContentPartDisplayDriver</a>&gt; <a id="b19b7892714a3961" href="../R/b19b7892714a3961.html" target="n" data-glyph="46,1" class="i field">_partDisplayDrivers</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="e682d756963f98ae" href="../R/e682d756963f98ae.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#c3f90773cb172204" class="t t">ITypeActivatorFactory</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a>&gt; <a id="0985ec8a5fcd661c" href="../R/0985ec8a5fcd661c.html" target="n" data-glyph="46,1" class="i field">_contentPartFactory</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="acd9292448973d9c" href="../R/acd9292448973d9c.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="05036bf394fab370" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentItemDisplayCoordinator</a>(
+            <a href="IContentPartDisplayDriverResolver.cs.html#aab835f4bf107752" class="t t">IContentPartDisplayDriverResolver</a> <span id="r0 rd" class="r0 r">contentPartDisplayDriverResolver</span>,
+            <a href="IContentFieldDisplayDriverResolver.cs.html#bf8a44185dbb5b93" class="t t">IContentFieldDisplayDriverResolver</a> <span id="r1 rd" class="r1 r">contentFieldDisplayDriverResolver</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r2 rd" class="r2 r">contentDefinitionManager</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IContentDisplayDriver.cs.html#230306fca9011b42" class="t t">IContentDisplayDriver</a>&gt; <span id="r3 rd" class="r3 r">displayDrivers</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="t t">IContentFieldDisplayDriver</a>&gt; <span id="r4 rd" class="r4 r">fieldDisplayDrivers</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IContentPartDisplayDriver.cs.html#6c339ccf96bcd625" class="t t">IContentPartDisplayDriver</a>&gt; <span id="r5 rd" class="r5 r">partDisplayDrivers</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#c3f90773cb172204" class="t t">ITypeActivatorFactory</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a>&gt; <span id="r6 rd" class="r6 r">contentPartFactory</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#20407fc0b848587e" class="t t">ContentItemDisplayCoordinator</a>&gt; <span id="r7 rd" class="r7 r">logger</span>)
+        {
+            <a href="#9cd438dd27fc521c" class="i field">_contentPartDisplayDriverResolver</a> = <span class="r0 r">contentPartDisplayDriverResolver</span>;
+            <a href="#14f2371bf67fce33" class="i field">_contentFieldDisplayDriverResolver</a> = <span class="r1 r">contentFieldDisplayDriverResolver</span>;
+            <a href="#0985ec8a5fcd661c" class="i field">_contentPartFactory</a> = <span class="r6 r">contentPartFactory</span>;
+            <a href="#e682d756963f98ae" class="i field">_contentDefinitionManager</a> = <span class="r2 r">contentDefinitionManager</span>;
+            <a href="#7ff114e8799cb9f3" class="i field">_displayDrivers</a> = <span class="r3 r">displayDrivers</span>;
+            <a href="#01eaaa802dc8ef1e" class="i field">_fieldDisplayDrivers</a> = <span class="r4 r">fieldDisplayDrivers</span>;
+            <a href="#b19b7892714a3961" class="i field">_partDisplayDrivers</a> = <span class="r5 r">partDisplayDrivers</span>;
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r8 rd" class="r8 r">element</span> <b>in</b> <span class="r5 r">partDisplayDrivers</span>.<span class="i method">Select</span>(<span id="r9 rd" class="r9 r">x</span> =&gt; <span class="r9 r">x</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>()))
+            {
+                <span class="r7 r">logger</span>.<span class="i method">LogWarning</span>(<span class="s">&quot;The content part display driver &#39;{ContentPartDisplayDriver}&#39; should not be registered in DI. Use UseDisplayDriver&lt;T&gt; instead.&quot;</span>, <span class="r8 r">element</span>);
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r10 rd" class="r10 r">element</span> <b>in</b> <span class="r4 r">fieldDisplayDrivers</span>.<span class="i method">Select</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <span class="r11 r">x</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>()))
+            {
+                <span class="r7 r">logger</span>.<span class="i method">LogWarning</span>(<span class="s">&quot;The content field display driver &#39;{ContentFieldDisplayDriver}&#39; should not be registered in DI. Use UseDisplayDriver&lt;T&gt; instead.&quot;</span>, <span class="r10 r">element</span>);
+            }
+ 
+            <a href="#acd9292448973d9c" class="i field">_logger</a> = <span class="r7 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9ec5f3fc0a916319" href="../R/9ec5f3fc0a916319.html" target="n" data-glyph="72,1" class="i method">BuildDisplayAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r12 rd" class="r12 r">contentItem</span>, <a href="/OrchardCore.DisplayManagement/A.html#c7443c2b211ac7e2" class="t t">BuildDisplayContext</a> <span id="r13 rd" class="r13 r">context</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r14 rd" class="r14 r">contentTypeDefinition</span> = <a href="#e682d756963f98ae" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r12 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+ 
+            <b>if</b> (<span class="r14 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>foreach</b> (<a href="IContentDisplayDriver.cs.html#230306fca9011b42" class="k">var</a> <span id="r15 rd" class="r15 r">displayDriver</span> <b>in</b> <a href="#7ff114e8799cb9f3" class="i field">_displayDrivers</a>)
+            {
+                <b>try</b>
+                {
+                    <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="k">var</a> <span id="r16 rd" class="r16 r">result</span> = <b>await</b> <span class="r15 r">displayDriver</span>.<a href="/OrchardCore.DisplayManagement/A.html#85d96f17e516eb61" class="i method">BuildDisplayAsync</a>(<span class="r12 r">contentItem</span>, <span class="r13 r">context</span>);
+                    <b>if</b> (<span class="r16 r">result</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r16 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#5724693ade67d011" class="i method">ApplyAsync</a>(<span class="r13 r">context</span>);
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r17 rd" class="r17 r">ex</span>)
+                {
+                    <span class="i">InvokeExtensions</span>.<span class="i">HandleException</span>(<span class="r17 r">ex</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>, <span class="r15 r">displayDriver</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <b>nameof</b>(<span class="i">BuildDisplayAsync</span>));
+                }
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="k">var</a> <span id="r18 rd" class="r18 r">settings</span> = <span class="r14 r">contentTypeDefinition</span>?.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">stereotype</span> = <span class="s">&quot;&quot;</span>;
+ 
+            <b>if</b> (<span class="r18 r">settings</span> != <b>null</b>)
+            {
+                <span class="r19 r">stereotype</span> = <span class="r18 r">settings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#51306a656d4fca2d" class="i property">Stereotype</a>;
+            }
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="k">var</a> <span id="r20 rd" class="r20 r">contentTypePartDefinition</span> <b>in</b> <span class="r14 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">partName</span> = <span class="r20 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">partTypeName</span> = <span class="r20 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">contentType</span> = <span class="r20 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#2ee287faca788aba" class="i property">ContentTypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#43f247ffe8cdb9c6" class="k">var</a> <span id="r24 rd" class="r24 r">partActivator</span> = <a href="#0985ec8a5fcd661c" class="i field">_contentPartFactory</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66ae2598bc5bacc5" class="i method">GetTypeActivator</a>(<span class="r22 r">partTypeName</span>);
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="k">var</a> <span id="r25 rd" class="r25 r">part</span> = <span class="r12 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e6fb2ab1db5c3c04" class="i method">Get</a>(<span class="r24 r">partActivator</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#545c73951c2d0bf2" class="i property">Type</a>, <span class="r21 r">partName</span>) <b>as</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a>;
+ 
+                <b>if</b> (<span class="r25 r">part</span> != <b>null</b>)
+                {
+                    <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r26 rd" class="r26 r">partDisplayDrivers</span> = <a href="#9cd438dd27fc521c" class="i field">_contentPartDisplayDriverResolver</a>.<a href="IContentPartDisplayDriverResolver.cs.html#4583f0d4727c6fe9" class="i method">GetDisplayModeDrivers</a>(<span class="r22 r">partTypeName</span>, <span class="r20 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7175bcdd1303fe8e" class="i method">DisplayMode</a>());
+                    <b>foreach</b> (<a href="IContentPartDisplayDriver.cs.html#6c339ccf96bcd625" class="k">var</a> <span id="r27 rd" class="r27 r">partDisplayDriver</span> <b>in</b> <span class="r26 r">partDisplayDrivers</span>)
+                    {
+                        <b>try</b>
+                        {
+                            <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="k">var</a> <span id="r28 rd" class="r28 r">result</span> = <b>await</b> <span class="r27 r">partDisplayDriver</span>.<a href="IContentPartDisplayDriver.cs.html#35cc87ca2ea439f6" class="i method">BuildDisplayAsync</a>(<span class="r25 r">part</span>, <span class="r20 r">contentTypePartDefinition</span>, <span class="r13 r">context</span>);
+                            <b>if</b> (<span class="r28 r">result</span> != <b>null</b>)
+                            {
+                                <b>await</b> <span class="r28 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#5724693ade67d011" class="i method">ApplyAsync</a>(<span class="r13 r">context</span>);
+                            }
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r29 rd" class="r29 r">ex</span>)
+                        {
+                            <span class="i">InvokeExtensions</span>.<span class="i">HandleException</span>(<span class="r29 r">ex</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>, <span class="r26 r">partDisplayDrivers</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <b>nameof</b>(<span class="i">BuildDisplayAsync</span>));
+                        }
+                    }
+                    <span class="c">// TODO: This can be removed in a future release as the recommended way is to use ContentOptions.</span>
+                    <span class="c">// Iterate existing driver registrations as multiple drivers maybe not be registered with ContentOptions.</span>
+                    <b>foreach</b> (<a href="IContentPartDisplayDriver.cs.html#6c339ccf96bcd625" class="k">var</a> <span id="r30 rd" class="r30 r">displayDriver</span> <b>in</b> <a href="#b19b7892714a3961" class="i field">_partDisplayDrivers</a>)
+                    {
+                        <b>try</b>
+                        {
+                            <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="k">var</a> <span id="r31 rd" class="r31 r">result</span> = <b>await</b> <span class="r30 r">displayDriver</span>.<a href="IContentPartDisplayDriver.cs.html#35cc87ca2ea439f6" class="i method">BuildDisplayAsync</a>(<span class="r25 r">part</span>, <span class="r20 r">contentTypePartDefinition</span>, <span class="r13 r">context</span>);
+                            <b>if</b> (<span class="r31 r">result</span> != <b>null</b>)
+                            {
+                                <b>await</b> <span class="r31 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#5724693ade67d011" class="i method">ApplyAsync</a>(<span class="r13 r">context</span>);
+                            }
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r32 rd" class="r32 r">ex</span>)
+                        {
+                            <span class="i">InvokeExtensions</span>.<span class="i">HandleException</span>(<span class="r32 r">ex</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>, <span class="r30 r">displayDriver</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <b>nameof</b>(<span class="i">BuildDisplayAsync</span>));
+                        }
+                    }
+                    <a href="/OrchardCore.DisplayManagement/A.html#c7443c2b211ac7e2" class="k">var</a> <span id="r33 rd" class="r33 r">tempContext</span> = <span class="r13 r">context</span>;
+ 
+                    <span class="c">// Create a custom ContentPart shape that will hold the fields for dynamic content part (not implicit parts)</span>
+                    <span class="c">// This allows its fields to be grouped and templated</span>
+ 
+                    <b>if</b> (<span class="r25 r">part</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>() == <b>typeof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a>) &amp;&amp; <span class="r22 r">partTypeName</span> != <span class="r20 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#2ee287faca788aba" class="i property">ContentTypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>)
+                    {
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r34 rd" class="r34 r">shapeType</span> = <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#14aa652f160b554a" class="i property">DisplayType</a> != <span class="s">&quot;Detail&quot;</span> ? <span class="s">&quot;ContentPart_&quot;</span> + <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#14aa652f160b554a" class="i property">DisplayType</a> : <span class="s">&quot;ContentPart&quot;</span>;
+ 
+                        <a href="/OrchardCore.DisplayManagement/A.html#9f3c945ca087955a" class="k">var</a> <span id="r35 rd" class="r35 r">shapeResult</span> = <b>new</b> <a href="/OrchardCore.DisplayManagement/A.html#cbf57403c6fb3954" class="t constructor">ShapeResult</a>(<span class="r34 r">shapeType</span>, <span id="r36 rd" class="r36 r">ctx</span> =&gt; <span class="r36 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#95f113c7dcad0a4a" class="i property">ShapeFactory</a>.<a href="/OrchardCore.DisplayManagement/A.html#8601a64467a52180" class="i method">CreateAsync</a>(<span class="r34 r">shapeType</span>, () =&gt; <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a>&gt;(<b>new</b> <a href="/OrchardCore.DisplayManagement/A.html#ff656bdc85abd0e9" class="t constructor">ZoneHolding</a>(() =&gt; <span class="r36 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#95f113c7dcad0a4a" class="i property">ShapeFactory</a>.<a href="/OrchardCore.DisplayManagement/A.html#bd6787f69c507742" class="i method">CreateAsync</a>(<span class="s">&quot;Zone&quot;</span>)))));
+                        <span class="r35 r">shapeResult</span>.<a href="/OrchardCore.DisplayManagement/A.html#49caf35140b3ffdf" class="i method">Differentiator</a>(<span class="r21 r">partName</span>);
+                        <span class="r35 r">shapeResult</span>.<a href="/OrchardCore.DisplayManagement/A.html#8c17d6a16f671c95" class="i method">Name</a>(<span class="r21 r">partName</span>);
+                        <span class="r35 r">shapeResult</span>.<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Content&quot;</span>);
+ 
+                        <span class="r35 r">shapeResult</span>.<a href="/OrchardCore.DisplayManagement/A.html#df7a673276d55fa1" class="i method">Displaying</a>(<span id="r37 rd" class="r37 r">ctx</span> =&gt;
+                        {
+                            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r38 rd" class="r38 r">displayTypes</span> = <b>new</b>[] { <span class="s">&quot;&quot;</span>, <span class="s">&quot;_&quot;</span> + <span class="r37 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#7cd0e688e269d1a2" class="i property">DisplayType</a> };
+ 
+                            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r39 rd" class="r39 r">displayType</span> <b>in</b> <span class="r38 r">displayTypes</span>)
+                            {
+                                <span class="c">// eg. ServicePart,  ServicePart.Summary</span>
+                                <span class="r37 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r22 r">partTypeName</span>}{<span class="r39 r">displayType</span>}<span class="s">&quot;</span>);
+ 
+                                <span class="c">// [ContentType]_[DisplayType]__[PartType]</span>
+                                <span class="c">// e.g. LandingPage-ServicePart, LandingPage-ServicePart.Summary</span>
+                                <span class="r37 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r23 r">contentType</span>}{<span class="r39 r">displayType</span>}<span class="s">__</span>{<span class="r22 r">partTypeName</span>}<span class="s">&quot;</span>);
+ 
+                                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r19 r">stereotype</span>))
+                                {
+                                    <span class="c">// [Stereotype]_[DisplayType]__[PartType],</span>
+                                    <span class="c">// e.g. Widget-ServicePart</span>
+                                    <span class="r37 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r19 r">stereotype</span>}{<span class="r39 r">displayType</span>}<span class="s">__</span>{<span class="r22 r">partTypeName</span>}<span class="s">&quot;</span>);
+                                }
+                            }
+ 
+                            <b>if</b> (<span class="r22 r">partTypeName</span> != <span class="r21 r">partName</span>)
+                            {
+                                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r40 rd" class="r40 r">displayType</span> <b>in</b> <span class="r38 r">displayTypes</span>)
+                                {
+                                    <span class="c">// [ContentType]_[DisplayType]__[PartName]</span>
+                                    <span class="c">// e.g. Employee-Address1, Employee-Address2</span>
+                                    <span class="r37 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r23 r">contentType</span>}{<span class="r40 r">displayType</span>}<span class="s">__</span>{<span class="r21 r">partName</span>}<span class="s">&quot;</span>);
+ 
+                                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r19 r">stereotype</span>))
+                                    {
+                                        <span class="c">// [Stereotype]_[DisplayType]__[PartType]__[PartName]</span>
+                                        <span class="c">// e.g. Widget-Services</span>
+                                        <span class="r37 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r19 r">stereotype</span>}{<span class="r40 r">displayType</span>}<span class="s">__</span>{<span class="r22 r">partTypeName</span>}<span class="s">__</span>{<span class="r21 r">partName</span>}<span class="s">&quot;</span>);
+                                    }
+                                }
+                            }
+                        });
+ 
+                        <b>await</b> <span class="r35 r">shapeResult</span>.<a href="/OrchardCore.DisplayManagement/A.html#61c139c785e39538" class="i method">ApplyAsync</a>(<span class="r13 r">context</span>);
+ 
+                        <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r41 rd" class="r41 r">contentPartShape</span> = <span class="r35 r">shapeResult</span>.<a href="/OrchardCore.DisplayManagement/A.html#2ed4a12b193df357" class="i property">Shape</a>;
+ 
+                        <span class="c">// Make the ContentPart name property available on the shape</span>
+                        <span class="r41 r">contentPartShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r22 r">partTypeName</span>] = <span class="r25 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>;
+                        <span class="r41 r">contentPartShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentItem&quot;</span>] = <span class="r25 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>;
+ 
+                        <span class="r13 r">context</span> = <b>new</b> <span class="t">BuildDisplayContext</span>(<span class="r35 r">shapeResult</span>.<a href="/OrchardCore.DisplayManagement/A.html#2ed4a12b193df357" class="i property">Shape</a>, <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#14aa652f160b554a" class="i property">DisplayType</a>, <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#4089a2311ccff5cd" class="i property">GroupId</a>, <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e87e94364d6b93ec" class="i property">ShapeFactory</a>, <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#3bfa274c6141b575" class="i property">Layout</a>, <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>);
+                        <span class="c">// With a new display context we have the default FindPlacementDelegate that returns null, so we reuse the delegate from the temp context.</span>
+                        <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#673c0690e2d7c98b" class="i property">FindPlacement</a> = <span class="r33 r">tempContext</span>.<a href="/OrchardCore.DisplayManagement/A.html#673c0690e2d7c98b" class="i property">FindPlacement</a>;
+                    }
+ 
+                    <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r42 rd" class="r42 r">contentPartFieldDefinition</span> <b>in</b> <span class="r20 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>)
+                    {
+                        <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r43 rd" class="r43 r">fieldDisplayDrivers</span> = <a href="#14f2371bf67fce33" class="i field">_contentFieldDisplayDriverResolver</a>.<a href="IContentFieldDisplayDriverResolver.cs.html#351d5d62f51d347b" class="i method">GetDisplayModeDrivers</a>(<span class="r42 r">contentPartFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>, <span class="r42 r">contentPartFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#fc86b0a399f9eddb" class="i method">DisplayMode</a>());
+                        <b>foreach</b> (<a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="k">var</a> <span id="r44 rd" class="r44 r">fieldDisplayDriver</span> <b>in</b> <span class="r43 r">fieldDisplayDrivers</span>)
+                        {
+                            <b>try</b>
+                            {
+                                <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="k">var</a> <span id="r45 rd" class="r45 r">result</span> = <b>await</b> <span class="r44 r">fieldDisplayDriver</span>.<a href="IContentFieldDisplayDriver.cs.html#45ab07383625e057" class="i method">BuildDisplayAsync</a>(<span class="r25 r">part</span>, <span class="r42 r">contentPartFieldDefinition</span>, <span class="r20 r">contentTypePartDefinition</span>, <span class="r13 r">context</span>);
+                                <b>if</b> (<span class="r45 r">result</span> != <b>null</b>)
+                                {
+                                    <b>await</b> <span class="r45 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#5724693ade67d011" class="i method">ApplyAsync</a>(<span class="r13 r">context</span>);
+                                }
+                            }
+                            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r46 rd" class="r46 r">ex</span>)
+                            {
+                                <span class="i">InvokeExtensions</span>.<span class="i">HandleException</span>(<span class="r46 r">ex</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>, <span class="r44 r">fieldDisplayDriver</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <b>nameof</b>(<span class="i">BuildDisplayAsync</span>));
+                            }
+                        }
+                        <span class="c">// TODO: This can be removed in a future release as the recommended way is to use ContentOptions.</span>
+                        <span class="c">// Iterate existing driver registrations as multiple drivers maybe not be registered with ContentOptions.</span>
+                        <b>foreach</b> (<a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="k">var</a> <span id="r47 rd" class="r47 r">displayDriver</span> <b>in</b> <a href="#01eaaa802dc8ef1e" class="i field">_fieldDisplayDrivers</a>)
+                        {
+                            <b>try</b>
+                            {
+                                <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="k">var</a> <span id="r48 rd" class="r48 r">result</span> = <b>await</b> <span class="r47 r">displayDriver</span>.<a href="IContentFieldDisplayDriver.cs.html#45ab07383625e057" class="i method">BuildDisplayAsync</a>(<span class="r25 r">part</span>, <span class="r42 r">contentPartFieldDefinition</span>, <span class="r20 r">contentTypePartDefinition</span>, <span class="r13 r">context</span>);
+                                <b>if</b> (<span class="r48 r">result</span> != <b>null</b>)
+                                {
+                                    <b>await</b> <span class="r48 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#5724693ade67d011" class="i method">ApplyAsync</a>(<span class="r13 r">context</span>);
+                                }
+                            }
+                            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r49 rd" class="r49 r">ex</span>)
+                            {
+                                <span class="i">InvokeExtensions</span>.<span class="i">HandleException</span>(<span class="r49 r">ex</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>, <span class="r47 r">displayDriver</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <b>nameof</b>(<span class="i">BuildDisplayAsync</span>));
+                            }
+                        }
+                    }
+ 
+                    <span class="r13 r">context</span> = <span class="r33 r">tempContext</span>;
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="283f6bfc94ddf709" href="../R/283f6bfc94ddf709.html" target="n" data-glyph="72,1" class="i method">BuildEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r50 rd" class="r50 r">contentItem</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r51 rd" class="r51 r">context</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r52 rd" class="r52 r">contentTypeDefinition</span> = <a href="#e682d756963f98ae" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r50 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+            <b>if</b> (<span class="r52 r">contentTypeDefinition</span> == <b>null</b>)
+                <b>return</b>;
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#d5c0b8db92fbeb7b" class="k">var</a> <span id="r53 rd" class="r53 r">contentShape</span> = <span class="r51 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e8980395d144a462" class="i property">Shape</a> <b>as</b> <a href="/OrchardCore.DisplayManagement/A.html#d5c0b8db92fbeb7b" class="t t">IZoneHolding</a>;
+            <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r54 rd" class="r54 r">partsShape</span> = <b>await</b> <span class="r51 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e87e94364d6b93ec" class="i property">ShapeFactory</a>.<a href="/OrchardCore.DisplayManagement/A.html#5d82b79f2c9ed613" class="i method">CreateAsync</a>(<span class="s">&quot;ContentZone&quot;</span>,
+                <a href="/OrchardCore.DisplayManagement/A.html#96479571e815da42" class="t t">Arguments</a>.<a href="/OrchardCore.DisplayManagement/A.html#0b49774a5cab4e4f" class="i method">From</a>(<b>new</b>
+                {
+                    <a href="#60275e3a865473b0" class="i property">Identifier</a> = <span class="r50 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>
+                }));
+ 
+            <span class="r53 r">contentShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#43d22e96543b7e25" class="i property">Zones</a><a href="/OrchardCore.DisplayManagement/A.html#26d913ee76532e50">[</a><span class="s">&quot;Parts&quot;</span>] = <span class="r54 r">partsShape</span>;
+ 
+            <b>foreach</b> (<a href="IContentDisplayDriver.cs.html#230306fca9011b42" class="k">var</a> <span id="r55 rd" class="r55 r">displayDriver</span> <b>in</b> <a href="#7ff114e8799cb9f3" class="i field">_displayDrivers</a>)
+            {
+                <b>try</b>
+                {
+                    <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="k">var</a> <span id="r56 rd" class="r56 r">result</span> = <b>await</b> <span class="r55 r">displayDriver</span>.<a href="/OrchardCore.DisplayManagement/A.html#955f70ce1eeda888" class="i method">BuildEditorAsync</a>(<span class="r50 r">contentItem</span>, <span class="r51 r">context</span>);
+                    <b>if</b> (<span class="r56 r">result</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r56 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#0d2b6c5cbda98fd8" class="i method">ApplyAsync</a>(<span class="r51 r">context</span>);
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r57 rd" class="r57 r">ex</span>)
+                {
+                    <span class="i">InvokeExtensions</span>.<span class="i">HandleException</span>(<span class="r57 r">ex</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>, <span class="r55 r">displayDriver</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <b>nameof</b>(<span class="i">BuildEditorAsync</span>));
+                }
+            }
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="k">var</a> <span id="r58 rd" class="r58 r">typePartDefinition</span> <b>in</b> <span class="r52 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r59 rd" class="r59 r">partTypeName</span> = <span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#43f247ffe8cdb9c6" class="k">var</a> <span id="r60 rd" class="r60 r">activator</span> = <a href="#0985ec8a5fcd661c" class="i field">_contentPartFactory</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66ae2598bc5bacc5" class="i method">GetTypeActivator</a>(<span class="r59 r">partTypeName</span>);
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="k">var</a> <span id="r61 rd" class="r61 r">part</span> = (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a>)<span class="r50 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e6fb2ab1db5c3c04" class="i method">Get</a>(<span class="r60 r">activator</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#545c73951c2d0bf2" class="i property">Type</a>, <span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>) ?? <span class="r60 r">activator</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b64d9f3aa88685d7" class="i method">CreateInstance</a>();
+                <span class="r61 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a> = <span class="r50 r">contentItem</span>;
+ 
+                <span class="c">// Create a custom shape to render all the part shapes into it</span>
+                <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r62 rd" class="r62 r">typePartShape</span> = <b>await</b> <span class="r51 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e87e94364d6b93ec" class="i property">ShapeFactory</a>.<a href="/OrchardCore.DisplayManagement/A.html#bd6787f69c507742" class="i method">CreateAsync</a>(<span class="s">&quot;ContentPart_Edit&quot;</span>);
+                <span class="r62 r">typePartShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentPart&quot;</span>] = <span class="r61 r">part</span>;
+                <span class="r62 r">typePartShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentTypePartDefinition&quot;</span>] = <span class="r58 r">typePartDefinition</span>;
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r63 rd" class="r63 r">partPosition</span> = <span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f999317cee0f2f3" class="t t">ContentTypePartSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7cdc2e7f0ab29e36" class="i property">Position</a> ?? <span class="s">&quot;before&quot;</span>;
+ 
+                <b>await</b> <span class="r54 r">partsShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#44ffd0ce4d56f405" class="i method">AddAsync</a>(<span class="r62 r">typePartShape</span>, <span class="r63 r">partPosition</span>);
+                <span class="r54 r">partsShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>] = <span class="r62 r">typePartShape</span>;
+ 
+                <span class="r51 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#a5ca883d9d6cfa27" class="i property">DefaultZone</a> = <span class="s">$&quot;</span><span class="s">Parts.</span>{<span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>}<span class="s">&quot;</span>;
+                <span class="r51 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#b2c49d3af2142d67" class="i property">DefaultPosition</a> = <span class="r63 r">partPosition</span>;
+ 
+                <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r64 rd" class="r64 r">partDisplayDrivers</span> = <a href="#9cd438dd27fc521c" class="i field">_contentPartDisplayDriverResolver</a>.<a href="IContentPartDisplayDriverResolver.cs.html#71d1e616745508dd" class="i method">GetEditorDrivers</a>(<span class="r59 r">partTypeName</span>, <span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e50195777b9fec35" class="i method">Editor</a>());
+                <b>await</b> <span class="r64 r">partDisplayDrivers</span>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r65 rd" class="r65 r">driver</span>, <span id="r66 rd" class="r66 r">part</span>, <span id="r67 rd" class="r67 r">typePartDefinition</span>, <span id="r68 rd" class="r68 r">context</span>) =&gt;
+                {
+                    <b>var</b> <span id="r69 rd" class="r69 r">result</span> = <b>await</b> <span class="r65 r">driver</span>.<span class="i">BuildEditorAsync</span>(<span class="r66 r">part</span>, <span class="r67 r">typePartDefinition</span>, <span class="r68 r">context</span>);
+                    <b>if</b> (<span class="r69 r">result</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r69 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r68 r">context</span>);
+                    }
+                }, <span class="r61 r">part</span>, <span class="r58 r">typePartDefinition</span>, <span class="r51 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+                <span class="c">// TODO: This can be removed in a future release as the recommended way is to use ContentOptions.</span>
+                <span class="c">// Iterate existing driver registrations as multiple drivers maybe not be registered with ContentOptions.</span>
+                <b>await</b> <a href="#b19b7892714a3961" class="i field">_partDisplayDrivers</a>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r70 rd" class="r70 r">driver</span>, <span id="r71 rd" class="r71 r">part</span>, <span id="r72 rd" class="r72 r">typePartDefinition</span>, <span id="r73 rd" class="r73 r">context</span>) =&gt;
+                {
+                    <b>var</b> <span id="r74 rd" class="r74 r">result</span> = <b>await</b> <span class="r70 r">driver</span>.<span class="i">BuildEditorAsync</span>(<span class="r71 r">part</span>, <span class="r72 r">typePartDefinition</span>, <span class="r73 r">context</span>);
+                    <b>if</b> (<span class="r74 r">result</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r74 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r73 r">context</span>);
+                    }
+                }, <span class="r61 r">part</span>, <span class="r58 r">typePartDefinition</span>, <span class="r51 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+ 
+                <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r75 rd" class="r75 r">partFieldDefinition</span> <b>in</b> <span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>)
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r76 rd" class="r76 r">fieldName</span> = <span class="r75 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r77 rd" class="r77 r">fieldPosition</span> = <span class="r75 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#eaf5f871120bcf10" class="t t">ContentPartFieldSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b429050a44e7bd6" class="i property">Position</a> ?? <span class="s">&quot;before&quot;</span>;
+ 
+                    <span class="r51 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#a5ca883d9d6cfa27" class="i property">DefaultZone</a> = <span class="s">$&quot;</span><span class="s">Parts.</span>{<span class="r58 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>}<span class="s">:</span>{<span class="r77 r">fieldPosition</span>}<span class="s">&quot;</span>;
+                    <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r78 rd" class="r78 r">fieldDisplayDrivers</span> = <a href="#14f2371bf67fce33" class="i field">_contentFieldDisplayDriverResolver</a>.<a href="IContentFieldDisplayDriverResolver.cs.html#93a5405911a30965" class="i method">GetEditorDrivers</a>(<span class="r75 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>, <span class="r75 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#55c66ced50b99026" class="i method">Editor</a>());
+                    <b>await</b> <span class="r78 r">fieldDisplayDrivers</span>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r79 rd" class="r79 r">driver</span>, <span id="r80 rd" class="r80 r">part</span>, <span id="r81 rd" class="r81 r">partFieldDefinition</span>, <span id="r82 rd" class="r82 r">typePartDefinition</span>, <span id="r83 rd" class="r83 r">context</span>) =&gt;
+                    {
+                        <b>var</b> <span id="r84 rd" class="r84 r">result</span> = <b>await</b> <span class="r79 r">driver</span>.<span class="i">BuildEditorAsync</span>(<span class="r80 r">part</span>, <span class="r81 r">partFieldDefinition</span>, <span class="r82 r">typePartDefinition</span>, <span class="r83 r">context</span>);
+                        <b>if</b> (<span class="r84 r">result</span> != <b>null</b>)
+                        {
+                            <b>await</b> <span class="r84 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r83 r">context</span>);
+                        }
+                    }, <span class="r61 r">part</span>, <span class="r75 r">partFieldDefinition</span>, <span class="r58 r">typePartDefinition</span>, <span class="r51 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+                    <span class="c">// TODO: This can be removed in a future release as the recommended way is to use ContentOptions.</span>
+                    <span class="c">// Iterate existing driver registrations as multiple drivers maybe not be registered with ContentOptions.</span>
+                    <b>await</b> <a href="#01eaaa802dc8ef1e" class="i field">_fieldDisplayDrivers</a>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r85 rd" class="r85 r">driver</span>, <span id="r86 rd" class="r86 r">part</span>, <span id="r87 rd" class="r87 r">partFieldDefinition</span>, <span id="r88 rd" class="r88 r">typePartDefinition</span>, <span id="r89 rd" class="r89 r">context</span>) =&gt;
+                    {
+                        <b>var</b> <span id="r90 rd" class="r90 r">result</span> = <b>await</b> <span class="r85 r">driver</span>.<span class="i">BuildEditorAsync</span>(<span class="r86 r">part</span>, <span class="r87 r">partFieldDefinition</span>, <span class="r88 r">typePartDefinition</span>, <span class="r89 r">context</span>);
+                        <b>if</b> (<span class="r90 r">result</span> != <b>null</b>)
+                        {
+                            <b>await</b> <span class="r90 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r89 r">context</span>);
+                        }
+                    }, <span class="r61 r">part</span>, <span class="r75 r">partFieldDefinition</span>, <span class="r58 r">typePartDefinition</span>, <span class="r51 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a26e380a996295ab" href="../R/a26e380a996295ab.html" target="n" data-glyph="72,1" class="i method">UpdateEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r91 rd" class="r91 r">contentItem</span>, <a href="/OrchardCore.DisplayManagement/A.html#688c28d1f0b44917" class="t t">UpdateEditorContext</a> <span id="r92 rd" class="r92 r">context</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r93 rd" class="r93 r">contentTypeDefinition</span> = <a href="#e682d756963f98ae" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#154ab18e7ab850da" class="i method">LoadTypeDefinition</a>(<span class="r91 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+            <b>if</b> (<span class="r93 r">contentTypeDefinition</span> == <b>null</b>)
+                <b>return</b>;
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#d5c0b8db92fbeb7b" class="k">var</a> <span id="r94 rd" class="r94 r">contentShape</span> = <span class="r92 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e8980395d144a462" class="i property">Shape</a> <b>as</b> <a href="/OrchardCore.DisplayManagement/A.html#d5c0b8db92fbeb7b" class="t t">IZoneHolding</a>;
+            <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r95 rd" class="r95 r">partsShape</span> = <b>await</b> <span class="r92 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e87e94364d6b93ec" class="i property">ShapeFactory</a>.<a href="/OrchardCore.DisplayManagement/A.html#5d82b79f2c9ed613" class="i method">CreateAsync</a>(<span class="s">&quot;ContentZone&quot;</span>,
+                <a href="/OrchardCore.DisplayManagement/A.html#96479571e815da42" class="t t">Arguments</a>.<a href="/OrchardCore.DisplayManagement/A.html#0b49774a5cab4e4f" class="i method">From</a>(<b>new</b>
+                {
+                    <a href="#60275e3a865473b0" class="i property">Identifier</a> = <span class="r91 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>
+                }));
+ 
+            <span class="r94 r">contentShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#43d22e96543b7e25" class="i property">Zones</a><a href="/OrchardCore.DisplayManagement/A.html#26d913ee76532e50">[</a><span class="s">&quot;Parts&quot;</span>] = <span class="r95 r">partsShape</span>;
+ 
+            <b>foreach</b> (<a href="IContentDisplayDriver.cs.html#230306fca9011b42" class="k">var</a> <span id="r96 rd" class="r96 r">displayDriver</span> <b>in</b> <a href="#7ff114e8799cb9f3" class="i field">_displayDrivers</a>)
+            {
+                <b>try</b>
+                {
+                    <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="k">var</a> <span id="r97 rd" class="r97 r">result</span> = <b>await</b> <span class="r96 r">displayDriver</span>.<a href="/OrchardCore.DisplayManagement/A.html#f7809f03f0d8cf01" class="i method">UpdateEditorAsync</a>(<span class="r91 r">contentItem</span>, <span class="r92 r">context</span>);
+                    <b>if</b> (<span class="r97 r">result</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r97 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#0d2b6c5cbda98fd8" class="i method">ApplyAsync</a>(<span class="r92 r">context</span>);
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r98 rd" class="r98 r">ex</span>)
+                {
+                    <span class="i">InvokeExtensions</span>.<span class="i">HandleException</span>(<span class="r98 r">ex</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>, <span class="r96 r">displayDriver</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <b>nameof</b>(<span class="i">UpdateEditorAsync</span>));
+                }
+            }
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="k">var</a> <span id="r99 rd" class="r99 r">typePartDefinition</span> <b>in</b> <span class="r93 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r100 rd" class="r100 r">partTypeName</span> = <span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#43f247ffe8cdb9c6" class="k">var</a> <span id="r101 rd" class="r101 r">activator</span> = <a href="#0985ec8a5fcd661c" class="i field">_contentPartFactory</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66ae2598bc5bacc5" class="i method">GetTypeActivator</a>(<span class="r100 r">partTypeName</span>);
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="k">var</a> <span id="r102 rd" class="r102 r">part</span> = (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a>)<span class="r91 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e6fb2ab1db5c3c04" class="i method">Get</a>(<span class="r101 r">activator</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#545c73951c2d0bf2" class="i property">Type</a>, <span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>) ?? <span class="r101 r">activator</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b64d9f3aa88685d7" class="i method">CreateInstance</a>();
+                <span class="r102 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a> = <span class="r91 r">contentItem</span>;
+ 
+                <span class="c">// Create a custom shape to render all the part shapes into it</span>
+                <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r103 rd" class="r103 r">typePartShape</span> = <b>await</b> <span class="r92 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e87e94364d6b93ec" class="i property">ShapeFactory</a>.<a href="/OrchardCore.DisplayManagement/A.html#bd6787f69c507742" class="i method">CreateAsync</a>(<span class="s">&quot;ContentPart_Edit&quot;</span>);
+                <span class="r103 r">typePartShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentPart&quot;</span>] = <span class="r102 r">part</span>;
+                <span class="r103 r">typePartShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;ContentTypePartDefinition&quot;</span>] = <span class="r99 r">typePartDefinition</span>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r104 rd" class="r104 r">partPosition</span> = <span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f999317cee0f2f3" class="t t">ContentTypePartSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7cdc2e7f0ab29e36" class="i property">Position</a> ?? <span class="s">&quot;before&quot;</span>;
+ 
+                <b>await</b> <span class="r95 r">partsShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#44ffd0ce4d56f405" class="i method">AddAsync</a>(<span class="r103 r">typePartShape</span>, <span class="r104 r">partPosition</span>);
+                <span class="r95 r">partsShape</span>.<a href="/OrchardCore.DisplayManagement/A.html#3acc733cb89c460c" class="i property">Properties</a><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>] = <span class="r103 r">typePartShape</span>;
+ 
+                <span class="r92 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#a5ca883d9d6cfa27" class="i property">DefaultZone</a> = <span class="s">$&quot;</span><span class="s">Parts.</span>{<span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>}<span class="s">:</span>{<span class="r104 r">partPosition</span>}<span class="s">&quot;</span>;
+                <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r105 rd" class="r105 r">partDisplayDrivers</span> = <a href="#9cd438dd27fc521c" class="i field">_contentPartDisplayDriverResolver</a>.<a href="IContentPartDisplayDriverResolver.cs.html#71d1e616745508dd" class="i method">GetEditorDrivers</a>(<span class="r100 r">partTypeName</span>, <span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e50195777b9fec35" class="i method">Editor</a>());
+                <b>await</b> <span class="r105 r">partDisplayDrivers</span>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r106 rd" class="r106 r">driver</span>, <span id="r107 rd" class="r107 r">part</span>, <span id="r108 rd" class="r108 r">typePartDefinition</span>, <span id="r109 rd" class="r109 r">context</span>) =&gt;
+                {
+                    <b>var</b> <span id="r110 rd" class="r110 r">result</span> = <b>await</b> <span class="r106 r">driver</span>.<span class="i">UpdateEditorAsync</span>(<span class="r107 r">part</span>, <span class="r108 r">typePartDefinition</span>, <span class="r109 r">context</span>);
+                    <b>if</b> (<span class="r110 r">result</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r110 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r109 r">context</span>);
+                    }
+                }, <span class="r102 r">part</span>, <span class="r99 r">typePartDefinition</span>, <span class="r92 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+                <span class="c">// TODO: This can be removed in a future release as the recommended way is to use ContentOptions.</span>
+                <span class="c">// Iterate existing driver registrations as multiple drivers maybe not be registered with ContentOptions.</span>
+                <b>await</b> <a href="#b19b7892714a3961" class="i field">_partDisplayDrivers</a>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r111 rd" class="r111 r">driver</span>, <span id="r112 rd" class="r112 r">part</span>, <span id="r113 rd" class="r113 r">typePartDefinition</span>, <span id="r114 rd" class="r114 r">context</span>) =&gt;
+                {
+                    <b>var</b> <span id="r115 rd" class="r115 r">result</span> = <b>await</b> <span class="r111 r">driver</span>.<span class="i">UpdateEditorAsync</span>(<span class="r112 r">part</span>, <span class="r113 r">typePartDefinition</span>, <span class="r114 r">context</span>);
+                    <b>if</b> (<span class="r115 r">result</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r115 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r114 r">context</span>);
+                    }
+                }, <span class="r102 r">part</span>, <span class="r99 r">typePartDefinition</span>, <span class="r92 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+ 
+                <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r116 rd" class="r116 r">partFieldDefinition</span> <b>in</b> <span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>)
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r117 rd" class="r117 r">fieldName</span> = <span class="r116 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r118 rd" class="r118 r">fieldPosition</span> = <span class="r116 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#eaf5f871120bcf10" class="t t">ContentPartFieldSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b429050a44e7bd6" class="i property">Position</a> ?? <span class="s">&quot;before&quot;</span>;
+ 
+                    <span class="r92 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#a5ca883d9d6cfa27" class="i property">DefaultZone</a> = <span class="s">$&quot;</span><span class="s">Parts.</span>{<span class="r99 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>}<span class="s">:</span>{<span class="r118 r">fieldPosition</span>}<span class="s">&quot;</span>;
+                    <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r119 rd" class="r119 r">fieldDisplayDrivers</span> = <a href="#14f2371bf67fce33" class="i field">_contentFieldDisplayDriverResolver</a>.<a href="IContentFieldDisplayDriverResolver.cs.html#93a5405911a30965" class="i method">GetEditorDrivers</a>(<span class="r116 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>, <span class="r116 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#55c66ced50b99026" class="i method">Editor</a>());
+                    <b>await</b> <span class="r119 r">fieldDisplayDrivers</span>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r120 rd" class="r120 r">driver</span>, <span id="r121 rd" class="r121 r">part</span>, <span id="r122 rd" class="r122 r">partFieldDefinition</span>, <span id="r123 rd" class="r123 r">typePartDefinition</span>, <span id="r124 rd" class="r124 r">context</span>) =&gt;
+                    {
+                        <b>var</b> <span id="r125 rd" class="r125 r">result</span> = <b>await</b> <span class="r120 r">driver</span>.<span class="i">UpdateEditorAsync</span>(<span class="r121 r">part</span>, <span class="r122 r">partFieldDefinition</span>, <span class="r123 r">typePartDefinition</span>, <span class="r124 r">context</span>);
+                        <b>if</b> (<span class="r125 r">result</span> != <b>null</b>)
+                        {
+                            <b>await</b> <span class="r125 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r124 r">context</span>);
+                        }
+                    }, <span class="r102 r">part</span>, <span class="r116 r">partFieldDefinition</span>, <span class="r99 r">typePartDefinition</span>, <span class="r92 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+                    <span class="c">// TODO: This can be removed in a future release as the recommended way is to use ContentOptions.</span>
+                    <span class="c">// Iterate existing driver registrations as multiple drivers maybe not be registered with ContentOptions.</span>
+                    <b>await</b> <a href="#01eaaa802dc8ef1e" class="i field">_fieldDisplayDrivers</a>.<span class="i">InvokeAsync</span>(<b>async</b> (<span id="r126 rd" class="r126 r">driver</span>, <span id="r127 rd" class="r127 r">part</span>, <span id="r128 rd" class="r128 r">partFieldDefinition</span>, <span id="r129 rd" class="r129 r">typePartDefinition</span>, <span id="r130 rd" class="r130 r">context</span>) =&gt;
+                    {
+                        <b>var</b> <span id="r131 rd" class="r131 r">result</span> = <b>await</b> <span class="r126 r">driver</span>.<span class="i">UpdateEditorAsync</span>(<span class="r127 r">part</span>, <span class="r128 r">partFieldDefinition</span>, <span class="r129 r">typePartDefinition</span>, <span class="r130 r">context</span>);
+                        <b>if</b> (<span class="r131 r">result</span> != <b>null</b>)
+                        {
+                            <b>await</b> <span class="r131 r">result</span>.<span class="i">ApplyAsync</span>(<span class="r130 r">context</span>);
+                        }
+                    }, <span class="r102 r">part</span>, <span class="r116 r">partFieldDefinition</span>, <span class="r99 r">typePartDefinition</span>, <span class="r92 r">context</span>, <a href="#acd9292448973d9c" class="i field">_logger</a>);
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

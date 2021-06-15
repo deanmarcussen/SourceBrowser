@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html><head><title>DistributedContext.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(74);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Shell/Distributed/DistributedContext.cs" target="_top">Shell\Distributed\DistributedContext.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Distributed</span>
+{
+    <b>internal class</b> <a id="54169a789bab9bfb" href="../../R/54169a789bab9bfb.html" target="n" data-glyph="2,0" class="t t">DistributedContext</a> : <a href="@1@System.Runtime/A.html#1f55292c3174123d" class="t t">IDisposable</a>
+    {
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <a id="6d07574dfb585340" href="../../R/6d07574dfb585340.html" target="n" data-glyph="46,1" class="i field">_context</a>;
+        <b>private volatile int</b> <a id="3da34c9bd8c81326" href="../../R/3da34c9bd8c81326.html" target="n" data-glyph="46,1" class="i field">_count</a>;
+        <b>private bool</b> <a id="86850da290ac66a6" href="../../R/86850da290ac66a6.html" target="n" data-glyph="46,1" class="i field">_released</a>;
+ 
+        <b>public</b> <a id="1c546169ee458018" href="../../R/1c546169ee458018.html" target="n" data-glyph="72,1" class="t constructor">DistributedContext</a>(<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r0 rd" class="r0 r">context</span>)
+        {
+            <span class="t t">Interlocked</span>.<span class="i method">Increment</span>(<b>ref</b> <a href="#3da34c9bd8c81326" class="i field">_count</a>);
+            <a href="#6d07574dfb585340" class="i field">_context</a> = <span class="r0 r">context</span>;
+ 
+            <span class="c">// If the distributed feature is not enabled, the distributed cache is not set.</span>
+            <b>if</b> (<span class="r0 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#14806dab63c4713f" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#23c5bcf8965d1bd3" class="t t">DistributedShellMarkerService</a>&gt;() == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If the current cache is an in memory cache, the distributed cache is not set.</span>
+            <b>var</b> <span id="r1 rd" class="r1 r">distributedCache</span> = <span class="r0 r">context</span>.<a href="/OrchardCore.Abstractions/A.html#14806dab63c4713f" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IDistributedCache</span>&gt;();
+            <b>if</b> (<span class="r1 r">distributedCache</span> == <b>null</b> || <span class="r1 r">distributedCache</span> <b>is</b> <span class="t t">MemoryDistributedCache</span>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#dd147d6607225ed4" class="i property">DistributedCache</a> = <span class="r1 r">distributedCache</span>;
+        }
+ 
+        <b>public</b> <span class="t t">IDistributedCache</span> <a id="dd147d6607225ed4" href="../../R/dd147d6607225ed4.html" target="n" data-glyph="102,1" class="i property">DistributedCache</a> { <b>get</b>; }
+ 
+        <b>public</b> <a href="#54169a789bab9bfb" class="t t">DistributedContext</a> <a id="2152af8307454904" href="../../R/2152af8307454904.html" target="n" data-glyph="72,1" class="i method">Acquire</a>()
+        {
+            <span class="c">// Don&#39;t acquire a released context.</span>
+            <b>if</b> (<a href="#86850da290ac66a6" class="i field">_released</a>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <span class="t t">Interlocked</span>.<span class="i method">Increment</span>(<b>ref</b> <a href="#3da34c9bd8c81326" class="i field">_count</a>);
+ 
+            <span class="c">// Don&#39;t start using a released context.</span>
+            <b>if</b> (<a href="#86850da290ac66a6" class="i field">_released</a>)
+            {
+                <a href="#929152225538d1b0" class="i method">Dispose</a>();
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <a href="#54169a789bab9bfb" class="k">this</a>;
+        }
+ 
+        <b>public void</b> <a id="3d03cc903d32cafd" href="../../R/3d03cc903d32cafd.html" target="n" data-glyph="72,1" class="i method">Release</a>()
+        {
+            <a href="#86850da290ac66a6" class="i field">_released</a> = <b>true</b>;
+            <a href="#929152225538d1b0" class="i method">Dispose</a>();
+        }
+ 
+        <b>public void</b> <a id="929152225538d1b0" href="../../R/929152225538d1b0.html" target="n" data-glyph="72,1" class="i method">Dispose</a>()
+        {
+            <span class="c">// The last use disposes the shell context.</span>
+            <b>if</b> (<span class="t t">Interlocked</span>.<span class="i method">Decrement</span>(<b>ref</b> <a href="#3da34c9bd8c81326" class="i field">_count</a>) == 0)
+            {
+                <a href="#6d07574dfb585340" class="i field">_context</a>.<a href="/OrchardCore.Abstractions/A.html#cfc101cbffaed525" class="i method">Dispose</a>();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html><head><title>UpdateContentTask.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(173);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Workflows/Activities/UpdateContentTask.cs" target="_top">Workflows\Activities\UpdateContentTask.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Workflows</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Abstractions</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Activities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Helpers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Workflows</span>.<span class="i n">Activities</span>
+{
+    <b>public class</b> <a id="7ff78c04e423a733" href="../../R/7ff78c04e423a733.html" target="n" data-glyph="0,0" class="t t">UpdateContentTask</a> : <a href="ContentTask.cs.html#2fb091c8ade881c2" class="t t">ContentTask</a>
+    {
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="e7ccf49e92460d09" href="../../R/e7ccf49e92460d09.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#3d648d89c6aacd19" class="t t">IWorkflowExpressionEvaluator</a> <a id="65d126b0e07c6c79" href="../../R/65d126b0e07c6c79.html" target="n" data-glyph="46,1" class="i field">_expressionEvaluator</a>;
+        <b>private readonly</b> <span class="t t">JavaScriptEncoder</span> <a id="6d5cc6fa59fff952" href="../../R/6d5cc6fa59fff952.html" target="n" data-glyph="46,1" class="i field">_javaScriptEncoder</a>;
+ 
+        <b>public</b> <a id="5008f211ce60b37b" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UpdateContentTask</a>(
+            <span class="i">IContentManager</span> <span id="r0 rd" class="r0 r">contentManager</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r1 rd" class="r1 r">updateModelAccessor</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#3d648d89c6aacd19" class="t t">IWorkflowExpressionEvaluator</a> <span id="r2 rd" class="r2 r">expressionEvaluator</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#bcfb58591c1b1350" class="t t">IWorkflowScriptEvaluator</a> <span id="r3 rd" class="r3 r">scriptEvaluator</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>&gt; <span id="r4 rd" class="r4 r">localizer</span>,
+            <span class="t t">JavaScriptEncoder</span> <span id="r5 rd" class="r5 r">javaScriptEncoder</span>)
+            : <a href="ContentTask.cs.html#5824c1cbc151a500" class="k">base</a>(<span class="r0 r">contentManager</span>, <span class="r3 r">scriptEvaluator</span>, <span class="r4 r">localizer</span>)
+        {
+            <a href="#e7ccf49e92460d09" class="i field">_updateModelAccessor</a> = <span class="r1 r">updateModelAccessor</span>;
+            <a href="#65d126b0e07c6c79" class="i field">_expressionEvaluator</a> = <span class="r2 r">expressionEvaluator</span>;
+            <a href="#6d5cc6fa59fff952" class="i field">_javaScriptEncoder</a> = <span class="r5 r">javaScriptEncoder</span>;
+        }
+ 
+        <b>public override string</b> <a id="1c982c596d95bfd4" href="../../R/1c982c596d95bfd4.html" target="n" data-glyph="102,1" class="i property">Name</a> =&gt; <b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>);
+ 
+        <b>public override</b> <span class="t t">LocalizedString</span> <a id="3f91a79c431591b8" href="../../R/3f91a79c431591b8.html" target="n" data-glyph="102,1" class="i property">Category</a> =&gt; <a href="ContentActivity.cs.html#b77603f635ad0b21" class="i field">S</a>[<span class="s">&quot;Content&quot;</span>];
+ 
+        <b>public override</b> <span class="t t">LocalizedString</span> <a id="27c4c8ba1706a149" href="../../R/27c4c8ba1706a149.html" target="n" data-glyph="102,1" class="i property">DisplayText</a> =&gt; <a href="ContentActivity.cs.html#b77603f635ad0b21" class="i field">S</a>[<span class="s">&quot;Update Content Task&quot;</span>];
+ 
+        <b>public bool</b> <a id="d9e51daad35ad94f" href="../../R/d9e51daad35ad94f.html" target="n" data-glyph="102,1" class="i property">Publish</a>
+        {
+            <b>get</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#3aa47be8f1b24a84" class="i method">GetProperty</a>&lt;<b>bool</b>&gt;();
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="138ea845b3225b1b" href="../../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">ContentItemIdExpression</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="226427f9a20e39f4" href="../../R/226427f9a20e39f4.html" target="n" data-glyph="102,1" class="i property">ContentProperties</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <span class="t">WorkflowExpression</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="i">JsonConvert</span>.<span class="i">SerializeObject</span>(<b>new</b> { <a href="#19546a4714c80f22" class="i property">DisplayText</a> = <a href="ContentActivity.cs.html#b77603f635ad0b21" class="i field">S</a>[<span class="s">&quot;Enter a title&quot;</span>].<span class="i property">Value</span> }, <span class="i">Formatting</span>.<span class="i">Indented</span>)));
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#896cd41950be540c" class="t t">Outcome</a>&gt; <a id="5a0d88cccc7fdedc" href="../../R/5a0d88cccc7fdedc.html" target="n" data-glyph="72,1" class="i method">GetPossibleOutcomes</a>(<a href="/OrchardCore.Workflows.Abstractions/A.html#6f67695a3f6cde25" class="t t">WorkflowExecutionContext</a> <span id="r6 rd" class="r6 r">workflowContext</span>, <a href="/OrchardCore.Workflows.Abstractions/A.html#9e67ef319c1dd26d" class="t t">ActivityContext</a> <span id="r7 rd" class="r7 r">activityContext</span>)
+        {
+            <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#6be3d9fbf6cdd83d" class="i method">Outcomes</a>(<a href="ContentActivity.cs.html#b77603f635ad0b21" class="i field">S</a>[<span class="s">&quot;Done&quot;</span>], <a href="ContentActivity.cs.html#b77603f635ad0b21" class="i field">S</a>[<span class="s">&quot;Failed&quot;</span>]);
+        }
+ 
+        <b>public async override</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#d58e24256eaeafa5" class="t t">ActivityExecutionResult</a>&gt; <a id="9b67be19ece46f73" href="../../R/9b67be19ece46f73.html" target="n" data-glyph="72,1" class="i method">ExecuteAsync</a>(<a href="/OrchardCore.Workflows.Abstractions/A.html#6f67695a3f6cde25" class="t t">WorkflowExecutionContext</a> <span id="r8 rd" class="r8 r">workflowContext</span>, <a href="/OrchardCore.Workflows.Abstractions/A.html#9e67ef319c1dd26d" class="t t">ActivityContext</a> <span id="r9 rd" class="r9 r">activityContext</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">contentItemId</span> = <b>await</b> <a href="ContentActivity.cs.html#eeb51354f51d6f0e" class="i method">GetContentItemIdAsync</a>(<span class="r8 r">workflowContext</span>);
+ 
+            <b>if</b> (<span class="r10 r">contentItemId</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">The </span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s"> failed to evaluate the &#39;ContentItemId&#39;.</span><span class="s">&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r11 rd" class="r11 r">inlineEventOfSameContentItemId</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">ContentItemId</span>, <span class="r10 r">contentItemId</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>);
+ 
+            <b>if</b> (<span class="r11 r">inlineEventOfSameContentItemId</span>)
+            {
+                <b>if</b> (<a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">Name</span> == <b>nameof</b>(<a href="ContentPublishedEvent.cs.html#8e1e4eb637179d0f" class="t t">ContentPublishedEvent</a>))
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">The &#39;</span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s">&#39; can&#39;t update the content item as it is executed inline from a &#39;</span>{<b>nameof</b>(<a href="ContentPublishedEvent.cs.html#8e1e4eb637179d0f" class="t t">ContentPublishedEvent</a>)}<span class="s">&#39; of the same content item, please use an event that is triggered earlier.</span><span class="s">&quot;</span>);
+                }
+ 
+                <b>if</b> (<a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">Name</span> == <b>nameof</b>(<a href="ContentDraftSavedEvent.cs.html#890422a6065ba70b" class="t t">ContentDraftSavedEvent</a>))
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">The &#39;</span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s">&#39; can&#39;t update the content item as it is executed inline from a &#39;</span>{<b>nameof</b>(<a href="ContentDraftSavedEvent.cs.html#890422a6065ba70b" class="t t">ContentDraftSavedEvent</a>)}<span class="s">&#39; of the same content item, please use an event that is triggered earlier.</span><span class="s">&quot;</span>);
+                }
+            }
+ 
+            <span class="i">ContentItem</span> <span id="r12 rd" class="r12 r">contentItem</span> = <b>null</b>;
+ 
+            <b>if</b> (!<span class="r11 r">inlineEventOfSameContentItemId</span>)
+            {
+                <span class="r12 r">contentItem</span> = <b>await</b> <a href="ContentActivity.cs.html#0dc6bdc4ba8c5b68" class="i property">ContentManager</a>.<span class="i">GetAsync</span>(<span class="r10 r">contentItemId</span>, <span class="i">VersionOptions</span>.<span class="i">DraftRequired</span>);
+            }
+            <b>else</b>
+            {
+                <span class="r12 r">contentItem</span> = <span class="r8 r">workflowContext</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#64ee46bac4f58d2e" class="i property">Input</a>.<span class="i">GetValue</span>&lt;<span class="i">IContent</span>&gt;(<span class="i">ContentEventConstants</span>.<span class="i">ContentItemInputKey</span>)?.<span class="i">ContentItem</span>;
+            }
+ 
+            <b>if</b> (<span class="r12 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">The &#39;</span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s">&#39; failed to retrieve the content item.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>if</b> (!<span class="r11 r">inlineEventOfSameContentItemId</span> &amp;&amp; <a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">IsStart</span> &amp;&amp; <a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">ContentType</span> == <span class="r12 r">contentItem</span>.<span class="i">ContentType</span>)
+            {
+                <b>if</b> (<a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">Name</span> == <b>nameof</b>(<a href="ContentUpdatedEvent.cs.html#131a241c40027db4" class="t t">ContentUpdatedEvent</a>))
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">The &#39;</span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s">&#39; can&#39;t update the content item as it is executed inline from a starting &#39;</span>{<b>nameof</b>(<a href="ContentUpdatedEvent.cs.html#131a241c40027db4" class="t t">ContentUpdatedEvent</a>)}<span class="s">&#39; of the same content type, which would result in an infinitive loop.</span><span class="s">&quot;</span>);
+                }
+ 
+                <b>if</b> (<a href="#d9e51daad35ad94f" class="i property">Publish</a> &amp;&amp; <a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">Name</span> == <b>nameof</b>(<a href="ContentPublishedEvent.cs.html#8e1e4eb637179d0f" class="t t">ContentPublishedEvent</a>))
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">The &#39;</span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s">&#39; can&#39;t publish the content item as it is executed inline from a starting &#39;</span>{<b>nameof</b>(<a href="ContentPublishedEvent.cs.html#8e1e4eb637179d0f" class="t t">ContentPublishedEvent</a>)}<span class="s">&#39; of the same content type, which would result in an infinitive loop.</span><span class="s">&quot;</span>);
+                }
+ 
+                <b>if</b> (!<a href="#d9e51daad35ad94f" class="i property">Publish</a> &amp;&amp; <a href="ContentActivity.cs.html#734c9a96c22fa4ef" class="i property">InlineEvent</a>.<span class="i">Name</span> == <b>nameof</b>(<a href="ContentDraftSavedEvent.cs.html#890422a6065ba70b" class="t t">ContentDraftSavedEvent</a>))
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">The &#39;</span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s">&#39; can&#39;t update the content item as it is executed inline from a starting &#39;</span>{<b>nameof</b>(<a href="ContentDraftSavedEvent.cs.html#890422a6065ba70b" class="t t">ContentDraftSavedEvent</a>)}<span class="s">&#39; of the same content type, which would result in an infinitive loop.</span><span class="s">&quot;</span>);
+                }
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<a href="#226427f9a20e39f4" class="i property">ContentProperties</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#4278558a8b030160" class="i property">Expression</a>))
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">contentProperties</span> = <b>await</b> <a href="#65d126b0e07c6c79" class="i field">_expressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#226427f9a20e39f4" class="i property">ContentProperties</a>, <span class="r8 r">workflowContext</span>, <a href="#6d5cc6fa59fff952" class="i field">_javaScriptEncoder</a>);
+                <span class="r12 r">contentItem</span>.<span class="i">Merge</span>(<span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r13 r">contentProperties</span>), <b>new</b> <span class="i">JsonMergeSettings</span> { <span class="i">MergeArrayHandling</span> = <span class="i">MergeArrayHandling</span>.<span class="i">Replace</span> });
+            }
+ 
+            <b>if</b> (!<span class="r11 r">inlineEventOfSameContentItemId</span>)
+            {
+                <b>await</b> <a href="ContentActivity.cs.html#0dc6bdc4ba8c5b68" class="i property">ContentManager</a>.<span class="i">UpdateAsync</span>(<span class="r12 r">contentItem</span>);
+            }
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">result</span> = <b>await</b> <a href="ContentActivity.cs.html#0dc6bdc4ba8c5b68" class="i property">ContentManager</a>.<span class="i">ValidateAsync</span>(<span class="r12 r">contentItem</span>);
+ 
+            <b>if</b> (<span class="r14 r">result</span>.<span class="i">Succeeded</span>)
+            {
+                <b>if</b> (!<span class="r11 r">inlineEventOfSameContentItemId</span>)
+                {
+                    <b>if</b> (<a href="#d9e51daad35ad94f" class="i property">Publish</a>)
+                    {
+                        <b>await</b> <a href="ContentActivity.cs.html#0dc6bdc4ba8c5b68" class="i property">ContentManager</a>.<span class="i">PublishAsync</span>(<span class="r12 r">contentItem</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <b>await</b> <a href="ContentActivity.cs.html#0dc6bdc4ba8c5b68" class="i property">ContentManager</a>.<span class="i">SaveDraftAsync</span>(<span class="r12 r">contentItem</span>);
+                    }
+                }
+ 
+                <span class="r8 r">workflowContext</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#568071871df1f194" class="i property">CorrelationId</a> = <span class="r12 r">contentItem</span>.<span class="i">ContentItemId</span>;
+                <span class="r8 r">workflowContext</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#0074bb9854d7ed80" class="i property">Properties</a>[<span class="i">ContentEventConstants</span>.<span class="i">ContentItemInputKey</span>] = <span class="r12 r">contentItem</span>;
+                <span class="r8 r">workflowContext</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#3d784f37085b00d7" class="i property">LastResult</a> = <span class="r12 r">contentItem</span>;
+ 
+                <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Done&quot;</span>);
+            }
+ 
+            <b>if</b> (<span class="r11 r">inlineEventOfSameContentItemId</span>)
+            {
+                <a href="#e7ccf49e92460d09" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>),
+                    <span class="s">$&quot;</span><span class="s">The &#39;</span>{<span class="r8 r">workflowContext</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#5b7cec2fb715fe6a" class="i property">WorkflowType</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#e38a233b865b01d8" class="i property">Name</a>}<span class="s">:</span>{<b>nameof</b>(<a href="#7ff78c04e423a733" class="t t">UpdateContentTask</a>)}<span class="s">&#39; failed to update the content item: </span><span class="s">&quot;</span>
+                    + <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Join</span>(<span class="s">&quot;, &quot;</span>, <span class="r14 r">result</span>.<span class="i">Errors</span>));
+            }
+ 
+            <span class="r8 r">workflowContext</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#3d784f37085b00d7" class="i property">LastResult</a> = <span class="r14 r">result</span>;
+ 
+            <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="s">&quot;Failed&quot;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

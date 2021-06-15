@@ -1,0 +1,140 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModularTenantRouterMiddleware.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(131);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Modules/ModularTenantRouterMiddleware.cs" target="_top">Modules\ModularTenantRouterMiddleware.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Builder</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>.<span class="i n">Features</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Scope</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Handles a request by forwarding it to the tenant specific pipeline.</span>
+    <span class="c">///</span><span class="c"> It also initializes the middlewares for the requested tenant on the first request.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="e5a08ba77e6a1abb" href="../R/e5a08ba77e6a1abb.html" target="n" data-glyph="0,0" class="t t">ModularTenantRouterMiddleware</a>
+    {
+        <b>private readonly</b> <span class="t t">IFeatureCollection</span> <a id="571ed051b698c201" href="../R/571ed051b698c201.html" target="n" data-glyph="46,1" class="i field">_features</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="5f4f3fcd80e935f9" href="../R/5f4f3fcd80e935f9.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">SemaphoreSlim</span>&gt; <a id="7f5d8ffb227cdde0" href="../R/7f5d8ffb227cdde0.html" target="n" data-glyph="46,1" class="i field">_semaphores</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">SemaphoreSlim</span>&gt;();
+ 
+        <b>public</b> <a id="1075e8feb2c6c106" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ModularTenantRouterMiddleware</a>(
+            <span class="t t">IFeatureCollection</span> <span id="r0 rd" class="r0 r">features</span>,
+            <span class="t t">RequestDelegate</span> <span id="r1 rd" class="r1 r">next</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#e5a08ba77e6a1abb" class="t t">ModularTenantRouterMiddleware</a>&gt; <span id="r2 rd" class="r2 r">logger</span>)
+        {
+            <a href="#571ed051b698c201" class="i field">_features</a> = <span class="r0 r">features</span>;
+            <a href="#5f4f3fcd80e935f9" class="i field">_logger</a> = <span class="r2 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="437686d18bc7b835" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Invoke</a>(<span class="t t">HttpContext</span> <span id="r3 rd" class="r3 r">httpContext</span>)
+        {
+            <b>if</b> (<a href="#5f4f3fcd80e935f9" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#5f4f3fcd80e935f9" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Begin Routing Request&quot;</span>);
+            }
+ 
+            <a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="k">var</a> <span id="r4 rd" class="r4 r">shellContext</span> = <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#37dee1e883ce38c6" class="i property">Context</a>;
+ 
+            <span class="c">// Define a PathBase for the current request that is the RequestUrlPrefix.</span>
+            <span class="c">// This will allow any view to reference ~/ as the tenant&#39;s base url.</span>
+            <span class="c">// Because IIS or another middleware might have already set it, we just append the tenant prefix value.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r4 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a>))
+            {
+                <span class="t t">PathString</span> <span id="r5 rd" class="r5 r">prefix</span> = <span class="s">&quot;/&quot;</span> + <span class="r4 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#943654b957736846" class="i property">RequestUrlPrefix</a>;
+                <span class="r3 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span> += <span class="r5 r">prefix</span>;
+                <span class="r3 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">Path</span>.<span class="i method">StartsWithSegments</span>(<span class="r5 r">prefix</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>, <b>out</b> <span class="t t">PathString</span> <span id="r6 rd" class="r6 r">remainingPath</span>);
+                <span class="r3 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">Path</span> = <span class="r6 r">remainingPath</span>;
+            }
+ 
+            <span class="c">// Do we need to rebuild the pipeline ?</span>
+            <b>if</b> (<span class="r4 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#83bf1f479f57ae7a" class="i property">Pipeline</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#f1101756ec0e4ecd" class="i method">InitializePipelineAsync</a>(<span class="r4 r">shellContext</span>);
+            }
+ 
+            <b>await</b> <span class="r4 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#83bf1f479f57ae7a" class="i property">Pipeline</a>.<a href="/OrchardCore.Abstractions/A.html#9c2e48b777488e03" class="i method">Invoke</a>(<span class="r3 r">httpContext</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f1101756ec0e4ecd" href="../R/f1101756ec0e4ecd.html" target="n" data-glyph="76,1" class="i method">InitializePipelineAsync</a>(<a href="/OrchardCore.Abstractions/A.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r7 rd" class="r7 r">shellContext</span>)
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">semaphore</span> = <a href="#7f5d8ffb227cdde0" class="i field">_semaphores</a>.<span class="i method">GetOrAdd</span>(<span class="r7 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <span id="r9 rd" class="r9 r">_</span> =&gt; <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1));
+ 
+            <span class="c">// Building a pipeline for a given shell can&#39;t be done by two requests.</span>
+            <b>await</b> <span class="r8 r">semaphore</span>.<span class="i method">WaitAsync</span>();
+ 
+            <b>try</b>
+            {
+                <b>if</b> (<span class="r7 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#83bf1f479f57ae7a" class="i property">Pipeline</a> == <b>null</b>)
+                {
+                    <span class="r7 r">shellContext</span>.<a href="/OrchardCore.Abstractions/A.html#83bf1f479f57ae7a" class="i property">Pipeline</a> = <a href="#0b6db4d6ff26807f" class="i method">BuildTenantPipeline</a>();
+                }
+            }
+            <b>finally</b>
+            {
+                <span class="r8 r">semaphore</span>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <span class="c">// Build the middleware pipeline for the current tenant</span>
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#20454e7ec76cf417" class="t t">IShellPipeline</a> <a id="0b6db4d6ff26807f" href="../R/0b6db4d6ff26807f.html" target="n" data-glyph="76,1" class="i method">BuildTenantPipeline</a>()
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">appBuilder</span> = <b>new</b> <span class="t constructor">ApplicationBuilder</span>(<a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#37dee1e883ce38c6" class="i property">Context</a>.<a href="/OrchardCore.Abstractions/A.html#14806dab63c4713f" class="i property">ServiceProvider</a>, <a href="#571ed051b698c201" class="i field">_features</a>);
+ 
+            <span class="c">// Create a nested pipeline to configure the tenant middleware pipeline</span>
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r11 rd" class="r11 r">startupFilters</span> = <span class="r10 r">appBuilder</span>.<span class="i property">ApplicationServices</span>.<span class="i method">GetService</span>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IStartupFilter</span>&gt;&gt;();
+ 
+            <a href="/OrchardCore.Abstractions/A.html#1c8cc2a3bc2e9050" class="k">var</a> <span id="r12 rd" class="r12 r">shellPipeline</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#1c8cc2a3bc2e9050" class="t constructor">ShellRequestPipeline</a>();
+ 
+            <a href="@1@System.Runtime/A.html#486d58da4553e12d" class="t t">Action</a>&lt;<span class="t t">IApplicationBuilder</span>&gt; <span id="r13 rd" class="r13 r">configure</span> = <span id="r14 rd" class="r14 r">builder</span> =&gt;
+            {
+                <a href="#db4a03efa748da3a" class="i method">ConfigureTenantPipeline</a>(<span class="r14 r">builder</span>);
+            };
+ 
+            <b>foreach</b> (<b>var</b> <span id="r15 rd" class="r15 r">filter</span> <b>in</b> <span class="r11 r">startupFilters</span>.<span class="i method">Reverse</span>())
+            {
+                <span class="r13 r">configure</span> = <span class="r15 r">filter</span>.<span class="i method">Configure</span>(<span class="r13 r">configure</span>);
+            }
+ 
+            <span class="r13 r">configure</span>(<span class="r10 r">appBuilder</span>);
+ 
+            <span class="r12 r">shellPipeline</span>.<a href="/OrchardCore.Abstractions/A.html#293b58a1babcc335" class="i property">Next</a> = <span class="r10 r">appBuilder</span>.<span class="i method">Build</span>();
+ 
+            <b>return</b> <span class="r12 r">shellPipeline</span>;
+        }
+ 
+        <b>private void</b> <a id="db4a03efa748da3a" href="../R/db4a03efa748da3a.html" target="n" data-glyph="76,1" class="i method">ConfigureTenantPipeline</a>(<span class="t t">IApplicationBuilder</span> <span id="r16 rd" class="r16 r">appBuilder</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r17 rd" class="r17 r">startups</span> = <span class="r16 r">appBuilder</span>.<span class="i property">ApplicationServices</span>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>&gt;();
+ 
+            <span class="c">// IStartup instances are ordered by module dependency with an &#39;ConfigureOrder&#39; of 0 by default.</span>
+            <span class="c">// OrderBy performs a stable sort so order is preserved among equal &#39;ConfigureOrder&#39; values.</span>
+            <span class="r17 r">startups</span> = <span class="r17 r">startups</span>.<span class="i method">OrderBy</span>(<span id="r18 rd" class="r18 r">s</span> =&gt; <span class="r18 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#89d3216022844680" class="i property">ConfigureOrder</a>);
+ 
+            <span class="r16 r">appBuilder</span>.<span class="i method">UseRouting</span>().<span class="i method">UseEndpoints</span>(<span id="r19 rd" class="r19 r">routes</span> =&gt;
+            {
+                <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="k">var</a> <span id="r20 rd" class="r20 r">startup</span> <b>in</b> <span class="r17 r">startups</span>)
+                {
+                    <span class="r20 r">startup</span>.<a href="/OrchardCore.Abstractions/A.html#3ad1f71178369405" class="i method">Configure</a>(<span class="r16 r">appBuilder</span>, <span class="r19 r">routes</span>, <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#996415403af48612" class="i property">Services</a>);
+                }
+            });
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

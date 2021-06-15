@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html>
+<html><head><title>LiquidTagHelperFactory.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(139);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid/TagHelpers/LiquidTagHelperFactory.cs" target="_top">TagHelpers\LiquidTagHelperFactory.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid" target="_top">src\OrchardCore\OrchardCore.DisplayManagement.Liquid\OrchardCore.DisplayManagement.Liquid.csproj</a> (OrchardCore.DisplayManagement.Liquid)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ApplicationParts</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i">Language</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>.<span class="i n">TagHelpers</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Singleton containing shared state for tag helper tags.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="5bda024f07cab8e1" href="../R/5bda024f07cab8e1.html" target="n" data-glyph="0,0" class="t t">LiquidTagHelperFactory</a>
+    {
+        <b>private static</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>, <a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="t t">LiquidTagHelperMatching</a>&gt; <a id="e458e06643a31b9e" href="../R/e458e06643a31b9e.html" target="n" data-glyph="46,1" class="i field">_allMatchings</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>, <a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="t t">LiquidTagHelperMatching</a>&gt;();
+        <b>private static</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>, <a href="LiquidTagHelperActivator.cs.html#98bfd9c14a04114b" class="t t">LiquidTagHelperActivator</a>&gt; <a id="b24bd055c1aeb49c" href="../R/b24bd055c1aeb49c.html" target="n" data-glyph="46,1" class="i field">_allActivators</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>, <a href="LiquidTagHelperActivator.cs.html#98bfd9c14a04114b" class="t t">LiquidTagHelperActivator</a>&gt;();
+ 
+        <b>private</b> <span class="t t">List</span>&lt;<a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="t t">LiquidTagHelperMatching</a>&gt; <a id="875ced2021810980" href="../R/875ced2021810980.html" target="n" data-glyph="46,1" class="i field">_matchings</a>;
+        <b>private readonly</b> <span class="t t">ApplicationPartManager</span> <a id="ce07db443d8c8dbc" href="../R/ce07db443d8c8dbc.html" target="n" data-glyph="46,1" class="i field">_partManager</a>;
+        <b>private readonly</b> <span class="t t">ITagHelperFactory</span> <a id="a4edc081adce9166" href="../R/a4edc081adce9166.html" target="n" data-glyph="46,1" class="i field">_factory</a>;
+ 
+        <b>public</b> <a id="dbf43003c272b906" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LiquidTagHelperFactory</a>(<span class="t t">ApplicationPartManager</span> <span id="r0 rd" class="r0 r">partManager</span>, <span class="t t">ITagHelperFactory</span> <span id="r1 rd" class="r1 r">factory</span>)
+        {
+            <a href="#ce07db443d8c8dbc" class="i field">_partManager</a> = <span class="r0 r">partManager</span>;
+            <a href="#a4edc081adce9166" class="i field">_factory</a> = <span class="r1 r">factory</span>;
+        }
+ 
+        <b>private void</b> <a id="547511197da8ef2b" href="../R/547511197da8ef2b.html" target="n" data-glyph="76,1" class="i method">EnsureMatchings</a>()
+        {
+            <b>if</b> (<a href="#875ced2021810980" class="i field">_matchings</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>lock</b> (<a href="#5bda024f07cab8e1" class="k">this</a>)
+            {
+                <b>if</b> (<a href="#875ced2021810980" class="i field">_matchings</a> == <b>null</b>)
+                {
+                    <b>var</b> <span id="r2 rd" class="r2 r">feature</span> = <b>new</b> <span class="t constructor">TagHelperFeature</span>();
+                    <a href="#ce07db443d8c8dbc" class="i field">_partManager</a>.<span class="i method">PopulateFeature</span>(<span class="r2 r">feature</span>);
+ 
+                    <b>var</b> <span id="r3 rd" class="r3 r">matchings</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="t t">LiquidTagHelperMatching</a>&gt;();
+ 
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#f4c48ee604408077" class="k">var</a> <span id="r4 rd" class="r4 r">tagHelper</span> <b>in</b> <span class="r2 r">feature</span>.<span class="i property">TagHelpers</span>)
+                    {
+                        <a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="k">var</a> <span id="r5 rd" class="r5 r">matching</span> = <a href="#e458e06643a31b9e" class="i field">_allMatchings</a>.<span class="i">GetOrAdd</span>(<span class="r4 r">tagHelper</span>.<a href="@1@System.Runtime/A.html#22cef495c0fb163c" class="i method">AsType</a>(), <span id="r6 rd" class="r6 r">type</span> =&gt;
+                        {
+                            <b>var</b> <span id="r7 rd" class="r7 r">descriptorBuilder</span> = <span class="i">TagHelperDescriptorBuilder</span>.<span class="i">Create</span>(
+                                <span class="r6 r">type</span>.<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a>, <span class="r6 r">type</span>.<a href="@1@System.Runtime/A.html#e87d536bd07fab01" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#1fd23b897ffa9a75" class="i method">GetName</a>().<a href="@1@System.Runtime/A.html#917bceeed23fe2ae" class="i property">Name</a>);
+ 
+                            <span class="r7 r">descriptorBuilder</span>.<span class="i">SetTypeName</span>(<span class="r6 r">type</span>.<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a>);
+                            <span class="i">AddTagMatchingRules</span>(<span class="r6 r">type</span>, <span class="r7 r">descriptorBuilder</span>);
+                            <b>var</b> <span id="r8 rd" class="r8 r">descriptor</span> = <span class="r7 r">descriptorBuilder</span>.<span class="i">Build</span>();
+ 
+                            <b>return</b> <b>new</b> <span class="t">LiquidTagHelperMatching</span>(
+                                <span class="r8 r">descriptor</span>.<span class="i">Name</span>,
+                                <span class="r8 r">descriptor</span>.<span class="i">AssemblyName</span>,
+                                <span class="r8 r">descriptor</span>.<span class="i">TagMatchingRules</span>
+                            );
+                        });
+ 
+                        <span class="r3 r">matchings</span>.<span class="i method">Add</span>(<span class="r5 r">matching</span>);
+                    }
+ 
+                    <a href="#875ced2021810980" class="i field">_matchings</a> = <span class="r3 r">matchings</span>;
+                }
+            }
+        }
+ 
+        <b>public</b> <a href="LiquidTagHelperActivator.cs.html#98bfd9c14a04114b" class="t t">LiquidTagHelperActivator</a> <a id="418c753acd9fef62" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetActivator</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">helper</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r10 rd" class="r10 r">arguments</span>)
+        {
+            <a href="#547511197da8ef2b" class="i method">EnsureMatchings</a>();
+            <a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="k">var</a> <span id="r11 rd" class="r11 r">matching</span> = <a href="#875ced2021810980" class="i field">_matchings</a>.<span class="i method">Where</span>(<span id="r12 rd" class="r12 r">d</span> =&gt; <span class="r12 r">d</span>.<a href="LiquidTagHelperMatching.cs.html#34229ece3f888e91" class="i method">Match</a>(<span class="r9 r">helper</span>, <span class="r10 r">arguments</span>)).<span class="i method">FirstOrDefault</span>() ?? <a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="t t">LiquidTagHelperMatching</a>.<a href="LiquidTagHelperMatching.cs.html#1c383bc77f245c3e" class="i field">None</a>;
+ 
+            <b>if</b> (<span class="r11 r">matching</span> != <a href="LiquidTagHelperMatching.cs.html#e5cdbadd31fa8e29" class="t t">LiquidTagHelperMatching</a>.<a href="LiquidTagHelperMatching.cs.html#1c383bc77f245c3e" class="i field">None</a>)
+            {
+                <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r13 rd" class="r13 r">tagHelperType</span> = <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>.<a href="@1@System.Runtime/A.html#ba8d29b0ddf9aaa0" class="i method">GetType</a>(<span class="r11 r">matching</span>.<a href="LiquidTagHelperMatching.cs.html#a1639fe301cf39b3" class="i property">Name</a> + <span class="s">&quot;, &quot;</span> + <span class="r11 r">matching</span>.<a href="LiquidTagHelperMatching.cs.html#4a618db00d597ba7" class="i property">AssemblyName</a>);
+                <b>return</b> <a href="#b24bd055c1aeb49c" class="i field">_allActivators</a>.<span class="i method">GetOrAdd</span>(<span class="r13 r">tagHelperType</span>, <span id="r14 rd" class="r14 r">type</span> =&gt; <b>new</b> <a href="LiquidTagHelperActivator.cs.html#61c9b8350913913c" class="t constructor">LiquidTagHelperActivator</a>(<span class="r14 r">type</span>));
+            }
+ 
+            <b>return</b> <a href="LiquidTagHelperActivator.cs.html#98bfd9c14a04114b" class="t t">LiquidTagHelperActivator</a>.<a href="LiquidTagHelperActivator.cs.html#2cf96259586b555c" class="i field">None</a>;
+        }
+ 
+        <b>public</b> <span class="t t">ITagHelper</span> <a id="154b42355d43a5c4" href="../R/154b42355d43a5c4.html" target="n" data-glyph="72,1" class="i method">CreateTagHelper</a>(<a href="LiquidTagHelperActivator.cs.html#98bfd9c14a04114b" class="t t">LiquidTagHelperActivator</a> <span id="r15 rd" class="r15 r">activator</span>, <span class="t t">ViewContext</span> <span id="r16 rd" class="r16 r">context</span>, <span class="i">FilterArguments</span> <span id="r17 rd" class="r17 r">arguments</span>,
+            <b>out</b> <span class="t t">TagHelperAttributeList</span> <span id="r18 rd" class="r18 r">contextAttributes</span>, <b>out</b> <span class="t t">TagHelperAttributeList</span> <span id="r19 rd" class="r19 r">outputAttributes</span>)
+        {
+            <b>return</b> <span class="r15 r">activator</span>.<a href="LiquidTagHelperActivator.cs.html#c4b86e7ed3b2d907" class="i method">Create</a>(<a href="#a4edc081adce9166" class="i field">_factory</a>, <span class="r16 r">context</span>, <span class="r17 r">arguments</span>, <b>out</b> <span class="r18 r">contextAttributes</span>, <b>out</b> <span class="r19 r">outputAttributes</span>);
+        }
+ 
+        <b>private static void</b> <a id="7c07a7b01c85eb1a" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">AddTagMatchingRules</a>(<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a> <span id="r20 rd" class="r20 r">type</span>, <span class="i">TagHelperDescriptorBuilder</span> <span id="r21 rd" class="r21 r">descriptorBuilder</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r22 rd" class="r22 r">targetElementAttributes</span> = <span class="r20 r">type</span>.<a href="@1@System.Runtime/A.html#1ffe18a9b0190ab3" class="i method">GetCustomAttributes</a>&lt;<span class="t t">HtmlTargetElementAttribute</span>&gt;();
+ 
+            <span class="c">// If there isn&#39;t an attribute specifying the tag name derive it from the name</span>
+            <b>if</b> (!<span class="r22 r">targetElementAttributes</span>.<span class="i method">Any</span>())
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">name</span> = <span class="r20 r">type</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>;
+ 
+                <b>if</b> (<span class="r23 r">name</span>.<a href="@1@System.Runtime/A.html#41a31e4feec3ef41" class="i method">EndsWith</a>(<span class="s">&quot;TagHelper&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <span class="r23 r">name</span> = <span class="r23 r">name</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r23 r">name</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - <span class="s">&quot;TagHelper&quot;</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+                }
+ 
+                <span class="r21 r">descriptorBuilder</span>.<span class="i">TagMatchingRule</span>(<span id="r24 rd" class="r24 r">ruleBuilder</span> =&gt;
+                {
+                    <b>var</b> <span id="r25 rd" class="r25 r">htmlCasedName</span> = <span class="i">HtmlConventions</span>.<span class="i">ToHtmlCase</span>(<span class="r23 r">name</span>);
+                    <span class="r24 r">ruleBuilder</span>.<span class="i">TagName</span> = <span class="r25 r">htmlCasedName</span>;
+                });
+ 
+                <b>return</b>;
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r26 rd" class="r26 r">targetElementAttribute</span> <b>in</b> <span class="r22 r">targetElementAttributes</span>)
+            {
+                <span class="r21 r">descriptorBuilder</span>.<span class="i">TagMatchingRule</span>(<span id="r27 rd" class="r27 r">ruleBuilder</span> =&gt;
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r28 rd" class="r28 r">tagName</span> = <span class="r26 r">targetElementAttribute</span>.<span class="i property">Tag</span>;
+                    <span class="r27 r">ruleBuilder</span>.<span class="i">TagName</span> = <span class="r28 r">tagName</span>;
+ 
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r29 rd" class="r29 r">parentTag</span> = <span class="r26 r">targetElementAttribute</span>.<span class="i property">ParentTag</span>;
+                    <span class="r27 r">ruleBuilder</span>.<span class="i">ParentTag</span> = <span class="r29 r">parentTag</span>;
+ 
+                    <b>var</b> <span id="r30 rd" class="r30 r">tagStructure</span> = <span class="r26 r">targetElementAttribute</span>.<span class="i property">TagStructure</span>;
+                    <span class="r27 r">ruleBuilder</span>.<span class="i">TagStructure</span> = (<span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i">Language</span>.<span class="i">TagStructure</span>)<span class="r30 r">tagStructure</span>;
+ 
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r31 rd" class="r31 r">requiredAttributeString</span> = <span class="r26 r">targetElementAttribute</span>.<span class="i property">Attributes</span>;
+                    <a href="RequiredAttributeParser.cs.html#aabd04d9a6d8d363" class="t t">RequiredAttributeParser</a>.<span class="i">AddRequiredAttributes</span>(<span class="r31 r">requiredAttributeString</span>, <span class="r27 r">ruleBuilder</span>);
+                });
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

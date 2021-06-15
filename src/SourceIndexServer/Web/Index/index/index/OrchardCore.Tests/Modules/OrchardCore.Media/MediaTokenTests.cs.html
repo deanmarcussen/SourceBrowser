@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html><head><title>MediaTokenTests.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(90);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Modules/OrchardCore.Media/MediaTokenTests.cs" target="_top">Modules\OrchardCore.Media\MediaTokenTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Moq</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Media</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Media</span>.<span class="i">Processing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i">SixLabors</span>.<span class="i">ImageSharp</span>.<span class="i">Web</span>.<span class="i">Processors</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Modules</span>.<span class="i n">OrchardCore</span>.<span class="i n">Media</span>
+{
+    <b>public class</b> <a id="f71100480a955c71" href="../../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">MediaTokenTests</a>
+    {
+        <b>private readonly</b> <span class="i">MediaTokenSettings</span> <a id="bf158bde74dc9731" href="../../R/bf158bde74dc9731.html" target="n" data-glyph="46,1" class="i field">_mediaTokenSettings</a>;
+        <b>public</b> <a id="f162e48515069e5e" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">MediaTokenTests</a>()
+        {
+            <b>var</b> <span id="r0 rd" class="r0 r">rng</span> = <span class="t t">RandomNumberGenerator</span>.<span class="i method">Create</span>();
+            <a href="#bf158bde74dc9731" class="i field">_mediaTokenSettings</a> = <b>new</b> <span class="i">MediaTokenSettings</span>();
+            <a href="#bf158bde74dc9731" class="i field">_mediaTokenSettings</a>.<span class="i">HashKey</span> = <b>new</b> <b>byte</b>[64];
+            <span class="r0 r">rng</span>.<span class="i">GetBytes</span>(<a href="#bf158bde74dc9731" class="i field">_mediaTokenSettings</a>.<span class="i">HashKey</span>);
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="3b134afe58dfb3e6" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldAddToken</a>()
+        {
+            <b>var</b> <span id="r1 rd" class="r1 r">serviceProvider</span> = <a href="#f9f1bbb75ff8f897" class="i method">CreateServiceProvider</a>();
+            <b>var</b> <span id="r2 rd" class="r2 r">mediaTokenService</span> = <span class="r1 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IMediaTokenService</span>&gt;();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r3 rd" class="r3 r">path</span> = <span class="s">&quot;/media/blog.jpg?width=100&amp;height=100&quot;</span>;
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">tokenizedPath</span> = <span class="r2 r">mediaTokenService</span>.<span class="i">AddTokenToPath</span>(<span class="r3 r">path</span>);
+ 
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r4 r">tokenizedPath</span>.<span class="i">Contains</span>(<span class="s">&quot;token&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/media/blog.jpg?v=version&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/media/blog.jpg&quot;</span>)]
+        <b>public void</b> <a id="237869c83e456191" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldNotAddTokens</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">path</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">serviceProvider</span> = <a href="#f9f1bbb75ff8f897" class="i method">CreateServiceProvider</a>();
+            <b>var</b> <span id="r7 rd" class="r7 r">mediaTokenService</span> = <span class="r6 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IMediaTokenService</span>&gt;();
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">tokenizedPath</span> = <span class="r7 r">mediaTokenService</span>.<span class="i">AddTokenToPath</span>(<span class="r5 r">path</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r5 r">path</span>, <span class="r8 r">tokenizedPath</span>);
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="4e3478bbaa45253d" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldGenerateConsistentToken</a>()
+        {
+            <b>var</b> <span id="r9 rd" class="r9 r">sp1</span> = <a href="#f9f1bbb75ff8f897" class="i method">CreateServiceProvider</a>();
+            <b>var</b> <span id="r10 rd" class="r10 r">sp2</span> = <a href="#f9f1bbb75ff8f897" class="i method">CreateServiceProvider</a>();
+            <b>var</b> <span id="r11 rd" class="r11 r">mts1</span> = <span class="r9 r">sp1</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IMediaTokenService</span>&gt;();
+            <b>var</b> <span id="r12 rd" class="r12 r">mts2</span> = <span class="r10 r">sp2</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IMediaTokenService</span>&gt;();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">path</span> = <span class="s">&quot;/media/blog.jpg?width=100&amp;height=100&quot;</span>;
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">tokenizedPath1</span> = <span class="r11 r">mts1</span>.<span class="i">AddTokenToPath</span>(<span class="r13 r">path</span>);
+            <b>var</b> <span id="r15 rd" class="r15 r">tokenizedPath2</span> = <span class="r12 r">mts2</span>.<span class="i">AddTokenToPath</span>(<span class="r13 r">path</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r14 r">tokenizedPath1</span>, <span class="r15 r">tokenizedPath2</span>);
+        }
+ 
+        <b>private</b> <span class="t t">IServiceProvider</span> <a id="f9f1bbb75ff8f897" href="../../R/f9f1bbb75ff8f897.html" target="n" data-glyph="76,1" class="i method">CreateServiceProvider</a>()
+        {
+            <b>var</b> <span id="r16 rd" class="r16 r">services</span> = <b>new</b> <span class="t constructor">ServiceCollection</span>();
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">mockSiteService</span> = <span class="i">Mock</span>.<span class="i">Of</span>&lt;<span class="i">ISiteService</span>&gt;(<span id="r18 rd" class="r18 r">ss</span> =&gt;
+                <span class="r18 r">ss</span>.<span class="i">GetSiteSettingsAsync</span>() == <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>(
+                    <span class="i">Mock</span>.<span class="i">Of</span>&lt;<span class="i">ISite</span>&gt;(<span id="r19 rd" class="r19 r">s</span> =&gt; <span class="r19 r">s</span>.<span class="i">Properties</span> == <span class="i">JObject</span>.<span class="i">FromObject</span>(<b>new</b> { <a href="#d58b226e1528415c" class="i property">MediaTokenSettings</a> = <a href="#bf158bde74dc9731" class="i field">_mediaTokenSettings</a> }))
+                )
+            );
+ 
+            <span class="r16 r">services</span>.<span class="i method">AddMemoryCache</span>();
+ 
+            <span class="r16 r">services</span>.<span class="i">AddSingleton</span>&lt;<span class="i">ISiteService</span>&gt;(<span class="r17 r">mockSiteService</span>);
+            <span class="r16 r">services</span>.<span class="i method">AddSingleton</span>&lt;<span class="i">IImageWebProcessor</span>, <span class="i">TokenCommandProcessor</span>&gt;();
+            <span class="r16 r">services</span>.<span class="i method">AddSingleton</span>&lt;<span class="i">IImageWebProcessor</span>, <span class="i">TokenCommandProcessor</span>&gt;();
+            <span class="r16 r">services</span>.<span class="i method">AddSingleton</span>&lt;<span class="i">IImageWebProcessor</span>, <span class="i">ResizeWebProcessor</span>&gt;();
+            <span class="r16 r">services</span>.<span class="i method">AddScoped</span>&lt;<span class="i">IMediaTokenService</span>, <span class="i">MediaTokenService</span>&gt;();
+            <span class="r16 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="t t">IConfigureOptions</span>&lt;<span class="i">MediaTokenOptions</span>&gt;, <span class="i">MediaTokenOptionsConfiguration</span>&gt;();
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">serviceProvider</span> = <span class="r16 r">services</span>.<span class="i method">BuildServiceProvider</span>();
+ 
+            <b>return</b> <span class="r20 r">serviceProvider</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,644 @@
+﻿<!DOCTYPE html>
+<html><head><title>OpenIdServerService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(635);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId/Services/OpenIdServerService.cs" target="_top">Services\OpenIdServerService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId" target="_top">src\OrchardCore.Modules\OrchardCore.OpenId\OrchardCore.OpenId.csproj</a> (OrchardCore.OpenId)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">ComponentModel</span>.<span class="i n">DataAnnotations</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Runtime</span>.<span class="i n">InteropServices</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>.<span class="i n">X509Certificates</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i">IdentityModel</span>.<span class="i">Tokens</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="3d97298ffcbd5327" href="../R/3d97298ffcbd5327.html" target="n" data-glyph="0,0" class="t t">OpenIdServerService</a> : <a href="IOpenIdServerService.cs.html#16b68e76cf5b848a" class="t t">IOpenIdServerService</a>
+    {
+        <b>private readonly</b> <span class="t t">IDataProtector</span> <a id="7fb876fb3c39440d" href="../R/7fb876fb3c39440d.html" target="n" data-glyph="46,1" class="i field">_dataProtector</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="a743141e7a52832b" href="../R/a743141e7a52832b.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="4295b0fca4a74344" href="../R/4295b0fca4a74344.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+        <b>private readonly</b> <span class="t t">IOptionsMonitor</span>&lt;<span class="i">ShellOptions</span>&gt; <a id="880e053fcb69620c" href="../R/880e053fcb69620c.html" target="n" data-glyph="46,1" class="i field">_shellOptions</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="dcaf489f5612478a" href="../R/dcaf489f5612478a.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="dbb6fa3ee72291a1" href="../R/dbb6fa3ee72291a1.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="85acc87b33ed08d8" href="../R/85acc87b33ed08d8.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="b76574b53e5da461" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">OpenIdServerService</a>(
+            <span class="t t">IDataProtectionProvider</span> <span id="r0 rd" class="r0 r">dataProtectionProvider</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#3d97298ffcbd5327" class="t t">OpenIdServerService</a>&gt; <span id="r1 rd" class="r1 r">logger</span>,
+            <span class="t t">IMemoryCache</span> <span id="r2 rd" class="r2 r">memoryCache</span>,
+            <span class="t t">IOptionsMonitor</span>&lt;<span class="i">ShellOptions</span>&gt; <span id="r3 rd" class="r3 r">shellOptions</span>,
+            <span class="i">ShellSettings</span> <span id="r4 rd" class="r4 r">shellSettings</span>,
+            <span class="i">ISiteService</span> <span id="r5 rd" class="r5 r">siteService</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#3d97298ffcbd5327" class="t t">OpenIdServerService</a>&gt; <span id="r6 rd" class="r6 r">stringLocalizer</span>)
+        {
+            <a href="#7fb876fb3c39440d" class="i field">_dataProtector</a> = <span class="r0 r">dataProtectionProvider</span>.<span class="i method">CreateProtector</span>(<b>nameof</b>(<a href="#3d97298ffcbd5327" class="t t">OpenIdServerService</a>));
+            <a href="#a743141e7a52832b" class="i field">_logger</a> = <span class="r1 r">logger</span>;
+            <a href="#4295b0fca4a74344" class="i field">_memoryCache</a> = <span class="r2 r">memoryCache</span>;
+            <a href="#880e053fcb69620c" class="i field">_shellOptions</a> = <span class="r3 r">shellOptions</span>;
+            <a href="#dcaf489f5612478a" class="i field">_shellSettings</a> = <span class="r4 r">shellSettings</span>;
+            <a href="#dbb6fa3ee72291a1" class="i field">_siteService</a> = <span class="r5 r">siteService</span>;
+            <a href="#85acc87b33ed08d8" class="i field">S</a> = <span class="r6 r">stringLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a>&gt; <a id="fdf3cdb2825108cd" href="../R/fdf3cdb2825108cd.html" target="n" data-glyph="72,1" class="i method">GetSettingsAsync</a>()
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">container</span> = <b>await</b> <a href="#dbb6fa3ee72291a1" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+            <b>return</b> <span class="i">GetSettingsFromContainer</span>(<span class="r7 r">container</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a>&gt; <a id="e6ef5046cc99ebdc" href="../R/e6ef5046cc99ebdc.html" target="n" data-glyph="72,1" class="i method">LoadSettingsAsync</a>()
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">container</span> = <b>await</b> <a href="#dbb6fa3ee72291a1" class="i field">_siteService</a>.<span class="i">LoadSiteSettingsAsync</span>();
+            <b>return</b> <span class="i">GetSettingsFromContainer</span>(<span class="r8 r">container</span>);
+        }
+ 
+        <b>private</b> <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a> <a id="7aa509714b99b6ac" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">GetSettingsFromContainer</a>(<span class="i">ISite</span> <span id="r9 rd" class="r9 r">container</span>)
+        {
+            <b>if</b> (<span class="r9 r">container</span>.<span class="i">Properties</span>.<span class="i">TryGetValue</span>(<b>nameof</b>(<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a>), <b>out</b> <b>var</b> <span id="r10 rd" class="r10 r">settings</span>))
+            {
+                <b>return</b> <span class="r10 r">settings</span>.<span class="i">ToObject</span>&lt;<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a>&gt;();
+            }
+ 
+            <span class="c">// If the OpenID server settings haven&#39;t been populated yet, the authorization,</span>
+            <span class="c">// logout, token and userinfo endpoints are assumed to be enabled by default.</span>
+            <span class="c">// In this case, only the authorization code and refresh token flows are used.</span>
+            <b>return</b> <b>new</b> <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t constructor">OpenIdServerSettings</a>
+            {
+                <a href="../Settings/OpenIdServerSettings.cs.html#031dec3a2c57d216" class="i property">AllowAuthorizationCodeFlow</a> = <b>true</b>,
+                <a href="../Settings/OpenIdServerSettings.cs.html#5b9c7cca277727aa" class="i property">AllowRefreshTokenFlow</a> = <b>true</b>,
+                <a href="../Settings/OpenIdServerSettings.cs.html#47949ff3ac5eacbc" class="i property">AuthorizationEndpointPath</a> = <span class="s">&quot;/connect/authorize&quot;</span>,
+                <a href="../Settings/OpenIdServerSettings.cs.html#284635bce667cd71" class="i property">LogoutEndpointPath</a> = <span class="s">&quot;/connect/logout&quot;</span>,
+                <a href="../Settings/OpenIdServerSettings.cs.html#9af55160af9d3aef" class="i property">TokenEndpointPath</a> = <span class="s">&quot;/connect/token&quot;</span>,
+                <a href="../Settings/OpenIdServerSettings.cs.html#dac7bdc2fec4c46e" class="i property">UserinfoEndpointPath</a> = <span class="s">&quot;/connect/userinfo&quot;</span>
+            };
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="92947af693570b9f" href="../R/92947af693570b9f.html" target="n" data-glyph="72,1" class="i method">UpdateSettingsAsync</a>(<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a> <span id="r11 rd" class="r11 r">settings</span>)
+        {
+            <b>if</b> (<span class="r11 r">settings</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r11 r">settings</span>));
+            }
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">container</span> = <b>await</b> <a href="#dbb6fa3ee72291a1" class="i field">_siteService</a>.<span class="i">LoadSiteSettingsAsync</span>();
+            <span class="r12 r">container</span>.<span class="i">Properties</span>[<b>nameof</b>(<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a>)] = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r11 r">settings</span>);
+            <b>await</b> <a href="#dbb6fa3ee72291a1" class="i field">_siteService</a>.<span class="i">UpdateSiteSettingsAsync</span>(<span class="r12 r">container</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<span class="t t">ValidationResult</span>&gt;&gt; <a id="e2d98a838c704ef7" href="../R/e2d98a838c704ef7.html" target="n" data-glyph="72,1" class="i method">ValidateSettingsAsync</a>(<a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a> <span id="r13 rd" class="r13 r">settings</span>)
+        {
+            <b>if</b> (<span class="r13 r">settings</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r13 r">settings</span>));
+            }
+ 
+            <a href="@1@System.Collections.Immutable/A.html#968c2c9d4c98cffc" class="k">var</a> <span id="r14 rd" class="r14 r">results</span> = <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<a href="@1@System.Collections.Immutable/A.html#2e949e9c389ba669" class="i method">CreateBuilder</a>&lt;<span class="t t">ValidationResult</span>&gt;();
+ 
+            <b>if</b> (!<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#031dec3a2c57d216" class="i property">AllowAuthorizationCodeFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#61b3c5f821746d44" class="i property">AllowClientCredentialsFlow</a> &amp;&amp;
+                !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#1639a4c31b41406e" class="i property">AllowHybridFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#13451acf03d93afd" class="i property">AllowImplicitFlow</a> &amp;&amp;
+                !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#c6af4c0e4db847bd" class="i property">AllowPasswordFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#5b9c7cca277727aa" class="i property">AllowRefreshTokenFlow</a>)
+            {
+                <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;At least one OpenID Connect flow must be enabled.&quot;</span>]));
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a> != <b>null</b>)
+            {
+                <b>if</b> (!<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>.<a href="@1@System.Runtime/A.html#2e1f2f7671a40125" class="i property">IsAbsoluteUri</a> || !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>.<a href="@1@System.Runtime/A.html#481b53c95245a7a7" class="i method">IsWellFormedOriginalString</a>())
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The authority must be a valid absolute URL.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>)
+                    }));
+                }
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>.<a href="@1@System.Runtime/A.html#5177e12380d8e70d" class="i property">Query</a>) || !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>.<a href="@1@System.Runtime/A.html#3ee31f0df527a178" class="i property">Fragment</a>))
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The authority cannot contain a query string or a fragment.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c4ce4660dd0c8e" class="i property">Authority</a>)
+                    }));
+                }
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#d580dd97631bac46" class="i property">SigningCertificateStoreLocation</a> != <b>null</b> &amp;&amp;
+                <span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#fcbc92e4512f480d" class="i property">SigningCertificateStoreName</a> != <b>null</b> &amp;&amp;
+                !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>))
+            {
+                <b>var</b> <span id="r15 rd" class="r15 r">certificate</span> = <a href="#1b5cb24a0ea916b6" class="i method">GetCertificate</a>(
+                    <span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#d580dd97631bac46" class="i property">SigningCertificateStoreLocation</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>,
+                    <span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#fcbc92e4512f480d" class="i property">SigningCertificateStoreName</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>, <span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>);
+ 
+                <b>if</b> (<span class="r15 r">certificate</span> == <b>null</b>)
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The certificate cannot be found.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>)
+                    }));
+                }
+                <b>else</b> <b>if</b> (!<span class="r15 r">certificate</span>.<span class="i property">HasPrivateKey</span>)
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The certificate doesn&#39;t contain the required private key.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>)
+                    }));
+                }
+                <b>else</b> <b>if</b> (<span class="r15 r">certificate</span>.<span class="i property">Archived</span>)
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The certificate is not valid because it is marked as archived.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>)
+                    }));
+                }
+                <b>else</b> <b>if</b> (<span class="r15 r">certificate</span>.<span class="i property">NotBefore</span> &gt; <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#1cd5dd408a32124f" class="i property">Now</a> || <span class="r15 r">certificate</span>.<span class="i property">NotAfter</span> &lt; <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#1cd5dd408a32124f" class="i property">Now</a>)
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The certificate is not valid for current date.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>)
+                    }));
+                }
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#c6af4c0e4db847bd" class="i property">AllowPasswordFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#9af55160af9d3aef" class="i property">TokenEndpointPath</a>.<span class="i property">HasValue</span>)
+            {
+                <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The password flow cannot be enabled when the token endpoint is disabled.&quot;</span>], <b>new</b>[]
+                {
+                    <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#c6af4c0e4db847bd" class="i property">AllowPasswordFlow</a>)
+                }));
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#61b3c5f821746d44" class="i property">AllowClientCredentialsFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#9af55160af9d3aef" class="i property">TokenEndpointPath</a>.<span class="i property">HasValue</span>)
+            {
+                <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The client credentials flow cannot be enabled when the token endpoint is disabled.&quot;</span>], <b>new</b>[]
+                {
+                    <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#61b3c5f821746d44" class="i property">AllowClientCredentialsFlow</a>)
+                }));
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#031dec3a2c57d216" class="i property">AllowAuthorizationCodeFlow</a> &amp;&amp; (!<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#47949ff3ac5eacbc" class="i property">AuthorizationEndpointPath</a>.<span class="i property">HasValue</span> || !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#9af55160af9d3aef" class="i property">TokenEndpointPath</a>.<span class="i property">HasValue</span>))
+            {
+                <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The authorization code flow cannot be enabled when the authorization and token endpoints are disabled.&quot;</span>], <b>new</b>[]
+                {
+                    <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#031dec3a2c57d216" class="i property">AllowAuthorizationCodeFlow</a>)
+                }));
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#5b9c7cca277727aa" class="i property">AllowRefreshTokenFlow</a>)
+            {
+                <b>if</b> (!<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#9af55160af9d3aef" class="i property">TokenEndpointPath</a>.<span class="i property">HasValue</span>)
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The refresh token flow cannot be enabled when the token endpoint is disabled.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#5b9c7cca277727aa" class="i property">AllowRefreshTokenFlow</a>)
+                    }));
+                }
+ 
+                <b>if</b> (!<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#c6af4c0e4db847bd" class="i property">AllowPasswordFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#031dec3a2c57d216" class="i property">AllowAuthorizationCodeFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#1639a4c31b41406e" class="i property">AllowHybridFlow</a>)
+                {
+                    <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The refresh token flow can only be enabled if the password, authorization code or hybrid flows are enabled.&quot;</span>], <b>new</b>[]
+                    {
+                        <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#5b9c7cca277727aa" class="i property">AllowRefreshTokenFlow</a>)
+                    }));
+                }
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#13451acf03d93afd" class="i property">AllowImplicitFlow</a> &amp;&amp; !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#47949ff3ac5eacbc" class="i property">AuthorizationEndpointPath</a>.<span class="i property">HasValue</span>)
+            {
+                <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The implicit flow cannot be enabled when the authorization endpoint is disabled.&quot;</span>], <b>new</b>[]
+                {
+                    <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#13451acf03d93afd" class="i property">AllowImplicitFlow</a>)
+                }));
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#1639a4c31b41406e" class="i property">AllowHybridFlow</a> &amp;&amp; (!<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#47949ff3ac5eacbc" class="i property">AuthorizationEndpointPath</a>.<span class="i property">HasValue</span> || !<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#9af55160af9d3aef" class="i property">TokenEndpointPath</a>.<span class="i property">HasValue</span>))
+            {
+                <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;The hybrid flow cannot be enabled when the authorization and token endpoints are disabled.&quot;</span>], <b>new</b>[]
+                {
+                    <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#1639a4c31b41406e" class="i property">AllowHybridFlow</a>)
+                }));
+            }
+ 
+            <b>if</b> (<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#ba6125d66b1cadbe" class="i property">DisableAccessTokenEncryption</a> &amp;&amp; <span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#52cdf0f89457c535" class="i property">AccessTokenFormat</a> != <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="t t">OpenIdServerSettings</a>.<a href="../Settings/OpenIdServerSettings.cs.html#b826317a59ac918c" class="t t">TokenFormat</a>.<a href="../Settings/OpenIdServerSettings.cs.html#432a7493458c7bc7" class="i field">JsonWebToken</a>)
+            {
+                <span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>(<b>new</b> <span class="t constructor">ValidationResult</span>(<a href="#85acc87b33ed08d8" class="i field">S</a>[<span class="s">&quot;Access token encryption can only be disabled when using JWT tokens.&quot;</span>], <b>new</b>[]
+                {
+                    <b>nameof</b>(<span class="r13 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#ba6125d66b1cadbe" class="i property">DisableAccessTokenEncryption</a>)
+                }));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r14 r">results</span>.<a href="@1@System.Collections.Immutable/A.html#3c787852a7bdb751" class="i method">ToImmutable</a>());
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;(<span class="t t">X509Certificate2</span> <a id="df600b518a1ae87c" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">certificate</a>, <span class="t t">StoreLocation</span> <a id="03fb7d836e5a1e84" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">location</a>, <span class="t t">StoreName</span> <a id="a66b921145ad019f" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">name</a>)&gt;&gt; <a id="a67d867975ef1e02" href="../R/a67d867975ef1e02.html" target="n" data-glyph="72,1" class="i method">GetAvailableCertificatesAsync</a>()
+        {
+            <a href="@1@System.Collections.Immutable/A.html#968c2c9d4c98cffc" class="k">var</a> <span id="r16 rd" class="r16 r">certificates</span> = <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<a href="@1@System.Collections.Immutable/A.html#2e949e9c389ba669" class="i method">CreateBuilder</a>&lt;(<span class="t t">X509Certificate2</span>, <span class="t t">StoreLocation</span>, <span class="t t">StoreName</span>)&gt;();
+ 
+            <b>foreach</b> (<span class="t t">StoreLocation</span> <span id="r17 rd" class="r17 r">location</span> <b>in</b> <a href="@1@System.Runtime/A.html#36729210e317a805" class="t t">Enum</a>.<a href="@1@System.Runtime/A.html#20fa909ef3233d20" class="i method">GetValues</a>(<b>typeof</b>(<span class="t t">StoreLocation</span>)))
+            {
+                <b>foreach</b> (<span class="t t">StoreName</span> <span id="r18 rd" class="r18 r">name</span> <b>in</b> <a href="@1@System.Runtime/A.html#36729210e317a805" class="t t">Enum</a>.<a href="@1@System.Runtime/A.html#20fa909ef3233d20" class="i method">GetValues</a>(<b>typeof</b>(<span class="t t">StoreName</span>)))
+                {
+                    <span class="c">// Note: on non-Windows platforms, an exception can</span>
+                    <span class="c">// be thrown if the store location/name doesn&#39;t exist.</span>
+                    <b>try</b>
+                    {
+                        <b>using</b> <b>var</b> <span id="r19 rd" class="r19 r">store</span> = <b>new</b> <span class="t constructor">X509Store</span>(<span class="r18 r">name</span>, <span class="r17 r">location</span>);
+                        <span class="r19 r">store</span>.<span class="i method">Open</span>(<span class="t t">OpenFlags</span>.<span class="i field">ReadOnly</span>);
+ 
+                        <b>foreach</b> (<b>var</b> <span id="r20 rd" class="r20 r">certificate</span> <b>in</b> <span class="r19 r">store</span>.<span class="i property">Certificates</span>)
+                        {
+                            <b>if</b> (!<span class="r20 r">certificate</span>.<span class="i property">Archived</span> &amp;&amp; <span class="r20 r">certificate</span>.<span class="i property">HasPrivateKey</span>)
+                            {
+                                <span class="r16 r">certificates</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>((<span class="r20 r">certificate</span>, <span class="r17 r">location</span>, <span class="r18 r">name</span>));
+                            }
+                        }
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#0b7aa8a209a7f19f" class="t t">CryptographicException</a>)
+                    {
+                        <b>continue</b>;
+                    }
+                }
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r16 r">certificates</span>.<a href="@1@System.Collections.Immutable/A.html#3c787852a7bdb751" class="i method">ToImmutable</a>());
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<span class="i">SecurityKey</span>&gt;&gt; <a id="30c5dca3c9b4572a" href="../R/30c5dca3c9b4572a.html" target="n" data-glyph="72,1" class="i method">GetEncryptionKeysAsync</a>()
+        {
+            <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="k">var</a> <span id="r21 rd" class="r21 r">settings</span> = <b>await</b> <a href="#fdf3cdb2825108cd" class="i method">GetSettingsAsync</a>();
+ 
+            <span class="c">// If a certificate was explicitly provided, return it immediately</span>
+            <span class="c">// instead of using the fallback managed certificates logic.</span>
+            <b>if</b> (<span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c6a440abae52d8" class="i property">EncryptionCertificateStoreLocation</a> != <b>null</b> &amp;&amp;
+                <span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#459fae678d475698" class="i property">EncryptionCertificateStoreName</a> != <b>null</b> &amp;&amp;
+                !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#5704e97eaf6e5503" class="i property">EncryptionCertificateThumbprint</a>))
+            {
+                <b>var</b> <span id="r22 rd" class="r22 r">certificate</span> = <a href="#1b5cb24a0ea916b6" class="i method">GetCertificate</a>(
+                    <span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c6a440abae52d8" class="i property">EncryptionCertificateStoreLocation</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>,
+                    <span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#459fae678d475698" class="i property">EncryptionCertificateStoreName</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>, <span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#5704e97eaf6e5503" class="i property">EncryptionCertificateThumbprint</a>);
+ 
+                <b>if</b> (<span class="r22 r">certificate</span> != <b>null</b>)
+                {
+                    <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<span class="i">Create</span>&lt;<span class="i">SecurityKey</span>&gt;(<b>new</b> <span class="i">X509SecurityKey</span>(<span class="r22 r">certificate</span>));
+                }
+ 
+                <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The encryption certificate &#39;{Thumbprint}&#39; could not be found in the &quot;</span> +
+                                   <span class="s">&quot;{StoreLocation}/{StoreName} store.&quot;</span>, <span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#5704e97eaf6e5503" class="i property">EncryptionCertificateThumbprint</a>,
+                                   <span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#f4c6a440abae52d8" class="i property">EncryptionCertificateStoreLocation</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#1365cfeffd45409d" class="i method">ToString</a>(),
+                                   <span class="r21 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#459fae678d475698" class="i property">EncryptionCertificateStoreName</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#1365cfeffd45409d" class="i method">ToString</a>());
+            }
+ 
+            <b>try</b>
+            {
+                <b>var</b> <span id="r23 rd" class="r23 r">directory</span> = <a href="#70e650bc5a1eafb5" class="i method">GetEncryptionCertificateDirectory</a>(<a href="#880e053fcb69620c" class="i field">_shellOptions</a>.<span class="i property">CurrentValue</span>, <a href="#dcaf489f5612478a" class="i field">_shellSettings</a>);
+ 
+                <b>var</b> <span id="r24 rd" class="r24 r">certificates</span> = (<b>await</b> <a href="#4eba71bf5ca59d01" class="i method">GetCertificatesAsync</a>(<span class="r23 r">directory</span>)).<a href="@1@System.Collections.Immutable/A.html#8cd14b7c061cb6be" class="i method">Select</a>(<span id="r25 rd" class="r25 r">tuple</span> =&gt; <span class="r25 r">tuple</span>.<a href="/System.Runtime/A.html#93d025dfc317c433" class="i field">certificate</a>).<span class="i method">ToList</span>();
+                <b>if</b> (<span class="r24 r">certificates</span>.<span class="i method">Any</span>(<span id="r26 rd" class="r26 r">certificate</span> =&gt; <span class="r26 r">certificate</span>.<span class="i property">NotAfter</span>.<a href="@1@System.Runtime/A.html#f5cb6edd98581ca2" class="i method">AddDays</a>(-7) &gt; <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#1cd5dd408a32124f" class="i property">Now</a>))
+                {
+                    <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<span class="i">CreateRange</span>&lt;<span class="i">SecurityKey</span>&gt;(
+                        <b>from</b> <span class="i">certificate</span> <b>in</b> <span class="r24 r">certificates</span>
+                        <b>select</b> <b>new</b> <span class="i">X509SecurityKey</span>(<span class="i">certificate</span>));
+                }
+ 
+                <b>try</b>
+                {
+                    <span class="c">// If the certificates list is empty or only contains certificates about to expire,</span>
+                    <span class="c">// generate a new certificate and add it on top of the list to ensure it&#39;s preferred</span>
+                    <span class="c">// by OpenIddict to the other certificates when issuing new IdentityModel tokens.</span>
+                    <b>var</b> <span id="r27 rd" class="r27 r">certificate</span> = <a href="#6784d450b4bdb2b3" class="i method">GenerateEncryptionCertificate</a>(<a href="#dcaf489f5612478a" class="i field">_shellSettings</a>);
+                    <b>await</b> <a href="#527292b0ea9b8df7" class="i method">PersistCertificateAsync</a>(<span class="r23 r">directory</span>, <span class="r27 r">certificate</span>);
+ 
+                    <span class="r24 r">certificates</span>.<span class="i method">Insert</span>(0, <span class="r27 r">certificate</span>);
+ 
+                    <b>return</b> <span class="r24 r">certificates</span>.<span class="i">Select</span>(<span id="r28 rd" class="r28 r">certificate</span> =&gt; <b>new</b> <span class="i">X509SecurityKey</span>(<span class="r28 r">certificate</span>)).<span class="i">ToImmutableArray</span>&lt;<span class="i">SecurityKey</span>&gt;();
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r29 rd" class="r29 r">exception</span>)
+                {
+                    <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r29 r">exception</span>, <span class="s">&quot;An error occurred while trying to generate a X.509 encryption certificate.&quot;</span>);
+                }
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r30 rd" class="r30 r">exception</span>)
+            {
+                <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="r30 r">exception</span>, <span class="s">&quot;An error occurred while trying to retrieve the X.509 encryption certificates.&quot;</span>);
+            }
+ 
+            <span class="c">// If none of the previous attempts succeeded, try to generate an ephemeral RSA key</span>
+            <span class="c">// and add it in the tenant memory cache so that future calls to this method return it.</span>
+            <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<span class="i">Create</span>&lt;<span class="i">SecurityKey</span>&gt;(<a href="#4295b0fca4a74344" class="i field">_memoryCache</a>.<span class="i">GetOrCreate</span>(<a href="../../GuidAssembly/R/05a24221-8c15-4e58-a0a7-56ec3e42e783.html" target="n" class="s">&quot;05A24221-8C15-4E58-A0A7-56EC3E42E783&quot;</a>, <span id="r31 rd" class="r31 r">entry</span> =&gt;
+            {
+                <span class="r31 r">entry</span>.<span class="i method">SetPriority</span>(<span class="t t">CacheItemPriority</span>.<span class="i field">NeverRemove</span>);
+ 
+                <b>return</b> <b>new</b> <span class="i">RsaSecurityKey</span>(<a href="#92f5d400355518a5" class="i method">GenerateRsaSecurityKey</a>(<span class="r32 r">size</span>: 2048));
+            }));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<span class="i">SecurityKey</span>&gt;&gt; <a id="855317a96db509cc" href="../R/855317a96db509cc.html" target="n" data-glyph="72,1" class="i method">GetSigningKeysAsync</a>()
+        {
+            <a href="../Settings/OpenIdServerSettings.cs.html#608b0079a4b49cf3" class="k">var</a> <span id="r33 rd" class="r33 r">settings</span> = <b>await</b> <a href="#fdf3cdb2825108cd" class="i method">GetSettingsAsync</a>();
+ 
+            <span class="c">// If a certificate was explicitly provided, return it immediately</span>
+            <span class="c">// instead of using the fallback managed certificates logic.</span>
+            <b>if</b> (<span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#d580dd97631bac46" class="i property">SigningCertificateStoreLocation</a> != <b>null</b> &amp;&amp;
+                <span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#fcbc92e4512f480d" class="i property">SigningCertificateStoreName</a> != <b>null</b> &amp;&amp;
+                !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>))
+            {
+                <b>var</b> <span id="r34 rd" class="r34 r">certificate</span> = <a href="#1b5cb24a0ea916b6" class="i method">GetCertificate</a>(
+                    <span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#d580dd97631bac46" class="i property">SigningCertificateStoreLocation</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>,
+                    <span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#fcbc92e4512f480d" class="i property">SigningCertificateStoreName</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>, <span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>);
+ 
+                <b>if</b> (<span class="r34 r">certificate</span> != <b>null</b>)
+                {
+                    <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<span class="i">Create</span>&lt;<span class="i">SecurityKey</span>&gt;(<b>new</b> <span class="i">X509SecurityKey</span>(<span class="r34 r">certificate</span>));
+                }
+ 
+                <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The signing certificate &#39;{Thumbprint}&#39; could not be found in the &quot;</span> +
+                                   <span class="s">&quot;{StoreLocation}/{StoreName} store.&quot;</span>, <span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#eb405df6c26dcef6" class="i property">SigningCertificateThumbprint</a>,
+                                   <span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#d580dd97631bac46" class="i property">SigningCertificateStoreLocation</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#1365cfeffd45409d" class="i method">ToString</a>(),
+                                   <span class="r33 r">settings</span>.<a href="../Settings/OpenIdServerSettings.cs.html#fcbc92e4512f480d" class="i property">SigningCertificateStoreName</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>.<a href="@1@System.Runtime/A.html#1365cfeffd45409d" class="i method">ToString</a>());
+            }
+ 
+            <b>try</b>
+            {
+                <b>var</b> <span id="r35 rd" class="r35 r">directory</span> = <a href="#d3c893c6c9da37d7" class="i method">GetSigningCertificateDirectory</a>(<a href="#880e053fcb69620c" class="i field">_shellOptions</a>.<span class="i property">CurrentValue</span>, <a href="#dcaf489f5612478a" class="i field">_shellSettings</a>);
+ 
+                <b>var</b> <span id="r36 rd" class="r36 r">certificates</span> = (<b>await</b> <a href="#4eba71bf5ca59d01" class="i method">GetCertificatesAsync</a>(<span class="r35 r">directory</span>)).<a href="@1@System.Collections.Immutable/A.html#8cd14b7c061cb6be" class="i method">Select</a>(<span id="r37 rd" class="r37 r">tuple</span> =&gt; <span class="r37 r">tuple</span>.<a href="/System.Runtime/A.html#93d025dfc317c433" class="i field">certificate</a>).<span class="i method">ToList</span>();
+                <b>if</b> (<span class="r36 r">certificates</span>.<span class="i method">Any</span>(<span id="r38 rd" class="r38 r">certificate</span> =&gt; <span class="r38 r">certificate</span>.<span class="i property">NotAfter</span>.<a href="@1@System.Runtime/A.html#f5cb6edd98581ca2" class="i method">AddDays</a>(-7) &gt; <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#1cd5dd408a32124f" class="i property">Now</a>))
+                {
+                    <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<span class="i">CreateRange</span>&lt;<span class="i">SecurityKey</span>&gt;(
+                        <b>from</b> <span class="i">certificate</span> <b>in</b> <span class="r36 r">certificates</span>
+                        <b>select</b> <b>new</b> <span class="i">X509SecurityKey</span>(<span class="i">certificate</span>));
+                }
+ 
+                <b>try</b>
+                {
+                    <span class="c">// If the certificates list is empty or only contains certificates about to expire,</span>
+                    <span class="c">// generate a new certificate and add it on top of the list to ensure it&#39;s preferred</span>
+                    <span class="c">// by OpenIddict to the other certificates when issuing new IdentityModel tokens.</span>
+                    <b>var</b> <span id="r39 rd" class="r39 r">certificate</span> = <a href="#469cedd363237cc5" class="i method">GenerateSigningCertificate</a>(<a href="#dcaf489f5612478a" class="i field">_shellSettings</a>);
+                    <b>await</b> <a href="#527292b0ea9b8df7" class="i method">PersistCertificateAsync</a>(<span class="r35 r">directory</span>, <span class="r39 r">certificate</span>);
+ 
+                    <span class="r36 r">certificates</span>.<span class="i method">Insert</span>(0, <span class="r39 r">certificate</span>);
+ 
+                    <b>return</b> <span class="r36 r">certificates</span>.<span class="i">Select</span>(<span id="r40 rd" class="r40 r">certificate</span> =&gt; <b>new</b> <span class="i">X509SecurityKey</span>(<span class="r40 r">certificate</span>)).<span class="i">ToImmutableArray</span>&lt;<span class="i">SecurityKey</span>&gt;();
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r41 rd" class="r41 r">exception</span>)
+                {
+                    <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r41 r">exception</span>, <span class="s">&quot;An error occurred while trying to generate a X.509 signing certificate.&quot;</span>);
+                }
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r42 rd" class="r42 r">exception</span>)
+            {
+                <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="r42 r">exception</span>, <span class="s">&quot;An error occurred while trying to retrieve the X.509 signing certificates.&quot;</span>);
+            }
+ 
+            <span class="c">// If none of the previous attempts succeeded, try to generate an ephemeral RSA key</span>
+            <span class="c">// and add it in the tenant memory cache so that future calls to this method return it.</span>
+            <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<span class="i">Create</span>&lt;<span class="i">SecurityKey</span>&gt;(<a href="#4295b0fca4a74344" class="i field">_memoryCache</a>.<span class="i">GetOrCreate</span>(<a href="../../GuidAssembly/R/44788774-20e3-4499-86f0-ab7ce2df97f6.html" target="n" class="s">&quot;44788774-20E3-4499-86F0-AB7CE2DF97F6&quot;</a>, <span id="r43 rd" class="r43 r">entry</span> =&gt;
+            {
+                <span class="r43 r">entry</span>.<span class="i method">SetPriority</span>(<span class="t t">CacheItemPriority</span>.<span class="i field">NeverRemove</span>);
+ 
+                <b>return</b> <b>new</b> <span class="i">RsaSecurityKey</span>(<a href="#92f5d400355518a5" class="i method">GenerateRsaSecurityKey</a>(<span class="r32 r">size</span>: 2048));
+            }));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ba9024faa56202c7" href="../R/ba9024faa56202c7.html" target="n" data-glyph="72,1" class="i method">PruneManagedCertificatesAsync</a>()
+        {
+            <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a>&gt; <span id="r44 rd" class="r44 r">exceptions</span> = <b>null</b>;
+ 
+            <b>var</b> <span id="r45 rd" class="r45 r">certificates</span> = <b>new</b> <span class="t constructor">List</span>&lt;(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <a id="a87e546fbf791230" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">path</a>, <span class="t t">X509Certificate2</span> <a id="93d025dfc317c433" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">certificate</a>)&gt;();
+            <span class="r45 r">certificates</span>.<span class="i method">AddRange</span>(<b>await</b> <a href="#4eba71bf5ca59d01" class="i method">GetCertificatesAsync</a>(<a href="#70e650bc5a1eafb5" class="i method">GetEncryptionCertificateDirectory</a>(<a href="#880e053fcb69620c" class="i field">_shellOptions</a>.<span class="i property">CurrentValue</span>, <a href="#dcaf489f5612478a" class="i field">_shellSettings</a>)));
+            <span class="r45 r">certificates</span>.<span class="i method">AddRange</span>(<b>await</b> <a href="#4eba71bf5ca59d01" class="i method">GetCertificatesAsync</a>(<a href="#d3c893c6c9da37d7" class="i method">GetSigningCertificateDirectory</a>(<a href="#880e053fcb69620c" class="i field">_shellOptions</a>.<span class="i property">CurrentValue</span>, <a href="#dcaf489f5612478a" class="i field">_shellSettings</a>)));
+ 
+            <b>foreach</b> (<b>var</b> (<span id="r46 rd" class="r46 r">path</span>, <span id="r47 rd" class="r47 r">certificate</span>) <b>in</b> <span class="r45 r">certificates</span>)
+            {
+                <span class="c">// Only delete expired certificates that expired at least 7 days ago.</span>
+                <b>if</b> (<span class="r47 r">certificate</span>.<span class="i property">NotAfter</span>.<a href="@1@System.Runtime/A.html#f5cb6edd98581ca2" class="i method">AddDays</a>(7) &lt; <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#1cd5dd408a32124f" class="i property">Now</a>)
+                {
+                    <b>try</b>
+                    {
+                        <span class="c">// Delete both the X.509 certificate and its password file.</span>
+                        <span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r46 r">path</span>);
+                        <span class="t t">File</span>.<span class="i method">Delete</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#8b380aa7025bf5f6" class="i method">ChangeExtension</a>(<span class="r46 r">path</span>, <span class="s">&quot;.pwd&quot;</span>));
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r48 rd" class="r48 r">exception</span>)
+                    {
+                        <b>if</b> (<span class="r44 r">exceptions</span> == <b>null</b>)
+                        {
+                            <span class="r44 r">exceptions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a>&gt;();
+                        }
+ 
+                        <span class="r44 r">exceptions</span>.<span class="i method">Add</span>(<span class="r48 r">exception</span>);
+                    }
+                }
+            }
+ 
+            <b>if</b> (<span class="r44 r">exceptions</span> != <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#1de0e8202e59539a" class="t constructor">AggregateException</a>(<span class="r44 r">exceptions</span>);
+            }
+        }
+ 
+        <b>private static</b> <span class="t t">X509Certificate2</span> <a id="1b5cb24a0ea916b6" href="../R/1b5cb24a0ea916b6.html" target="n" data-glyph="76,1" class="i method">GetCertificate</a>(<span class="t t">StoreLocation</span> <span id="r49 rd" class="r49 r">location</span>, <span class="t t">StoreName</span> <span id="r50 rd" class="r50 r">name</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r51 rd" class="r51 r">thumbprint</span>)
+        {
+            <b>using</b> <b>var</b> <span id="r52 rd" class="r52 r">store</span> = <b>new</b> <span class="t constructor">X509Store</span>(<span class="r50 r">name</span>, <span class="r49 r">location</span>);
+            <span class="r52 r">store</span>.<span class="i method">Open</span>(<span class="t t">OpenFlags</span>.<span class="i field">ReadOnly</span>);
+ 
+            <b>var</b> <span id="r53 rd" class="r53 r">certificates</span> = <span class="r52 r">store</span>.<span class="i property">Certificates</span>.<span class="i method">Find</span>(<span class="t t">X509FindType</span>.<span class="i field">FindByThumbprint</span>, <span class="r51 r">thumbprint</span>, <span class="r54 r">validOnly</span>: <b>false</b>);
+ 
+            <b>return</b> <span class="r53 r">certificates</span>.<span class="i property">Count</span> <b>switch</b>
+            {
+                0 =&gt; <b>null</b>,
+                1 =&gt; <span class="r53 r">certificates</span>[0],
+                <b>_</b> =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Multiple certificates with the same thumbprint were found.&quot;</span>),
+            };
+        }
+ 
+        <b>private static</b> <span class="t t">DirectoryInfo</span> <a id="70e650bc5a1eafb5" href="../R/70e650bc5a1eafb5.html" target="n" data-glyph="76,1" class="i method">GetEncryptionCertificateDirectory</a>(<span class="i">ShellOptions</span> <span id="r55 rd" class="r55 r">options</span>, <span class="i">ShellSettings</span> <span id="r56 rd" class="r56 r">settings</span>)
+            =&gt; <span class="t t">Directory</span>.<span class="i method">CreateDirectory</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">Combine</span>(
+                <span class="r55 r">options</span>.<span class="i">ShellsApplicationDataPath</span>,
+                <span class="r55 r">options</span>.<span class="i">ShellsContainerName</span>,
+                <span class="r56 r">settings</span>.<span class="i">Name</span>, <span class="s">&quot;IdentityModel-Encryption-Certificates&quot;</span>));
+ 
+        <b>private static</b> <span class="t t">DirectoryInfo</span> <a id="d3c893c6c9da37d7" href="../R/d3c893c6c9da37d7.html" target="n" data-glyph="76,1" class="i method">GetSigningCertificateDirectory</a>(<span class="i">ShellOptions</span> <span id="r57 rd" class="r57 r">options</span>, <span class="i">ShellSettings</span> <span id="r58 rd" class="r58 r">settings</span>)
+            =&gt; <span class="t t">Directory</span>.<span class="i method">CreateDirectory</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">Combine</span>(
+                <span class="r57 r">options</span>.<span class="i">ShellsApplicationDataPath</span>,
+                <span class="r57 r">options</span>.<span class="i">ShellsContainerName</span>,
+                <span class="r58 r">settings</span>.<span class="i">Name</span>, <span class="s">&quot;IdentityModel-Signing-Certificates&quot;</span>));
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span class="i field">path</span>, <span class="t t">X509Certificate2</span> <span class="i field">certificate</span>)&gt;&gt; <a id="4eba71bf5ca59d01" href="../R/4eba71bf5ca59d01.html" target="n" data-glyph="76,1" class="i method">GetCertificatesAsync</a>(<span class="t t">DirectoryInfo</span> <span id="r59 rd" class="r59 r">directory</span>)
+        {
+            <b>if</b> (!<span class="r59 r">directory</span>.<span class="i property">Exists</span>)
+            {
+                <b>return</b> <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<a href="@1@System.Collections.Immutable/A.html#387ef10675e18940" class="i method">Create</a>&lt;(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">X509Certificate2</span>)&gt;();
+            }
+ 
+            <a href="@1@System.Collections.Immutable/A.html#968c2c9d4c98cffc" class="k">var</a> <span id="r60 rd" class="r60 r">certificates</span> = <a href="@1@System.Collections.Immutable/A.html#1d0c00a736430a4f" class="t t">ImmutableArray</a>.<a href="@1@System.Collections.Immutable/A.html#2e949e9c389ba669" class="i method">CreateBuilder</a>&lt;(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">X509Certificate2</span>)&gt;();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r61 rd" class="r61 r">file</span> <b>in</b> <span class="r59 r">directory</span>.<span class="i method">EnumerateFiles</span>(<span class="s">&quot;*.pfx&quot;</span>, <span class="t t">SearchOption</span>.<span class="i field">TopDirectoryOnly</span>))
+            {
+                <b>try</b>
+                {
+                    <span class="c">// Only add the certificate if it&#39;s still valid.</span>
+                    <b>var</b> <span id="r62 rd" class="r62 r">certificate</span> = <b>await</b> <a href="#413ddc3130ff960a" class="i method">GetCertificateAsync</a>(<span class="r61 r">file</span>.<span class="i property">FullName</span>);
+                    <b>if</b> (<span class="r62 r">certificate</span>.<span class="i property">NotBefore</span> &lt;= <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#1cd5dd408a32124f" class="i property">Now</a> &amp;&amp; <span class="r62 r">certificate</span>.<span class="i property">NotAfter</span> &gt; <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#1cd5dd408a32124f" class="i property">Now</a>)
+                    {
+                        <span class="r60 r">certificates</span>.<a href="@1@System.Collections.Immutable/A.html#d978dea8549749e5" class="i method">Add</a>((<span class="r61 r">file</span>.<span class="i property">FullName</span>, <span class="r62 r">certificate</span>));
+                    }
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r63 rd" class="r63 r">exception</span>)
+                {
+                    <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="r63 r">exception</span>, <span class="s">&quot;An error occurred while trying to extract a X.509 certificate.&quot;</span>);
+ 
+                    <b>continue</b>;
+                }
+            }
+ 
+            <b>return</b> <span class="r60 r">certificates</span>.<a href="@1@System.Collections.Immutable/A.html#3c787852a7bdb751" class="i method">ToImmutable</a>();
+ 
+            <b>async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="11b691a36a635fc4" href="../R/11b691a36a635fc4.html" target="n" data-glyph="76,2" class="i method">GetPasswordAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r64 rd" class="r64 r">path</span>)
+            {
+                <b>using</b> <a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r65 rd" class="r65 r">stream</span> = <span class="t t">File</span>.<span class="i method">Open</span>(<span class="r64 r">path</span>, <a href="@1@System.Runtime/A.html#c0cb6ba6af625b3a" class="t t">FileMode</a>.<a href="@1@System.Runtime/A.html#f4421e1d202f76fa" class="i field">Open</a>, <a href="@1@System.Runtime/A.html#5cc5644ae3acd24b" class="t t">FileAccess</a>.<a href="@1@System.Runtime/A.html#0f1c68c756d0636b" class="i field">Read</a>, <a href="@1@System.Runtime/A.html#2bfafb4d44a4f126" class="t t">FileShare</a>.<a href="@1@System.Runtime/A.html#581aa2ff4e59056b" class="i field">Read</a>);
+                <b>using</b> <a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r66 rd" class="r66 r">reader</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r65 r">stream</span>);
+ 
+                <b>return</b> <a href="#7fb876fb3c39440d" class="i field">_dataProtector</a>.<span class="i method">Unprotect</span>(<b>await</b> <span class="r66 r">reader</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>());
+            }
+ 
+            <b>async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">X509Certificate2</span>&gt; <a id="413ddc3130ff960a" href="../R/413ddc3130ff960a.html" target="n" data-glyph="76,2" class="i method">GetCertificateAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r67 rd" class="r67 r">path</span>)
+            {
+                <span class="c">// Extract the certificate password from the separate .pwd file.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r68 rd" class="r68 r">password</span> = <b>await</b> <a href="#11b691a36a635fc4" class="i method">GetPasswordAsync</a>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#8b380aa7025bf5f6" class="i method">ChangeExtension</a>(<span class="r67 r">path</span>, <span class="s">&quot;.pwd&quot;</span>));
+ 
+                <b>try</b>
+                {
+                    <span class="c">// Note: ephemeral key sets are not supported on non-Windows platforms.</span>
+                    <b>var</b> <span id="r69 rd" class="r69 r">flags</span> = <span class="t t">RuntimeInformation</span>.<span class="i method">IsOSPlatform</span>(<span class="t t">OSPlatform</span>.<span class="i property">Windows</span>) ?
+                        <span class="t t">X509KeyStorageFlags</span>.<span class="i field">EphemeralKeySet</span> :
+                        <span class="t t">X509KeyStorageFlags</span>.<span class="i field">MachineKeySet</span>;
+ 
+                    <b>return</b> <b>new</b> <span class="t constructor">X509Certificate2</span>(<span class="r67 r">path</span>, <span class="r68 r">password</span>, <span class="r69 r">flags</span>);
+                }
+                <span class="c">// Some cloud platforms (e.g Azure App Service/Antares) are known to fail to import .pfx files if the</span>
+                <span class="c">// private key is not persisted or marked as exportable. To ensure X.509 certificates can be correctly</span>
+                <span class="c">// read on these platforms, a second pass is made by specifying the PersistKeySet and Exportable flags.</span>
+                <span class="c">// For more information, visit https://github.com/OrchardCMS/OrchardCore/issues/3222.</span>
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#0b7aa8a209a7f19f" class="t t">CryptographicException</a> <span id="r70 rd" class="r70 r">exception</span>)
+                {
+                    <a href="#a743141e7a52832b" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="r70 r">exception</span>, <span class="s">&quot;A first-chance exception occurred while trying to extract &quot;</span> +
+                                                <span class="s">&quot;a X.509 certificate with the default key storage options.&quot;</span>);
+ 
+                    <b>return</b> <b>new</b> <span class="t constructor">X509Certificate2</span>(<span class="r67 r">path</span>, <span class="r68 r">password</span>,
+                        <span class="t t">X509KeyStorageFlags</span>.<span class="i field">MachineKeySet</span> |
+                        <span class="t t">X509KeyStorageFlags</span>.<span class="i field">PersistKeySet</span> |
+                        <span class="t t">X509KeyStorageFlags</span>.<span class="i field">Exportable</span>);
+                }
+                <span class="c">// Don&#39;t swallow exceptions thrown from the catch handler to ensure unrecoverable exceptions</span>
+                <span class="c">// (e.g caused by malformed X.509 certificates or invalid password) are correctly logged.</span>
+            }
+        }
+ 
+        <b>private</b> <span class="t t">X509Certificate2</span> <a id="6784d450b4bdb2b3" href="../R/6784d450b4bdb2b3.html" target="n" data-glyph="76,1" class="i method">GenerateEncryptionCertificate</a>(<span class="i">ShellSettings</span> <span id="r71 rd" class="r71 r">settings</span>)
+        {
+            <b>var</b> <span id="r72 rd" class="r72 r">algorithm</span> = <a href="#92f5d400355518a5" class="i method">GenerateRsaSecurityKey</a>(<span class="r32 r">size</span>: 2048);
+            <b>var</b> <span id="r73 rd" class="r73 r">certificate</span> = <a href="#b99df87248b625fa" class="i method">GenerateCertificate</a>(<span class="t t">X509KeyUsageFlags</span>.<span class="i field">KeyEncipherment</span>, <span class="r72 r">algorithm</span>, <span class="r71 r">settings</span>);
+ 
+            <span class="c">// Note: setting the friendly name is not supported on Unix machines (including Linux and macOS).</span>
+            <span class="c">// To ensure an exception is not thrown by the property setter, an OS runtime check is used here.</span>
+            <b>if</b> (<span class="t t">RuntimeInformation</span>.<span class="i method">IsOSPlatform</span>(<span class="t t">OSPlatform</span>.<span class="i property">Windows</span>))
+            {
+                <span class="r73 r">certificate</span>.<span class="i property">FriendlyName</span> = <span class="s">&quot;OrchardCore OpenID Server Encryption Certificate&quot;</span>;
+            }
+ 
+            <b>return</b> <span class="r73 r">certificate</span>;
+        }
+ 
+        <b>private static</b> <span class="t t">X509Certificate2</span> <a id="469cedd363237cc5" href="../R/469cedd363237cc5.html" target="n" data-glyph="76,1" class="i method">GenerateSigningCertificate</a>(<span class="i">ShellSettings</span> <span id="r74 rd" class="r74 r">settings</span>)
+        {
+            <b>var</b> <span id="r75 rd" class="r75 r">algorithm</span> = <a href="#92f5d400355518a5" class="i method">GenerateRsaSecurityKey</a>(<span class="r32 r">size</span>: 2048);
+            <b>var</b> <span id="r76 rd" class="r76 r">certificate</span> = <a href="#b99df87248b625fa" class="i method">GenerateCertificate</a>(<span class="t t">X509KeyUsageFlags</span>.<span class="i field">DigitalSignature</span>, <span class="r75 r">algorithm</span>, <span class="r74 r">settings</span>);
+ 
+            <span class="c">// Note: setting the friendly name is not supported on Unix machines (including Linux and macOS).</span>
+            <span class="c">// To ensure an exception is not thrown by the property setter, an OS runtime check is used here.</span>
+            <b>if</b> (<span class="t t">RuntimeInformation</span>.<span class="i method">IsOSPlatform</span>(<span class="t t">OSPlatform</span>.<span class="i property">Windows</span>))
+            {
+                <span class="r76 r">certificate</span>.<span class="i property">FriendlyName</span> = <span class="s">&quot;OrchardCore OpenID Server Signing Certificate&quot;</span>;
+            }
+ 
+            <b>return</b> <span class="r76 r">certificate</span>;
+        }
+ 
+        <b>private static</b> <span class="t t">X509Certificate2</span> <a id="b99df87248b625fa" href="../R/b99df87248b625fa.html" target="n" data-glyph="76,1" class="i method">GenerateCertificate</a>(<span class="t t">X509KeyUsageFlags</span> <span id="r77 rd" class="r77 r">type</span>, <span class="t t">RSA</span> <span id="r78 rd" class="r78 r">algorithm</span>, <span class="i">ShellSettings</span> <span id="r79 rd" class="r79 r">settings</span>)
+        {
+            <b>var</b> <span id="r80 rd" class="r80 r">subject</span> = <a href="#15710826bb5dc5be" class="i method">GetSubjectName</a>();
+ 
+            <span class="c">// Note: ensure the digitalSignature bit is added to the certificate, so that no validation error</span>
+            <span class="c">// is returned to clients that fully validate the certificates chain and their X.509 key usages.</span>
+            <b>var</b> <span id="r81 rd" class="r81 r">request</span> = <b>new</b> <span class="t constructor">CertificateRequest</span>(<span class="r80 r">subject</span>, <span class="r78 r">algorithm</span>, <span class="t t">HashAlgorithmName</span>.<span class="i property">SHA256</span>, <span class="t t">RSASignaturePadding</span>.<span class="i property">Pkcs1</span>);
+            <span class="r81 r">request</span>.<span class="i property">CertificateExtensions</span>.<a href="@1@System.Runtime/A.html#5c61cc24de82f7e7" class="i method">Add</a>(<b>new</b> <span class="t constructor">X509KeyUsageExtension</span>(<span class="r77 r">type</span>, <span class="r82 r">critical</span>: <b>true</b>));
+ 
+            <b>return</b> <span class="r81 r">request</span>.<span class="i method">CreateSelfSigned</span>(<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>.<a href="@1@System.Runtime/A.html#04abe0cac293ebd0" class="i property">UtcNow</a>, <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>.<a href="@1@System.Runtime/A.html#04abe0cac293ebd0" class="i property">UtcNow</a>.<a href="@1@System.Runtime/A.html#9c65b2ac7ce5bbdb" class="i method">AddMonths</a>(3));
+ 
+            <span class="t t">X500DistinguishedName</span> <a id="15710826bb5dc5be" href="../R/15710826bb5dc5be.html" target="n" data-glyph="76,2" class="i method">GetSubjectName</a>()
+            {
+                <b>try</b> { <b>return</b> <b>new</b> <span class="t">X500DistinguishedName</span>(<span class="s">&quot;CN=&quot;</span> + (<span class="r79 r">settings</span>.<span class="i">RequestUrlHost</span> ?? <span class="s">&quot;localhost&quot;</span>)); }
+                <b>catch</b> { <b>return</b> <b>new</b> <span class="t constructor">X500DistinguishedName</span>(<span class="s">&quot;CN=localhost&quot;</span>); }
+            }
+        }
+ 
+        <b>private static</b> <span class="t t">RSA</span> <a id="92f5d400355518a5" href="../R/92f5d400355518a5.html" target="n" data-glyph="76,1" class="i method">GenerateRsaSecurityKey</a>(<b>int</b> <span id="r32 rd" class="r32 r">size</span>)
+        {
+            <span class="c">// By default, the default RSA implementation used by .NET Core relies on the newest Windows CNG APIs.</span>
+            <span class="c">// Unfortunately, when a new key is generated using the default RSA.Create() method, it is not bound</span>
+            <span class="c">// to the machine account, which may cause security exceptions when running Orchard on IIS using a</span>
+            <span class="c">// virtual application pool identity or without the profile loading feature enabled (off by default).</span>
+            <span class="c">// To ensure a RSA key can be generated flawlessly, it is manually created using the managed CNG APIs.</span>
+            <span class="c">// For more information, visit https://github.com/openiddict/openiddict-core/issues/204.</span>
+            <b>if</b> (<span class="t t">RuntimeInformation</span>.<span class="i method">IsOSPlatform</span>(<span class="t t">OSPlatform</span>.<span class="i property">Windows</span>))
+            {
+                <span class="c">// Warning: ensure a null key name is specified to ensure the RSA key is not persisted by CNG.</span>
+                <b>var</b> <span id="r83 rd" class="r83 r">key</span> = <span class="t t">CngKey</span>.<span class="i method">Create</span>(<span class="t t">CngAlgorithm</span>.<span class="i property">Rsa</span>, <span class="r84 r">keyName</span>: <b>null</b>, <b>new</b> <span class="t constructor">CngKeyCreationParameters</span>
+                {
+                    <span class="i property">ExportPolicy</span> = <span class="t t">CngExportPolicies</span>.<span class="i field">AllowPlaintextExport</span>,
+                    <span class="i property">KeyCreationOptions</span> = <span class="t t">CngKeyCreationOptions</span>.<span class="i field">MachineKey</span>,
+                    <span class="i property">Parameters</span> = { <b>new</b> <span class="t constructor">CngProperty</span>(<span class="s">&quot;Length&quot;</span>, <a href="@1@System.Runtime/A.html#8640d8adfffb155b" class="t t">BitConverter</a>.<a href="@1@System.Runtime/A.html#9108fa2d0b37805b" class="i method">GetBytes</a>(<span class="r32 r">size</span>), <span class="t t">CngPropertyOptions</span>.<span class="i field">None</span>) }
+                });
+ 
+                <b>return</b> <b>new</b> <span class="t constructor">RSACng</span>(<span class="r83 r">key</span>);
+            }
+ 
+            <b>return</b> <span class="t t">RSA</span>.<span class="i method">Create</span>(<span class="r32 r">size</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="527292b0ea9b8df7" href="../R/527292b0ea9b8df7.html" target="n" data-glyph="76,1" class="i method">PersistCertificateAsync</a>(<span class="t t">DirectoryInfo</span> <span id="r85 rd" class="r85 r">directory</span>, <span class="t t">X509Certificate2</span> <span id="r86 rd" class="r86 r">certificate</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r87 rd" class="r87 r">password</span> = <a href="#c94642025754d183" class="i method">GeneratePassword</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r88 rd" class="r88 r">path</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<span class="r85 r">directory</span>.<span class="i property">FullName</span>, <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>());
+ 
+            <b>await</b> <span class="t t">File</span>.<span class="i method">WriteAllBytesAsync</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#8b380aa7025bf5f6" class="i method">ChangeExtension</a>(<span class="r88 r">path</span>, <span class="s">&quot;.pfx&quot;</span>), <span class="r86 r">certificate</span>.<span class="i method">Export</span>(<span class="t t">X509ContentType</span>.<span class="i field">Pfx</span>, <span class="r87 r">password</span>));
+            <b>await</b> <span class="t t">File</span>.<span class="i method">WriteAllTextAsync</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#8b380aa7025bf5f6" class="i method">ChangeExtension</a>(<span class="r88 r">path</span>, <span class="s">&quot;.pwd&quot;</span>), <a href="#7fb876fb3c39440d" class="i field">_dataProtector</a>.<span class="i method">Protect</span>(<span class="r87 r">password</span>));
+ 
+            <b>static string</b> <a id="c94642025754d183" href="../R/c94642025754d183.html" target="n" data-glyph="76,2" class="i method">GeneratePassword</a>()
+            {
+                <a href="@1@System.Runtime/A.html#d2517139cac388e8" class="t t">Span</a>&lt;<b>byte</b>&gt; <span id="r89 rd" class="r89 r">data</span> = <b>stackalloc byte</b>[256 / 8];
+                <span class="t t">RandomNumberGenerator</span>.<span class="i method">Fill</span>(<span class="r89 r">data</span>);
+                <b>return</b> <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#be4b9b163c175f57" class="i method">ToBase64String</a>(<span class="r89 r">data</span>, <a href="@1@System.Runtime/A.html#6df87523705d1aba" class="t t">Base64FormattingOptions</a>.<a href="@1@System.Runtime/A.html#96d1fede162ed10a" class="i field">None</a>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

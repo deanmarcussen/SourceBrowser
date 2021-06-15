@@ -1,0 +1,103 @@
+﻿<!DOCTYPE html>
+<html><head><title>Clock.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(94);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Modules/Services/Clock.cs" target="_top">Modules\Services\Clock.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">NodaTime</span>;
+<b>using</b> <span class="i">NodaTime</span>.<span class="i">TimeZones</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>
+{
+    <b>public class</b> <a id="0af47b42a18473b1" href="../../R/0af47b42a18473b1.html" target="n" data-glyph="0,0" class="t t"><span id="01df796609ee21d8">Clock</span></a> : <a href="/OrchardCore.Abstractions/A.html#414b029491d59841" class="t t">IClock</a>
+    {
+        <b>private static</b> <span class="i">Instant</span> <a id="80c76f69734daf92" href="../../R/80c76f69734daf92.html" target="n" data-glyph="106,1" class="i property">CurrentInstant</a> =&gt; <span class="i">SystemClock</span>.<span class="i">Instance</span>.<span class="i">GetCurrentInstant</span>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns a Datetime Kind.Utc that is &quot;Now&quot;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a> <a id="6b525af075d6c7dd" href="../../R/6b525af075d6c7dd.html" target="n" data-glyph="102,1" class="i property">UtcNow</a> =&gt; <a href="#80c76f69734daf92" class="i property">CurrentInstant</a>.<span class="i">ToDateTimeUtc</span>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns a list of valid timezones as a ITimeZone[], where the key is</span>
+        <span class="c">///</span><span class="c"> the timezone id(string), and the value can be used for display. The list is filtered to contain only</span>
+        <span class="c">///</span><span class="c"> choices that are reasonably valid for the present and near future for real places. The list is</span>
+        <span class="c">///</span><span class="c"> also sorted first by UTC Offset and then by timezone name.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#e85e22c4470a5446" class="t t">ITimeZone</a>[] <a id="b735022f9de15ac0" href="../../R/b735022f9de15ac0.html" target="n" data-glyph="72,1" class="i method">GetTimeZones</a>()
+        {
+            <b>var</b> <span id="r0 rd" class="r0 r">list</span> =
+                <b>from</b> <span class="i">location</span> <b>in</b> <span class="i">TzdbDateTimeZoneSource</span>.<span class="i">Default</span>.<span class="i">ZoneLocations</span>
+                <b>let</b> <span class="i">zoneId</span> = <span class="i">location</span>.<span class="i">ZoneId</span>
+                <b>let</b> <span class="i">tz</span> = <span class="i">DateTimeZoneProviders</span>.<span class="i">Tzdb</span>[<span class="i">zoneId</span>]
+                <b>let</b> <span class="i">zoneInterval</span> = <span class="i">tz</span>.<span class="i">GetZoneInterval</span>(<a href="#80c76f69734daf92" class="i property">CurrentInstant</a>)
+                <b>orderby</b> <span class="i">zoneInterval</span>.<span class="i">StandardOffset</span>, <span class="i">zoneId</span>
+                <b>select</b> <b>new</b> <span class="t">TimeZone</span>(<span class="i">zoneId</span>, <span class="i">zoneInterval</span>.<span class="i">StandardOffset</span>, <span class="i">zoneInterval</span>.<span class="i">WallOffset</span>, <span class="i">tz</span>);
+ 
+            <b>return</b> <span class="r0 r">list</span>.<span class="i">ToArray</span>();
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#e85e22c4470a5446" class="t t">ITimeZone</a> <a id="364a65ff26928d08" href="../../R/364a65ff26928d08.html" target="n" data-glyph="72,1" class="i method">GetTimeZone</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">timeZoneId</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r1 r">timeZoneId</span>))
+            {
+                <b>return</b> <a href="#afcba881a7c5fa2e" class="i method">GetSystemTimeZone</a>();
+            }
+ 
+            <b>var</b> <span id="r2 rd" class="r2 r">dateTimeZone</span> = <a href="#c8815f75111d8ed9" class="i method">GetDateTimeZone</a>(<span class="r1 r">timeZoneId</span>);
+ 
+            <b>return</b> <a href="#5155ebd491a55329" class="i method">CreateTimeZone</a>(<span class="r2 r">dateTimeZone</span>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#e85e22c4470a5446" class="t t">ITimeZone</a> <a id="afcba881a7c5fa2e" href="../../R/afcba881a7c5fa2e.html" target="n" data-glyph="72,1" class="i method">GetSystemTimeZone</a>()
+        {
+            <b>var</b> <span id="r3 rd" class="r3 r">timezone</span> = <span class="i">DateTimeZoneProviders</span>.<span class="i">Tzdb</span>.<span class="i">GetSystemDefault</span>();
+            <b>if</b> (<span class="i">TzdbDateTimeZoneSource</span>.<span class="i">Default</span>.<span class="i">CanonicalIdMap</span>.<span class="i">ContainsKey</span>(<span class="r3 r">timezone</span>.<span class="i">Id</span>))
+            {
+                <b>var</b> <span id="r4 rd" class="r4 r">canonicalTimeZoneId</span> = <span class="i">TzdbDateTimeZoneSource</span>.<span class="i">Default</span>.<span class="i">CanonicalIdMap</span>[<span class="r3 r">timezone</span>.<span class="i">Id</span>];
+                <span class="r3 r">timezone</span> = <span class="i">GetDateTimeZone</span>(<span class="r4 r">canonicalTimeZoneId</span>);
+            }
+            <b>return</b> <span class="i">CreateTimeZone</span>(<span class="r3 r">timezone</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a> <a id="36387079cf277893" href="../../R/36387079cf277893.html" target="n" data-glyph="72,1" class="i method">ConvertToTimeZone</a>(<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a> <span id="r5 rd" class="r5 r">dateTimeOffSet</span>, <a href="/OrchardCore.Abstractions/A.html#e85e22c4470a5446" class="t t">ITimeZone</a> <span id="r6 rd" class="r6 r">timeZone</span>)
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">offsetDateTime</span> = <span class="i">OffsetDateTime</span>.<span class="i">FromDateTimeOffset</span>(<span class="r5 r">dateTimeOffSet</span>);
+            <b>return</b> <span class="r7 r">offsetDateTime</span>.<span class="i">InZone</span>(((<a href="../Model/TimeZone.cs.html#7946ca70482738be" class="t t">TimeZone</a>)<span class="r6 r">timeZone</span>).<a href="../Model/TimeZone.cs.html#559c343b35ccba90" class="i property">DateTimeZone</a>).<span class="i">ToDateTimeOffset</span>();
+        }
+ 
+        <b>internal static</b> <span class="i">DateTimeZone</span> <a id="c8815f75111d8ed9" href="../../R/c8815f75111d8ed9.html" target="n" data-glyph="74,1" class="i method">GetDateTimeZone</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">timeZone</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r8 r">timeZone</span>) &amp;&amp; <span class="i">IsValidTimeZone</span>(<span class="i">DateTimeZoneProviders</span>.<span class="i">Tzdb</span>, <span class="r8 r">timeZone</span>))
+            {
+                <b>return</b> <span class="i">DateTimeZoneProviders</span>.<span class="i">Tzdb</span>[<span class="r8 r">timeZone</span>];
+            }
+ 
+            <b>return</b> <span class="i">DateTimeZoneProviders</span>.<span class="i">Tzdb</span>.<span class="i">GetSystemDefault</span>();
+        }
+ 
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#e85e22c4470a5446" class="t t">ITimeZone</a> <a id="5155ebd491a55329" href="../../R/5155ebd491a55329.html" target="n" data-glyph="76,1" class="i method">CreateTimeZone</a>(<span class="i">DateTimeZone</span> <span id="r9 rd" class="r9 r">dateTimeZone</span>)
+        {
+            <b>if</b> (<span class="r9 r">dateTimeZone</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<b>nameof</b>(<span class="i">DateTimeZone</span>));
+            }
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">zoneInterval</span> = <span class="r9 r">dateTimeZone</span>.<span class="i">GetZoneInterval</span>(<a href="#80c76f69734daf92" class="i property">CurrentInstant</a>);
+ 
+            <b>return</b> <b>new</b> <span class="t">TimeZone</span>(<span class="r9 r">dateTimeZone</span>.<span class="i">Id</span>, <span class="r10 r">zoneInterval</span>.<span class="i">StandardOffset</span>, <span class="r10 r">zoneInterval</span>.<span class="i">WallOffset</span>, <span class="r9 r">dateTimeZone</span>);
+        }
+ 
+        <b>private static bool</b> <a id="43d66cd40e044e59" href="../../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">IsValidTimeZone</a>(<span class="i">IDateTimeZoneProvider</span> <span id="r11 rd" class="r11 r">provider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">timeZoneId</span>)
+        {
+            <b>return</b> <span class="r11 r">provider</span>.<span class="i">GetZoneOrNull</span>(<span class="r12 r">timeZoneId</span>) != <b>null</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

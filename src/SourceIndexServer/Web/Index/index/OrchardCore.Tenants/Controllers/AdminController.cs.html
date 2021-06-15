@@ -1,0 +1,651 @@
+﻿<!DOCTYPE html>
+<html><head><title>AdminController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(642);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tenants/Controllers/AdminController.cs" target="_top">Controllers\AdminController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tenants" target="_top">src\OrchardCore.Modules\OrchardCore.Tenants\OrchardCore.Tenants.csproj</a> (OrchardCore.Tenants)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">RegularExpressions</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Tenants</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tenants</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="d22b70e5d25010da" href="../R/d22b70e5d25010da.html" target="n" data-glyph="0,0" class="t t">AdminController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="310ddbafa37cbae6" href="../R/310ddbafa37cbae6.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">IShellSettingsManager</span> <a id="76b6f6307384705b" href="../R/76b6f6307384705b.html" target="n" data-glyph="46,1" class="i field">_shellSettingsManager</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Data.Abstractions/A.html#d178ebc8fe681605" class="t t">DatabaseProvider</a>&gt; <a id="e8eac8bfc5bbcf18" href="../R/e8eac8bfc5bbcf18.html" target="n" data-glyph="46,1" class="i field">_databaseProviders</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="71ec3c0f8af6fb54" href="../R/71ec3c0f8af6fb54.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="87d55d59fef36f2b" href="../R/87d55d59fef36f2b.html" target="n" data-glyph="46,1" class="i field">_currentShellSettings</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#a39c46a1ac0396ff" class="t t">IRecipeHarvester</a>&gt; <a id="4b2604d850f97851" href="../R/4b2604d850f97851.html" target="n" data-glyph="46,1" class="i field">_recipeHarvesters</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="0a1cc754a68e7fc8" href="../R/0a1cc754a68e7fc8.html" target="n" data-glyph="46,1" class="i field">_dataProtectorProvider</a>;
+        <b>private readonly</b> <span class="i">IClock</span> <a id="728f63530b4e5e4b" href="../R/728f63530b4e5e4b.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="82d6b8b82b038a4f" href="../R/82d6b8b82b038a4f.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <a id="07a062b3bed07018" href="../R/07a062b3bed07018.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+ 
+        <b>private readonly dynamic</b> <a id="43bb285af06a8752" href="../R/43bb285af06a8752.html" target="n" data-glyph="46,1" class="i field">New</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="c91b4069476fa9aa" href="../R/c91b4069476fa9aa.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="897ba3fe833c2c00" href="../R/897ba3fe833c2c00.html" target="n" data-glyph="46,1" class="i field">H</a>;
+ 
+        <b>public</b> <a id="066c211456baf95a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AdminController</a>(
+            <span class="i">IShellHost</span> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <span class="i">IShellSettingsManager</span> <span id="r1 rd" class="r1 r">shellSettingsManager</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Data.Abstractions/A.html#d178ebc8fe681605" class="t t">DatabaseProvider</a>&gt; <span id="r2 rd" class="r2 r">databaseProviders</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r3 rd" class="r3 r">authorizationService</span>,
+            <span class="i">ShellSettings</span> <span id="r4 rd" class="r4 r">currentShellSettings</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Recipes.Abstractions/A.html#a39c46a1ac0396ff" class="t t">IRecipeHarvester</a>&gt; <span id="r5 rd" class="r5 r">recipeHarvesters</span>,
+            <span class="t t">IDataProtectionProvider</span> <span id="r6 rd" class="r6 r">dataProtectorProvider</span>,
+            <span class="i">IClock</span> <span id="r7 rd" class="r7 r">clock</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r8 rd" class="r8 r">notifier</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#35d119bbbe8034c5" class="t t">ISiteService</a> <span id="r9 rd" class="r9 r">siteService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r10 rd" class="r10 r">shapeFactory</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#d22b70e5d25010da" class="t t">AdminController</a>&gt; <span id="r11 rd" class="r11 r">stringLocalizer</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#d22b70e5d25010da" class="t t">AdminController</a>&gt; <span id="r12 rd" class="r12 r">htmlLocalizer</span>)
+        {
+            <a href="#310ddbafa37cbae6" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a> = <span class="r3 r">authorizationService</span>;
+            <a href="#76b6f6307384705b" class="i field">_shellSettingsManager</a> = <span class="r1 r">shellSettingsManager</span>;
+            <a href="#e8eac8bfc5bbcf18" class="i field">_databaseProviders</a> = <span class="r2 r">databaseProviders</span>;
+            <a href="#87d55d59fef36f2b" class="i field">_currentShellSettings</a> = <span class="r4 r">currentShellSettings</span>;
+            <a href="#0a1cc754a68e7fc8" class="i field">_dataProtectorProvider</a> = <span class="r6 r">dataProtectorProvider</span>;
+            <a href="#4b2604d850f97851" class="i field">_recipeHarvesters</a> = <span class="r5 r">recipeHarvesters</span>;
+            <a href="#728f63530b4e5e4b" class="i field">_clock</a> = <span class="r7 r">clock</span>;
+            <a href="#82d6b8b82b038a4f" class="i field">_notifier</a> = <span class="r8 r">notifier</span>;
+            <a href="#07a062b3bed07018" class="i field">_siteService</a> = <span class="r9 r">siteService</span>;
+ 
+            <a href="#43bb285af06a8752" class="i field">New</a> = <span class="r10 r">shapeFactory</span>;
+            <a href="#c91b4069476fa9aa" class="i field">S</a> = <span class="r11 r">stringLocalizer</span>;
+            <a href="#897ba3fe833c2c00" class="i field">H</a> = <span class="r12 r">htmlLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="882e9d5d7e3333c8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="../ViewModels/AdminIndexViewModel.cs.html#3c0da0002c808e0e" class="t t">TenantIndexOptions</a> <span id="r13 rd" class="r13 r">options</span>, <a href="/OrchardCore.Navigation.Core/A.html#51c8763abc99132d" class="t t">PagerParameters</a> <span id="r14 rd" class="r14 r">pagerParameters</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">allSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>().<span class="i">OrderBy</span>(<span id="r16 rd" class="r16 r">s</span> =&gt; <span class="r16 r">s</span>.<span class="i">Name</span>);
+            <b>var</b> <span id="r17 rd" class="r17 r">dataProtector</span> = <a href="#0a1cc754a68e7fc8" class="i field">_dataProtectorProvider</a>.<span class="i method">CreateProtector</span>(<span class="s">&quot;Tokens&quot;</span>).<span class="i method">ToTimeLimitedDataProtector</span>();
+ 
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e627b55b9075d808" class="k">var</a> <span id="r18 rd" class="r18 r">siteSettings</span> = <b>await</b> <a href="#07a062b3bed07018" class="i field">_siteService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3af19550c57fda93" class="i method">GetSiteSettingsAsync</a>();
+            <a href="/OrchardCore.Navigation.Core/A.html#e6e879b28e4fdee2" class="k">var</a> <span id="r19 rd" class="r19 r">pager</span> = <b>new</b> <a href="/OrchardCore.Navigation.Core/A.html#752edecafc0b21e5" class="t constructor">Pager</a>(<span class="r14 r">pagerParameters</span>, <span class="r18 r">siteSettings</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#aae31982ea725462" class="i property">PageSize</a>);
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">entries</span> = <span class="r15 r">allSettings</span>.<span class="i">Select</span>(<span id="r21 rd" class="r21 r">x</span> =&gt;
+                {
+                    <a href="../ViewModels/AdminIndexViewModel.cs.html#1b4b511ac092b9cf" class="k">var</a> <span id="r22 rd" class="r22 r">entry</span> = <b>new</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#1b4b511ac092b9cf" class="t constructor">ShellSettingsEntry</a>
+                    {
+                        <a href="../ViewModels/AdminIndexViewModel.cs.html#57755eceb2a00b7b" class="i property">Description</a> = <span class="r21 r">x</span>[<span class="s">&quot;Description&quot;</span>],
+                        <a href="../ViewModels/AdminIndexViewModel.cs.html#9434c14732bd5d57" class="i property">Name</a> = <span class="r21 r">x</span>.<span class="i">Name</span>,
+                        <a href="../ViewModels/AdminIndexViewModel.cs.html#b739a3aca420e383" class="i property">ShellSettings</a> = <span class="r21 r">x</span>,
+                        <a href="../ViewModels/AdminIndexViewModel.cs.html#23e69c8afc70db16" class="i property">IsDefaultTenant</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r21 r">x</span>.<span class="i">Name</span>, <span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)
+                    };
+ 
+                    <b>if</b> (<span class="r21 r">x</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Uninitialized</span> &amp;&amp; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r21 r">x</span>[<span class="s">&quot;Secret&quot;</span>]))
+                    {
+                        <span class="r22 r">entry</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#6837d119c81573e7" class="i property">Token</a> = <span class="r17 r">dataProtector</span>.<span class="i">Protect</span>(<span class="r21 r">x</span>[<span class="s">&quot;Secret&quot;</span>], <a href="#728f63530b4e5e4b" class="i field">_clock</a>.<span class="i">UtcNow</span>.<span class="i">Add</span>(<b>new</b> <a href="@1@System.Runtime/A.html#22fd9aa3d49cf498" class="t constructor">TimeSpan</a>(24, 0, 0)));
+                    }
+ 
+                    <b>return</b> <span class="r22 r">entry</span>;
+                }).<span class="i">ToList</span>();
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e398f73ca8fed6b6" class="i property">Search</a>))
+            {
+                <span class="r20 r">entries</span> = <span class="r20 r">entries</span>.<span class="i">Where</span>(<span id="r23 rd" class="r23 r">t</span> =&gt; <span class="r23 r">t</span>.<span class="i">Name</span>.<span class="i">IndexOf</span>(<span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e398f73ca8fed6b6" class="i property">Search</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>) &gt; -1 ||
+                    (<span class="r23 r">t</span>.<span class="i">ShellSettings</span> != <b>null</b> &amp;&amp;
+                     ((<span class="r23 r">t</span>.<span class="i">ShellSettings</span>.<span class="i">RequestUrlHost</span> != <b>null</b> &amp;&amp; <span class="r23 r">t</span>.<span class="i">ShellSettings</span>.<span class="i">RequestUrlHost</span>.<span class="i">IndexOf</span>(<span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e398f73ca8fed6b6" class="i property">Search</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>) &gt; -1) ||
+                     (<span class="r23 r">t</span>.<span class="i">ShellSettings</span>.<span class="i">RequestUrlPrefix</span> != <b>null</b> &amp;&amp; <span class="r23 r">t</span>.<span class="i">ShellSettings</span>.<span class="i">RequestUrlPrefix</span>.<span class="i">IndexOf</span>(<span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e398f73ca8fed6b6" class="i property">Search</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>) &gt; -1)))).<span class="i">ToList</span>();
+            }
+ 
+            <b>switch</b> (<span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#bea70f6ffbe8acc0" class="i property">Filter</a>)
+            {
+                <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#b582934d485e879d" class="t t">TenantsFilter</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#3d5b158305432971" class="i field">Disabled</a>:
+                    <span class="r20 r">entries</span> = <span class="r20 r">entries</span>.<span class="i">Where</span>(<span id="r24 rd" class="r24 r">t</span> =&gt; <span class="r24 r">t</span>.<span class="i">ShellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Disabled</span>).<span class="i">ToList</span>();
+                    <b>break</b>;
+                <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#b582934d485e879d" class="t t">TenantsFilter</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#21595d83a668ab91" class="i field">Running</a>:
+                    <span class="r20 r">entries</span> = <span class="r20 r">entries</span>.<span class="i">Where</span>(<span id="r25 rd" class="r25 r">t</span> =&gt; <span class="r25 r">t</span>.<span class="i">ShellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Running</span>).<span class="i">ToList</span>();
+                    <b>break</b>;
+                <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#b582934d485e879d" class="t t">TenantsFilter</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#6f705b66fb44f0cd" class="i field">Uninitialized</a>:
+                    <span class="r20 r">entries</span> = <span class="r20 r">entries</span>.<span class="i">Where</span>(<span id="r26 rd" class="r26 r">t</span> =&gt; <span class="r26 r">t</span>.<span class="i">ShellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Uninitialized</span>).<span class="i">ToList</span>();
+                    <b>break</b>;
+            }
+ 
+            <b>switch</b> (<span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#61fc5d55bfeac057" class="i property">OrderBy</a>)
+            {
+                <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#a365ba286c300fe0" class="t t">TenantsOrder</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#f243b493c4bb6119" class="i field">Name</a>:
+                    <span class="r20 r">entries</span> = <span class="r20 r">entries</span>.<span class="i">OrderBy</span>(<span id="r27 rd" class="r27 r">t</span> =&gt; <span class="r27 r">t</span>.<span class="i">Name</span>).<span class="i">ToList</span>();
+                    <b>break</b>;
+                <b>case</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#a365ba286c300fe0" class="t t">TenantsOrder</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e2d9ac09949af381" class="i field">State</a>:
+                    <span class="r20 r">entries</span> = <span class="r20 r">entries</span>.<span class="i">OrderBy</span>(<span id="r28 rd" class="r28 r">t</span> =&gt; <span class="r28 r">t</span>.<span class="i">ShellSettings</span>?.<span class="i">State</span>).<span class="i">ToList</span>();
+                    <b>break</b>;
+                <b>default</b>:
+                    <span class="r20 r">entries</span> = <span class="r20 r">entries</span>.<span class="i">OrderByDescending</span>(<span id="r29 rd" class="r29 r">t</span> =&gt; <span class="r29 r">t</span>.<span class="i">Name</span>).<span class="i">ToList</span>();
+                    <b>break</b>;
+            }
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r30 rd" class="r30 r">count</span> = <span class="r20 r">entries</span>.<span class="i">Count</span>();
+ 
+            <b>var</b> <span id="r31 rd" class="r31 r">results</span> = <span class="r20 r">entries</span>
+                .<span class="i">Skip</span>(<span class="r19 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#985e078e8039ce3c" class="i method">GetStartIndex</a>())
+                .<span class="i">Take</span>(<span class="r19 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2ca905c9c05191b1" class="i property">PageSize</a>).<span class="i">ToList</span>();
+ 
+            <span class="c">// Maintain previous route data when generating page links</span>
+            <b>var</b> <span id="r32 rd" class="r32 r">routeData</span> = <b>new</b> <span class="t constructor">RouteData</span>();
+            <span class="r32 r">routeData</span>.<span class="i property">Values</span>.<span class="i method">Add</span>(<span class="s">&quot;Options.Filter&quot;</span>, <span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#bea70f6ffbe8acc0" class="i property">Filter</a>);
+            <span class="r32 r">routeData</span>.<span class="i property">Values</span>.<span class="i method">Add</span>(<span class="s">&quot;Options.Search&quot;</span>, <span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e398f73ca8fed6b6" class="i property">Search</a>);
+            <span class="r32 r">routeData</span>.<span class="i property">Values</span>.<span class="i method">Add</span>(<span class="s">&quot;Options.OrderBy&quot;</span>, <span class="r13 r">options</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#61fc5d55bfeac057" class="i property">OrderBy</a>);
+ 
+            <b>var</b> <span id="r33 rd" class="r33 r">pagerShape</span> = (<b>await</b> <a href="#43bb285af06a8752" class="i field">New</a>.<span class="i">Pager</span>(<span class="r19 r">pager</span>)).<span class="i">TotalItemCount</span>(<span class="r30 r">count</span>).<span class="i">RouteData</span>(<span class="r32 r">routeData</span>);
+ 
+            <a href="../ViewModels/AdminIndexViewModel.cs.html#6a8fbe7621042206" class="k">var</a> <span id="r34 rd" class="r34 r">model</span> = <b>new</b> <a href="../ViewModels/AdminIndexViewModel.cs.html#6a8fbe7621042206" class="t constructor">AdminIndexViewModel</a>
+            {
+                <a href="../ViewModels/AdminIndexViewModel.cs.html#12bb7f9da5a3cc60" class="i property">ShellSettingsEntries</a> = <span class="r31 r">results</span>,
+                <a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a> = <span class="r13 r">options</span>,
+                <a href="../ViewModels/AdminIndexViewModel.cs.html#279e8689bb453c39" class="i property">Pager</a> = <span class="r33 r">pagerShape</span>
+            };
+ 
+            <span class="c">// We populate the SelectLists</span>
+            <span class="r34 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#4401a666648f153e" class="i property">TenantsStates</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;() {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;All states&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#b582934d485e879d" class="t t">TenantsFilter</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#1b4218e76f5d95e2" class="i field">All</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Running&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#b582934d485e879d" class="t t">TenantsFilter</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#21595d83a668ab91" class="i field">Running</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Disabled&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#b582934d485e879d" class="t t">TenantsFilter</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#3d5b158305432971" class="i field">Disabled</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Uninitialized&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#b582934d485e879d" class="t t">TenantsFilter</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#6f705b66fb44f0cd" class="i field">Uninitialized</a>) }
+            };
+ 
+            <span class="r34 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#4c3b869ea65ba511" class="i property">TenantsSorts</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;() {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Name&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#a365ba286c300fe0" class="t t">TenantsOrder</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#f243b493c4bb6119" class="i field">Name</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;State&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#a365ba286c300fe0" class="t t">TenantsOrder</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e2d9ac09949af381" class="i field">State</a>) }
+            };
+ 
+            <span class="r34 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e1d1a0acd3a543e6" class="i property">TenantsBulkAction</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;() {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Disable&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#4a93e882832adeb7" class="t t">TenantsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#a498b1a2546ce13f" class="i field">Disable</a>) },
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Enable&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/AdminIndexViewModel.cs.html#4a93e882832adeb7" class="t t">TenantsBulkAction</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#83f66f49cbb93fa3" class="i field">Enable</a>) }
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r34 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Index&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Filter&quot;</span>)]
+        <b>public</b> <span class="t t">ActionResult</span> <a id="2c3ec254f9c6a3cc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexFilterPOST</a>(<a href="../ViewModels/AdminIndexViewModel.cs.html#6a8fbe7621042206" class="t t">AdminIndexViewModel</a> <span id="r35 rd" class="r35 r">model</span>)
+        {
+            <b>return</b> <span class="i method">RedirectToAction</span>(<span class="s">&quot;Index&quot;</span>, <b>new</b> <span class="t constructor">RouteValueDictionary</span> {
+                { <span class="s">&quot;Options.Filter&quot;</span>, <span class="r35 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#bea70f6ffbe8acc0" class="i property">Filter</a> },
+                { <span class="s">&quot;Options.OrderBy&quot;</span>, <span class="r35 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#61fc5d55bfeac057" class="i property">OrderBy</a> },
+                { <span class="s">&quot;Options.Search&quot;</span>, <span class="r35 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#e398f73ca8fed6b6" class="i property">Search</a> },
+                { <span class="s">&quot;Options.TenantsStates&quot;</span>, <span class="r35 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#95626676eb05d5d0" class="i property">Options</a>.<a href="../ViewModels/AdminIndexViewModel.cs.html#4401a666648f153e" class="i property">TenantsStates</a> }
+            });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.BulkAction&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="eb732946d17b86e6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="../ViewModels/AdminIndexViewModel.cs.html#cbff29ee5b0688f5" class="t t">BulkActionViewModel</a> <span id="r36 rd" class="r36 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r37 rd" class="r37 r">allSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r38 rd" class="r38 r">tenantName</span> <b>in</b> <span class="r36 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#5f203f9b1cbfc648" class="i property">TenantNames</a> ?? <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;())
+            {
+                <b>var</b> <span id="r39 rd" class="r39 r">shellSettings</span> = <span class="r37 r">allSettings</span>
+                    .<span class="i">Where</span>(<span id="r40 rd" class="r40 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r40 r">x</span>.<span class="i">Name</span>, <span class="r38 r">tenantName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                    .<span class="i">FirstOrDefault</span>();
+ 
+                <b>if</b> (<span class="r39 r">shellSettings</span> == <b>null</b>)
+                {
+                    <b>break</b>;
+                }
+ 
+                <b>switch</b> (<span class="r36 r">model</span>.<a href="../ViewModels/AdminIndexViewModel.cs.html#cd609328a199e55f" class="i property">BulkAction</a>.<a href="@1@System.Runtime/A.html#1365cfeffd45409d" class="i method">ToString</a>())
+                {
+                    <b>case</b> <span class="s">&quot;Disable&quot;</span>:
+                        <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r39 r">shellSettings</span>.<span class="i">Name</span>, <span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                        {
+                            <a href="#82d6b8b82b038a4f" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#d76d0a932a0405e2" class="i method">Warning</a>(<a href="#897ba3fe833c2c00" class="i field">H</a>[<span class="s">&quot;You cannot disable the default tenant.&quot;</span>]);
+                        }
+                        <b>else</b> <b>if</b> (<span class="r39 r">shellSettings</span>.<span class="i">State</span> != <span class="i">TenantState</span>.<span class="i">Running</span>)
+                        {
+                            <a href="#82d6b8b82b038a4f" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#d76d0a932a0405e2" class="i method">Warning</a>(<a href="#897ba3fe833c2c00" class="i field">H</a>[<span class="s">&quot;The tenant &#39;{0}&#39; is already disabled.&quot;</span>, <span class="r39 r">shellSettings</span>.<span class="i">Name</span>]);
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r39 r">shellSettings</span>.<span class="i">State</span> = <span class="i">TenantState</span>.<span class="i">Disabled</span>;
+                            <b>await</b> <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">UpdateShellSettingsAsync</span>(<span class="r39 r">shellSettings</span>);
+                        }
+ 
+                        <b>break</b>;
+ 
+                    <b>case</b> <span class="s">&quot;Enable&quot;</span>:
+                        <b>if</b> (<span class="r39 r">shellSettings</span>.<span class="i">State</span> != <span class="i">TenantState</span>.<span class="i">Disabled</span>)
+                        {
+                            <a href="#82d6b8b82b038a4f" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#d76d0a932a0405e2" class="i method">Warning</a>(<a href="#897ba3fe833c2c00" class="i field">H</a>[<span class="s">&quot;The tenant &#39;{0}&#39; is already enabled.&quot;</span>, <span class="r39 r">shellSettings</span>.<span class="i">Name</span>]);
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r39 r">shellSettings</span>.<span class="i">State</span> = <span class="i">TenantState</span>.<span class="i">Running</span>;
+                            <b>await</b> <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">UpdateShellSettingsAsync</span>(<span class="r39 r">shellSettings</span>);
+                        }
+ 
+                        <b>break</b>;
+ 
+                    <b>default</b>:
+                        <b>break</b>;
+                }
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="e5d8ad9f31f6cf82" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r41 rd" class="r41 r">recipeCollections</span> = <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b6d43f186de3a867" class="i method">WhenAll</a>(<a href="#4b2604d850f97851" class="i field">_recipeHarvesters</a>.<span class="i method">Select</span>(<span id="r42 rd" class="r42 r">x</span> =&gt; <span class="r42 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c9f3a1f8fc37208a" class="i method">HarvestRecipesAsync</a>()));
+            <b>var</b> <span id="r43 rd" class="r43 r">recipes</span> = <span class="r41 r">recipeCollections</span>.<span class="i method">SelectMany</span>(<span id="r44 rd" class="r44 r">x</span> =&gt; <span class="r44 r">x</span>).<span class="i method">Where</span>(<span id="r45 rd" class="r45 r">x</span> =&gt; <span class="r45 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#6c8f9889e4b2e522" class="i property">IsSetupRecipe</a>).<span class="i method">OrderBy</span>(<span id="r46 rd" class="r46 r">r</span> =&gt; <span class="r46 r">r</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#be38f28bd54bb606" class="i property">DisplayName</a>).<span class="i method">ToArray</span>();
+ 
+            <span class="c">// Creates a default shell settings based on the configuration.</span>
+            <b>var</b> <span id="r47 rd" class="r47 r">shellSettings</span> = <a href="#76b6f6307384705b" class="i field">_shellSettingsManager</a>.<span class="i">CreateDefaultSettings</span>();
+ 
+            <a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="k">var</a> <span id="r48 rd" class="r48 r">model</span> = <b>new</b> <a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t constructor">EditTenantViewModel</a>
+            {
+                <a href="../ViewModels/EditTenantViewModel.cs.html#852e43964b889e51" class="i property">Recipes</a> = <span class="r43 r">recipes</span>,
+                <a href="../ViewModels/EditTenantViewModel.cs.html#caf8ffcd8e584bbb" class="i property">RequestUrlHost</a> = <span class="r47 r">shellSettings</span>.<span class="i">RequestUrlHost</span>,
+                <a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a> = <span class="r47 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>,
+                <a href="../ViewModels/EditTenantViewModel.cs.html#3d4909ae671c5f10" class="i property">TablePrefix</a> = <span class="r47 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>],
+                <a href="../ViewModels/EditTenantViewModel.cs.html#fae1e1e7fc0c7e5a" class="i property">RecipeName</a> = <span class="r47 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>]
+            };
+            <a href="#eda24cb1d9d36906" class="i method">SetConfigurationShellValues</a>(<span class="r48 r">model</span>);
+ 
+            <span class="r48 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#852e43964b889e51" class="i property">Recipes</a> = <span class="r43 r">recipes</span>;
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r48 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="50390def680e8c00" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a> <span id="r49 rd" class="r49 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <a href="#6187353c4910c18e" class="i method">ValidateViewModel</a>(<span class="r49 r">model</span>, <b>true</b>);
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="c">// Creates a default shell settings based on the configuration.</span>
+                <b>var</b> <span id="r50 rd" class="r50 r">shellSettings</span> = <a href="#76b6f6307384705b" class="i field">_shellSettingsManager</a>.<span class="i">CreateDefaultSettings</span>();
+ 
+                <span class="r50 r">shellSettings</span>.<span class="i">Name</span> = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>;
+                <span class="r50 r">shellSettings</span>.<span class="i">RequestUrlHost</span> = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#caf8ffcd8e584bbb" class="i property">RequestUrlHost</a>;
+                <span class="r50 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span> = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>;
+                <span class="r50 r">shellSettings</span>.<span class="i">State</span> = <span class="i">TenantState</span>.<span class="i">Uninitialized</span>;
+ 
+                <a href="#eda24cb1d9d36906" class="i method">SetConfigurationShellValues</a>(<span class="r49 r">model</span>);
+                <span class="r50 r">shellSettings</span>[<span class="s">&quot;Description&quot;</span>] = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#f74bbe706abbad25" class="i property">Description</a>;
+                <span class="r50 r">shellSettings</span>[<span class="s">&quot;ConnectionString&quot;</span>] = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6f504bf3e7453add" class="i property">ConnectionString</a>;
+                <span class="r50 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>] = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#3d4909ae671c5f10" class="i property">TablePrefix</a>;
+                <span class="r50 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>] = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6452f6301cbfa061" class="i property">DatabaseProvider</a>;
+                <span class="r50 r">shellSettings</span>[<span class="s">&quot;Secret&quot;</span>] = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>();
+                <span class="r50 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>] = <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#fae1e1e7fc0c7e5a" class="i property">RecipeName</a>;
+ 
+                <b>await</b> <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">UpdateShellSettingsAsync</span>(<span class="r50 r">shellSettings</span>);
+ 
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+ 
+            <b>var</b> <span id="r51 rd" class="r51 r">recipeCollections</span> = <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b6d43f186de3a867" class="i method">WhenAll</a>(<a href="#4b2604d850f97851" class="i field">_recipeHarvesters</a>.<span class="i method">Select</span>(<span id="r52 rd" class="r52 r">x</span> =&gt; <span class="r52 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c9f3a1f8fc37208a" class="i method">HarvestRecipesAsync</a>()));
+            <b>var</b> <span id="r53 rd" class="r53 r">recipes</span> = <span class="r51 r">recipeCollections</span>.<span class="i method">SelectMany</span>(<span id="r54 rd" class="r54 r">x</span> =&gt; <span class="r54 r">x</span>).<span class="i method">Where</span>(<span id="r55 rd" class="r55 r">x</span> =&gt; <span class="r55 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#6c8f9889e4b2e522" class="i property">IsSetupRecipe</a>).<span class="i method">OrderBy</span>(<span id="r56 rd" class="r56 r">r</span> =&gt; <span class="r56 r">r</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#be38f28bd54bb606" class="i property">DisplayName</a>).<span class="i method">ToArray</span>();
+            <span class="r49 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#852e43964b889e51" class="i property">Recipes</a> = <span class="r53 r">recipes</span>;
+ 
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r49 r">model</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="b90beaf63de1aabd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r57 rd" class="r57 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r58 rd" class="r58 r">shellSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>()
+                .<span class="i">Where</span>(<span id="r59 rd" class="r59 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r59 r">x</span>.<span class="i">Name</span>, <span class="r57 r">id</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                .<span class="i">FirstOrDefault</span>();
+ 
+            <b>if</b> (<span class="r58 r">shellSettings</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="k">var</a> <span id="r60 rd" class="r60 r">model</span> = <b>new</b> <a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t constructor">EditTenantViewModel</a>
+            {
+                <a href="../ViewModels/EditTenantViewModel.cs.html#f74bbe706abbad25" class="i property">Description</a> = <span class="r58 r">shellSettings</span>[<span class="s">&quot;Description&quot;</span>],
+                <a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a> = <span class="r58 r">shellSettings</span>.<span class="i">Name</span>,
+                <a href="../ViewModels/EditTenantViewModel.cs.html#caf8ffcd8e584bbb" class="i property">RequestUrlHost</a> = <span class="r58 r">shellSettings</span>.<span class="i">RequestUrlHost</span>,
+                <a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a> = <span class="r58 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>,
+            };
+ 
+            <span class="c">// The user can change the &#39;preset&#39; database information only if the</span>
+            <span class="c">// tenant has not been initialized yet</span>
+            <b>if</b> (<span class="r58 r">shellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Uninitialized</span>)
+            {
+                <b>var</b> <span id="r61 rd" class="r61 r">recipeCollections</span> = <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b6d43f186de3a867" class="i method">WhenAll</a>(<a href="#4b2604d850f97851" class="i field">_recipeHarvesters</a>.<span class="i method">Select</span>(<span id="r62 rd" class="r62 r">x</span> =&gt; <span class="r62 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c9f3a1f8fc37208a" class="i method">HarvestRecipesAsync</a>()));
+                <b>var</b> <span id="r63 rd" class="r63 r">recipes</span> = <span class="r61 r">recipeCollections</span>.<span class="i method">SelectMany</span>(<span id="r64 rd" class="r64 r">x</span> =&gt; <span class="r64 r">x</span>).<span class="i method">Where</span>(<span id="r65 rd" class="r65 r">x</span> =&gt; <span class="r65 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#6c8f9889e4b2e522" class="i property">IsSetupRecipe</a>).<span class="i method">OrderBy</span>(<span id="r66 rd" class="r66 r">r</span> =&gt; <span class="r66 r">r</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#be38f28bd54bb606" class="i property">DisplayName</a>).<span class="i method">ToArray</span>();
+                <span class="r60 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#852e43964b889e51" class="i property">Recipes</a> = <span class="r63 r">recipes</span>;
+ 
+                <span class="r60 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6452f6301cbfa061" class="i property">DatabaseProvider</a> = <span class="r58 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>];
+                <span class="r60 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#3d4909ae671c5f10" class="i property">TablePrefix</a> = <span class="r58 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>];
+                <span class="r60 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6f504bf3e7453add" class="i property">ConnectionString</a> = <span class="r58 r">shellSettings</span>[<span class="s">&quot;ConnectionString&quot;</span>];
+                <span class="r60 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#fae1e1e7fc0c7e5a" class="i property">RecipeName</a> = <span class="r58 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>];
+                <span class="r60 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#3a2240d76ef5c865" class="i property">CanEditDatabasePresets</a> = <b>true</b>;
+                <a href="#eda24cb1d9d36906" class="i method">SetConfigurationShellValues</a>(<span class="r60 r">model</span>);
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r60 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="fe3945d598ff059c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a> <span id="r67 rd" class="r67 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <a href="#6187353c4910c18e" class="i method">ValidateViewModel</a>(<span class="r67 r">model</span>, <b>false</b>);
+            }
+ 
+            <b>var</b> <span id="r68 rd" class="r68 r">shellSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>()
+                .<span class="i">Where</span>(<span id="r69 rd" class="r69 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r69 r">x</span>.<span class="i">Name</span>, <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                .<span class="i">FirstOrDefault</span>();
+ 
+            <b>if</b> (<span class="r68 r">shellSettings</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r68 r">shellSettings</span>[<span class="s">&quot;Description&quot;</span>] = <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#f74bbe706abbad25" class="i property">Description</a>;
+                <span class="r68 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span> = <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>;
+                <span class="r68 r">shellSettings</span>.<span class="i">RequestUrlHost</span> = <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#caf8ffcd8e584bbb" class="i property">RequestUrlHost</a>;
+ 
+                <span class="c">// The user can change the &#39;preset&#39; database information only if the</span>
+                <span class="c">// tenant has not been initialized yet</span>
+                <b>if</b> (<span class="r68 r">shellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Uninitialized</span>)
+                {
+                    <a href="#eda24cb1d9d36906" class="i method">SetConfigurationShellValues</a>(<span class="r67 r">model</span>);
+                    <span class="r68 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>] = <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6452f6301cbfa061" class="i property">DatabaseProvider</a>;
+                    <span class="r68 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>] = <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#3d4909ae671c5f10" class="i property">TablePrefix</a>;
+                    <span class="r68 r">shellSettings</span>[<span class="s">&quot;ConnectionString&quot;</span>] = <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6f504bf3e7453add" class="i property">ConnectionString</a>;
+                    <span class="r68 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>] = <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#fae1e1e7fc0c7e5a" class="i property">RecipeName</a>;
+                    <span class="r68 r">shellSettings</span>[<span class="s">&quot;Secret&quot;</span>] = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>();
+                }
+ 
+                <b>await</b> <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">UpdateShellSettingsAsync</span>(<span class="r68 r">shellSettings</span>);
+ 
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+ 
+            <span class="c">// The user can change the &#39;preset&#39; database information only if the</span>
+            <span class="c">// tenant has not been initialized yet</span>
+            <b>if</b> (<span class="r68 r">shellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Uninitialized</span>)
+            {
+                <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6452f6301cbfa061" class="i property">DatabaseProvider</a> = <span class="r68 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>];
+                <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#3d4909ae671c5f10" class="i property">TablePrefix</a> = <span class="r68 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>];
+                <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6f504bf3e7453add" class="i property">ConnectionString</a> = <span class="r68 r">shellSettings</span>[<span class="s">&quot;ConnectionString&quot;</span>];
+                <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#fae1e1e7fc0c7e5a" class="i property">RecipeName</a> = <span class="r68 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>];
+                <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#3a2240d76ef5c865" class="i property">CanEditDatabasePresets</a> = <b>true</b>;
+                <a href="#eda24cb1d9d36906" class="i method">SetConfigurationShellValues</a>(<span class="r67 r">model</span>);
+            }
+ 
+            <b>var</b> <span id="r70 rd" class="r70 r">recipeCollections</span> = <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b6d43f186de3a867" class="i method">WhenAll</a>(<a href="#4b2604d850f97851" class="i field">_recipeHarvesters</a>.<span class="i method">Select</span>(<span id="r71 rd" class="r71 r">x</span> =&gt; <span class="r71 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#c9f3a1f8fc37208a" class="i method">HarvestRecipesAsync</a>()));
+            <b>var</b> <span id="r72 rd" class="r72 r">recipes</span> = <span class="r70 r">recipeCollections</span>.<span class="i method">SelectMany</span>(<span id="r73 rd" class="r73 r">x</span> =&gt; <span class="r73 r">x</span>).<span class="i method">Where</span>(<span id="r74 rd" class="r74 r">x</span> =&gt; <span class="r74 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#6c8f9889e4b2e522" class="i property">IsSetupRecipe</a>).<span class="i method">OrderBy</span>(<span id="r75 rd" class="r75 r">r</span> =&gt; <span class="r75 r">r</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#be38f28bd54bb606" class="i property">DisplayName</a>).<span class="i method">ToArray</span>();
+            <span class="r67 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#852e43964b889e51" class="i property">Recipes</a> = <span class="r72 r">recipes</span>;
+ 
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r67 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="5436604226199433" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Disable</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r76 rd" class="r76 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r77 rd" class="r77 r">shellSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>()
+                .<span class="i">Where</span>(<span id="r78 rd" class="r78 r">s</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r78 r">s</span>.<span class="i">Name</span>, <span class="r76 r">id</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                .<span class="i">FirstOrDefault</span>();
+ 
+            <b>if</b> (<span class="r77 r">shellSettings</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r77 r">shellSettings</span>.<span class="i">Name</span>, <span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <a href="#82d6b8b82b038a4f" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#897ba3fe833c2c00" class="i field">H</a>[<span class="s">&quot;You cannot disable the default tenant.&quot;</span>]);
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+ 
+            <b>if</b> (<span class="r77 r">shellSettings</span>.<span class="i">State</span> != <span class="i">TenantState</span>.<span class="i">Running</span>)
+            {
+                <a href="#82d6b8b82b038a4f" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#897ba3fe833c2c00" class="i field">H</a>[<span class="s">&quot;You can only disable an Enabled tenant.&quot;</span>]);
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+ 
+            <span class="r77 r">shellSettings</span>.<span class="i">State</span> = <span class="i">TenantState</span>.<span class="i">Disabled</span>;
+            <b>await</b> <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">UpdateShellSettingsAsync</span>(<span class="r77 r">shellSettings</span>);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="06224ceadd24e9ae" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Enable</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r79 rd" class="r79 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r80 rd" class="r80 r">shellSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>()
+                .<span class="i">Where</span>(<span id="r81 rd" class="r81 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r81 r">x</span>.<span class="i">Name</span>, <span class="r79 r">id</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                .<span class="i">FirstOrDefault</span>();
+ 
+            <b>if</b> (<span class="r80 r">shellSettings</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<span class="r80 r">shellSettings</span>.<span class="i">State</span> != <span class="i">TenantState</span>.<span class="i">Disabled</span>)
+            {
+                <a href="#82d6b8b82b038a4f" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#897ba3fe833c2c00" class="i field">H</a>[<span class="s">&quot;You can only enable a Disabled tenant.&quot;</span>]);
+            }
+ 
+            <span class="r80 r">shellSettings</span>.<span class="i">State</span> = <span class="i">TenantState</span>.<span class="i">Running</span>;
+            <b>await</b> <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">UpdateShellSettingsAsync</span>(<span class="r80 r">shellSettings</span>);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="2d3c191ab2a6e0bd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Reload</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r82 rd" class="r82 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#71ec3c0f8af6fb54" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r83 rd" class="r83 r">shellSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>()
+                .<span class="i">Where</span>(<span id="r84 rd" class="r84 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r84 r">x</span>.<span class="i">Name</span>, <span class="r82 r">id</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                .<span class="i">FirstOrDefault</span>();
+ 
+            <b>if</b> (<span class="r83 r">shellSettings</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Generating routes can fail while the tenant is recycled as routes can use services.</span>
+            <span class="c">// It could be fixed by waiting for the next request or the end of the current one</span>
+            <span class="c">// to actually release the tenant. Right now we render the url before recycling the tenant.</span>
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r85 rd" class="r85 r">redirectUrl</span> = <span class="i property">Url</span>.<span class="i method">Action</span>(<b>nameof</b>(<span class="i">Index</span>));
+ 
+            <b>await</b> <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">ReloadShellContextAsync</span>(<span class="r83 r">shellSettings</span>);
+ 
+            <b>return</b> <span class="i method">Redirect</span>(<span class="r85 r">redirectUrl</span>);
+        }
+ 
+        <b>private void</b> <a id="6187353c4910c18e" href="../R/6187353c4910c18e.html" target="n" data-glyph="76,1" class="i method">ValidateViewModel</a>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a> <span id="r86 rd" class="r86 r">model</span>, <b>bool</b> <span id="r87 rd" class="r87 r">newTenant</span>)
+        {
+            <a href="/OrchardCore.Data.Abstractions/A.html#d178ebc8fe681605" class="k">var</a> <span id="r88 rd" class="r88 r">selectedProvider</span> = <a href="#e8eac8bfc5bbcf18" class="i field">_databaseProviders</a>.<span class="i method">FirstOrDefault</span>(<span id="r89 rd" class="r89 r">x</span> =&gt; <span class="r89 r">x</span>.<a href="/OrchardCore.Data.Abstractions/A.html#510dfe948d5d8f46" class="i property">Value</a> == <span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6452f6301cbfa061" class="i property">DatabaseProvider</a>);
+ 
+            <b>if</b> (<span class="r88 r">selectedProvider</span> != <b>null</b> &amp;&amp; <span class="r88 r">selectedProvider</span>.<a href="/OrchardCore.Data.Abstractions/A.html#37e07aecdbd2a523" class="i property">HasConnectionString</a> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6f504bf3e7453add" class="i property">ConnectionString</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a>.<a href="../ViewModels/EditTenantViewModel.cs.html#6f504bf3e7453add" class="i property">ConnectionString</a>), <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;The connection string is mandatory for this provider.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>), <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;The tenant name is mandatory.&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r90 rd" class="r90 r">allSettings</span> = <a href="#310ddbafa37cbae6" class="i field">_shellHost</a>.<span class="i">GetAllSettings</span>();
+ 
+            <b>if</b> (<span class="r87 r">newTenant</span> &amp;&amp; <span class="r90 r">allSettings</span>.<span class="i">Any</span>(<span id="r91 rd" class="r91 r">tenant</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r91 r">tenant</span>.<span class="i">Name</span>, <span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>), <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;A tenant with the same name already exists.&quot;</span>, <span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>) &amp;&amp; !<span class="t t">Regex</span>.<span class="i method">IsMatch</span>(<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>, <span class="s">@&quot;^\w+$&quot;</span>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>), <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Invalid tenant name. Must contain characters only and no spaces.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="#6927f894b306e8b4" class="i method">IsDefaultShell</a>() &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#caf8ffcd8e584bbb" class="i property">RequestUrlHost</a>) &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>), <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;Host and url prefix can not be empty at the same time.&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r92 rd" class="r92 r">allOtherShells</span> = <span class="r90 r">allSettings</span>.<span class="i">Where</span>(<span id="r93 rd" class="r93 r">tenant</span> =&gt; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Equals</span>(<span class="r93 r">tenant</span>.<span class="i">Name</span>, <span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+            <b>if</b> (<span class="r92 r">allOtherShells</span>.<span class="i">Any</span>(<span id="r94 rd" class="r94 r">tenant</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r94 r">tenant</span>.<span class="i">RequestUrlPrefix</span>, <span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>) &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r94 r">tenant</span>.<span class="i">RequestUrlHost</span>, <span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#caf8ffcd8e584bbb" class="i property">RequestUrlHost</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>), <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;A tenant with the same host and prefix already exists.&quot;</span>, <span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#c98c332c74778d78" class="i property">Name</a>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>))
+            {
+                <b>if</b> (<span class="r86 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>.<a href="@1@System.Runtime/A.html#98876d0c1980f5ef" class="i method">Contains</a>(<span class="s">&#39;/&#39;</span>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a>.<a href="../ViewModels/EditTenantViewModel.cs.html#e9ca86e377c0b5e7" class="i property">RequestUrlPrefix</a>), <a href="#c91b4069476fa9aa" class="i field">S</a>[<span class="s">&quot;The url prefix can not contain more than one segment.&quot;</span>]);
+                }
+            }
+        }
+ 
+        <b>private bool</b> <a id="6927f894b306e8b4" href="../R/6927f894b306e8b4.html" target="n" data-glyph="76,1" class="i method">IsDefaultShell</a>()
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<a href="#87d55d59fef36f2b" class="i field">_currentShellSettings</a>.<span class="i">Name</span>, <span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>);
+        }
+ 
+        <b>private void</b> <a id="eda24cb1d9d36906" href="../R/eda24cb1d9d36906.html" target="n" data-glyph="76,1" class="i method">SetConfigurationShellValues</a>(<a href="../ViewModels/EditTenantViewModel.cs.html#5c5480b8628a78bf" class="t t">EditTenantViewModel</a> <span id="r95 rd" class="r95 r">model</span>)
+        {
+            <b>var</b> <span id="r96 rd" class="r96 r">shellSettings</span> = <a href="#76b6f6307384705b" class="i field">_shellSettingsManager</a>.<span class="i">CreateDefaultSettings</span>();
+            <b>var</b> <span id="r97 rd" class="r97 r">configurationShellConnectionString</span> = <span class="r96 r">shellSettings</span>[<span class="s">&quot;ConnectionString&quot;</span>];
+            <b>var</b> <span id="r98 rd" class="r98 r">configurationDatabaseProvider</span> = <span class="r96 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>];
+ 
+            <span class="r95 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#5afb7f5cec7595d4" class="i property">DatabaseConfigurationPreset</a> = !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r97 r">configurationShellConnectionString</span>) || !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r98 r">configurationDatabaseProvider</span>);
+ 
+            <b>if</b>(!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r97 r">configurationShellConnectionString</span>))
+            {
+                <span class="r95 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6f504bf3e7453add" class="i property">ConnectionString</a> = <span class="r97 r">configurationShellConnectionString</span>;
+            }
+ 
+            <b>if</b>(!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrEmpty</span>(<span class="r98 r">configurationDatabaseProvider</span>))
+            {
+                <span class="r95 r">model</span>.<a href="../ViewModels/EditTenantViewModel.cs.html#6452f6301cbfa061" class="i property">DatabaseProvider</a> = <span class="r98 r">configurationDatabaseProvider</span>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

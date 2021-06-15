@@ -1,0 +1,313 @@
+﻿<!DOCTYPE html>
+<html><head><title>RequiredAttributeParser.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(304);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid/TagHelpers/RequiredAttributeParser.cs" target="_top">TagHelpers\RequiredAttributeParser.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement.Liquid" target="_top">src\OrchardCore\OrchardCore.DisplayManagement.Liquid\OrchardCore.DisplayManagement.Liquid.csproj</a> (OrchardCore.DisplayManagement.Liquid)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i">Language</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>.<span class="i n">TagHelpers</span>
+{
+    <span class="c">// Internal for testing</span>
+    <b>internal static class</b> <a id="aabd04d9a6d8d363" href="../R/aabd04d9a6d8d363.html" target="n" data-glyph="2,0" class="t t">RequiredAttributeParser</a>
+    {
+        <b>public static void</b> <a id="101481480a6c7dcd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddRequiredAttributes</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r0 rd" class="r0 r">requiredAttributes</span>, <span class="i">TagMatchingRuleDescriptorBuilder</span> <span id="r1 rd" class="r1 r">ruleBuilder</span>)
+        {
+            <a href="#d99216ebe6e1eed4" class="k">var</a> <span id="r2 rd" class="r2 r">requiredAttributeParser</span> = <b>new</b> <a href="#cc47dd8a7900353f" class="t constructor">DefaultRequiredAttributeParser</a>(<span class="r0 r">requiredAttributes</span>);
+            <span class="r2 r">requiredAttributeParser</span>.<a href="#8555150dd9c8fd73" class="i method">AddRequiredAttributes</a>(<span class="r1 r">ruleBuilder</span>);
+        }
+ 
+        <b>private class</b> <a id="d99216ebe6e1eed4" href="../R/d99216ebe6e1eed4.html" target="n" data-glyph="4,1" class="t t">DefaultRequiredAttributeParser</a>
+        {
+            <b>private const char</b> <a id="7e212e44b11d4aca" href="../R/7e212e44b11d4aca.html" target="n" data-glyph="10,2" class="i field">RequiredAttributeWildcardSuffix</a> = <span class="s">&#39;*&#39;</span>;
+ 
+            <b>private static readonly</b> <a href="@1@System.Runtime/A.html#f786bcc5e7b69c7d" class="t t">IReadOnlyDictionary</a>&lt;<b>char</b>, <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span>&gt; <a id="9a9d891297d90486" href="../R/9a9d891297d90486.html" target="n" data-glyph="46,2" class="i field">CssValueComparisons</a> =
+                <b>new</b> <span class="t constructor">Dictionary</span>&lt;<b>char</b>, <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span>&gt;
+                {
+                    { <span class="s">&#39;=&#39;</span>, <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span>.<span class="i">FullMatch</span> },
+                    { <span class="s">&#39;^&#39;</span>, <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span>.<span class="i">PrefixMatch</span> },
+                    { <span class="s">&#39;$&#39;</span>, <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span>.<span class="i">SuffixMatch</span> }
+                };
+ 
+            <b>private static readonly char</b>[] <a id="f7e876fe15b233bf" href="../R/f7e876fe15b233bf.html" target="n" data-glyph="46,2" class="i field">InvalidPlainAttributeNameCharacters</a> = { <span class="s">&#39; &#39;</span>, <span class="s">&#39;\t&#39;</span>, <span class="s">&#39;,&#39;</span>, <a href="#7e212e44b11d4aca" class="i field">RequiredAttributeWildcardSuffix</a> };
+ 
+            <b>private static readonly char</b>[] <a id="e28a14587f060ba3" href="../R/e28a14587f060ba3.html" target="n" data-glyph="46,2" class="i field">InvalidCssAttributeNameCharacters</a> = (<b>new</b>[] { <span class="s">&#39; &#39;</span>, <span class="s">&#39;\t&#39;</span>, <span class="s">&#39;,&#39;</span>, <span class="s">&#39;]&#39;</span> })
+                .<span class="i method">Concat</span>(<a href="#9a9d891297d90486" class="i field">CssValueComparisons</a>.<a href="@1@System.Runtime/A.html#56551c73c76a3de6" class="i property">Keys</a>)
+                .<span class="i method">ToArray</span>();
+ 
+            <b>private static readonly char</b>[] <a id="1c38b92f42a69fdf" href="../R/1c38b92f42a69fdf.html" target="n" data-glyph="46,2" class="i field">InvalidCssQuotelessValueCharacters</a> = { <span class="s">&#39; &#39;</span>, <span class="s">&#39;\t&#39;</span>, <span class="s">&#39;]&#39;</span> };
+ 
+            <b>private int</b> <a id="cfea524e4e5127e6" href="../R/cfea524e4e5127e6.html" target="n" data-glyph="46,2" class="i field">_index</a>;
+            <b>private string</b> <a id="3bff9843cb2e03cc" href="../R/3bff9843cb2e03cc.html" target="n" data-glyph="46,2" class="i field">_requiredAttributes</a>;
+ 
+            <b>public</b> <a id="cc47dd8a7900353f" href="../R/cc47dd8a7900353f.html" target="n" data-glyph="72,2" class="t constructor">DefaultRequiredAttributeParser</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">requiredAttributes</span>)
+            {
+                <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a> = <span class="r3 r">requiredAttributes</span>;
+            }
+ 
+            <b>private char</b> <a id="e9cfb649e71ab8e0" href="../R/e9cfb649e71ab8e0.html" target="n" data-glyph="106,2" class="i property">Current</a> =&gt; <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a><a href="@1@System.Runtime/A.html#8307d03426b56fe1">[</a><a href="#cfea524e4e5127e6" class="i field">_index</a>];
+ 
+            <b>private bool</b> <a id="db8a9f0c6f6e47c5" href="../R/db8a9f0c6f6e47c5.html" target="n" data-glyph="106,2" class="i property">AtEnd</a> =&gt; <a href="#cfea524e4e5127e6" class="i field">_index</a> &gt;= <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>;
+ 
+            <b>public void</b> <a id="8555150dd9c8fd73" href="../R/8555150dd9c8fd73.html" target="n" data-glyph="72,2" class="i method">AddRequiredAttributes</a>(<span class="i">TagMatchingRuleDescriptorBuilder</span> <span id="r4 rd" class="r4 r">ruleBuilder</span>)
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>))
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#02f52ae712854dcb" class="i method">PassOptionalWhitespace</a>();
+ 
+                <b>do</b>
+                {
+                    <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r5 rd" class="r5 r">successfulParse</span> = <b>true</b>;
+                    <span class="r4 r">ruleBuilder</span>.<span class="i">Attribute</span>(<span id="r6 rd" class="r6 r">attributeBuilder</span> =&gt;
+                    {
+                        <b>if</b> (<a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;[&#39;</span>))
+                        {
+                            <b>if</b> (!<span class="i">TryParseCssSelector</span>(<span class="r6 r">attributeBuilder</span>))
+                            {
+                                <span class="r5 r">successfulParse</span> = <b>false</b>;
+                                <b>return</b>;
+                            }
+                        }
+                        <b>else</b>
+                        {
+                            <span class="i">ParsePlainSelector</span>(<span class="r6 r">attributeBuilder</span>);
+                        }
+ 
+                        <a href="#02f52ae712854dcb" class="i method">PassOptionalWhitespace</a>();
+ 
+                        <b>if</b> (<a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;,&#39;</span>))
+                        {
+                            <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+ 
+                            <b>if</b> (!<span class="i">EnsureNotAtEnd</span>(<span class="r6 r">attributeBuilder</span>))
+                            {
+                                <span class="r5 r">successfulParse</span> = <b>false</b>;
+                                <b>return</b>;
+                            }
+                        }
+                        <b>else</b> <b>if</b> (!<a href="#db8a9f0c6f6e47c5" class="i property">AtEnd</a>)
+                        {
+                            <span class="c">//var diagnostic = RazorDiagnosticFactory.CreateTagHelper_InvalidRequiredAttributeCharacter(Current, _requiredAttributes);</span>
+                            <span class="c">//attributeBuilder.Diagnostics.Add(diagnostic);</span>
+                            <span class="r5 r">successfulParse</span> = <b>false</b>;
+                            <b>return</b>;
+                        }
+ 
+                        <a href="#02f52ae712854dcb" class="i method">PassOptionalWhitespace</a>();
+                    });
+ 
+                    <b>if</b> (!<span class="r5 r">successfulParse</span>)
+                    {
+                        <b>break</b>;
+                    }
+                }
+                <b>while</b> (!<a href="#db8a9f0c6f6e47c5" class="i property">AtEnd</a>);
+            }
+ 
+            <b>private void</b> <a id="dfd0042dc9f0719d" href="../R/../../0000000000.html" target="n" data-glyph="76,2" class="i method">ParsePlainSelector</a>(<span class="i">RequiredAttributeDescriptorBuilder</span> <span id="r7 rd" class="r7 r">attributeBuilder</span>)
+            {
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r8 rd" class="r8 r">nameEndIndex</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#cf166f50515b56ae" class="i method">IndexOfAny</a>(<a href="#f7e876fe15b233bf" class="i field">InvalidPlainAttributeNameCharacters</a>, <a href="#cfea524e4e5127e6" class="i field">_index</a>);
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">attributeName</span>;
+ 
+                <b>var</b> <span id="r10 rd" class="r10 r">nameComparison</span> = <span class="i">RequiredAttributeDescriptor</span>.<span class="i">NameComparisonMode</span>.<span class="i">FullMatch</span>;
+                <b>if</b> (<span class="r8 r">nameEndIndex</span> == -1)
+                {
+                    <span class="r9 r">attributeName</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#cfea524e4e5127e6" class="i field">_index</a>);
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>;
+                }
+                <b>else</b>
+                {
+                    <span class="r9 r">attributeName</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(<a href="#cfea524e4e5127e6" class="i field">_index</a>, <span class="r8 r">nameEndIndex</span> - <a href="#cfea524e4e5127e6" class="i field">_index</a>);
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a> = <span class="r8 r">nameEndIndex</span>;
+ 
+                    <b>if</b> (<a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a><a href="@1@System.Runtime/A.html#8307d03426b56fe1">[</a><span class="r8 r">nameEndIndex</span>] == <a href="#7e212e44b11d4aca" class="i field">RequiredAttributeWildcardSuffix</a>)
+                    {
+                        <span class="r10 r">nameComparison</span> = <span class="i">RequiredAttributeDescriptor</span>.<span class="i">NameComparisonMode</span>.<span class="i">PrefixMatch</span>;
+ 
+                        <span class="c">// Move past wild card</span>
+                        <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+                    }
+                }
+ 
+                <span class="r7 r">attributeBuilder</span>.<span class="i">Name</span> = <span class="r9 r">attributeName</span>;
+                <span class="r7 r">attributeBuilder</span>.<span class="i">NameComparisonMode</span> = <span class="r10 r">nameComparison</span>;
+            }
+ 
+            <b>private void</b> <a id="737548a6a68e081d" href="../R/737548a6a68e081d.html" target="n" data-glyph="76,2" class="i method">ParseCssAttributeName</a>(<span class="i">RequiredAttributeDescriptorBuilder</span> <span id="r11 rd" class="r11 r">builder</span>)
+            {
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r12 rd" class="r12 r">nameStartIndex</span> = <a href="#cfea524e4e5127e6" class="i field">_index</a>;
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r13 rd" class="r13 r">nameEndIndex</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#cf166f50515b56ae" class="i method">IndexOfAny</a>(<a href="#e28a14587f060ba3" class="i field">InvalidCssAttributeNameCharacters</a>, <a href="#cfea524e4e5127e6" class="i field">_index</a>);
+                <span class="r13 r">nameEndIndex</span> = <span class="r13 r">nameEndIndex</span> == -1 ? <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> : <span class="r13 r">nameEndIndex</span>;
+                <a href="#cfea524e4e5127e6" class="i field">_index</a> = <span class="r13 r">nameEndIndex</span>;
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">attributeName</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(<span class="r12 r">nameStartIndex</span>, <span class="r13 r">nameEndIndex</span> - <span class="r12 r">nameStartIndex</span>);
+ 
+                <span class="r11 r">builder</span>.<span class="i">Name</span> = <span class="r14 r">attributeName</span>;
+            }
+ 
+            <b>private bool</b> <a id="7834ab276143e23a" href="../R/7834ab276143e23a.html" target="n" data-glyph="76,2" class="i method">TryParseCssValueComparison</a>(<span class="i">RequiredAttributeDescriptorBuilder</span> <span id="r15 rd" class="r15 r">builder</span>, <b>out</b> <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span> <span id="r16 rd" class="r16 r">valueComparison</span>)
+            {
+                <a href="@1@System.Runtime/A.html#632c6da37ce825df" class="t t">Debug</a>.<a href="@1@System.Runtime/A.html#74ae7c85c0e36e34" class="i method">Assert</a>(!<a href="#db8a9f0c6f6e47c5" class="i property">AtEnd</a>);
+ 
+                <b>if</b> (<a href="#9a9d891297d90486" class="i field">CssValueComparisons</a>.<a href="@1@System.Runtime/A.html#43db2f978cfd884d" class="i method">TryGetValue</a>(<a href="#e9cfb649e71ab8e0" class="i property">Current</a>, <b>out</b> <span class="r16 r">valueComparison</span>))
+                {
+                    <a href="@1@System.Runtime/A.html#02f2b1a33b09362d" class="k">var</a> <span id="r17 rd" class="r17 r">op</span> = <a href="#e9cfb649e71ab8e0" class="i property">Current</a>;
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+ 
+                    <b>if</b> (<span class="r17 r">op</span> != <span class="s">&#39;=&#39;</span> &amp;&amp; <a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;=&#39;</span>))
+                    {
+                        <span class="c">// Two length operator (ex: ^=). Move past the second piece</span>
+                        <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+                    }
+                    <b>else</b> <b>if</b> (<span class="r17 r">op</span> != <span class="s">&#39;=&#39;</span>) <span class="c">// We&#39;re at an incomplete operator (ex: [foo^]</span>
+                    {
+                        <span class="c">//var diagnostic = RazorDiagnosticFactory.CreateTagHelper_PartialRequiredAttributeOperator(op, _requiredAttributes);</span>
+                        <span class="c">//builder.Diagnostics.Add(diagnostic);</span>
+ 
+                        <b>return</b> <b>false</b>;
+                    }
+                }
+                <b>else</b> <b>if</b> (!<a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;]&#39;</span>))
+                {
+                    <span class="c">//var diagnostic = RazorDiagnosticFactory.CreateTagHelper_InvalidRequiredAttributeOperator(Current, _requiredAttributes);</span>
+                    <span class="c">//builder.Diagnostics.Add(diagnostic);</span>
+ 
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <span class="r15 r">builder</span>.<span class="i">ValueComparisonMode</span> = <span class="r16 r">valueComparison</span>;
+ 
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>private bool</b> <a id="6abd66d913b67b24" href="../R/6abd66d913b67b24.html" target="n" data-glyph="76,2" class="i method">TryParseCssValue</a>(<span class="i">RequiredAttributeDescriptorBuilder</span> <span id="r18 rd" class="r18 r">builder</span>)
+            {
+                <b>int</b> <span id="r19 rd" class="r19 r">valueStart</span>;
+                <b>int</b> <span id="r20 rd" class="r20 r">valueEnd</span>;
+                <b>if</b> (<a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;\&#39;&#39;</span>) || <a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;&quot;&#39;</span>))
+                {
+                    <a href="@1@System.Runtime/A.html#02f2b1a33b09362d" class="k">var</a> <span id="r21 rd" class="r21 r">quote</span> = <a href="#e9cfb649e71ab8e0" class="i property">Current</a>;
+ 
+                    <span class="c">// Move past the quote</span>
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+ 
+                    <span class="r19 r">valueStart</span> = <a href="#cfea524e4e5127e6" class="i field">_index</a>;
+                    <span class="r20 r">valueEnd</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#a3e563d9d6528abf" class="i method">IndexOf</a>(<span class="r21 r">quote</span>, <a href="#cfea524e4e5127e6" class="i field">_index</a>);
+                    <b>if</b> (<span class="r20 r">valueEnd</span> == -1)
+                    {
+                        <span class="c">//var diagnostic = RazorDiagnosticFactory.CreateTagHelper_InvalidRequiredAttributeMismatchedQuotes(quote, _requiredAttributes);</span>
+                        <span class="c">//builder.Diagnostics.Add(diagnostic);</span>
+ 
+                        <b>return</b> <b>false</b>;
+                    }
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a> = <span class="r20 r">valueEnd</span> + 1;
+                }
+                <b>else</b>
+                {
+                    <span class="r19 r">valueStart</span> = <a href="#cfea524e4e5127e6" class="i field">_index</a>;
+                    <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r22 rd" class="r22 r">valueEndIndex</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#cf166f50515b56ae" class="i method">IndexOfAny</a>(<a href="#1c38b92f42a69fdf" class="i field">InvalidCssQuotelessValueCharacters</a>, <a href="#cfea524e4e5127e6" class="i field">_index</a>);
+                    <span class="r20 r">valueEnd</span> = <span class="r22 r">valueEndIndex</span> == -1 ? <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> : <span class="r22 r">valueEndIndex</span>;
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a> = <span class="r20 r">valueEnd</span>;
+                }
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">value</span> = <a href="#3bff9843cb2e03cc" class="i field">_requiredAttributes</a>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(<span class="r19 r">valueStart</span>, <span class="r20 r">valueEnd</span> - <span class="r19 r">valueStart</span>);
+ 
+                <span class="r18 r">builder</span>.<span class="i">Value</span> = <span class="r23 r">value</span>;
+ 
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>private bool</b> <a id="f054c1e145067d34" href="../R/../../0000000000.html" target="n" data-glyph="76,2" class="i method">TryParseCssSelector</a>(<span class="i">RequiredAttributeDescriptorBuilder</span> <span id="r24 rd" class="r24 r">attributeBuilder</span>)
+            {
+                <a href="@1@System.Runtime/A.html#632c6da37ce825df" class="t t">Debug</a>.<a href="@1@System.Runtime/A.html#74ae7c85c0e36e34" class="i method">Assert</a>(<a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;[&#39;</span>));
+ 
+                <span class="c">// Move past &#39;[&#39;.</span>
+                <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+                <a href="#02f52ae712854dcb" class="i method">PassOptionalWhitespace</a>();
+ 
+                <a href="#737548a6a68e081d" class="i method">ParseCssAttributeName</a>(<span class="r24 r">attributeBuilder</span>);
+ 
+                <a href="#02f52ae712854dcb" class="i method">PassOptionalWhitespace</a>();
+ 
+                <b>if</b> (!<a href="#81e76e43e9e04804" class="i method">EnsureNotAtEnd</a>(<span class="r24 r">attributeBuilder</span>))
+                {
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <b>if</b> (!<a href="#7834ab276143e23a" class="i method">TryParseCssValueComparison</a>(<span class="r24 r">attributeBuilder</span>, <b>out</b> <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span> <span id="r25 rd" class="r25 r">valueComparison</span>))
+                {
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <a href="#02f52ae712854dcb" class="i method">PassOptionalWhitespace</a>();
+ 
+                <b>if</b> (!<a href="#81e76e43e9e04804" class="i method">EnsureNotAtEnd</a>(<span class="r24 r">attributeBuilder</span>))
+                {
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <b>if</b> (<span class="r25 r">valueComparison</span> != <span class="i">RequiredAttributeDescriptor</span>.<span class="i">ValueComparisonMode</span>.<span class="i">None</span> &amp;&amp; !<a href="#6abd66d913b67b24" class="i method">TryParseCssValue</a>(<span class="r24 r">attributeBuilder</span>))
+                {
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <a href="#02f52ae712854dcb" class="i method">PassOptionalWhitespace</a>();
+ 
+                <b>if</b> (<a href="#a8457ac91bf1a939" class="i method">At</a>(<span class="s">&#39;]&#39;</span>))
+                {
+                    <span class="c">// Move past the ending bracket.</span>
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+                    <b>return</b> <b>true</b>;
+                }
+                <b>else</b> <b>if</b> (<a href="#db8a9f0c6f6e47c5" class="i property">AtEnd</a>)
+                {
+                    <span class="c">//var diagnostic = RazorDiagnosticFactory.CreateTagHelper_CouldNotFindMatchingEndBrace(_requiredAttributes);</span>
+                    <span class="c">//attributeBuilder.Diagnostics.Add(diagnostic);</span>
+                }
+                <b>else</b>
+                {
+                    <span class="c">//var diagnostic = RazorDiagnosticFactory.CreateTagHelper_InvalidRequiredAttributeCharacter(Current, _requiredAttributes);</span>
+                    <span class="c">//attributeBuilder.Diagnostics.Add(diagnostic);</span>
+                }
+ 
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>private bool</b> <a id="81e76e43e9e04804" href="../R/81e76e43e9e04804.html" target="n" data-glyph="76,2" class="i method">EnsureNotAtEnd</a>(<span class="i">RequiredAttributeDescriptorBuilder</span> <span id="r26 rd" class="r26 r">builder</span>)
+            {
+                <b>if</b> (<a href="#db8a9f0c6f6e47c5" class="i property">AtEnd</a>)
+                {
+                    <span class="c">//var diagnostic = RazorDiagnosticFactory.CreateTagHelper_CouldNotFindMatchingEndBrace(_requiredAttributes);</span>
+                    <span class="c">//builder.Diagnostics.Add(diagnostic);</span>
+ 
+                    <b>return</b> <b>false</b>;
+                }
+ 
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>private bool</b> <a id="a8457ac91bf1a939" href="../R/a8457ac91bf1a939.html" target="n" data-glyph="76,2" class="i method">At</a>(<b>char</b> <span id="r27 rd" class="r27 r">c</span>)
+            {
+                <b>return</b> !<a href="#db8a9f0c6f6e47c5" class="i property">AtEnd</a> &amp;&amp; <a href="#e9cfb649e71ab8e0" class="i property">Current</a> == <span class="r27 r">c</span>;
+            }
+ 
+            <b>private void</b> <a id="02f52ae712854dcb" href="../R/02f52ae712854dcb.html" target="n" data-glyph="76,2" class="i method">PassOptionalWhitespace</a>()
+            {
+                <b>while</b> (!<a href="#db8a9f0c6f6e47c5" class="i property">AtEnd</a> &amp;&amp; (<a href="#e9cfb649e71ab8e0" class="i property">Current</a> == <span class="s">&#39; &#39;</span> || <a href="#e9cfb649e71ab8e0" class="i property">Current</a> == <span class="s">&#39;\t&#39;</span>))
+                {
+                    <a href="#cfea524e4e5127e6" class="i field">_index</a>++;
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

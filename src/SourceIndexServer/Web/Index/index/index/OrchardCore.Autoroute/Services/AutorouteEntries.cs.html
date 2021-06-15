@@ -1,0 +1,234 @@
+﻿<!DOCTYPE html>
+<html><head><title>AutorouteEntries.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(225);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Autoroute/Services/AutorouteEntries.cs" target="_top">Services\AutorouteEntries.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Autoroute" target="_top">src\OrchardCore.Modules\OrchardCore.Autoroute\OrchardCore.Autoroute.csproj</a> (OrchardCore.Autoroute)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Autoroute</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="5f2f83533334d24b" href="../R/5f2f83533334d24b.html" target="n" data-glyph="0,0" class="t t">AutorouteEntries</a> : <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d0fc4dd4c522c9a4" class="t t">IAutorouteEntries</a>
+    {
+        <b>private readonly</b> <span class="i">IVolatileDocumentManager</span>&lt;<a href="AutorouteStateDocument.cs.html#6dcc469991ba633c" class="t t">AutorouteStateDocument</a>&gt; <a id="f118622c9d872a16" href="../R/f118622c9d872a16.html" target="n" data-glyph="46,1" class="i field">_autorouteStateManager</a>;
+ 
+        <b>private</b> <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>&gt; <a id="b6d888771119292c" href="../R/b6d888771119292c.html" target="n" data-glyph="46,1" class="i field">_paths</a> = <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>&gt;.<a href="@1@System.Collections.Immutable/A.html#e239e18c083931b5" class="i field">Empty</a>;
+        <b>private</b> <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>&gt; <a id="cd34544508a3e17b" href="../R/cd34544508a3e17b.html" target="n" data-glyph="46,1" class="i field">_contentItemIds</a> = <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>&gt;.<a href="@1@System.Collections.Immutable/A.html#e239e18c083931b5" class="i field">Empty</a>;
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="dcdf9261bd777349" href="../R/dcdf9261bd777349.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>private int</b> <a id="81f92da05247ec11" href="../R/81f92da05247ec11.html" target="n" data-glyph="46,1" class="i field">_lastIndexId</a>;
+        <b>private string</b> <a id="69c25216d943d5a7" href="../R/69c25216d943d5a7.html" target="n" data-glyph="46,1" class="i field">_stateIdentifier</a>;
+        <b>private bool</b> <a id="1517faa91ad8244d" href="../R/1517faa91ad8244d.html" target="n" data-glyph="46,1" class="i field">_initialized</a>;
+ 
+        <b>public</b> <a id="0b07706732c6473d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AutorouteEntries</a>(<span class="i">IVolatileDocumentManager</span>&lt;<a href="AutorouteStateDocument.cs.html#6dcc469991ba633c" class="t t">AutorouteStateDocument</a>&gt; <span id="r0 rd" class="r0 r">autorouteStateManager</span>)
+        {
+            <a href="#f118622c9d872a16" class="i field">_autorouteStateManager</a> = <span class="r0 r">autorouteStateManager</span>;
+            <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a> = <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#4bf7f6f88fdade42" class="i method">WithComparers</a>(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<b>bool</b>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>)&gt; <a id="ec7f42d95b45b4f0" href="../R/ec7f42d95b45b4f0.html" target="n" data-glyph="72,1" class="i method">TryGetEntryByPathAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">path</span>)
+        {
+            <b>await</b> <a href="#688f70973502261f" class="i method">EnsureInitializedAsync</a>();
+ 
+            <b>if</b> (<a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r1 r">path</span>.<a href="@1@System.Runtime/A.html#709bf5e4c812089b" class="i method">TrimEnd</a>(<span class="s">&#39;/&#39;</span>), <b>out</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r2 rd" class="r2 r">entry</span>))
+            {
+                <b>return</b> (<b>true</b>, <span class="r2 r">entry</span>);
+            }
+ 
+            <b>return</b> (<b>false</b>, <span class="r2 r">entry</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<b>bool</b>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>)&gt; <a id="f03764825a5ae9ca" href="../R/f03764825a5ae9ca.html" target="n" data-glyph="72,1" class="i method">TryGetEntryByContentItemIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">contentItemId</span>)
+        {
+            <b>await</b> <a href="#688f70973502261f" class="i method">EnsureInitializedAsync</a>();
+ 
+            <b>if</b> (<a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r3 r">contentItemId</span>, <b>out</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r4 rd" class="r4 r">entry</span>))
+            {
+                <b>return</b> (<b>true</b>, <span class="r4 r">entry</span>);
+            }
+ 
+            <b>return</b> (<b>false</b>, <span class="r4 r">entry</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="04ca3ea65802c359" href="../R/04ca3ea65802c359.html" target="n" data-glyph="72,1" class="i method">UpdateEntriesAsync</a>()
+        {
+            <b>await</b> <a href="#688f70973502261f" class="i method">EnsureInitializedAsync</a>();
+ 
+            <span class="c">// Update the cache with a new state and then refresh entries as it would be done on a next request.</span>
+            <b>await</b> <a href="#f118622c9d872a16" class="i field">_autorouteStateManager</a>.<span class="i">UpdateAsync</span>(<b>new</b> <a href="AutorouteStateDocument.cs.html#6dcc469991ba633c" class="t constructor">AutorouteStateDocument</a>(), <span class="i">afterUpdateAsync</span>: <span class="i">RefreshEntriesAsync</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="688f70973502261f" href="../R/688f70973502261f.html" target="n" data-glyph="76,1" class="i method">EnsureInitializedAsync</a>()
+        {
+            <b>if</b> (!<a href="#1517faa91ad8244d" class="i field">_initialized</a>)
+            {
+                <b>await</b> <a href="#74affc8053c650f7" class="i method">InitializeEntriesAsync</a>();
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">state</span> = <b>await</b> <a href="#f118622c9d872a16" class="i field">_autorouteStateManager</a>.<span class="i">GetOrCreateImmutableAsync</span>();
+                <b>if</b> (<a href="#69c25216d943d5a7" class="i field">_stateIdentifier</a> != <span class="r5 r">state</span>.<span class="i">Identifier</span>)
+                {
+                    <b>await</b> <span class="i">RefreshEntriesAsync</span>(<span class="r5 r">state</span>);
+                }
+            }
+        }
+ 
+        <b>protected void</b> <a id="532b809dd6cd31f2" href="../R/../../0000000000.html" target="n" data-glyph="75,1" class="i method">AddEntries</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>&gt; <span id="r6 rd" class="r6 r">entries</span>)
+        {
+            <span class="c">// Evict all entries related to a container item from autoroute entries.</span>
+            <span class="c">// This is necessary to account for deletions, disabling of an item, or disabling routing of contained items.</span>
+            <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r7 rd" class="r7 r">entry</span> <b>in</b> <span class="r6 r">entries</span>.<span class="i method">Where</span>(<span id="r8 rd" class="r8 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r8 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>)))
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r9 rd" class="r9 r">entriesToRemove</span> = <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#fcef75d0d45c76eb" class="i property">Values</a>.<span class="i method">Where</span>(<span id="r10 rd" class="r10 r">x</span> =&gt; <span class="r10 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a> == <span class="r7 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a> &amp;&amp;
+                    !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>));
+ 
+                <a href="#b6d888771119292c" class="i field">_paths</a> = <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#193fec65f578eb04" class="i method">RemoveRange</a>(<span class="r9 r">entriesToRemove</span>.<span class="i method">Select</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <span class="r11 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>));
+                <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a> = <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#193fec65f578eb04" class="i method">RemoveRange</a>(<span class="r9 r">entriesToRemove</span>.<span class="i method">Select</span>(<span id="r12 rd" class="r12 r">x</span> =&gt; <span class="r12 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ec6dabc0af25483b" class="i field">Path</a>));
+            }
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r13 rd" class="r13 r">entry</span> <b>in</b> <span class="r6 r">entries</span>)
+            {
+                <b>if</b> (<a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a>, <b>out</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r14 rd" class="r14 r">previousContainerEntry</span>) &amp;&amp;
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>))
+                {
+                    <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a> = <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#b6bb40b429f535d0" class="i method">Remove</a>(<span class="r14 r">previousContainerEntry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ec6dabc0af25483b" class="i field">Path</a>);
+                }
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>) &amp;&amp;
+                    <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>, <b>out</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r15 rd" class="r15 r">previousContainedEntry</span>))
+                {
+                    <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a> = <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#b6bb40b429f535d0" class="i method">Remove</a>(<span class="r15 r">previousContainedEntry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ec6dabc0af25483b" class="i field">Path</a>);
+                }
+ 
+                <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a> = <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#23e689c7f9817995" class="i method">SetItem</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ec6dabc0af25483b" class="i field">Path</a>, <span class="r13 r">entry</span>);
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>))
+                {
+                    <a href="#b6d888771119292c" class="i field">_paths</a> = <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#23e689c7f9817995" class="i method">SetItem</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>, <span class="r13 r">entry</span>);
+                }
+                <b>else</b>
+                {
+                    <a href="#b6d888771119292c" class="i field">_paths</a> = <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#23e689c7f9817995" class="i method">SetItem</a>(<span class="r13 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a>, <span class="r13 r">entry</span>);
+                }
+            }
+        }
+ 
+        <b>protected void</b> <a id="6da06613c21da9cc" href="../R/../../0000000000.html" target="n" data-glyph="75,1" class="i method">RemoveEntries</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="t t">AutorouteEntry</a>&gt; <span id="r16 rd" class="r16 r">entries</span>)
+        {
+            <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r17 rd" class="r17 r">entry</span> <b>in</b> <span class="r16 r">entries</span>)
+            {
+                <span class="c">// Evict all entries related to a container item from autoroute entries.</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r18 rd" class="r18 r">entriesToRemove</span> = <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#fcef75d0d45c76eb" class="i property">Values</a>.<span class="i method">Where</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <span class="r19 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a> == <span class="r17 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a> &amp;&amp;
+                    !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r19 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>));
+ 
+                <a href="#b6d888771119292c" class="i field">_paths</a> = <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#193fec65f578eb04" class="i method">RemoveRange</a>(<span class="r18 r">entriesToRemove</span>.<span class="i method">Select</span>(<span id="r20 rd" class="r20 r">x</span> =&gt; <span class="r20 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a>));
+                <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a> = <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#193fec65f578eb04" class="i method">RemoveRange</a>(<span class="r18 r">entriesToRemove</span>.<span class="i method">Select</span>(<span id="r21 rd" class="r21 r">x</span> =&gt; <span class="r21 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ec6dabc0af25483b" class="i field">Path</a>));
+ 
+                <a href="#b6d888771119292c" class="i field">_paths</a> = <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#b6bb40b429f535d0" class="i method">Remove</a>(<span class="r17 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a>);
+                <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a> = <a href="#cd34544508a3e17b" class="i field">_contentItemIds</a>.<a href="@1@System.Collections.Immutable/A.html#b6bb40b429f535d0" class="i method">Remove</a>(<span class="r17 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ec6dabc0af25483b" class="i field">Path</a>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9745945a658eb6bf" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">RefreshEntriesAsync</a>(<a href="AutorouteStateDocument.cs.html#6dcc469991ba633c" class="t t">AutorouteStateDocument</a> <span id="r22 rd" class="r22 r">state</span>)
+        {
+            <b>if</b> (<a href="#69c25216d943d5a7" class="i field">_stateIdentifier</a> == <span class="r22 r">state</span>.<a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#dcdf9261bd777349" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>if</b> (<a href="#69c25216d943d5a7" class="i field">_stateIdentifier</a> != <span class="r22 r">state</span>.<a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a>)
+                {
+                    <b>var</b> <span id="r23 rd" class="r23 r">indexes</span> = <b>await</b> <a href="#3acb84f40e571fe4" class="i property">Session</a>.<span class="i">QueryIndex</span>&lt;<a href="../Indexes/AutoroutePartIndex.cs.html#9b4677068db0a06e" class="t t">AutoroutePartIndex</a>&gt;(<span id="r24 rd" class="r24 r">i</span> =&gt; <span class="r24 r">i</span>.<span class="i">Id</span> &gt; <a href="#81f92da05247ec11" class="i field">_lastIndexId</a>).<span class="i">ListAsync</span>();
+ 
+                    <span class="c">// A draft is indexed to check for conflicts, and to remove an entry, but only if an item is unpublished,</span>
+                    <span class="c">// so only if the entry &#39;DocumentId&#39; matches, this because when a draft is saved more than once, the index</span>
+                    <span class="c">// is not updated for the published version that may be already scanned, so the entry may not be re-added.</span>
+ 
+                    <b>var</b> <span id="r25 rd" class="r25 r">entriesToRemove</span> = <span class="r23 r">indexes</span>
+                        .<span class="i">Where</span>(<span id="r26 rd" class="r26 r">i</span> =&gt; !<span class="r26 r">i</span>.<span class="i">Published</span> || <span class="r26 r">i</span>.<span class="i">Path</span> == <b>null</b>)
+                        .<span class="i">SelectMany</span>(<span id="r27 rd" class="r27 r">i</span> =&gt; <a href="#b6d888771119292c" class="i field">_paths</a>.<a href="@1@System.Collections.Immutable/A.html#fcef75d0d45c76eb" class="i property">Values</a>.<span class="i method">Where</span>(<span id="r28 rd" class="r28 r">e</span> =&gt;
+                            <span class="c">// The item was removed.</span>
+                            ((!<span class="r27 r">i</span>.<span class="i">Published</span> &amp;&amp; !<span class="r27 r">i</span>.<span class="i">Latest</span>) ||
+                            <span class="c">// The part was disabled or removed.</span>
+                            (<span class="r27 r">i</span>.<span class="i">Path</span> == <b>null</b> &amp;&amp; <span class="r27 r">i</span>.<span class="i">Published</span>) ||
+                            <span class="c">// The item was unpublished.</span>
+                            (!<span class="r27 r">i</span>.<span class="i">Published</span> &amp;&amp; <span class="r28 r">e</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#354f9d7bec03de06" class="i field">DocumentId</a> == <span class="r27 r">i</span>.<span class="i">DocumentId</span>)) &amp;&amp;
+                            (<span class="r28 r">e</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a> == <span class="r27 r">i</span>.<span class="i">ContentItemId</span> ||
+                            <span class="r28 r">e</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#811b63e74719ebe8" class="i field">ContainedContentItemId</a> == <span class="r27 r">i</span>.<span class="i">ContentItemId</span>)));
+ 
+                    <b>var</b> <span id="r29 rd" class="r29 r">entriesToAdd</span> = <span class="r23 r">indexes</span>
+                        .<span class="i">Where</span>(<span id="r30 rd" class="r30 r">i</span> =&gt; <span class="r30 r">i</span>.<span class="i">Published</span> &amp;&amp; <span class="r30 r">i</span>.<span class="i">Path</span> != <b>null</b>)
+                        .<span class="i">Select</span>(<span id="r31 rd" class="r31 r">i</span> =&gt; <b>new</b> <span class="t">AutorouteEntry</span>(<span class="r31 r">i</span>.<span class="i">ContentItemId</span>, <span class="r31 r">i</span>.<span class="i">Path</span>, <span class="r31 r">i</span>.<span class="i">ContainedContentItemId</span>, <span class="r31 r">i</span>.<span class="i">JsonPath</span>)
+                        {
+                            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#354f9d7bec03de06" class="i field">DocumentId</a> = <span class="r31 r">i</span>.<span class="i">DocumentId</span>
+                        });
+ 
+                    <span class="i">RemoveEntries</span>(<span class="r25 r">entriesToRemove</span>);
+                    <span class="i">AddEntries</span>(<span class="r29 r">entriesToAdd</span>);
+ 
+                    <a href="#81f92da05247ec11" class="i field">_lastIndexId</a> = <span class="r23 r">indexes</span>.<span class="i">LastOrDefault</span>()?.<span class="i">Id</span> ?? 0;
+                    <a href="#69c25216d943d5a7" class="i field">_stateIdentifier</a> = <span class="r22 r">state</span>.<a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a>;
+                }
+            }
+            <b>finally</b>
+            {
+                <a href="#dcdf9261bd777349" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>protected virtual async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="74affc8053c650f7" href="../R/74affc8053c650f7.html" target="n" data-glyph="75,1" class="i method">InitializeEntriesAsync</a>()
+        {
+            <b>if</b> (<a href="#1517faa91ad8244d" class="i field">_initialized</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#dcdf9261bd777349" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>if</b> (!<a href="#1517faa91ad8244d" class="i field">_initialized</a>)
+                {
+                    <b>var</b> <span id="r32 rd" class="r32 r">state</span> = <b>await</b> <a href="#f118622c9d872a16" class="i field">_autorouteStateManager</a>.<span class="i">GetOrCreateImmutableAsync</span>();
+ 
+                    <b>var</b> <span id="r33 rd" class="r33 r">indexes</span> = <b>await</b> <a href="#3acb84f40e571fe4" class="i property">Session</a>.<span class="i">QueryIndex</span>&lt;<a href="../Indexes/AutoroutePartIndex.cs.html#9b4677068db0a06e" class="t t">AutoroutePartIndex</a>&gt;(<span id="r34 rd" class="r34 r">i</span> =&gt; <span class="r34 r">i</span>.<span class="i">Published</span> &amp;&amp; <span class="r34 r">i</span>.<span class="i">Path</span> != <b>null</b>).<span class="i">ListAsync</span>();
+                    <b>var</b> <span id="r35 rd" class="r35 r">entries</span> = <span class="r33 r">indexes</span>.<span class="i">Select</span>(<span id="r36 rd" class="r36 r">i</span> =&gt; <b>new</b> <span class="t">AutorouteEntry</span>(<span class="r36 r">i</span>.<span class="i">ContentItemId</span>, <span class="r36 r">i</span>.<span class="i">Path</span>, <span class="r36 r">i</span>.<span class="i">ContainedContentItemId</span>, <span class="r36 r">i</span>.<span class="i">JsonPath</span>)
+                    {
+                        <a href="/OrchardCore.ContentManagement.Abstractions/A.html#354f9d7bec03de06" class="i field">DocumentId</a> = <span class="r36 r">i</span>.<span class="i">DocumentId</span>
+                    });
+ 
+                    <span class="i">AddEntries</span>(<span class="r35 r">entries</span>);
+ 
+                    <a href="#81f92da05247ec11" class="i field">_lastIndexId</a> = <span class="r33 r">indexes</span>.<span class="i">LastOrDefault</span>()?.<span class="i">Id</span> ?? 0;
+                    <a href="#69c25216d943d5a7" class="i field">_stateIdentifier</a> = <span class="r32 r">state</span>.<span class="i">Identifier</span>;
+ 
+                    <a href="#1517faa91ad8244d" class="i field">_initialized</a> = <b>true</b>;
+                }
+            }
+            <b>finally</b>
+            {
+                <a href="#dcdf9261bd777349" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>private static</b> <span class="i">ISession</span> <a id="3acb84f40e571fe4" href="../R/3acb84f40e571fe4.html" target="n" data-glyph="106,1" class="i property">Session</a> =&gt; <span class="i">ShellScope</span>.<span class="i">Services</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">ISession</span>&gt;();
+    }
+}
+</pre></td></tr></table></div></body></html>

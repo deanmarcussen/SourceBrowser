@@ -1,0 +1,970 @@
+﻿<!DOCTYPE html>
+<html><head><title>AdminController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(961);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentTypes/Controllers/AdminController.cs" target="_top">Controllers\AdminController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentTypes" target="_top">src\OrchardCore.Modules\OrchardCore.ContentTypes\OrchardCore.ContentTypes.csproj</a> (OrchardCore.ContentTypes)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentTypes</span>.<span class="i n">Editors</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentTypes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentTypes</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Data</span>.<span class="i">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentTypes</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="50b214c152f8197c" href="../R/50b214c152f8197c.html" target="n" data-glyph="0,0" class="t t">AdminController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <a href="../Services/IContentDefinitionService.cs.html#72b8105c496f5634" class="t t">IContentDefinitionService</a> <a id="50cefa753feb9fcb" href="../R/50cefa753feb9fcb.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="3ee780ba7a65ca3a" href="../R/3ee780ba7a65ca3a.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="fe08900f200e8b66" href="../R/fe08900f200e8b66.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">IDocumentStore</span> <a id="8bd47af0b37376b9" href="../R/8bd47af0b37376b9.html" target="n" data-glyph="46,1" class="i field">_documentStore</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentTypes.Abstractions/A.html#82fa029f59ec2ec6" class="t t">IContentDefinitionDisplayManager</a> <a id="ff7c3cb0b165c09d" href="../R/ff7c3cb0b165c09d.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionDisplayManager</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="b7a932d93e9e86e1" href="../R/b7a932d93e9e86e1.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="e6edbac78dde6906" href="../R/e6edbac78dde6906.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="i">INotifier</span> <a id="3d032a3c6896334a" href="../R/3d032a3c6896334a.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="435b47f30e857274" href="../R/435b47f30e857274.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+ 
+        <b>public</b> <a id="f378ce7f4a289187" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AdminController</a>(
+            <a href="/OrchardCore.ContentTypes.Abstractions/A.html#82fa029f59ec2ec6" class="t t">IContentDefinitionDisplayManager</a> <span id="r0 rd" class="r0 r">contentDefinitionDisplayManager</span>,
+            <a href="../Services/IContentDefinitionService.cs.html#72b8105c496f5634" class="t t">IContentDefinitionService</a> <span id="r1 rd" class="r1 r">contentDefinitionService</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r2 rd" class="r2 r">contentDefinitionManager</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r3 rd" class="r3 r">authorizationService</span>,
+            <span class="i">IDocumentStore</span> <span id="r4 rd" class="r4 r">documentStore</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#50b214c152f8197c" class="t t">AdminController</a>&gt; <span id="r5 rd" class="r5 r">htmlLocalizer</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#50b214c152f8197c" class="t t">AdminController</a>&gt; <span id="r6 rd" class="r6 r">stringLocalizer</span>,
+            <span class="i">INotifier</span> <span id="r7 rd" class="r7 r">notifier</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r8 rd" class="r8 r">updateModelAccessor</span>)
+        {
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a> = <span class="r7 r">notifier</span>;
+            <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a> = <span class="r0 r">contentDefinitionDisplayManager</span>;
+            <a href="#8bd47af0b37376b9" class="i field">_documentStore</a> = <span class="r4 r">documentStore</span>;
+            <a href="#fe08900f200e8b66" class="i field">_authorizationService</a> = <span class="r3 r">authorizationService</span>;
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a> = <span class="r1 r">contentDefinitionService</span>;
+            <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a> = <span class="r2 r">contentDefinitionManager</span>;
+            <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a> = <span class="r8 r">updateModelAccessor</span>;
+ 
+            <a href="#b7a932d93e9e86e1" class="i field">H</a> = <span class="r5 r">htmlLocalizer</span>;
+            <a href="#e6edbac78dde6906" class="i field">S</a> = <span class="r6 r">stringLocalizer</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="3c33e8bd3b555195" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>()
+        {
+            <b>return</b> <a href="#53a6949438c4073e" class="i method">List</a>();
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> Types
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="53a6949438c4073e" href="../R/53a6949438c4073e.html" target="n" data-glyph="72,1" class="i method">List</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#6eef1bbfae02664b" class="i field">ViewContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="s">&quot;List&quot;</span>, <b>new</b> <a href="../ViewModels/ListContentTypesViewModel.cs.html#66534c3a243a0d73" class="t constructor">ListContentTypesViewModel</a>
+            {
+                <a href="../ViewModels/ListContentTypesViewModel.cs.html#8d63acfc6fdb523b" class="i property">Types</a> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#59f2a20fa1f7e7eb" class="i method">GetTypes</a>()
+            });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="20d6044bc78c797d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">suggestion</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="../ViewModels/CreateTypeViewModel.cs.html#9f839c422cd68f91" class="t constructor">CreateTypeViewModel</a> { <a href="../ViewModels/CreateTypeViewModel.cs.html#004450d472e01169" class="i property">DisplayName</a> = <span class="r9 r">suggestion</span>, <a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a> = <span class="r9 r">suggestion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66dc9fb92cd5da64" class="i method">ToSafeName</a>() });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Create&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="c8833e0fbe887816" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreatePOST</a>(<a href="../ViewModels/CreateTypeViewModel.cs.html#9f839c422cd68f91" class="t t">CreateTypeViewModel</a> <span id="r10 rd" class="r10 r">viewModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#004450d472e01169" class="i property">DisplayName</a> = <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#004450d472e01169" class="i property">DisplayName</a>?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>() ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a> = <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a> ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#004450d472e01169" class="i property">DisplayName</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Display Name can&#39;t be empty.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#89deef502fa68f36" class="i method">LoadTypes</a>().<span class="i method">Any</span>(<span id="r11 rd" class="r11 r">t</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r11 r">t</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#99fac51eb36a226d" class="i property">DisplayName</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#004450d472e01169" class="i property">DisplayName</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A type with the same Display Name already exists.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name can&#39;t be empty.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>) &amp;&amp; !<span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>[0].<a href="/OrchardCore.ContentManagement.Abstractions/A.html#08c4f1265dffbc8b" class="i method">IsLetter</a>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name must start with a letter.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>, <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66dc9fb92cd5da64" class="i method">ToSafeName</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name contains invalid characters.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#870abb0b91758d2b" class="i method">IsReservedContentName</a>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name is reserved for internal use.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#89deef502fa68f36" class="i method">LoadTypes</a>().<span class="i method">Any</span>(<span id="r12 rd" class="r12 r">t</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r12 r">t</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#72d2d7d800162fed" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A type with the same Technical Name already exists.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+                <b>return</b> <span class="i method">View</span>(<span class="r10 r">viewModel</span>);
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r13 rd" class="r13 r">contentTypeDefinition</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#b17e9bd8b5a2b445" class="i method">AddType</a>(<span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#7b195f39a3db0890" class="i property">Name</a>, <span class="r10 r">viewModel</span>.<a href="../ViewModels/CreateTypeViewModel.cs.html#004450d472e01169" class="i property">DisplayName</a>);
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r14 rd" class="r14 r">typeViewModel</span> = <b>new</b> <a href="../ViewModels/EditTypeViewModel.cs.html#42592df733028391" class="t constructor">EditTypeViewModel</a>(<span class="r13 r">contentTypeDefinition</span>);
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; content type has been created.&quot;</span>, <span class="r14 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#99fac51eb36a226d" class="i property">DisplayName</a>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<span class="s">&quot;AddPartsTo&quot;</span>, <b>new</b> { <a href="#052e6b628d405e0d" class="i property">id</a> = <span class="r14 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#72d2d7d800162fed" class="i property">Name</a> });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="bde1c09a9f56f420" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r16 rd" class="r16 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#4a7cea64d1dceb55" class="i method">GetType</a>(<span class="r15 r">id</span>);
+ 
+            <b>if</b> (<span class="r16 r">typeViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="r16 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#e865081b0790eed5" class="i property">Editor</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">BuildTypeEditorAsync</span>(<span class="r16 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#5b5a5b1ac399ab52" class="i property">TypeDefinition</a>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r16 r">typeViewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Edit&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Save&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="7116617acb2191a6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPOST</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">id</span>, <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="t t">EditTypeViewModel</a> <span id="r18 rd" class="r18 r">viewModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r19 rd" class="r19 r">contentTypeDefinition</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#154ab18e7ab850da" class="i method">LoadTypeDefinition</a>(<span class="r17 r">id</span>);
+ 
+            <b>if</b> (<span class="r19 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="r18 r">viewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#989892f96e98f9b0" class="i property">Settings</a> = <span class="r19 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3c3dfd9876a2fca7" class="i property">Settings</a>;
+            <span class="r18 r">viewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#5b5a5b1ac399ab52" class="i property">TypeDefinition</a> = <span class="r19 r">contentTypeDefinition</span>;
+            <span class="r18 r">viewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#99fac51eb36a226d" class="i property">DisplayName</a> = <span class="r19 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7bd346d214f35b7c" class="i property">DisplayName</a>;
+            <span class="r18 r">viewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#e865081b0790eed5" class="i property">Editor</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">UpdateTypeEditorAsync</span>(<span class="r19 r">contentTypeDefinition</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+ 
+                <b>return</b> <span class="i method">View</span>(<span class="r18 r">viewModel</span>);
+            }
+            <b>else</b>
+            {
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#45e44da5547d9781" class="k">var</a> <span id="r20 rd" class="r20 r">ownedPartDefinition</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b951d7441effa25" class="i method">LoadPartDefinition</a>(<span class="r19 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>);
+                <b>if</b> (<span class="r20 r">ownedPartDefinition</span> != <b>null</b> &amp;&amp; <span class="r18 r">viewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#73631c9cc22a7156" class="i property">OrderedFieldNames</a> != <b>null</b>)
+                {
+                    <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#9605dcf54cf34b43" class="i method">AlterPartFieldsOrder</a>(<span class="r20 r">ownedPartDefinition</span>, <span class="r18 r">viewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#73631c9cc22a7156" class="i property">OrderedFieldNames</a>);
+                }
+                <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#b1a66b557ea767c0" class="i method">AlterTypePartsOrder</a>(<span class="r19 r">contentTypeDefinition</span>, <span class="r18 r">viewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#69f274e2293483b7" class="i property">OrderedPartNames</a>);
+                <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;\&quot;{0}\&quot; settings have been saved.&quot;</span>, <span class="r19 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>]);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <span class="r17 r">id</span> });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;Edit&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Delete&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="e0e13f7c1b275c99" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Delete</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r22 rd" class="r22 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#ee32df8274ff5429" class="i method">LoadType</a>(<span class="r21 r">id</span>);
+ 
+            <b>if</b> (<span class="r22 r">typeViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#a74300705ff1ac2b" class="i method">RemoveType</a>(<span class="r21 r">id</span>, <b>true</b>);
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;\&quot;{0}\&quot; has been removed.&quot;</span>, <span class="r22 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#99fac51eb36a226d" class="i property">DisplayName</a>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">List</span>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="49593648f9fed229" href="../R/49593648f9fed229.html" target="n" data-glyph="72,1" class="i method">AddPartsTo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r23 rd" class="r23 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r24 rd" class="r24 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#4a7cea64d1dceb55" class="i method">GetType</a>(<span class="r23 r">id</span>);
+ 
+            <b>if</b> (<span class="r24 r">typeViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">typePartNames</span> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r24 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#5b5a5b1ac399ab52" class="i property">TypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">Select</span>(<span id="r26 rd" class="r26 r">p</span> =&gt; <span class="r26 r">p</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>));
+ 
+            <a href="../ViewModels/AddPartsViewModel.cs.html#dded58de77b92abc" class="k">var</a> <span id="r27 rd" class="r27 r">viewModel</span> = <b>new</b> <a href="../ViewModels/AddPartsViewModel.cs.html#0f27b1809892ab58" class="t constructor">AddPartsViewModel</a>
+            {
+                <a href="../ViewModels/AddPartsViewModel.cs.html#5eafa8a817741616" class="i property">Type</a> = <span class="r24 r">typeViewModel</span>,
+                <a href="../ViewModels/AddPartsViewModel.cs.html#c0130ede8350cdc9" class="i property">PartSelections</a> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#06879f4537e1fc06" class="i method">GetParts</a>(<span class="r28 r">metadataPartsOnly</span>: <b>false</b>)
+                    .<span class="i method">Where</span>(<span id="r29 rd" class="r29 r">cpd</span> =&gt; !<span class="r25 r">typePartNames</span>.<span class="i method">Contains</span>(<span class="r29 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>) &amp;&amp; <span class="r29 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a> != <b>null</b> ? <span class="r29 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f053dda757f20bea" class="t t">ContentPartSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#2a8d97edf68eceb8" class="i property">Attachable</a> : <b>false</b>)
+                    .<span class="i method">Select</span>(<span id="r30 rd" class="r30 r">cpd</span> =&gt; <b>new</b> <a href="../ViewModels/AddPartsViewModel.cs.html#5ddd6c5211bb41c7" class="t constructor">PartSelectionViewModel</a> { <a href="../ViewModels/AddPartsViewModel.cs.html#394e949fbc24dcc6" class="i property">PartName</a> = <span class="r30 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>, <a href="../ViewModels/AddPartsViewModel.cs.html#fd464ff82bd24e5a" class="i property">PartDisplayName</a> = <span class="r30 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#b7d71f719456ba87" class="i property">DisplayName</a>, <a href="../ViewModels/AddPartsViewModel.cs.html#b65e46e813712fdb" class="i property">PartDescription</a> = <span class="r30 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#5cf9d6f1d0dba922" class="i property">Description</a> })
+                    .<span class="i method">ToList</span>()
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r27 r">viewModel</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="0333efd9c3f67bec" href="../R/0333efd9c3f67bec.html" target="n" data-glyph="72,1" class="i method">AddReusablePartTo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r32 rd" class="r32 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#4a7cea64d1dceb55" class="i method">GetType</a>(<span class="r31 r">id</span>);
+ 
+            <b>if</b> (<span class="r32 r">typeViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r33 rd" class="r33 r">reusableParts</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#06879f4537e1fc06" class="i method">GetParts</a>(<span class="r28 r">metadataPartsOnly</span>: <b>false</b>)
+                    .<span class="i method">Where</span>(<span id="r34 rd" class="r34 r">cpd</span> =&gt; <span class="r34 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a> != <b>null</b> ?
+                        (<span class="r34 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f053dda757f20bea" class="t t">ContentPartSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#2a8d97edf68eceb8" class="i property">Attachable</a> &amp;&amp;
+                        <span class="r34 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f053dda757f20bea" class="t t">ContentPartSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#144e52218f9b848d" class="i property">Reusable</a>) : <b>false</b>);
+ 
+            <a href="../ViewModels/AddPartsViewModel.cs.html#237e1c85fbf7d0db" class="k">var</a> <span id="r35 rd" class="r35 r">viewModel</span> = <b>new</b> <a href="../ViewModels/AddPartsViewModel.cs.html#87e8a4fd4bc8ae78" class="t constructor">AddReusablePartViewModel</a>
+            {
+                <a href="../ViewModels/AddPartsViewModel.cs.html#5d137d6ac2c81767" class="i property">Type</a> = <span class="r32 r">typeViewModel</span>,
+                <a href="../ViewModels/AddPartsViewModel.cs.html#7d50eca5bbe15aeb" class="i property">PartSelections</a> = <span class="r33 r">reusableParts</span>
+                    .<span class="i method">Select</span>(<span id="r36 rd" class="r36 r">cpd</span> =&gt; <b>new</b> <a href="../ViewModels/AddPartsViewModel.cs.html#5ddd6c5211bb41c7" class="t constructor">PartSelectionViewModel</a> { <a href="../ViewModels/AddPartsViewModel.cs.html#394e949fbc24dcc6" class="i property">PartName</a> = <span class="r36 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>, <a href="../ViewModels/AddPartsViewModel.cs.html#fd464ff82bd24e5a" class="i property">PartDisplayName</a> = <span class="r36 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#b7d71f719456ba87" class="i property">DisplayName</a>, <a href="../ViewModels/AddPartsViewModel.cs.html#b65e46e813712fdb" class="i property">PartDescription</a> = <span class="r36 r">cpd</span>.<a href="../ViewModels/EditPartViewModel.cs.html#5cf9d6f1d0dba922" class="i property">Description</a> })
+                    .<span class="i method">ToList</span>(),
+                <a href="../ViewModels/AddPartsViewModel.cs.html#c59b99854f7b596a" class="i property">SelectedPartName</a> = <span class="r33 r">reusableParts</span>.<span class="i method">FirstOrDefault</span>()?.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r35 r">viewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;AddPartsTo&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="3971f8f0cbc97b66" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddPartsToPOST</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r37 rd" class="r37 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r38 rd" class="r38 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#ee32df8274ff5429" class="i method">LoadType</a>(<span class="r37 r">id</span>);
+ 
+            <b>if</b> (<span class="r38 r">typeViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/AddPartsViewModel.cs.html#dded58de77b92abc" class="k">var</a> <span id="r39 rd" class="r39 r">viewModel</span> = <b>new</b> <a href="../ViewModels/AddPartsViewModel.cs.html#0f27b1809892ab58" class="t constructor">AddPartsViewModel</a>();
+            <b>if</b> (!<b>await</b> <span class="i method">TryUpdateModelAsync</span>(<span class="r39 r">viewModel</span>))
+            {
+                <b>return</b> <b>await</b> <a href="#49593648f9fed229" class="i method">AddPartsTo</a>(<span class="r37 r">id</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r40 rd" class="r40 r">partsToAdd</span> = <span class="r39 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#c0130ede8350cdc9" class="i property">PartSelections</a>.<span class="i method">Where</span>(<span id="r41 rd" class="r41 r">ps</span> =&gt; <span class="r41 r">ps</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#f3b384b0703222a7" class="i property">IsSelected</a>).<span class="i method">Select</span>(<span id="r42 rd" class="r42 r">ps</span> =&gt; <span class="r42 r">ps</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#394e949fbc24dcc6" class="i property">PartName</a>);
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r43 rd" class="r43 r">partToAdd</span> <b>in</b> <span class="r40 r">partsToAdd</span>)
+            {
+                <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#9364f6e39f69611f" class="i method">AddPartToType</a>(<span class="r43 r">partToAdd</span>, <span class="r38 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#72d2d7d800162fed" class="i property">Name</a>);
+                <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; part has been added.&quot;</span>, <span class="r43 r">partToAdd</span>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+                <b>return</b> <b>await</b> <a href="#49593648f9fed229" class="i method">AddPartsTo</a>(<span class="r37 r">id</span>);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <span class="r37 r">id</span> });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;AddReusablePartTo&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="6dfef15ee0a13d35" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddReusablePartToPOST</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r44 rd" class="r44 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r45 rd" class="r45 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#ee32df8274ff5429" class="i method">LoadType</a>(<span class="r44 r">id</span>);
+ 
+            <b>if</b> (<span class="r45 r">typeViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/AddPartsViewModel.cs.html#237e1c85fbf7d0db" class="k">var</a> <span id="r46 rd" class="r46 r">viewModel</span> = <b>new</b> <a href="../ViewModels/AddPartsViewModel.cs.html#87e8a4fd4bc8ae78" class="t constructor">AddReusablePartViewModel</a>();
+            <b>if</b> (!<b>await</b> <span class="i method">TryUpdateModelAsync</span>(<span class="r46 r">viewModel</span>))
+            {
+                <b>return</b> <b>await</b> <a href="#0333efd9c3f67bec" class="i method">AddReusablePartTo</a>(<span class="r44 r">id</span>);
+            }
+ 
+            <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#c443811b967f89dc" class="i property">DisplayName</a> = <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#c443811b967f89dc" class="i property">DisplayName</a>?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>() ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a> = <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a> ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#c443811b967f89dc" class="i property">DisplayName</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Display Name can&#39;t be empty.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r45 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#5b5a5b1ac399ab52" class="i property">TypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">Any</span>(<span id="r47 rd" class="r47 r">f</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r47 r">f</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1e7a19f50d2ee17e" class="i method">DisplayName</a>().<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#c443811b967f89dc" class="i property">DisplayName</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A part with the same Display Name already exists.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>) &amp;&amp; !<span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>[0].<a href="/OrchardCore.ContentManagement.Abstractions/A.html#08c4f1265dffbc8b" class="i method">IsLetter</a>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name must start with a letter.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>, <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66dc9fb92cd5da64" class="i method">ToSafeName</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name contains invalid characters.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#870abb0b91758d2b" class="i method">IsReservedContentName</a>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name is reserved for internal use.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name can&#39;t be empty.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r45 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#5b5a5b1ac399ab52" class="i property">TypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">Any</span>(<span id="r48 rd" class="r48 r">f</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r48 r">f</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A part with the same Technical Name already exists.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+                <b>return</b> <b>await</b> <a href="#0333efd9c3f67bec" class="i method">AddReusablePartTo</a>(<span class="r44 r">id</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r49 rd" class="r49 r">partToAdd</span> = <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#c59b99854f7b596a" class="i property">SelectedPartName</a>;
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#5eb4075654a55f4e" class="i method">AddReusablePartToType</a>(<span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#1f41a7408428a3f1" class="i property">Name</a>, <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#c443811b967f89dc" class="i property">DisplayName</a>, <span class="r46 r">viewModel</span>.<a href="../ViewModels/AddPartsViewModel.cs.html#d3bf9e8f64312082" class="i property">Description</a>, <span class="r49 r">partToAdd</span>, <span class="r45 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#72d2d7d800162fed" class="i property">Name</a>);
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; part has been added.&quot;</span>, <span class="r49 r">partToAdd</span>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <span class="r44 r">id</span> });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;RemovePart&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="ec14c32c6aaa28b2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RemovePart</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r50 rd" class="r50 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r51 rd" class="r51 r">name</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r52 rd" class="r52 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#ee32df8274ff5429" class="i method">LoadType</a>(<span class="r50 r">id</span>);
+ 
+            <b>if</b> (<span class="r52 r">typeViewModel</span> == <b>null</b> || !<span class="r52 r">typeViewModel</span>.<a href="../ViewModels/EditTypeViewModel.cs.html#5b5a5b1ac399ab52" class="i property">TypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">Any</span>(<span id="r53 rd" class="r53 r">p</span> =&gt; <span class="r53 r">p</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r51 r">name</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#5985eb8a2be910ad" class="i method">RemovePartFromType</a>(<span class="r51 r">name</span>, <span class="r50 r">id</span>);
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; part has been removed.&quot;</span>, <span class="r51 r">name</span>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <span class="r50 r">id</span> });
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> Types
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> Parts
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="a4f8073d347571b5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ListParts</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#6eef1bbfae02664b" class="i field">ViewContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="../ViewModels/ListContentPartsViewModel.cs.html#9713c2589f79c1f6" class="t constructor">ListContentPartsViewModel</a>
+            {
+                <span class="c">// only user-defined parts (not code as they are not configurable)</span>
+                <a href="../ViewModels/ListContentPartsViewModel.cs.html#40d8a37fff8672c2" class="i property">Parts</a> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#06879f4537e1fc06" class="i method">GetParts</a>(<b>true</b><span class="c">/*metadataPartsOnly*/</span>)
+            });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="3ea2977f0dfea4d3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreatePart</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r54 rd" class="r54 r">suggestion</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="../ViewModels/CreatePartViewModel.cs.html#d53b11da5acb89cd" class="t constructor">CreatePartViewModel</a> { <a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a> = <span class="r54 r">suggestion</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66dc9fb92cd5da64" class="i method">ToSafeName</a>() });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;CreatePart&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="99d5d0704061bbd0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreatePartPOST</a>(<a href="../ViewModels/CreatePartViewModel.cs.html#d53b11da5acb89cd" class="t t">CreatePartViewModel</a> <span id="r55 rd" class="r55 r">viewModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a> = <span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a> ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name can&#39;t be empty.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#ac94aec639869f1e" class="i method">LoadParts</a>(<b>false</b>).<span class="i method">Any</span>(<span id="r56 rd" class="r56 r">p</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r56 r">p</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A part with the same Technical Name already exists.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a>) &amp;&amp; !<span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a>[0].<a href="/OrchardCore.ContentManagement.Abstractions/A.html#08c4f1265dffbc8b" class="i method">IsLetter</a>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name must start with a letter.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a>, <span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66dc9fb92cd5da64" class="i method">ToSafeName</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name contains invalid characters.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r55 r">viewModel</span>.<a href="../ViewModels/CreatePartViewModel.cs.html#919fae60446cc247" class="i property">Name</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#870abb0b91758d2b" class="i method">IsReservedContentName</a>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name is reserved for internal use.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>return</b> <span class="i method">View</span>(<span class="r55 r">viewModel</span>);
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r57 rd" class="r57 r">partViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#76f481a91e5d320e" class="i method">AddPart</a>(<span class="r55 r">viewModel</span>);
+ 
+            <b>if</b> (<span class="r57 r">partViewModel</span> == <b>null</b>)
+            {
+                <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Information</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The content part could not be created.&quot;</span>]);
+                <b>return</b> <span class="i method">View</span>(<span class="r55 r">viewModel</span>);
+            }
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; content part has been created.&quot;</span>, <span class="r57 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">EditPart</span>), <b>new</b> { <a href="#052e6b628d405e0d" class="i property">id</a> = <span class="r57 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a> });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="9d9f7680f0f9d625" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPart</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r58 rd" class="r58 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#45e44da5547d9781" class="k">var</a> <span id="r59 rd" class="r59 r">contentPartDefinition</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3a3a3db559bbff05" class="i method">GetPartDefinition</a>(<span class="r58 r">id</span>);
+ 
+            <b>if</b> (<span class="r59 r">contentPartDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r60 rd" class="r60 r">viewModel</span> = <b>new</b> <a href="../ViewModels/EditPartViewModel.cs.html#b5c2862c537a927b" class="t constructor">EditPartViewModel</a>(<span class="r59 r">contentPartDefinition</span>);
+            <span class="r60 r">viewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#15c62b77c9fb9caf" class="i property">Editor</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">BuildPartEditorAsync</span>(<span class="r59 r">contentPartDefinition</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r60 r">viewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;EditPart&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Save&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="dd8aad48fd9510cc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPartPOST</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r61 rd" class="r61 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r62 rd" class="r62 r">orderedFieldNames</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#45e44da5547d9781" class="k">var</a> <span id="r63 rd" class="r63 r">contentPartDefinition</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b951d7441effa25" class="i method">LoadPartDefinition</a>(<span class="r61 r">id</span>);
+ 
+            <b>if</b> (<span class="r63 r">contentPartDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r64 rd" class="r64 r">viewModel</span> = <b>new</b> <a href="../ViewModels/EditPartViewModel.cs.html#b5c2862c537a927b" class="t constructor">EditPartViewModel</a>(<span class="r63 r">contentPartDefinition</span>);
+            <span class="r64 r">viewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#15c62b77c9fb9caf" class="i property">Editor</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">UpdatePartEditorAsync</span>(<span class="r63 r">contentPartDefinition</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+                <b>return</b> <span class="i method">View</span>(<span class="r64 r">viewModel</span>);
+            }
+            <b>else</b>
+            {
+                <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#9605dcf54cf34b43" class="i method">AlterPartFieldsOrder</a>(<span class="r63 r">contentPartDefinition</span>, <span class="r62 r">orderedFieldNames</span>);
+                <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The settings of \&quot;{0}\&quot; have been saved.&quot;</span>, <span class="r63 r">contentPartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>]);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">EditPart</span>), <b>new</b> { <span class="r61 r">id</span> });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;EditPart&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Delete&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="01f1bda3f06cf4d1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DeletePart</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r65 rd" class="r65 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r66 rd" class="r66 r">partViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#bd57c9b9b08dc91e" class="i method">LoadPart</a>(<span class="r65 r">id</span>);
+ 
+            <b>if</b> (<span class="r66 r">partViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#412e8c633af9d7f6" class="i method">RemovePart</a>(<span class="r65 r">id</span>);
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Information</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;\&quot;{0}\&quot; has been removed.&quot;</span>, <span class="r66 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#b7d71f719456ba87" class="i property">DisplayName</a>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">ListParts</span>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="f9350d1e1c5328b7" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddFieldTo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r67 rd" class="r67 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r68 rd" class="r68 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r69 rd" class="r69 r">partViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#bd57c9b9b08dc91e" class="i method">LoadPart</a>(<span class="r67 r">id</span>);
+ 
+            <b>if</b> (<span class="r69 r">partViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/AddFieldViewModel.cs.html#6860058b7fa7a7d6" class="k">var</a> <span id="r70 rd" class="r70 r">viewModel</span> = <b>new</b> <a href="../ViewModels/AddFieldViewModel.cs.html#d55611376bd4e543" class="t constructor">AddFieldViewModel</a>
+            {
+                <a href="../ViewModels/AddFieldViewModel.cs.html#76f3a4396c6e9bcf" class="i property">Part</a> = <span class="r69 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>,
+                <a href="../ViewModels/AddFieldViewModel.cs.html#fc8bff29cf19903c" class="i property">Fields</a> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#9bf1db5aaca5798e" class="i method">GetFields</a>().<span class="i method">Select</span>(<span id="r71 rd" class="r71 r">x</span> =&gt; <span class="r71 r">x</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>).<span class="i method">OrderBy</span>(<span id="r72 rd" class="r72 r">x</span> =&gt; <span class="r72 r">x</span>).<span class="i method">ToList</span>()
+            };
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r68 r">returnUrl</span>;
+            <b>return</b> <span class="i method">View</span>(<span class="r70 r">viewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;AddFieldTo&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="0965cbfb7d47dd12" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddFieldToPOST</a>(<a href="../ViewModels/AddFieldViewModel.cs.html#6860058b7fa7a7d6" class="t t">AddFieldViewModel</a> <span id="r73 rd" class="r73 r">viewModel</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r74 rd" class="r74 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r75 rd" class="r75 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r76 rd" class="r76 r">partViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#bd57c9b9b08dc91e" class="i method">LoadPart</a>(<span class="r74 r">id</span>);
+ 
+            <b>if</b> (<span class="r76 r">partViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#45e44da5547d9781" class="k">var</a> <span id="r77 rd" class="r77 r">partDefinition</span> = <span class="r76 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>;
+ 
+            <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#41bd9e69581942ca" class="i property">DisplayName</a> = <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#41bd9e69581942ca" class="i property">DisplayName</a>?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>() ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a> = <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a> ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#41bd9e69581942ca" class="i property">DisplayName</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Display Name can&#39;t be empty.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r77 r">partDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">Any</span>(<span id="r78 rd" class="r78 r">f</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r78 r">f</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0e6884aff618354d" class="i method">DisplayName</a>().<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#41bd9e69581942ca" class="i property">DisplayName</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A field with the same Display Name already exists.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name can&#39;t be empty.&quot;</span>]);
+            }
+ 
+            <b>if</b> (<span class="r77 r">partDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">Any</span>(<span id="r79 rd" class="r79 r">f</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r79 r">f</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A field with the same Technical Name already exists.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a>) &amp;&amp; !<span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a>[0].<a href="/OrchardCore.ContentManagement.Abstractions/A.html#08c4f1265dffbc8b" class="i method">IsLetter</a>())
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name must start with a letter.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a>, <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#66dc9fb92cd5da64" class="i method">ToSafeName</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Name&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Technical Name contains invalid characters.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#76f3a4396c6e9bcf" class="i property">Part</a> = <span class="r77 r">partDefinition</span>;
+                <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#fc8bff29cf19903c" class="i property">Fields</a> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#9bf1db5aaca5798e" class="i method">GetFields</a>().<span class="i method">Select</span>(<span id="r80 rd" class="r80 r">x</span> =&gt; <span class="r80 r">x</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>).<span class="i method">OrderBy</span>(<span id="r81 rd" class="r81 r">x</span> =&gt; <span class="r81 r">x</span>).<span class="i method">ToList</span>();
+ 
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+ 
+                <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r75 r">returnUrl</span>;
+                <b>return</b> <span class="i method">View</span>(<span class="r73 r">viewModel</span>);
+            }
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#fa1812dc3cd7b79e" class="i method">AddFieldToPart</a>(<span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a>, <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#41bd9e69581942ca" class="i property">DisplayName</a>, <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a363228d745229fe" class="i property">FieldTypeName</a>, <span class="r77 r">partDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>);
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The field \&quot;{0}\&quot; has been added.&quot;</span>, <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#41bd9e69581942ca" class="i property">DisplayName</a>]);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r75 r">returnUrl</span>) &amp;&amp; <span class="i property">Url</span>.<span class="i method">IsLocalUrl</span>(<span class="r75 r">returnUrl</span>))
+            {
+                <b>return</b> <span class="i method">Redirect</span>(<span class="r75 r">returnUrl</span>);
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">EditField</span>), <b>new</b> { <span class="r74 r">id</span>, <span class="r73 r">viewModel</span>.<a href="../ViewModels/AddFieldViewModel.cs.html#a7d2713d95661408" class="i property">Name</a> });
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="3f1ab8bf3ae3f0e8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditField</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r82 rd" class="r82 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r83 rd" class="r83 r">name</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r84 rd" class="r84 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r85 rd" class="r85 r">partViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#7540e65d9988ec55" class="i method">GetPart</a>(<span class="r82 r">id</span>);
+ 
+            <b>if</b> (<span class="r85 r">partViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r86 rd" class="r86 r">partFieldDefinition</span> = <span class="r85 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">FirstOrDefault</span>(<span id="r87 rd" class="r87 r">x</span> =&gt; <span class="r87 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r83 r">name</span>);
+ 
+            <b>if</b> (<span class="r86 r">partFieldDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditFieldViewModel.cs.html#0b74edaf5f54a6e7" class="k">var</a> <span id="r88 rd" class="r88 r">viewModel</span> = <b>new</b> <a href="../ViewModels/EditFieldViewModel.cs.html#0b74edaf5f54a6e7" class="t constructor">EditFieldViewModel</a>
+            {
+                <a href="../ViewModels/EditFieldViewModel.cs.html#9740985f1bbc2ce5" class="i property">Name</a> = <span class="r86 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>,
+                <a href="../ViewModels/EditFieldViewModel.cs.html#6186a8bf6a742543" class="i property">Editor</a> = <span class="r86 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#55c66ced50b99026" class="i method">Editor</a>(),
+                <a href="../ViewModels/EditFieldViewModel.cs.html#b3b3f10d5af452cf" class="i property">DisplayMode</a> = <span class="r86 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#fc86b0a399f9eddb" class="i method">DisplayMode</a>(),
+                <a href="../ViewModels/EditFieldViewModel.cs.html#5681935eda10ca7d" class="i property">DisplayName</a> = <span class="r86 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0e6884aff618354d" class="i method">DisplayName</a>(),
+                <a href="../ViewModels/EditFieldViewModel.cs.html#6d880d2e9a3d1045" class="i property">PartFieldDefinition</a> = <span class="r86 r">partFieldDefinition</span>,
+                <a href="../ViewModels/EditFieldViewModel.cs.html#873f714ed66489ca" class="i property">Shape</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">BuildPartFieldEditorAsync</span>(<span class="r86 r">partFieldDefinition</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>)
+            };
+ 
+            <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r84 r">returnUrl</span>;
+            <b>return</b> <span class="i method">View</span>(<span class="r88 r">viewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;EditField&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Save&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="ed06cc00fc1ac124" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditFieldPOST</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r89 rd" class="r89 r">id</span>, <a href="../ViewModels/EditFieldViewModel.cs.html#0b74edaf5f54a6e7" class="t t">EditFieldViewModel</a> <span id="r90 rd" class="r90 r">viewModel</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r91 rd" class="r91 r">returnUrl</span> = <b>null</b>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="r90 r">viewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r92 rd" class="r92 r">partViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#bd57c9b9b08dc91e" class="i method">LoadPart</a>(<span class="r89 r">id</span>);
+ 
+            <b>if</b> (<span class="r92 r">partViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r93 rd" class="r93 r">field</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b951d7441effa25" class="i method">LoadPartDefinition</a>(<span class="r89 r">id</span>).<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">FirstOrDefault</span>(<span id="r94 rd" class="r94 r">x</span> =&gt; <span class="r94 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#9740985f1bbc2ce5" class="i property">Name</a>);
+ 
+            <b>if</b> (<span class="r93 r">field</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#6d880d2e9a3d1045" class="i property">PartFieldDefinition</a> = <span class="r93 r">field</span>;
+ 
+            <b>if</b> (<span class="r93 r">field</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0e6884aff618354d" class="i method">DisplayName</a>() != <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#5681935eda10ca7d" class="i property">DisplayName</a>)
+            {
+                <span class="c">// prevent null reference exception in validation</span>
+                <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#5681935eda10ca7d" class="i property">DisplayName</a> = <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#5681935eda10ca7d" class="i property">DisplayName</a>?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>() ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#5681935eda10ca7d" class="i property">DisplayName</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Display Name can&#39;t be empty.&quot;</span>]);
+                }
+ 
+                <b>if</b> (<a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#bd57c9b9b08dc91e" class="i method">LoadPart</a>(<span class="r92 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>).<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">Any</span>(<span id="r95 rd" class="r95 r">t</span> =&gt; <span class="r95 r">t</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> != <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#9740985f1bbc2ce5" class="i property">Name</a> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r95 r">t</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0e6884aff618354d" class="i method">DisplayName</a>().<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#5681935eda10ca7d" class="i property">DisplayName</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A field with the same Display Name already exists.&quot;</span>]);
+                }
+ 
+                <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+                {
+                    <span class="c">// Calls update to build editor shape with the display name validation failures, and other validation errors.</span>
+                    <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#873f714ed66489ca" class="i property">Shape</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">UpdatePartFieldEditorAsync</span>(<span class="r93 r">field</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+                    <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+ 
+                    <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r91 r">returnUrl</span>;
+                    <b>return</b> <span class="i method">View</span>(<span class="r90 r">viewModel</span>);
+                }
+ 
+                <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Information</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;Display name changed to {0}.&quot;</span>, <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#5681935eda10ca7d" class="i property">DisplayName</a>]);
+            }
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#5e3016c38e4fd90f" class="i method">AlterField</a>(<span class="r92 r">partViewModel</span>, <span class="r90 r">viewModel</span>);
+ 
+            <span class="c">// Refresh the local field variable in case it has been altered</span>
+            <span class="r93 r">field</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4b951d7441effa25" class="i method">LoadPartDefinition</a>(<span class="r89 r">id</span>).<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">FirstOrDefault</span>(<span id="r96 rd" class="r96 r">x</span> =&gt; <span class="r96 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#9740985f1bbc2ce5" class="i property">Name</a>);
+ 
+            <span class="r90 r">viewModel</span>.<a href="../ViewModels/EditFieldViewModel.cs.html#873f714ed66489ca" class="i property">Shape</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">UpdatePartFieldEditorAsync</span>(<span class="r93 r">field</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+ 
+                <span class="i property">ViewData</span>[<span class="s">&quot;ReturnUrl&quot;</span>] = <span class="r91 r">returnUrl</span>;
+                <b>return</b> <span class="i method">View</span>(<span class="r90 r">viewModel</span>);
+            }
+            <b>else</b>
+            {
+                <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; field settings have been saved.&quot;</span>, <span class="r93 r">field</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0e6884aff618354d" class="i method">DisplayName</a>()]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r91 r">returnUrl</span>) &amp;&amp; <span class="i property">Url</span>.<span class="i method">IsLocalUrl</span>(<span class="r91 r">returnUrl</span>))
+            {
+                <b>return</b> <span class="i method">Redirect</span>(<span class="r91 r">returnUrl</span>);
+            }
+            <b>else</b>
+            {
+                <span class="c">// Redirect to the type editor if a type exists with this name</span>
+                <a href="../ViewModels/EditTypeViewModel.cs.html#1ec590a0d1cf4d72" class="k">var</a> <span id="r97 rd" class="r97 r">typeViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#ee32df8274ff5429" class="i method">LoadType</a>(<span class="r89 r">id</span>);
+                <b>if</b> (<span class="r97 r">typeViewModel</span> != <b>null</b>)
+                {
+                    <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <span class="r89 r">id</span> });
+                }
+ 
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">EditPart</span>), <b>new</b> { <span class="r89 r">id</span> });
+            }
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;RemoveFieldFrom&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="cfb995d6ff32d81e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RemoveFieldFromPOST</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r98 rd" class="r98 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r99 rd" class="r99 r">name</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/EditPartViewModel.cs.html#1dc280571ce46ca8" class="k">var</a> <span id="r100 rd" class="r100 r">partViewModel</span> = <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#bd57c9b9b08dc91e" class="i method">LoadPart</a>(<span class="r98 r">id</span>);
+ 
+            <b>if</b> (<span class="r100 r">partViewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r101 rd" class="r101 r">field</span> = <span class="r100 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#6c54d7185c88d9a1" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">FirstOrDefault</span>(<span id="r102 rd" class="r102 r">x</span> =&gt; <span class="r102 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r99 r">name</span>);
+ 
+            <b>if</b> (<span class="r101 r">field</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#b43d746bff88d520" class="i method">RemoveFieldFromPart</a>(<span class="r99 r">name</span>, <span class="r100 r">partViewModel</span>.<a href="../ViewModels/EditPartViewModel.cs.html#96858214c64ea8d0" class="i property">Name</a>);
+ 
+            <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; field has been removed.&quot;</span>, <span class="r101 r">field</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0e6884aff618354d" class="i method">DisplayName</a>()]);
+ 
+            <b>if</b> (<a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#ee32df8274ff5429" class="i method">LoadType</a>(<span class="r98 r">id</span>) != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <span class="r98 r">id</span> });
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">EditPart</span>), <b>new</b> { <span class="r98 r">id</span> });
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> Parts
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> Type Parts
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="6bed89f897763ec4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditTypePart</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r103 rd" class="r103 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r104 rd" class="r104 r">name</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r105 rd" class="r105 r">typeDefinition</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r103 r">id</span>);
+ 
+            <b>if</b> (<span class="r105 r">typeDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="k">var</a> <span id="r106 rd" class="r106 r">typePartDefinition</span> = <span class="r105 r">typeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">FirstOrDefault</span>(<span id="r107 rd" class="r107 r">x</span> =&gt; <span class="r107 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r104 r">name</span>);
+ 
+            <b>if</b> (<span class="r106 r">typePartDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditTypePartViewModel.cs.html#2e78afa316e7f253" class="k">var</a> <span id="r108 rd" class="r108 r">typePartViewModel</span> = <b>new</b> <a href="../ViewModels/EditTypePartViewModel.cs.html#2e78afa316e7f253" class="t constructor">EditTypePartViewModel</a>
+            {
+                <a href="../ViewModels/EditTypePartViewModel.cs.html#9b3a8cfd7c7dca38" class="i property">Name</a> = <span class="r106 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>,
+                <a href="../ViewModels/EditTypePartViewModel.cs.html#1cf0983038e1fbce" class="i property">Editor</a> = <span class="r106 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e50195777b9fec35" class="i method">Editor</a>(),
+                <a href="../ViewModels/EditTypePartViewModel.cs.html#c777bfc21bba22ee" class="i property">DisplayMode</a> = <span class="r106 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7175bcdd1303fe8e" class="i method">DisplayMode</a>(),
+                <a href="../ViewModels/EditTypePartViewModel.cs.html#e5d98ae5d3691782" class="i property">DisplayName</a> = <span class="r106 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1e7a19f50d2ee17e" class="i method">DisplayName</a>(),
+                <a href="../ViewModels/EditTypePartViewModel.cs.html#47e98a9d14fb6e0f" class="i property">Description</a> = <span class="r106 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f314d4ca1326c34c" class="i method">Description</a>(),
+                <a href="../ViewModels/EditTypePartViewModel.cs.html#d5a90b396878f34a" class="i property">TypePartDefinition</a> = <span class="r106 r">typePartDefinition</span>,
+                <a href="../ViewModels/EditTypePartViewModel.cs.html#829805aba58b4448" class="i property">Shape</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">BuildTypePartEditorAsync</span>(<span class="r106 r">typePartDefinition</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>)
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r108 r">typePartViewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<span class="s">&quot;EditTypePart&quot;</span>)]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Save&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="c40ec6b0ddb260da" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditTypePartPOST</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r109 rd" class="r109 r">id</span>, <a href="../ViewModels/EditTypePartViewModel.cs.html#2e78afa316e7f253" class="t t">EditTypePartViewModel</a> <span id="r110 rd" class="r110 r">viewModel</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#fe08900f200e8b66" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#29f533c236ce9253" class="t t">Permissions</a>.<a href="../Permissions.cs.html#0bea0448b643888c" class="i field">EditContentTypes</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="r110 r">viewModel</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r111 rd" class="r111 r">typeDefinition</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#154ab18e7ab850da" class="i method">LoadTypeDefinition</a>(<span class="r109 r">id</span>);
+ 
+            <b>if</b> (<span class="r111 r">typeDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="k">var</a> <span id="r112 rd" class="r112 r">part</span> = <span class="r111 r">typeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">FirstOrDefault</span>(<span id="r113 rd" class="r113 r">x</span> =&gt; <span class="r113 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#9b3a8cfd7c7dca38" class="i property">Name</a>);
+ 
+            <b>if</b> (<span class="r112 r">part</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#d5a90b396878f34a" class="i property">TypePartDefinition</a> = <span class="r112 r">part</span>;
+ 
+            <b>if</b> (<span class="r112 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3033b42492752d2b" class="i method">IsReusable</a>())
+            {
+                <b>if</b> (<span class="r112 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1e7a19f50d2ee17e" class="i method">DisplayName</a>() != <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#e5d98ae5d3691782" class="i property">DisplayName</a>)
+                {
+                    <span class="c">// Prevent null reference exception in validation</span>
+                    <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#e5d98ae5d3691782" class="i property">DisplayName</a> = <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#e5d98ae5d3691782" class="i property">DisplayName</a>?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>() ?? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#e5d98ae5d3691782" class="i property">DisplayName</a>))
+                    {
+                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;The Display Name can&#39;t be empty.&quot;</span>]);
+                    }
+ 
+                    <b>if</b> (<span class="r111 r">typeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">Any</span>(<span id="r114 rd" class="r114 r">t</span> =&gt; <span class="r114 r">t</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> != <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#9b3a8cfd7c7dca38" class="i property">Name</a> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r114 r">t</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1e7a19f50d2ee17e" class="i method">DisplayName</a>()?.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#e5d98ae5d3691782" class="i property">DisplayName</a>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>(), <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>)))
+                    {
+                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;DisplayName&quot;</span>, <a href="#e6edbac78dde6906" class="i field">S</a>[<span class="s">&quot;A part with the same Display Name already exists.&quot;</span>]);
+                    }
+ 
+                    <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+                    {
+                        <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#829805aba58b4448" class="i property">Shape</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">UpdateTypePartEditorAsync</span>(<span class="r112 r">part</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+                        <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+                        <b>return</b> <span class="i method">View</span>(<span class="r110 r">viewModel</span>);
+                    }
+                }
+            }
+ 
+            <a href="#50cefa753feb9fcb" class="i field">_contentDefinitionService</a>.<a href="../Services/IContentDefinitionService.cs.html#5bfd87b6c6942fef" class="i method">AlterTypePart</a>(<span class="r110 r">viewModel</span>);
+ 
+            <span class="c">// Refresh the local part variable in case it has been altered</span>
+            <span class="r112 r">part</span> = <a href="#3ee780ba7a65ca3a" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#154ab18e7ab850da" class="i method">LoadTypeDefinition</a>(<span class="r109 r">id</span>).<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">FirstOrDefault</span>(<span id="r115 rd" class="r115 r">x</span> =&gt; <span class="r115 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> == <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#9b3a8cfd7c7dca38" class="i property">Name</a>);
+ 
+            <span class="r110 r">viewModel</span>.<a href="../ViewModels/EditTypePartViewModel.cs.html#829805aba58b4448" class="i property">Shape</a> = <b>await</b> <a href="#ff7c3cb0b165c09d" class="i field">_contentDefinitionDisplayManager</a>.<span class="i">UpdateTypePartEditorAsync</span>(<span class="r112 r">part</span>, <a href="#435b47f30e857274" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>await</b> <a href="#8bd47af0b37376b9" class="i field">_documentStore</a>.<span class="i">CancelAsync</span>();
+                <b>return</b> <span class="i method">View</span>(<span class="r110 r">viewModel</span>);
+            }
+            <b>else</b>
+            {
+                <a href="#3d032a3c6896334a" class="i field">_notifier</a>.<span class="i">Success</span>(<a href="#b7a932d93e9e86e1" class="i field">H</a>[<span class="s">&quot;The \&quot;{0}\&quot; part settings have been saved.&quot;</span>, <span class="r112 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1e7a19f50d2ee17e" class="i method">DisplayName</a>()]);
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <b>new</b> { <span class="r109 r">id</span> });
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> Type Parts
+    }
+}
+</pre></td></tr></table></div></body></html>

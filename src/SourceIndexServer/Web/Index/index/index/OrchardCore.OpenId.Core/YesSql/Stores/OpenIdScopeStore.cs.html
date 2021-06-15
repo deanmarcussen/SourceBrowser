@@ -1,0 +1,430 @@
+﻿<!DOCTYPE html>
+<html><head><title>OpenIdScopeStore.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(421);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId.Core/YesSql/Stores/OpenIdScopeStore.cs" target="_top">YesSql\Stores\OpenIdScopeStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId.Core" target="_top">src\OrchardCore\OrchardCore.OpenId.Core\OrchardCore.OpenId.Core.csproj</a> (OrchardCore.OpenId.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Json</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Stores</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">YesSql</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">YesSql</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">YesSql</span>.<span class="i n">Stores</span>
+{
+    <b>public class</b> <a id="62b2460ab70dac49" href="../../R/62b2460ab70dac49.html" target="n" data-glyph="0,0" class="t t">OpenIdScopeStore</a>&lt;<span id="r0 rd t" class="r0 r t">TScope</span>&gt; : <a href="../../Abstractions/Stores/IOpenIdScopeStore.cs.html#f3f602e47067a99c" class="t t">IOpenIdScopeStore</a>&lt;<span class="r0 r t">TScope</span>&gt;
+        <b>where</b> <span class="r0 r t">TScope</span> : <a href="../Models/OpenIdScope.cs.html#21367c55c291ff1c" class="t t">OpenIdScope</a>, <b>new</b>()
+    {
+        <b>private const string</b> <a id="4ca4530205be9122" href="../../R/4ca4530205be9122.html" target="n" data-glyph="10,1" class="i field">OpenIdCollection</a> = <a href="../Models/OpenIdScope.cs.html#21367c55c291ff1c" class="t t">OpenIdScope</a>.<a href="../Models/OpenIdScope.cs.html#e8fcae06f4c4628b" class="i field">OpenIdCollection</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="e0abe3aeabfa9e67" href="../../R/e0abe3aeabfa9e67.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+ 
+        <b>public</b> <a id="f0e97828baefdb65" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">OpenIdScopeStore</a>(<span class="i">ISession</span> <span id="r1 rd" class="r1 r">session</span>)
+        {
+            <a href="#e0abe3aeabfa9e67" class="i field">_session</a> = <span class="r1 r">session</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<b>long</b>&gt; <a id="66a3bb7185991059" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CountAsync</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r2 rd" class="r2 r">cancellationToken</span>)
+        {
+            <span class="r2 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TScope</span>&gt;(<span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>).<span class="i">CountAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<b>long</b>&gt; <a id="8ef7f06454f4bc0d" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CountAsync</a>&lt;<span id="r3 rd t" class="r3 r t">TResult</span>&gt;(<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="t t">IQueryable</span>&lt;<span class="r0 r t">TScope</span>&gt;, <span class="t t">IQueryable</span>&lt;<span class="r3 r t">TResult</span>&gt;&gt; <span id="r4 rd" class="r4 r">query</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r5 rd" class="r5 r">cancellationToken</span>)
+            =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#ab0acd5f99886747" class="t constructor">NotSupportedException</a>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="9b8423bf3b5814b7" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreateAsync</a>(<span class="r0 r t">TScope</span> <span id="r6 rd" class="r6 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r7 rd" class="r7 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r6 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r6 r">scope</span>));
+            }
+ 
+            <span class="r7 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Save</span>(<span class="r6 r">scope</span>, <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>);
+            <b>await</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="b4de90fae377b776" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DeleteAsync</a>(<span class="r0 r t">TScope</span> <span id="r8 rd" class="r8 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r9 rd" class="r9 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r8 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r8 r">scope</span>));
+            }
+ 
+            <span class="r9 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Delete</span>(<span class="r8 r">scope</span>, <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>);
+            <b>await</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TScope</span>&gt; <a id="d1889c8dc1a7bd4a" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r11 rd" class="r11 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r10 r">identifier</span>));
+            }
+ 
+            <span class="r11 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TScope</span>, <a href="../Indexes/OpenIdScopeIndex.cs.html#b2fd709e9462ee36" class="t t">OpenIdScopeIndex</a>&gt;(<span id="r12 rd" class="r12 r">index</span> =&gt; <span class="r12 r">index</span>.<span class="i">ScopeId</span> == <span class="r10 r">identifier</span>, <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TScope</span>&gt; <a id="7dba3a51daaa92f8" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByNameAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r13 rd" class="r13 r">name</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r14 rd" class="r14 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">name</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The scope name cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r13 r">name</span>));
+            }
+ 
+            <span class="r14 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TScope</span>, <a href="../Indexes/OpenIdScopeIndex.cs.html#b2fd709e9462ee36" class="t t">OpenIdScopeIndex</a>&gt;(<span id="r15 rd" class="r15 r">index</span> =&gt; <span class="r15 r">index</span>.<span class="i">Name</span> == <span class="r13 r">name</span>, <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TScope</span>&gt; <a id="01bdaf2d954b861d" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByNamesAsync</a>(
+            <a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r16 rd" class="r16 r">names</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r17 rd" class="r17 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r16 r">names</span>.<a href="@1@System.Collections.Immutable/A.html#bf86338597b2e4ec" class="i method">Any</a>(<span id="r18 rd" class="r18 r">name</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r18 r">name</span>)))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;Scope names cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r16 r">names</span>));
+            }
+ 
+            <span class="r17 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TScope</span>, <a href="../Indexes/OpenIdScopeIndex.cs.html#b2fd709e9462ee36" class="t t">OpenIdScopeIndex</a>&gt;(<span id="r19 rd" class="r19 r">index</span> =&gt; <span class="r19 r">index</span>.<span class="i">Name</span>.<span class="i">IsIn</span>(<span class="r16 r">names</span>), <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TScope</span>&gt; <a id="381bc094ae817b39" href="../../R/381bc094ae817b39.html" target="n" data-glyph="72,1" class="i method">FindByPhysicalIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r21 rd" class="r21 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r20 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r20 r">identifier</span>));
+            }
+ 
+            <span class="r21 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="r0 r t">TScope</span>&gt;(<b>int</b>.<a href="@1@System.Runtime/A.html#78ffbe1e274ca0bb" class="i method">Parse</a>(<span class="r20 r">identifier</span>, <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>), <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TScope</span>&gt; <a id="0c0f24ff9d5e78b5" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByResourceAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">resource</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r23 rd" class="r23 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r22 r">resource</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The resource cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r22 r">resource</span>));
+            }
+ 
+            <span class="r23 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TScope</span>, <a href="../Indexes/OpenIdScopeIndex.cs.html#12acbf81dd8105e3" class="t t">OpenIdScopeByResourceIndex</a>&gt;(
+                <span id="r24 rd" class="r24 r">index</span> =&gt; <span class="r24 r">index</span>.<span class="i">Resource</span> == <span class="r22 r">resource</span>,
+                <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r25 r t">TResult</span>&gt; <a id="8138ad2a31ec649e" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetAsync</a>&lt;<span id="r26 rd t" class="r26 r t">TState</span>, <span id="r25 rd t" class="r25 r t">TResult</span>&gt;(
+            <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<span class="t t">IQueryable</span>&lt;<span class="r0 r t">TScope</span>&gt;, <span class="r26 r t">TState</span>, <span class="t t">IQueryable</span>&lt;<span class="r25 r t">TResult</span>&gt;&gt; <span id="r27 rd" class="r27 r">query</span>,
+            <span class="r26 r t">TState</span> <span id="r28 rd" class="r28 r">state</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r29 rd" class="r29 r">cancellationToken</span>)
+            =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#ab0acd5f99886747" class="t constructor">NotSupportedException</a>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="a4c3c9c66cc6ecbb" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetDescriptionAsync</a>(<span class="r0 r t">TScope</span> <span id="r30 rd" class="r30 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r31 rd" class="r31 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r30 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r30 r">scope</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r30 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#69ac5b03ab183c7c" class="i property">Description</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="455cffbd9e0006a5" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetDescriptionsAsync</a>(
+            <span class="r0 r t">TScope</span> <span id="r32 rd" class="r32 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r33 rd" class="r33 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r32 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r32 r">scope</span>));
+            }
+ 
+            <b>if</b> (<span class="r32 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#7c74d458bb137810" class="i property">Descriptions</a> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;(<a href="@1@System.Collections.Immutable/A.html#cf18d3d905bbe4e9" class="t t">ImmutableDictionary</a>.<a href="@1@System.Collections.Immutable/A.html#fa342a50513d5250" class="i method">Create</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;(<span class="r32 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#7c74d458bb137810" class="i property">Descriptions</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="fb287f28029e13a9" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetDisplayNameAsync</a>(<span class="r0 r t">TScope</span> <span id="r34 rd" class="r34 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r35 rd" class="r35 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r34 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r34 r">scope</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r34 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#4c2ec81728b84c1e" class="i property">DisplayName</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="2ee43a96ec0999c9" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetDisplayNamesAsync</a>(
+            <span class="r0 r t">TScope</span> <span id="r36 rd" class="r36 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r37 rd" class="r37 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r36 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r36 r">scope</span>));
+            }
+ 
+            <b>if</b> (<span class="r36 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#a90d364d3a1facd0" class="i property">DisplayNames</a> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;(<a href="@1@System.Collections.Immutable/A.html#cf18d3d905bbe4e9" class="t t">ImmutableDictionary</a>.<a href="@1@System.Collections.Immutable/A.html#fa342a50513d5250" class="i method">Create</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;(<span class="r36 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#a90d364d3a1facd0" class="i property">DisplayNames</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="4a963cc424e8d7fa" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetIdAsync</a>(<span class="r0 r t">TScope</span> <span id="r38 rd" class="r38 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r39 rd" class="r39 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r38 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r38 r">scope</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r38 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#9b4dd2ebe33fac90" class="i property">ScopeId</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="c4bb008513c92a21" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetNameAsync</a>(<span class="r0 r t">TScope</span> <span id="r40 rd" class="r40 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r41 rd" class="r41 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r40 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r40 r">scope</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r40 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#e028babc05d4c78c" class="i property">Name</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="0f90fb743f9ac828" href="../../R/0f90fb743f9ac828.html" target="n" data-glyph="72,1" class="i method">GetPhysicalIdAsync</a>(<span class="r0 r t">TScope</span> <span id="r42 rd" class="r42 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r43 rd" class="r43 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r42 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r42 r">scope</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r42 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#bd7216ddc23d07df" class="i property">Id</a>.<a href="@1@System.Runtime/A.html#2b1c2bd27f3489eb" class="i method">ToString</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt; <a id="07fe84dfdcb7f130" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetPropertiesAsync</a>(<span class="r0 r t">TScope</span> <span id="r44 rd" class="r44 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r45 rd" class="r45 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r44 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r44 r">scope</span>));
+            }
+ 
+            <b>if</b> (<span class="r44 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#95c49ee86cab3333" class="i property">Properties</a> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt;(<a href="@1@System.Collections.Immutable/A.html#cf18d3d905bbe4e9" class="t t">ImmutableDictionary</a>.<a href="@1@System.Collections.Immutable/A.html#fa342a50513d5250" class="i method">Create</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;());
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt;(
+                <span class="t t">JsonSerializer</span>.<span class="i">Deserialize</span>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt;(<span class="r44 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#95c49ee86cab3333" class="i property">Properties</a>.<span class="i">ToString</span>()));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="a67ff085826ca6fa" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetResourcesAsync</a>(<span class="r0 r t">TScope</span> <span id="r46 rd" class="r46 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r47 rd" class="r47 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r46 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r46 r">scope</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;(<span class="r46 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#15a9d53a302b8e9a" class="i property">Resources</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TScope</span>&gt; <a id="a848767004f00114" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">InstantiateAsync</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r48 rd" class="r48 r">cancellationToken</span>)
+            =&gt; <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<span class="r0 r t">TScope</span>&gt;(<b>new</b> <span class="t">TScope</span> { <a href="../Models/OpenIdScope.cs.html#9b4dd2ebe33fac90" class="i property">ScopeId</a> = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#8015cb30da6ca742" class="i method">ToString</a>(<span class="s">&quot;n&quot;</span>) });
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TScope</span>&gt; <a id="87ededca80a6cd5b" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ListAsync</a>(<b>int</b>? <span id="r49 rd" class="r49 r">count</span>, <b>int</b>? <span id="r50 rd" class="r50 r">offset</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r51 rd" class="r51 r">cancellationToken</span>)
+        {
+            <b>var</b> <span id="r52 rd" class="r52 r">query</span> = <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TScope</span>&gt;(<span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>);
+ 
+            <b>if</b> (<span class="r50 r">offset</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r52 r">query</span> = <span class="r52 r">query</span>.<span class="i">Skip</span>(<span class="r50 r">offset</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+ 
+            <b>if</b> (<span class="r49 r">count</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r52 r">query</span> = <span class="r52 r">query</span>.<span class="i">Take</span>(<span class="r49 r">count</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+ 
+            <b>return</b> <span class="r52 r">query</span>.<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r53 r t">TResult</span>&gt; <a id="930cc3deb8383a60" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ListAsync</a>&lt;<span id="r54 rd t" class="r54 r t">TState</span>, <span id="r53 rd t" class="r53 r t">TResult</span>&gt;(
+            <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<span class="t t">IQueryable</span>&lt;<span class="r0 r t">TScope</span>&gt;, <span class="r54 r t">TState</span>, <span class="t t">IQueryable</span>&lt;<span class="r53 r t">TResult</span>&gt;&gt; <span id="r55 rd" class="r55 r">query</span>,
+            <span class="r54 r t">TState</span> <span id="r56 rd" class="r56 r">state</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r57 rd" class="r57 r">cancellationToken</span>)
+            =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#ab0acd5f99886747" class="t constructor">NotSupportedException</a>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="caf41a81ee63f83f" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetDescriptionAsync</a>(<span class="r0 r t">TScope</span> <span id="r58 rd" class="r58 r">scope</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r59 rd" class="r59 r">description</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r60 rd" class="r60 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r58 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r58 r">scope</span>));
+            }
+ 
+            <span class="r58 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#69ac5b03ab183c7c" class="i property">Description</a> = <span class="r59 r">description</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="f4a93f0723ca81ed" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetDescriptionsAsync</a>(<span class="r0 r t">TScope</span> <span id="r61 rd" class="r61 r">scope</span>,
+            <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r62 rd" class="r62 r">descriptions</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r63 rd" class="r63 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r61 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r61 r">scope</span>));
+            }
+ 
+            <span class="r61 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#7c74d458bb137810" class="i property">Descriptions</a> = <span class="r62 r">descriptions</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="0e3a0ee7f0b75ce0" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetDisplayNameAsync</a>(<span class="r0 r t">TScope</span> <span id="r64 rd" class="r64 r">scope</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r65 rd" class="r65 r">name</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r66 rd" class="r66 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r64 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r64 r">scope</span>));
+            }
+ 
+            <span class="r64 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#4c2ec81728b84c1e" class="i property">DisplayName</a> = <span class="r65 r">name</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="c97cc684a42e6991" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetDisplayNamesAsync</a>(<span class="r0 r t">TScope</span> <span id="r67 rd" class="r67 r">scope</span>,
+            <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r68 rd" class="r68 r">names</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r69 rd" class="r69 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r67 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r67 r">scope</span>));
+            }
+ 
+            <span class="r67 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#a90d364d3a1facd0" class="i property">DisplayNames</a> = <span class="r68 r">names</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="47e74c975eec2d3d" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetNameAsync</a>(<span class="r0 r t">TScope</span> <span id="r70 rd" class="r70 r">scope</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r71 rd" class="r71 r">name</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r72 rd" class="r72 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r70 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r70 r">scope</span>));
+            }
+ 
+            <span class="r70 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#e028babc05d4c78c" class="i property">Name</a> = <span class="r71 r">name</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="4e12642644d1b559" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetPropertiesAsync</a>(<span class="r0 r t">TScope</span> <span id="r73 rd" class="r73 r">scope</span>, <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt; <span id="r74 rd" class="r74 r">properties</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r75 rd" class="r75 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r73 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r73 r">scope</span>));
+            }
+ 
+            <b>if</b> (<span class="r74 r">properties</span> == <b>null</b> || <span class="r74 r">properties</span>.<a href="@1@System.Collections.Immutable/A.html#4e1e44c5832289cf" class="i property">IsEmpty</a>)
+            {
+                <span class="r73 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#95c49ee86cab3333" class="i property">Properties</a> = <b>null</b>;
+ 
+                <b>return</b> <b>default</b>;
+            }
+ 
+            <span class="r73 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#95c49ee86cab3333" class="i property">Properties</a> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="t t">JsonSerializer</span>.<span class="i method">Serialize</span>(<span class="r74 r">properties</span>, <b>new</b> <span class="t constructor">JsonSerializerOptions</span>
+            {
+                <span class="i property">Encoder</span> = <span class="t t">JavaScriptEncoder</span>.<span class="i property">UnsafeRelaxedJsonEscaping</span>,
+                <span class="i property">WriteIndented</span> = <b>false</b>
+            }));
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="243250e8fd7805c7" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetResourcesAsync</a>(<span class="r0 r t">TScope</span> <span id="r76 rd" class="r76 r">scope</span>, <a href="@1@System.Collections.Immutable/A.html#570249d040af2b99" class="t t">ImmutableArray</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r77 rd" class="r77 r">resources</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r78 rd" class="r78 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r76 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r76 r">scope</span>));
+            }
+ 
+            <span class="r76 r">scope</span>.<a href="../Models/OpenIdScope.cs.html#15a9d53a302b8e9a" class="i property">Resources</a> = <span class="r77 r">resources</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="2509d738af41f7d5" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r0 r t">TScope</span> <span id="r79 rd" class="r79 r">scope</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r80 rd" class="r80 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r79 r">scope</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r79 r">scope</span>));
+            }
+ 
+            <span class="r80 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">Save</span>(<span class="r79 r">scope</span>, <span class="i">checkConcurrency</span>: <b>true</b>, <span class="i">collection</span>: <a href="#4ca4530205be9122" class="i field">OpenIdCollection</a>);
+ 
+            <b>try</b>
+            {
+                <b>await</b> <a href="#e0abe3aeabfa9e67" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+            }
+            <b>catch</b> (<span class="i">ConcurrencyException</span> <span id="r81 rd" class="r81 r">exception</span>)
+            {
+                <b>throw</b> <b>new</b> <span class="i">OpenIddictExceptions</span>.<span class="i">ConcurrencyException</span>(<b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>()
+                    .<a href="@1@System.Runtime/A.html#73bc75596acbac77" class="i method">AppendLine</a>(<span class="s">&quot;The scope was concurrently updated and cannot be persisted in its current state.&quot;</span>)
+                    .<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;Reload the scope from the database and retry the operation.&quot;</span>)
+                    .<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>(), <span class="r81 r">exception</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

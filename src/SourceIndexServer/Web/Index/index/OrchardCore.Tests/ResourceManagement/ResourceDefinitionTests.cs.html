@@ -1,0 +1,317 @@
+﻿<!DOCTYPE html>
+<html><head><title>ResourceDefinitionTests.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(308);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/ResourceManagement/ResourceDefinitionTests.cs" target="_top">ResourceManagement\ResourceDefinitionTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">ResourceManagement</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">ResourceManagement</span>
+{
+    <b>public class</b> <a id="4997775d3fde5ca1" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">ResourceDefinitionTests</a>
+    {
+        <b>private readonly</b> <span class="i">ResourceManifest</span> <a id="3b2e3948ed00d509" href="../R/3b2e3948ed00d509.html" target="n" data-glyph="46,1" class="i field">_resourceManifest</a>;
+ 
+        <b>public</b> <a id="026cd22090a75603" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ResourceDefinitionTests</a>()
+        {
+            <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a> = <b>new</b> <span class="i">ResourceManifest</span>();
+        }
+ 
+        <span class="c">// The application path is empty if it is the host site</span>
+        <span class="c">// or contains the base path of a tenant.</span>
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="69dcac0ae505197b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetScriptResourceWithUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r0 rd" class="r0 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r1 rd" class="r1 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineScript</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.js&quot;</span>, <span class="s">&quot;~/foo.debug.js&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.js&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.js&quot;</span>);
+ 
+            <b>var</b> <span id="r2 rd" class="r2 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>false</b> };
+            <b>var</b> <span id="r3 rd" class="r3 r">tagBuilder</span> = <span class="r1 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r2 r">requireSettings</span>, <span class="r0 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;script&quot;</span>, <span class="r3 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">$&quot;</span>{<span class="r0 r">applicationPath</span>}<span class="s">/foo.js</span><span class="s">&quot;</span>, <span class="r3 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;src&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/base&quot;</span>)]
+        <b>public void</b> <a id="f4d9a1cb1294671f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetScriptResourceWithBasePath</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">basePath</span>)
+        {
+            <b>var</b> <span id="r5 rd" class="r5 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineScript</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.js&quot;</span>, <span class="s">&quot;~/foo.debug.js&quot;</span>)
+                .<span class="i">SetBasePath</span>(<span class="r4 r">basePath</span>);
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>false</b> };
+            <b>var</b> <span id="r7 rd" class="r7 r">tagBuilder</span> = <span class="r5 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r6 r">requireSettings</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;script&quot;</span>, <span class="r7 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">$&quot;</span>{<span class="r4 r">basePath</span>}<span class="s">/foo.js</span><span class="s">&quot;</span>, <span class="r7 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;src&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="8860c150352f8b1d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetScriptResourceWithDebugUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r9 rd" class="r9 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineScript</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.js&quot;</span>, <span class="s">&quot;~/foo.debug.js&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.js&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.js&quot;</span>);
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>true</b>, <span class="i">CdnMode</span> = <b>false</b> };
+            <b>var</b> <span id="r11 rd" class="r11 r">tagBuilder</span> = <span class="r9 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r10 r">requireSettings</span>, <span class="r8 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;script&quot;</span>, <span class="r11 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">$&quot;</span>{<span class="r8 r">applicationPath</span>}<span class="s">/foo.debug.js</span><span class="s">&quot;</span>, <span class="r11 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;src&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="c1a51acf2d8f0ef6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetScriptResourceWithCdnUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r13 rd" class="r13 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineScript</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.js&quot;</span>, <span class="s">&quot;~/foo.debug.js&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.js&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.js&quot;</span>);
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>true</b> };
+            <b>var</b> <span id="r15 rd" class="r15 r">tagBuilder</span> = <span class="r13 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r14 r">requireSettings</span>, <span class="r12 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;script&quot;</span>, <span class="r15 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;https://cdn.tld/foo.js&quot;</span>, <span class="r15 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;src&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="13b684aded3e148f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetScriptResourceWithDebugCdnUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r17 rd" class="r17 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineScript</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.js&quot;</span>, <span class="s">&quot;~/foo.debug.js&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.js&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.js&quot;</span>);
+ 
+            <b>var</b> <span id="r18 rd" class="r18 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>true</b>, <span class="i">CdnMode</span> = <b>true</b>, <span class="i">CdnBaseUrl</span> = <span class="s">&quot;https://hostcdn.net&quot;</span> };
+            <b>var</b> <span id="r19 rd" class="r19 r">tagBuilder</span> = <span class="r17 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r18 r">requireSettings</span>, <span class="r16 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;script&quot;</span>, <span class="r19 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;https://cdn.tld/foo.debug.js&quot;</span>, <span class="r19 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;src&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;~/foo.js&quot;</span>, <span class="s">&quot;https://hostcdn.net/foo.js&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;~/foo.js&quot;</span>, <span class="s">&quot;https://hostcdn.net/tenant/foo.js&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;//external.com/foo.js&quot;</span>, <span class="s">&quot;//external.com/foo.js&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;//external.com/foo.js&quot;</span>, <span class="s">&quot;//external.com/foo.js&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;http://external.com/foo.js&quot;</span>, <span class="s">&quot;http://external.com/foo.js&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;http://external.com/foo.js&quot;</span>, <span class="s">&quot;http://external.com/foo.js&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;https://external.com/foo.js&quot;</span>, <span class="s">&quot;https://external.com/foo.js&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;https://external.com/foo.js&quot;</span>, <span class="s">&quot;https://external.com/foo.js&quot;</span>)]
+        <b>public void</b> <a id="9ed02ee0496a8449" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetLocalScriptResourceWithCdnBaseUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">applicationPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">url</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">expected</span>)
+        {
+            <b>var</b> <span id="r23 rd" class="r23 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineScript</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="r21 r">url</span>, <span class="r21 r">url</span>);
+ 
+            <b>var</b> <span id="r24 rd" class="r24 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>true</b>, <span class="i">CdnBaseUrl</span> = <span class="s">&quot;https://hostcdn.net&quot;</span> };
+            <b>var</b> <span id="r25 rd" class="r25 r">tagBuilder</span> = <span class="r23 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r24 r">requireSettings</span>, <span class="r20 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;script&quot;</span>, <span class="r25 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r22 r">expected</span>, <span class="r25 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;src&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="5f23340ad4be6699" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetScriptResourceWithInlineContent</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r27 rd" class="r27 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineScript</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetInnerContent</span>(<span class="s">&quot;console.log(&#39;foo&#39;);&quot;</span>);
+ 
+            <b>var</b> <span id="r28 rd" class="r28 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span>()
+                .<span class="i">UseCdnBaseUrl</span>(<span class="s">&quot;https://hostcdn.net&quot;</span>);
+            <b>var</b> <span id="r29 rd" class="r29 r">tagBuilder</span> = <span class="r27 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r28 r">requireSettings</span>, <span class="r26 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;script&quot;</span>, <span class="r29 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;console.log(&#39;foo&#39;);&quot;</span>, <span class="i">ReadIHtmlContent</span>(<span class="r29 r">tagBuilder</span>.<span class="i">InnerHtml</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="ee8da9e3512fe4e2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetStyleResourceWithUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r30 rd" class="r30 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r31 rd" class="r31 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineStyle</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.css&quot;</span>, <span class="s">&quot;~/foo.debug.css&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.css&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.css&quot;</span>);
+ 
+            <b>var</b> <span id="r32 rd" class="r32 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>false</b> };
+            <b>var</b> <span id="r33 rd" class="r33 r">tagBuilder</span> = <span class="r31 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r32 r">requireSettings</span>, <span class="r30 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;link&quot;</span>, <span class="r33 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;text/css&quot;</span>, <span class="r33 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;type&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;stylesheet&quot;</span>, <span class="r33 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;rel&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">$&quot;</span>{<span class="r30 r">applicationPath</span>}<span class="s">/foo.css</span><span class="s">&quot;</span>, <span class="r33 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;href&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="3c8055d95e4884f5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetStyleResourceWithDebugUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r34 rd" class="r34 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r35 rd" class="r35 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineStyle</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.css&quot;</span>, <span class="s">&quot;~/foo.debug.css&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.css&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.css&quot;</span>);
+ 
+            <b>var</b> <span id="r36 rd" class="r36 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>true</b>, <span class="i">CdnMode</span> = <b>false</b> };
+            <b>var</b> <span id="r37 rd" class="r37 r">tagBuilder</span> = <span class="r35 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r36 r">requireSettings</span>, <span class="r34 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;link&quot;</span>, <span class="r37 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;text/css&quot;</span>, <span class="r37 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;type&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;stylesheet&quot;</span>, <span class="r37 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;rel&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">$&quot;</span>{<span class="r34 r">applicationPath</span>}<span class="s">/foo.debug.css</span><span class="s">&quot;</span>, <span class="r37 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;href&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="cf4716cbe74c0489" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetStyleResourceWithCdnUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r39 rd" class="r39 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineStyle</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.css&quot;</span>, <span class="s">&quot;~/foo.debug.css&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.css&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.css&quot;</span>);
+ 
+            <b>var</b> <span id="r40 rd" class="r40 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>true</b> };
+            <b>var</b> <span id="r41 rd" class="r41 r">tagBuilder</span> = <span class="r39 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r40 r">requireSettings</span>, <span class="r38 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;link&quot;</span>, <span class="r41 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;text/css&quot;</span>, <span class="r41 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;type&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;stylesheet&quot;</span>, <span class="r41 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;rel&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;https://cdn.tld/foo.css&quot;</span>, <span class="r41 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;href&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;~/foo.css&quot;</span>, <span class="s">&quot;https://hostcdn.net/foo.css&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;~/foo.css&quot;</span>, <span class="s">&quot;https://hostcdn.net/tenant/foo.css&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;//external.com/foo.css&quot;</span>, <span class="s">&quot;//external.com/foo.css&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;//external.com/foo.css&quot;</span>, <span class="s">&quot;//external.com/foo.css&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;http://external.com/foo.css&quot;</span>, <span class="s">&quot;http://external.com/foo.css&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;http://external.com/foo.css&quot;</span>, <span class="s">&quot;http://external.com/foo.css&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;https://external.com/foo.css&quot;</span>, <span class="s">&quot;https://external.com/foo.css&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>, <span class="s">&quot;https://external.com/foo.css&quot;</span>, <span class="s">&quot;https://external.com/foo.css&quot;</span>)]
+        <b>public void</b> <a id="fa7aece49d569e8f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetLocalStyleResourceWithCdnBaseUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r42 rd" class="r42 r">applicationPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r43 rd" class="r43 r">url</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r44 rd" class="r44 r">expected</span>)
+        {
+            <b>var</b> <span id="r45 rd" class="r45 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineStyle</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="r43 r">url</span>, <span class="r43 r">url</span>);
+ 
+            <b>var</b> <span id="r46 rd" class="r46 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>true</b>, <span class="i">CdnBaseUrl</span> = <span class="s">&quot;https://hostcdn.net&quot;</span> };
+            <b>var</b> <span id="r47 rd" class="r47 r">tagBuilder</span> = <span class="r45 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r46 r">requireSettings</span>, <span class="r42 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;link&quot;</span>, <span class="r47 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;text/css&quot;</span>, <span class="r47 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;type&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;stylesheet&quot;</span>, <span class="r47 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;rel&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r44 r">expected</span>, <span class="r47 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;href&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="a9c8cfcde97beed3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetStyleResourceWithDebugCdnUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r48 rd" class="r48 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r49 rd" class="r49 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineStyle</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.css&quot;</span>, <span class="s">&quot;~/foo.debug.css&quot;</span>)
+                .<span class="i">SetCdn</span>(<span class="s">&quot;https://cdn.tld/foo.css&quot;</span>, <span class="s">&quot;https://cdn.tld/foo.debug.css&quot;</span>);
+ 
+            <b>var</b> <span id="r50 rd" class="r50 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>true</b>, <span class="i">CdnMode</span> = <b>true</b> };
+            <b>var</b> <span id="r51 rd" class="r51 r">tagBuilder</span> = <span class="r49 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r50 r">requireSettings</span>, <span class="r48 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;link&quot;</span>, <span class="r51 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;text/css&quot;</span>, <span class="r51 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;type&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;stylesheet&quot;</span>, <span class="r51 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;rel&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;https://cdn.tld/foo.debug.css&quot;</span>, <span class="r51 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;href&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="93f7aaf0596f2a70" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetStyleResourceWithAttributes</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r52 rd" class="r52 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r53 rd" class="r53 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineStyle</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetUrl</span>(<span class="s">&quot;~/foo.css&quot;</span>, <span class="s">&quot;~/foo.debug.css&quot;</span>)
+                .<span class="i">SetAttribute</span>(<span class="s">&quot;id&quot;</span>, <span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetAttribute</span>(<span class="s">&quot;media&quot;</span>, <span class="s">&quot;all&quot;</span>);
+ 
+            <b>var</b> <span id="r54 rd" class="r54 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span> { <span class="i">DebugMode</span> = <b>false</b>, <span class="i">CdnMode</span> = <b>false</b> };
+            <b>var</b> <span id="r55 rd" class="r55 r">tagBuilder</span> = <span class="r53 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r54 r">requireSettings</span>, <span class="r52 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;link&quot;</span>, <span class="r55 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;text/css&quot;</span>, <span class="r55 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;type&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;stylesheet&quot;</span>, <span class="r55 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;rel&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;foo&quot;</span>, <span class="r55 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;id&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;all&quot;</span>, <span class="r55 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;media&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/tenant&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/virtualpath/tenant&quot;</span>)]
+        <b>public void</b> <a id="7ad135e1829eacb0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetStyleResourceWithInlineContent</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r56 rd" class="r56 r">applicationPath</span>)
+        {
+            <b>var</b> <span id="r57 rd" class="r57 r">resourceDefinition</span> = <a href="#3b2e3948ed00d509" class="i field">_resourceManifest</a>.<span class="i">DefineStyle</span>(<span class="s">&quot;foo&quot;</span>)
+                .<span class="i">SetInnerContent</span>(<span class="s">&quot;body { background-color: white; }&quot;</span>);
+ 
+            <b>var</b> <span id="r58 rd" class="r58 r">requireSettings</span> = <b>new</b> <span class="i">RequireSettings</span>()
+                .<span class="i">UseCdnBaseUrl</span>(<span class="s">&quot;https://cdn.net&quot;</span>);
+            <b>var</b> <span id="r59 rd" class="r59 r">tagBuilder</span> = <span class="r57 r">resourceDefinition</span>.<span class="i">GetTagBuilder</span>(<span class="r58 r">requireSettings</span>, <span class="r56 r">applicationPath</span>, <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a>.<a href="#88e11720ce906b05" class="i property">Instance</a>);
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;style&quot;</span>, <span class="r59 r">tagBuilder</span>.<span class="i">TagName</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;text/css&quot;</span>, <span class="r59 r">tagBuilder</span>.<span class="i">Attributes</span>[<span class="s">&quot;type&quot;</span>]);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;body { background-color: white; }&quot;</span>, <span class="i">ReadIHtmlContent</span>(<span class="r59 r">tagBuilder</span>.<span class="i">InnerHtml</span>));
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> Helpers
+        <b>private static string</b> <a id="1323e62f7bb0eace" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ReadIHtmlContent</a>(<span class="t t">IHtmlContent</span> <span id="r60 rd" class="r60 r">content</span>)
+        {
+            <b>using</b> (<a href="@1@System.Runtime/A.html#fd76db5d443fe076" class="k">var</a> <span id="r61 rd" class="r61 r">writer</span> = <b>new</b> <a href="@1@System.Runtime/A.html#23770c70900ea7f0" class="t constructor">StringWriter</a>())
+            {
+                <span class="r60 r">content</span>?.<span class="i method">WriteTo</span>(<span class="r61 r">writer</span>, <span class="t t">HtmlEncoder</span>.<span class="i property">Default</span>);
+                <b>return</b> <span class="r61 r">writer</span>.<a href="@1@System.Runtime/A.html#dd992896cbb21320" class="i method">ToString</a>();
+            }
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span>
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> Stubs
+        <b>private class</b> <a id="5230e46ea114fca5" href="../R/5230e46ea114fca5.html" target="n" data-glyph="4,1" class="t t"><span id="d45206d912268aaf">StubFileVersionProvider</span></a> : <span class="t t">IFileVersionProvider</span>
+        {
+            <b>public static</b> <a href="#5230e46ea114fca5" class="t t">StubFileVersionProvider</a> <a id="88e11720ce906b05" href="../R/88e11720ce906b05.html" target="n" data-glyph="102,2" class="i property">Instance</a> { <b>get</b>; } = <b>new</b> <a href="#5230e46ea114fca5" class="t constructor">StubFileVersionProvider</a>();
+ 
+            <b>public string</b> <a id="5ce5a777636f83ba" href="../R/5ce5a777636f83ba.html" target="n" data-glyph="72,2" class="i method">AddFileVersionToPath</a>(<span class="t t">PathString</span> <span id="r62 rd" class="r62 r">requestPathBase</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r63 rd" class="r63 r">path</span>)
+            {
+                <b>return</b> <span class="r63 r">path</span>;
+            }
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span>
+    }
+}
+</pre></td></tr></table></div></body></html>

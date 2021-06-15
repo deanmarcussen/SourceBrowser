@@ -1,0 +1,222 @@
+﻿<!DOCTYPE html>
+<html><head><title>SqlParserTests.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(213);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Orchard.Queries/SqlParserTests.cs" target="_top">Orchard.Queries\SqlParserTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Queries</span>.<span class="i">Sql</span>;
+<b>using</b> <span class="i">Xunit</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Provider</span>.<span class="i">SqlServer</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">OrchardCore</span>.<span class="i n">Queries</span>
+{
+    <b>public class</b> <a id="137fdf161021ada2" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="64436d80eccdfafe">SqlParserTests</span></a>
+    {
+        <b>private</b> <span class="i">ISqlDialect</span> <a id="d5b647491dccca56" href="../R/d5b647491dccca56.html" target="n" data-glyph="46,1" class="i field">_defaultDialect</a> = <b>new</b> <span class="i">SqlServerDialect</span>();
+        <b>private string</b> <a id="d7b7b503af48152c" href="../R/d7b7b503af48152c.html" target="n" data-glyph="46,1" class="i field">_defaultTablePrefix</a> = <span class="s">&quot;tp_&quot;</span>;
+ 
+        <b>private string</b> <a id="7ec24e9b47997a62" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">FormatSql</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r0 rd" class="r0 r">sql</span>)
+        {
+            <b>return</b> <span class="r0 r">sql</span>.<a href="@1@System.Runtime/A.html#69fc1d0aa6df8a90" class="i method">Replace</a>(<span class="s">&quot;\r\n&quot;</span>, <span class="s">&quot; &quot;</span>).<a href="@1@System.Runtime/A.html#987da5dfb39f1927" class="i method">Replace</a>(<span class="s">&#39;\n&#39;</span>, <span class="s">&#39; &#39;</span>);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a&quot;</span>, <span class="s">&quot;SELECT [a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select *&quot;</span>, <span class="s">&quot;SELECT *;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a&quot;</span>, <span class="s">&quot;SELECT [a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a, b&quot;</span>, <span class="s">&quot;SELECT [a], [b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a.b&quot;</span>, <span class="s">&quot;SELECT [tp_a].[b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a.b, c.d&quot;</span>, <span class="s">&quot;SELECT [tp_a].[b], [tp_c].[d];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a as a1&quot;</span>, <span class="s">&quot;SELECT [a] AS a1;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a as a1, b as b1&quot;</span>, <span class="s">&quot;SELECT [a] AS a1, [b] AS b1;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select Avg(a)&quot;</span>, <span class="s">&quot;SELECT Avg([a]);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select Min(*)&quot;</span>, <span class="s">&quot;SELECT Min(*);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select distinct a&quot;</span>, <span class="s">&quot;SELECT DISTINCT [a];&quot;</span>)]
+        <b>public void</b> <a id="f2b75440dcd577d1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseSelectClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r3 rd" class="r3 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r1 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r4 rd" class="r4 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r5 rd" class="r5 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r3 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r2 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r4 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from t&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_t];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a FROM t&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_t];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a FROM t as t1&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_t] AS t1;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a FROM t1, t2&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_t1], [tp_t2];&quot;</span>)]
+        <b>public void</b> <a id="86f05523c4916923" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseFromClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r6 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r9 rd" class="r9 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r10 rd" class="r10 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r8 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r7 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r9 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b.b1&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [tp_b].[b1];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b = c&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b] = [c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b = c and d&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b] = [c] AND [d];&quot;</span>)]
+        <b>public void</b> <a id="8fb3ae617d364e29" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseWhereClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r13 rd" class="r13 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r11 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r14 rd" class="r14 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r15 rd" class="r15 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r13 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r12 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r14 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where ~a&quot;</span>, <span class="s">&quot;SELECT [a] WHERE ~[a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = b&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = [b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = true&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = 1;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = false&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = 0;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = 1&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = 1;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = 1.234&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = 1.234;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = &#39;foo&#39;&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = &#39;foo&#39;;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a like &#39;%foo%&#39;&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] LIKE &#39;%foo%&#39;;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a not like &#39;%foo%&#39;&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] NOT LIKE &#39;%foo%&#39;;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a between b and c&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] BETWEEN [b] AND [c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a not between b and c&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] NOT BETWEEN [b] AND [c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = b or c = d&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = [b] OR [c] = [d];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where (a = b) or (c = d)&quot;</span>, <span class="s">&quot;SELECT [a] WHERE ([a] = [b]) OR ([c] = [d]);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where (a = b) or (c = d) and e&quot;</span>, <span class="s">&quot;SELECT [a] WHERE ([a] = [b]) OR ([c] = [d]) AND [e];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where test(arg)&quot;</span>, <span class="s">&quot;SELECT [a] WHERE test([arg]);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b in (1,2,3)&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b] IN (1, 2, 3);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b in (select b)&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b] IN (SELECT [b]);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b not in (1,2,3)&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b] NOT IN (1, 2, 3);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b not in (select b)&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b] NOT IN (SELECT [b]);&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where b = (select Avg(c) from d)&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [b] = (SELECT Avg([c]) FROM [tp_d]);&quot;</span>)]
+        <b>public void</b> <a id="757a880150e6ed1b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseExpression</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r18 rd" class="r18 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r16 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r19 rd" class="r19 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r20 rd" class="r20 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r18 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r17 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r19 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = @b&quot;</span>, <span class="s">&quot;SELECT [a] WHERE [a] = @b;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = @b limit @limit&quot;</span>, <span class="s">&quot;SELECT TOP (@limit) [a] WHERE [a] = @b;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a where a = @b limit @limit:10&quot;</span>, <span class="s">&quot;SELECT TOP (@limit) [a] WHERE [a] = @b;&quot;</span>)]
+        <b>public void</b> <a id="5519d2b8ffb40f56" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseParameters</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r23 rd" class="r23 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r21 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r24 rd" class="r24 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r25 rd" class="r25 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r23 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r22 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r24 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="f92ed58fb05945bf" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldDefineDefaultParametersValue</a>()
+        {
+            <b>var</b> <span id="r26 rd" class="r26 r">parameters</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;();
+            <b>var</b> <span id="r27 rd" class="r27 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="s">&quot;select a where a = @b:10&quot;</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <span class="r26 r">parameters</span>, <b>out</b> <b>var</b> <span id="r28 rd" class="r28 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r29 rd" class="r29 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r27 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(10, <span class="r26 r">parameters</span>[<span class="s">&quot;b&quot;</span>]);
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b inner join c on b.b1 = c.c1&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] INNER JOIN [tp_c] ON [tp_b].[b1] = [tp_c].[c1];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b as ba inner join c as ca on ba.b1 = ca.c1&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] AS ba INNER JOIN [tp_c] AS ca ON ba.[b1] = ca.[c1];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b inner join c on b.b1 = c.c1 left join d on d.a = d.b&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] INNER JOIN [tp_c] ON [tp_b].[b1] = [tp_c].[c1] LEFT JOIN [tp_d] ON [tp_d].[a] = [tp_d].[b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b inner join c on b.b1 = c.c1 and b.b2 = c.c2&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] INNER JOIN [tp_c] ON [tp_b].[b1] = [tp_c].[c1] AND [tp_b].[b2] = [tp_c].[c2];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b inner join c on b.b1 = c.c1 and b.b2 = @param&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] INNER JOIN [tp_c] ON [tp_b].[b1] = [tp_c].[c1] AND [tp_b].[b2] = @param;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b inner join c on 1 = 1 and @param = &#39;foo&#39;&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] INNER JOIN [tp_c] ON 1 = 1 AND @param = &#39;foo&#39;;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b inner join c on 1 = @param left join d on d.a = @param left join e on e.a = &#39;foo&#39;&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] INNER JOIN [tp_c] ON 1 = @param LEFT JOIN [tp_d] ON [tp_d].[a] = @param LEFT JOIN [tp_e] ON [tp_e].[a] = &#39;foo&#39;;&quot;</span>)]
+        <b>public void</b> <a id="2eb23aac0f4b87ec" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseJoinClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r30 rd" class="r30 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r32 rd" class="r32 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r30 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r33 rd" class="r33 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r34 rd" class="r34 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r32 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r31 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r33 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a order by b&quot;</span>, <span class="s">&quot;SELECT [a] ORDER BY [b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a order by b, c&quot;</span>, <span class="s">&quot;SELECT [a] ORDER BY [b], [c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a order by b.c&quot;</span>, <span class="s">&quot;SELECT [a] ORDER BY [tp_b].[c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a from b as b1 order by b1.c&quot;</span>, <span class="s">&quot;SELECT [a] FROM [tp_b] AS b1 ORDER BY b1.[c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a order by b asc&quot;</span>, <span class="s">&quot;SELECT [a] ORDER BY [b] ASC;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a order by b desc&quot;</span>, <span class="s">&quot;SELECT [a] ORDER BY [b] DESC;&quot;</span>)]
+        <b>public void</b> <a id="2509d7114d540620" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseOrderByClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r36 rd" class="r36 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r37 rd" class="r37 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r35 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r38 rd" class="r38 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r39 rd" class="r39 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r37 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r36 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r38 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a limit 100&quot;</span>, <span class="s">&quot;SELECT TOP (100) [a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a limit 100 offset 10&quot;</span>, <span class="s">&quot;SELECT [a] OFFSET 10 ROWS FETCH NEXT 100 ROWS ONLY;&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select a offset 10&quot;</span>, <span class="s">&quot;SELECT [a] OFFSET 10 ROWS;&quot;</span>)]
+        <b>public void</b> <a id="79f484d23b6de421" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseLimitOffsetClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r40 rd" class="r40 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r41 rd" class="r41 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r42 rd" class="r42 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r40 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r43 rd" class="r43 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r44 rd" class="r44 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r42 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r41 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r43 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select count(a) group by b&quot;</span>, <span class="s">&quot;SELECT count([a]) GROUP BY [b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select count(a) group by b, c&quot;</span>, <span class="s">&quot;SELECT count([a]) GROUP BY [b], [c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select count(a) group by b.c&quot;</span>, <span class="s">&quot;SELECT count([a]) GROUP BY [tp_b].[c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select count(a) from b as b1 group by b1.c&quot;</span>, <span class="s">&quot;SELECT count([a]) FROM [tp_b] AS b1 GROUP BY b1.[c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select Month(a) as m group by Month(a)&quot;</span>, <span class="s">&quot;SELECT Month([a]) AS m GROUP BY Month([a]);&quot;</span>)]
+        <b>public void</b> <a id="e226cda65fe1b53a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseGroupByClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r46 rd" class="r46 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r47 rd" class="r47 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r45 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r48 rd" class="r48 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r49 rd" class="r49 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r47 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r46 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r48 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT COUNT(CustomerID) GROUP BY Country HAVING COUNT(CustomerID) &gt; 5&quot;</span>, <span class="s">&quot;SELECT COUNT([CustomerID]) GROUP BY [Country] HAVING COUNT([CustomerID]) &gt; 5;&quot;</span>)]
+        <b>public void</b> <a id="9db23716b68086e5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseHavingClause</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r50 rd" class="r50 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r51 rd" class="r51 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r52 rd" class="r52 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r50 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r53 rd" class="r53 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r54 rd" class="r54 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r52 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r51 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r53 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="d3ef1f8d11cd57d2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldReturnErrorMessage</a>()
+        {
+            <b>var</b> <span id="r55 rd" class="r55 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="s">&quot;SEL a&quot;</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r56 rd" class="r56 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r57 rd" class="r57 r">messages</span>);
+ 
+            <span class="i">Assert</span>.<span class="i">False</span>(<span class="r55 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Single</span>(<span class="r57 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">Contains</span>(<span class="s">&quot;at line:0, col:0&quot;</span>, <span class="r57 r">messages</span>.<span class="i">First</span>());
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a; -- this is a comment&quot;</span>, <span class="s">&quot;SELECT [a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT a; \n-- this is a comment&quot;</span>, <span class="s">&quot;SELECT [a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT /* comment */ a;&quot;</span>, <span class="s">&quot;SELECT [a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;SELECT /* comment \n comment */ a;&quot;</span>, <span class="s">&quot;SELECT [a];&quot;</span>)]
+        <b>public void</b> <a id="c87960d78adc158b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseComments</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r58 rd" class="r58 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r59 rd" class="r59 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r60 rd" class="r60 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r58 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r61 rd" class="r61 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r62 rd" class="r62 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r60 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r59 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r61 r">rawQuery</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over () from a&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER () FROM [tp_a];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over () a from b&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER () AS a FROM [tp_b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over (partition by a) from b&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER (PARTITION BY [a]) FROM [tp_b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over (order by a) from b&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER (ORDER BY [a]) FROM [tp_b];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over (order by a, b) from c&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER (ORDER BY [a], [b]) FROM [tp_c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over (order by a asc, b desc, c desc) from d&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER (ORDER BY [a] ASC, [b] DESC, [c] DESC) FROM [tp_d];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over (partition by a order by b) from c&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER (PARTITION BY [a] ORDER BY [b]) FROM [tp_c];&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;select COUNT(1) over () a, MAX(b) over () c from d&quot;</span>, <span class="s">&quot;SELECT COUNT(1) OVER () AS a, MAX([b]) OVER () AS c FROM [tp_d];&quot;</span>)]
+        <b>public void</b> <a id="f6061df94ef149b9" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldParseWindowFunction</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r63 rd" class="r63 r">sql</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r64 rd" class="r64 r">expectedSql</span>)
+        {
+            <b>var</b> <span id="r65 rd" class="r65 r">result</span> = <span class="i">SqlParser</span>.<span class="i">TryParse</span>(<span class="r63 r">sql</span>, <a href="#d5b647491dccca56" class="i field">_defaultDialect</a>, <a href="#d7b7b503af48152c" class="i field">_defaultTablePrefix</a>, <b>null</b>, <b>out</b> <b>var</b> <span id="r66 rd" class="r66 r">rawQuery</span>, <b>out</b> <b>var</b> <span id="r67 rd" class="r67 r">messages</span>);
+            <span class="i">Assert</span>.<span class="i">True</span>(<span class="r65 r">result</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r64 r">expectedSql</span>, <span class="i">FormatSql</span>(<span class="r66 r">rawQuery</span>));
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

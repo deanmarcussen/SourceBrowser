@@ -1,0 +1,214 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentLinkTagHelper.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(205);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents.TagHelpers/ContentLinkTagHelper.cs" target="_top">ContentLinkTagHelper.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents.TagHelpers" target="_top">src\OrchardCore\OrchardCore.Contents.TagHelpers\OrchardCore.Contents.TagHelpers.csproj</a> (OrchardCore.Contents.TagHelpers)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">TagHelpers</span>
+{
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;a&quot;</span>, <span class="i property">Attributes</span> = <a href="#032df2984b8b6168" class="i field">ContentLinkAdmin</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;a&quot;</span>, <span class="i property">Attributes</span> = <a href="#f40b093fa1d00ce2" class="i field">ContentLinkDisplay</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;a&quot;</span>, <span class="i property">Attributes</span> = <a href="#c088ba1a6609a5c7" class="i field">ContentLinkEdit</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;a&quot;</span>, <span class="i property">Attributes</span> = <a href="#5fbcdae044af897e" class="i field">ContentLinkRemove</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;a&quot;</span>, <span class="i property">Attributes</span> = <a href="#42b190a45bb5b147" class="i field">ContentLinkCreate</a>)]
+    <b>public class</b> <a id="13d1d251933b9631" href="R/13d1d251933b9631.html" target="n" data-glyph="0,0" class="t t">ContentLinkTagHelper</a> : <span class="t t">TagHelper</span>
+    {
+        <b>private const string</b> <a id="032df2984b8b6168" href="R/032df2984b8b6168.html" target="n" data-glyph="10,1" class="i field">ContentLinkAdmin</a> = <span class="s">&quot;admin-for&quot;</span>;
+        <b>private const string</b> <a id="f40b093fa1d00ce2" href="R/f40b093fa1d00ce2.html" target="n" data-glyph="10,1" class="i field">ContentLinkDisplay</a> = <span class="s">&quot;display-for&quot;</span>;
+        <b>private const string</b> <a id="c088ba1a6609a5c7" href="R/c088ba1a6609a5c7.html" target="n" data-glyph="10,1" class="i field">ContentLinkEdit</a> = <span class="s">&quot;edit-for&quot;</span>;
+        <b>private const string</b> <a id="5fbcdae044af897e" href="R/5fbcdae044af897e.html" target="n" data-glyph="10,1" class="i field">ContentLinkRemove</a> = <span class="s">&quot;remove-for&quot;</span>;
+        <b>private const string</b> <a id="42b190a45bb5b147" href="R/42b190a45bb5b147.html" target="n" data-glyph="10,1" class="i field">ContentLinkCreate</a> = <span class="s">&quot;create-for&quot;</span>;
+        <b>private const string</b> <a id="198aa7eea910c188" href="R/198aa7eea910c188.html" target="n" data-glyph="10,1" class="i field">RoutePrefix</a> = <span class="s">&quot;asp-route-&quot;</span>;
+ 
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <a id="ff313896f1d38e0b" href="R/ff313896f1d38e0b.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="t t">IUrlHelperFactory</span> <a id="7791201cd7bb0669" href="R/7791201cd7bb0669.html" target="n" data-glyph="46,1" class="i field">_urlHelperFactory</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="0e0347f7829a4661" href="R/0e0347f7829a4661.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+ 
+        <b>public</b> <a id="b7ab6fbd797add73" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentLinkTagHelper</a>(
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <span id="r0 rd" class="r0 r">contentManager</span>,
+            <span class="t t">IUrlHelperFactory</span> <span id="r1 rd" class="r1 r">urlHelperFactory</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r2 rd" class="r2 r">contentDefinitionManager</span>)
+        {
+            <a href="#0e0347f7829a4661" class="i field">_contentDefinitionManager</a> = <span class="r2 r">contentDefinitionManager</span>;
+            <a href="#7791201cd7bb0669" class="i field">_urlHelperFactory</a> = <span class="r1 r">urlHelperFactory</span>;
+            <a href="#ff313896f1d38e0b" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+        }
+ 
+        [<span class="t constructor">ViewContext</span>]
+        [<span class="t constructor">HtmlAttributeNotBound</span>]
+        <b>public</b> <span class="t t">ViewContext</span> <a id="c6d439c162d12087" href="R/c6d439c162d12087.html" target="n" data-glyph="102,1" class="i property">ViewContext</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Links to the admin page of this content item.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#032df2984b8b6168" class="i field">ContentLinkAdmin</a>)]
+        <b>public</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <a id="de21e6a299a75a1b" href="R/de21e6a299a75a1b.html" target="n" data-glyph="102,1" class="i property">AdminFor</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Links to the display page of this content item.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#f40b093fa1d00ce2" class="i field">ContentLinkDisplay</a>)]
+        <b>public</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <a id="e5b9baa74742707f" href="R/e5b9baa74742707f.html" target="n" data-glyph="102,1" class="i property">DisplayFor</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Links to the edition page of this content item.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#c088ba1a6609a5c7" class="i field">ContentLinkEdit</a>)]
+        <b>public</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <a id="ac6ecb8070064530" href="R/ac6ecb8070064530.html" target="n" data-glyph="102,1" class="i property">EditFor</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Links to the removal page of this content item.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#5fbcdae044af897e" class="i field">ContentLinkRemove</a>)]
+        <b>public</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <a id="8f06e6666f0a952e" href="R/8f06e6666f0a952e.html" target="n" data-glyph="102,1" class="i property">RemoveFor</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Links to the creation page of this content item.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#42b190a45bb5b147" class="i field">ContentLinkCreate</a>)]
+        <b>public</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <a id="39b436ede2c95952" href="R/39b436ede2c95952.html" target="n" data-glyph="102,1" class="i property">CreateFor</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="3d4abd2178a776ea" href="R/3d4abd2178a776ea.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="t t">TagHelperContext</span> <span id="r3 rd" class="r3 r">tagHelperContext</span>, <span class="t t">TagHelperOutput</span> <span id="r4 rd" class="r4 r">output</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="t t">ContentItemMetadata</a> <span id="r5 rd" class="r5 r">metadata</span> = <b>null</b>;
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r6 rd" class="r6 r">contentItem</span> = <b>null</b>;
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">urlHelper</span> = <a href="#7791201cd7bb0669" class="i field">_urlHelperFactory</a>.<span class="i method">GetUrlHelper</span>(<a href="#c6d439c162d12087" class="i property">ViewContext</a>);
+ 
+            <b>if</b> (<a href="#e5b9baa74742707f" class="i property">DisplayFor</a> != <b>null</b>)
+            {
+                <span class="r6 r">contentItem</span> = <a href="#e5b9baa74742707f" class="i property">DisplayFor</a>;
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#04518e40ddd7b32d" class="k">var</a> <span id="r8 rd" class="r8 r">previewAspect</span> = <b>await</b> <a href="#ff313896f1d38e0b" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#04518e40ddd7b32d" class="t t">PreviewAspect</a>&gt;(<span class="r6 r">contentItem</span>);
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r8 r">previewAspect</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#04a44b74b09d1764" class="i property">PreviewUrl</a>))
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">previewUrl</span> = <span class="r8 r">previewAspect</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#04a44b74b09d1764" class="i property">PreviewUrl</a>;
+                    <b>if</b> (!<span class="r9 r">previewUrl</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;~/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                    {
+                        <b>if</b> (<span class="r9 r">previewUrl</span>.<a href="@1@System.Runtime/A.html#df82e02d721cc7f5" class="i method">StartsWith</a>(<span class="s">&#39;/&#39;</span>))
+                        {
+                            <span class="r9 r">previewUrl</span> = <span class="s">&#39;~&#39;</span> + <span class="r9 r">previewUrl</span>;
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r9 r">previewUrl</span> = <span class="s">&quot;~/&quot;</span> + <span class="r9 r">previewUrl</span>;
+                        }
+                    }
+ 
+                    <span class="r4 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;href&quot;</span>, <span class="r7 r">urlHelper</span>.<span class="i method">Content</span>(<span class="r9 r">previewUrl</span>));
+                    <b>return</b>;
+                }
+ 
+                <span class="r5 r">metadata</span> = <b>await</b> <a href="#ff313896f1d38e0b" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="t t">ContentItemMetadata</a>&gt;(<a href="#e5b9baa74742707f" class="i property">DisplayFor</a>);
+ 
+                <b>if</b> (<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#db290d51f53c7c14" class="i property">DisplayRouteValues</a> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#2273e6b21fc6de43" class="i method">ApplyRouteValues</a>(<span class="r3 r">tagHelperContext</span>, <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#db290d51f53c7c14" class="i property">DisplayRouteValues</a>);
+ 
+                <span class="r4 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;href&quot;</span>, <span class="r7 r">urlHelper</span>.<span class="i method">Action</span>(<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#db290d51f53c7c14" class="i property">DisplayRouteValues</a>[<span class="s">&quot;action&quot;</span>].<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>(), <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#db290d51f53c7c14" class="i property">DisplayRouteValues</a>));
+            }
+            <b>else</b> <b>if</b> (<a href="#ac6ecb8070064530" class="i property">EditFor</a> != <b>null</b>)
+            {
+                <span class="r6 r">contentItem</span> = <a href="#ac6ecb8070064530" class="i property">EditFor</a>;
+                <span class="r5 r">metadata</span> = <b>await</b> <a href="#ff313896f1d38e0b" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="t t">ContentItemMetadata</a>&gt;(<a href="#ac6ecb8070064530" class="i property">EditFor</a>);
+ 
+                <b>if</b> (<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#60dedc09b0b7ed80" class="i property">EditorRouteValues</a> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#2273e6b21fc6de43" class="i method">ApplyRouteValues</a>(<span class="r3 r">tagHelperContext</span>, <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#60dedc09b0b7ed80" class="i property">EditorRouteValues</a>);
+ 
+                <span class="r4 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;href&quot;</span>, <span class="r7 r">urlHelper</span>.<span class="i method">Action</span>(<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#60dedc09b0b7ed80" class="i property">EditorRouteValues</a>[<span class="s">&quot;action&quot;</span>].<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>(), <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#60dedc09b0b7ed80" class="i property">EditorRouteValues</a>));
+            }
+            <b>else</b> <b>if</b> (<a href="#de21e6a299a75a1b" class="i property">AdminFor</a> != <b>null</b>)
+            {
+                <span class="r6 r">contentItem</span> = <a href="#de21e6a299a75a1b" class="i property">AdminFor</a>;
+                <span class="r5 r">metadata</span> = <b>await</b> <a href="#ff313896f1d38e0b" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="t t">ContentItemMetadata</a>&gt;(<a href="#de21e6a299a75a1b" class="i property">AdminFor</a>);
+ 
+                <b>if</b> (<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#412b183f7fc7b388" class="i property">AdminRouteValues</a> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#2273e6b21fc6de43" class="i method">ApplyRouteValues</a>(<span class="r3 r">tagHelperContext</span>, <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#412b183f7fc7b388" class="i property">AdminRouteValues</a>);
+ 
+                <span class="r4 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;href&quot;</span>, <span class="r7 r">urlHelper</span>.<span class="i method">Action</span>(<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#412b183f7fc7b388" class="i property">AdminRouteValues</a>[<span class="s">&quot;action&quot;</span>].<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>(), <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#412b183f7fc7b388" class="i property">AdminRouteValues</a>));
+            }
+            <b>else</b> <b>if</b> (<a href="#8f06e6666f0a952e" class="i property">RemoveFor</a> != <b>null</b>)
+            {
+                <span class="r6 r">contentItem</span> = <a href="#8f06e6666f0a952e" class="i property">RemoveFor</a>;
+                <span class="r5 r">metadata</span> = <b>await</b> <a href="#ff313896f1d38e0b" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="t t">ContentItemMetadata</a>&gt;(<a href="#8f06e6666f0a952e" class="i property">RemoveFor</a>);
+ 
+                <b>if</b> (<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bfe7c5602f2d64e1" class="i property">RemoveRouteValues</a> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#2273e6b21fc6de43" class="i method">ApplyRouteValues</a>(<span class="r3 r">tagHelperContext</span>, <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bfe7c5602f2d64e1" class="i property">RemoveRouteValues</a>);
+ 
+                <span class="r4 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;href&quot;</span>, <span class="r7 r">urlHelper</span>.<span class="i method">Action</span>(<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bfe7c5602f2d64e1" class="i property">RemoveRouteValues</a>[<span class="s">&quot;action&quot;</span>].<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>(), <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#bfe7c5602f2d64e1" class="i property">RemoveRouteValues</a>));
+            }
+            <b>else</b> <b>if</b> (<a href="#39b436ede2c95952" class="i property">CreateFor</a> != <b>null</b>)
+            {
+                <span class="r6 r">contentItem</span> = <a href="#39b436ede2c95952" class="i property">CreateFor</a>;
+                <span class="r5 r">metadata</span> = <b>await</b> <a href="#ff313896f1d38e0b" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="t t">ContentItemMetadata</a>&gt;(<a href="#39b436ede2c95952" class="i property">CreateFor</a>);
+ 
+                <b>if</b> (<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f20b5d730e86839b" class="i property">CreateRouteValues</a> == <b>null</b>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#2273e6b21fc6de43" class="i method">ApplyRouteValues</a>(<span class="r3 r">tagHelperContext</span>, <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f20b5d730e86839b" class="i property">CreateRouteValues</a>);
+ 
+                <span class="r4 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;href&quot;</span>, <span class="r7 r">urlHelper</span>.<span class="i method">Action</span>(<span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f20b5d730e86839b" class="i property">CreateRouteValues</a>[<span class="s">&quot;action&quot;</span>].<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>(), <span class="r5 r">metadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#f20b5d730e86839b" class="i property">CreateRouteValues</a>));
+            }
+ 
+            <span class="c">// A self closing anchor tag will be rendered using the display text</span>
+            <b>if</b> (<span class="r4 r">output</span>.<span class="i property">TagMode</span> == <span class="t t">TagMode</span>.<span class="i field">SelfClosing</span> &amp;&amp; <span class="r5 r">metadata</span> != <b>null</b>)
+            {
+                <span class="r4 r">output</span>.<span class="i property">TagMode</span> = <span class="t t">TagMode</span>.<span class="i field">StartTagAndEndTag</span>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a>))
+                {
+                    <span class="r4 r">output</span>.<span class="i property">Content</span>.<span class="i method">Append</span>(<span class="r6 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a>);
+                }
+                <b>else</b>
+                {
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r10 rd" class="r10 r">typeDefinition</span> = <a href="#0e0347f7829a4661" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="r6 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+                    <span class="r4 r">output</span>.<span class="i property">Content</span>.<span class="i method">Append</span>(<span class="r10 r">typeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#c2601c414b0880e3" class="i method">ToString</a>());
+                }
+            }
+ 
+            <b>return</b>;
+        }
+ 
+        <b>private void</b> <a id="2273e6b21fc6de43" href="R/2273e6b21fc6de43.html" target="n" data-glyph="76,1" class="i method">ApplyRouteValues</a>(<span class="t t">TagHelperContext</span> <span id="r11 rd" class="r11 r">tagHelperContext</span>, <span class="t t">RouteValueDictionary</span> <span id="r12 rd" class="r12 r">route</span>)
+        {
+            <b>foreach</b> (<b>var</b> <span id="r13 rd" class="r13 r">attribute</span> <b>in</b> <span class="r11 r">tagHelperContext</span>.<span class="i property">AllAttributes</span>)
+            {
+                <b>if</b> (<span class="r13 r">attribute</span>.<span class="i property">Name</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="#198aa7eea910c188" class="i field">RoutePrefix</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <span class="r12 r">route</span>.<span class="i method">Add</span>(<span class="r13 r">attribute</span>.<span class="i property">Name</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#198aa7eea910c188" class="i field">RoutePrefix</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>), <span class="r13 r">attribute</span>.<span class="i property">Value</span>);
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,355 @@
+﻿<!DOCTYPE html>
+<html><head><title>Page.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(346);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/RazorPages/Page.cs" target="_top">RazorPages\Page.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Razor</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Title</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Zones</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">RazorPages</span>
+{
+    <b>public abstract class</b> <a id="00cf6c182b89f2eb" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="614b54412358412a">Page</span></a> : <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">RazorPages</span>.<span class="t t">Page</span>
+    {
+        <b>private</b> <a href="../IDisplayHelper.cs.html#873b3e4bef8a4bdf" class="t t">IDisplayHelper</a> <a id="0ebc5f60f6a30c32" href="../R/0ebc5f60f6a30c32.html" target="n" data-glyph="46,1" class="i field">_displayHelper</a>;
+        <b>private</b> <a href="../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a> <a id="9c7a3bcd7cb5c726" href="../R/9c7a3bcd7cb5c726.html" target="n" data-glyph="46,1" class="i field">_shapeFactory</a>;
+        <b>private</b> <a href="../OrchardDisplayHelper.cs.html#a11c74be96faffbe" class="t t">IOrchardDisplayHelper</a> <a id="e7e4a9fc02c41274" href="../R/e7e4a9fc02c41274.html" target="n" data-glyph="46,1" class="i field">_orchardHelper</a>;
+        <b>private</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e627b55b9075d808" class="t t">ISite</a> <a id="70447d10733c7b2a" href="../R/70447d10733c7b2a.html" target="n" data-glyph="46,1" class="i field">_site</a>;
+ 
+        <b>public override</b> <span class="t t">ViewContext</span> <a id="e617b436786dbb3c" href="../R/e617b436786dbb3c.html" target="n" data-glyph="102,1" class="i property">ViewContext</a>
+        {
+            <b>get</b> =&gt; <b>base</b>.<span class="i property">ViewContext</span>;
+            <b>set</b>
+            {
+                <span class="c">// We make the ViewContext available to other sub-systems that need it.</span>
+                <a href="../ViewContextAccessor.cs.html#e4beefc493c22244" class="k">var</a> <span id="r0 rd" class="r0 r">viewContextAccessor</span> = <b>value</b>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<a href="../ViewContextAccessor.cs.html#e4beefc493c22244" class="t t">ViewContextAccessor</a>&gt;();
+                <b>base</b>.<span class="i property">ViewContext</span> = <span class="r0 r">viewContextAccessor</span>.<a href="../ViewContextAccessor.cs.html#508e067b11296606" class="i property">ViewContext</a> = <b>value</b>;
+            }
+        }
+ 
+        <b>private void</b> <a id="2f7629b81befb1da" href="../R/2f7629b81befb1da.html" target="n" data-glyph="76,1" class="i method">EnsureDisplayHelper</a>()
+        {
+            <b>if</b> (<a href="#0ebc5f60f6a30c32" class="i field">_displayHelper</a> == <b>null</b>)
+            {
+                <a href="#0ebc5f60f6a30c32" class="i field">_displayHelper</a> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<a href="../IDisplayHelper.cs.html#873b3e4bef8a4bdf" class="t t">IDisplayHelper</a>&gt;();
+            }
+        }
+ 
+        <b>private void</b> <a id="56db75aae23b3874" href="../R/56db75aae23b3874.html" target="n" data-glyph="76,1" class="i method">EnsureShapeFactory</a>()
+        {
+            <b>if</b> (<a href="#9c7a3bcd7cb5c726" class="i field">_shapeFactory</a> == <b>null</b>)
+            {
+                <a href="#9c7a3bcd7cb5c726" class="i field">_shapeFactory</a> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<a href="../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a>&gt;();
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets a dynamic shape factory to create new shapes.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">example</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Usage:</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">code</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> await New.MyShape()</span>
+        <span class="c">///</span><span class="c"> await New.MyShape(A: 1, B: &quot;Some text&quot;)</span>
+        <span class="c">///</span><span class="c"> (await New.MyShape()).A(1).B(&quot;Some text&quot;)</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">code</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">example</span><span class="c">&gt;</span>
+        <b>public dynamic</b> <a id="fd43a7a10c9a2a6f" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">New</a> =&gt; <a href="#85feaf02d2da7fb8" class="i property">Factory</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> to create new shapes.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a> <a id="85feaf02d2da7fb8" href="../R/85feaf02d2da7fb8.html" target="n" data-glyph="102,1" class="i property">Factory</a>
+        {
+            <b>get</b>
+            {
+                <a href="#56db75aae23b3874" class="i method">EnsureShapeFactory</a>();
+                <b>return</b> <a href="#9c7a3bcd7cb5c726" class="i field">_shapeFactory</a>;
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Renders a shape.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r">shape</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The shape.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="dabab04e7baf1559" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DisplayAsync</a>(<b>dynamic</b> <span id="r1 rd" class="r1 r">shape</span>)
+        {
+            <b>if</b> (<span class="r1 r">shape</span> <b>is</b> <a href="../IShape.cs.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r2 rd" class="r2 r">s</span>)
+            {
+                <a href="#2f7629b81befb1da" class="i method">EnsureDisplayHelper</a>();
+                <b>return</b> <a href="#0ebc5f60f6a30c32" class="i field">_displayHelper</a>.<a href="../IDisplayHelper.cs.html#b675a7627587e254" class="i method">ShapeExecuteAsync</a>(<span class="r2 r">s</span>);
+            }
+ 
+            <b>if</b> (<span class="r1 r">shape</span> <b>is</b> <span class="t t">IHtmlContent</span> <span id="r3 rd" class="r3 r">hc</span>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r3 r">hc</span>);
+            }
+ 
+            <b>if</b> (<span class="r1 r">shape</span> <b>is string</b> <span id="r4 rd" class="r4 r">str</span>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<span class="t t">IHtmlContent</span>&gt;(<b>new</b> <a href="../Html/HtmlContentString.cs.html#652dcc8bd3b414e5" class="t constructor">HtmlContentString</a>(<span class="r4 r">str</span>));
+            }
+ 
+            <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;DisplayAsync requires an instance of IShape&quot;</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Renders a shape.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r5 r">shape</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The shape.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="a9d01679760ba368" href="../R/a9d01679760ba368.html" target="n" data-glyph="72,1" class="i method">DisplayAsync</a>(<a href="../IShape.cs.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r5 rd" class="r5 r">shape</span>)
+        {
+            <a href="#2f7629b81befb1da" class="i method">EnsureDisplayHelper</a>();
+            <b>return</b> <a href="#0ebc5f60f6a30c32" class="i field">_displayHelper</a>.<a href="../IDisplayHelper.cs.html#b675a7627587e254" class="i method">ShapeExecuteAsync</a>(<span class="r5 r">shape</span>);
+        }
+ 
+        <b>public</b> <a href="../OrchardDisplayHelper.cs.html#a11c74be96faffbe" class="t t">IOrchardDisplayHelper</a> <a id="ae7cae2410af32b6" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Orchard</a>
+        {
+            <b>get</b>
+            {
+                <b>if</b> (<a href="#e7e4a9fc02c41274" class="i field">_orchardHelper</a> == <b>null</b>)
+                {
+                    <a href="#2f7629b81befb1da" class="i method">EnsureDisplayHelper</a>();
+                    <a href="#e7e4a9fc02c41274" class="i field">_orchardHelper</a> = <b>new</b> <a href="../OrchardDisplayHelper.cs.html#2aa960ddb76e836c" class="t constructor">OrchardDisplayHelper</a>(<span class="i property">HttpContext</span>, <a href="#0ebc5f60f6a30c32" class="i field">_displayHelper</a>);
+                }
+ 
+                <b>return</b> <a href="#e7e4a9fc02c41274" class="i field">_orchardHelper</a>;
+            }
+        }
+ 
+        <b>private</b> <a href="../Zones/ZoneHoldingBehavior.cs.html#d5c0b8db92fbeb7b" class="t t">IZoneHolding</a> <a id="c523e34eb0c94f98" href="../R/c523e34eb0c94f98.html" target="n" data-glyph="46,1" class="i field">_themeLayout</a>;
+ 
+        <b>public</b> <a href="../Zones/ZoneHoldingBehavior.cs.html#d5c0b8db92fbeb7b" class="t t">IZoneHolding</a> <a id="5bd85ef015e9ada3" href="../R/5bd85ef015e9ada3.html" target="n" data-glyph="102,1" class="i property">ThemeLayout</a>
+        {
+            <b>get</b>
+            {
+                <b>if</b> (<a href="#c523e34eb0c94f98" class="i field">_themeLayout</a> == <b>null</b>)
+                {
+                    <a href="#c523e34eb0c94f98" class="i field">_themeLayout</a> = <span class="i property">HttpContext</span>.<span class="i property">Features</span>.<span class="i method">Get</span>&lt;<a href="../Razor/RazorViewFeature.cs.html#4b925b4175f7b077" class="t t">RazorViewFeature</a>&gt;()?.<a href="../Razor/RazorViewFeature.cs.html#3bc6c9a774d8d4ab" class="i property">ThemeLayout</a>;
+                }
+ 
+                <b>return</b> <a href="#c523e34eb0c94f98" class="i field">_themeLayout</a>;
+            }
+ 
+            <b>set</b>
+            {
+                <a href="#c523e34eb0c94f98" class="i field">_themeLayout</a> = <b>value</b>;
+            }
+        }
+ 
+        <b>public string</b> <a id="804d76e330542209" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">ViewLayout</a>
+        {
+            <b>get</b>
+            {
+                <b>if</b> (<a href="#5bd85ef015e9ada3" class="i property">ThemeLayout</a> <b>is</b> <a href="../IShape.cs.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r6 rd" class="r6 r">layout</span>)
+                {
+                    <b>if</b> (<span class="r6 r">layout</span>.<a href="../IShape.cs.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="../Shapes/ShapeMetadata.cs.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="../Shapes/AlternatesCollection.cs.html#100393117724eae0" class="i property">Count</a> &gt; 0)
+                    {
+                        <b>return</b> <span class="r6 r">layout</span>.<a href="../IShape.cs.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="../Shapes/ShapeMetadata.cs.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="../Shapes/AlternatesCollection.cs.html#519c8524ed282401" class="i property">Last</a>;
+                    }
+ 
+                    <b>return</b> <span class="r6 r">layout</span>.<a href="../IShape.cs.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="../Shapes/ShapeMetadata.cs.html#75eacf8c582a4ce1" class="i property">Type</a>;
+                }
+ 
+                <b>return</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+            }
+ 
+            <b>set</b>
+            {
+                <b>if</b> (<a href="#5bd85ef015e9ada3" class="i property">ThemeLayout</a> <b>is</b> <a href="../IShape.cs.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r7 rd" class="r7 r">layout</span>)
+                {
+                    <b>if</b> (<span class="r7 r">layout</span>.<a href="../IShape.cs.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="../Shapes/ShapeMetadata.cs.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="../Shapes/AlternatesCollection.cs.html#811d3cb29c54ba99" class="i method">Contains</a>(<b>value</b>))
+                    {
+                        <b>if</b> (<span class="r7 r">layout</span>.<a href="../IShape.cs.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="../Shapes/ShapeMetadata.cs.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="../Shapes/AlternatesCollection.cs.html#519c8524ed282401" class="i property">Last</a> == <b>value</b>)
+                        {
+                            <b>return</b>;
+                        }
+ 
+                        <span class="r7 r">layout</span>.<a href="../IShape.cs.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="../Shapes/ShapeMetadata.cs.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="../Shapes/AlternatesCollection.cs.html#079406c3904d4533" class="i method">Remove</a>(<b>value</b>);
+                    }
+ 
+                    <span class="r7 r">layout</span>.<a href="../IShape.cs.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="../Shapes/ShapeMetadata.cs.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="../Shapes/AlternatesCollection.cs.html#0fa880c465ffac54" class="i method">Add</a>(<b>value</b>);
+                }
+            }
+        }
+ 
+        <b>private</b> <a href="../Title/IPageTitleBuilder.cs.html#52e8e3f97c75779b" class="t t">IPageTitleBuilder</a> <a id="6ae3640c99961c71" href="../R/6ae3640c99961c71.html" target="n" data-glyph="46,1" class="i field">_pageTitleBuilder</a>;
+ 
+        <b>public</b> <a href="../Title/IPageTitleBuilder.cs.html#52e8e3f97c75779b" class="t t">IPageTitleBuilder</a> <a id="97c3a8036bc4a636" href="../R/97c3a8036bc4a636.html" target="n" data-glyph="102,1" class="i property">Title</a>
+        {
+            <b>get</b>
+            {
+                <b>if</b> (<a href="#6ae3640c99961c71" class="i field">_pageTitleBuilder</a> == <b>null</b>)
+                {
+                    <a href="#6ae3640c99961c71" class="i field">_pageTitleBuilder</a> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<a href="../Title/IPageTitleBuilder.cs.html#52e8e3f97c75779b" class="t t">IPageTitleBuilder</a>&gt;();
+                }
+ 
+                <b>return</b> <a href="#6ae3640c99961c71" class="i field">_pageTitleBuilder</a>;
+            }
+        }
+ 
+        <b>private</b> <span class="t t">IViewLocalizer</span> <a id="229ea3d64e0a832e" href="../R/229ea3d64e0a832e.html" target="n" data-glyph="46,1" class="i field">_t</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IViewLocalizer</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> instance for the current view.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <span class="t t">IViewLocalizer</span> <a id="b70e3d94c5c2f6dd" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">T</a>
+        {
+            <b>get</b>
+            {
+                <b>if</b> (<a href="#229ea3d64e0a832e" class="i field">_t</a> == <b>null</b>)
+                {
+                    <a href="#229ea3d64e0a832e" class="i field">_t</a> = <span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IViewLocalizer</span>&gt;();
+                    ((<span class="t t">IViewContextAware</span>)<a href="#229ea3d64e0a832e" class="i field">_t</a>).<span class="i method">Contextualize</span>(<a href="#e617b436786dbb3c" class="i property">ViewContext</a>);
+                }
+ 
+                <b>return</b> <a href="#229ea3d64e0a832e" class="i field">_t</a>;
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Adds a segment to the title and returns all segments.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r8 r">segment</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The segment to add to the title.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r9 r">position</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">Optional. The position of the segment in the title.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r10 r">separator</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The html string that should separate all segments.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">And </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IHtmlContent</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> instance representing the full title.</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public</b> <span class="t t">IHtmlContent</span> <a id="5e7c6fdd11251902" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderTitleSegments</a>(<span class="t t">IHtmlContent</span> <span id="r8 rd" class="r8 r">segment</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">position</span> = <span class="s">&quot;0&quot;</span>, <span class="t t">IHtmlContent</span> <span id="r10 rd" class="r10 r">separator</span> = <b>null</b>)
+        {
+            <a href="#97c3a8036bc4a636" class="i property">Title</a>.<a href="../Title/IPageTitleBuilder.cs.html#2063b8a9ac164ea9" class="i method">AddSegment</a>(<span class="r8 r">segment</span>, <span class="r9 r">position</span>);
+            <b>return</b> <a href="#97c3a8036bc4a636" class="i property">Title</a>.<a href="../Title/IPageTitleBuilder.cs.html#06967ba0af87b8e0" class="i method">GenerateTitle</a>(<span class="r10 r">separator</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Adds a segment to the title and returns all segments.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r11 r">segment</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The segment to add to the title.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r12 r">position</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">Optional. The position of the segment in the title.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r13 r">separator</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The html string that should separate all segments.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">And </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IHtmlContent</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> instance representing the full title.</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public</b> <span class="t t">IHtmlContent</span> <a id="ab6cf7bf5936cf8f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderTitleSegments</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">segment</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">position</span> = <span class="s">&quot;0&quot;</span>, <span class="t t">IHtmlContent</span> <span id="r13 rd" class="r13 r">separator</span> = <b>null</b>)
+        {
+            <a href="#97c3a8036bc4a636" class="i property">Title</a>.<a href="../Title/IPageTitleBuilder.cs.html#2063b8a9ac164ea9" class="i method">AddSegment</a>(<b>new</b> <a href="../Html/HtmlContentString.cs.html#652dcc8bd3b414e5" class="t constructor">HtmlContentString</a>(<span class="r11 r">segment</span>), <span class="r12 r">position</span>);
+            <b>return</b> <a href="#97c3a8036bc4a636" class="i property">Title</a>.<a href="../Title/IPageTitleBuilder.cs.html#06967ba0af87b8e0" class="i method">GenerateTitle</a>(<span class="r13 r">separator</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">TagBuilder</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> to render a shape.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r14 r">shape</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The shape.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">A new </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">TagBuilder</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public</b> <span class="t t">TagBuilder</span> <a id="085e6e4967ee0722" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Tag</a>(<a href="../IShape.cs.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r14 rd" class="r14 r">shape</span>)
+        {
+            <b>return</b> <span class="r14 r">shape</span>.<a href="../IShape.cs.html#58bd62e297fced7e" class="i method">GetTagBuilder</a>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">TagBuilder</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> to render a shape.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r15 r">shape</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The shape.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r16 r">tag</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The tag name to use.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">A new </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">TagBuilder</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public</b> <span class="t t">TagBuilder</span> <a id="e397391b336b9fe3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Tag</a>(<a href="../IShape.cs.html#1b6ae4719962ce25" class="t t">IShape</a> <span id="r15 rd" class="r15 r">shape</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">tag</span>)
+        {
+            <b>return</b> <span class="r15 r">shape</span>.<a href="../IShape.cs.html#58bd62e297fced7e" class="i method">GetTagBuilder</a>(<span class="r16 r">tag</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Check if a zone is defined in the layout or it has items.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r17 r">name</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>public bool</b> <a id="9cec708cc52c65de" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IsSectionDefined</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">name</span>)
+        {
+            <span class="c">// We can replace the base implementation as it can&#39;t be called on a view that is not an actual MVC Layout.</span>
+ 
+            <b>if</b> (<span class="r17 r">name</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r17 r">name</span>));
+            }
+ 
+            <b>return</b> <a href="#5bd85ef015e9ada3" class="i property">ThemeLayout</a>.<a href="../Zones/ZoneHoldingBehavior.cs.html#43d22e96543b7e25" class="i property">Zones</a>.<a href="../Zones/ZoneHoldingBehavior.cs.html#c57c149d8e7e2ebf" class="i method">IsNotEmpty</a>(<span class="r17 r">name</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Renders a zone from the RazorPages.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r18 r">name</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The name of the zone to render.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="75aa8e5d750f9365" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderSectionAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r18 rd" class="r18 r">name</span>)
+        {
+            <b>if</b> (<span class="r18 r">name</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r18 r">name</span>));
+            }
+ 
+            <b>return</b> <a href="#e0c93540e3c88502" class="i method">RenderSectionAsync</a>(<span class="r18 r">name</span>, <span class="r19 r">required</span>: <b>true</b>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Renders a zone from the RazorPages.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r20 r">name</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The name of the zone to render.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r19 r">required</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">Whether the zone is required or not.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="e0c93540e3c88502" href="../R/e0c93540e3c88502.html" target="n" data-glyph="72,1" class="i method">RenderSectionAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">name</span>, <b>bool</b> <span id="r19 rd" class="r19 r">required</span>)
+        {
+            <b>if</b> (<span class="r20 r">name</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r20 r">name</span>));
+            }
+ 
+            <a href="../IShape.cs.html#1b6ae4719962ce25" class="k">var</a> <span id="r21 rd" class="r21 r">zone</span> = <a href="#5bd85ef015e9ada3" class="i property">ThemeLayout</a>.<a href="../Zones/ZoneHoldingBehavior.cs.html#43d22e96543b7e25" class="i property">Zones</a><a href="../Zones/ZoneHoldingBehavior.cs.html#26d913ee76532e50">[</a><span class="r20 r">name</span>];
+ 
+            <b>if</b> (<span class="r19 r">required</span> &amp;&amp; <span class="r21 r">zone</span>.<a href="../IShape.cs.html#d36fb2f5905c0dd3" class="i method">IsNullOrEmpty</a>())
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Zone not found: &quot;</span> + <span class="r20 r">name</span>);
+            }
+ 
+            <b>return</b> <a href="#a9d01679760ba368" class="i method">DisplayAsync</a>(<span class="r21 r">zone</span>);
+        }
+ 
+        <b>public object</b> <a id="c4ba3763745c29a3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">OrDefault</a>(<b>object</b> <span id="r22 rd" class="r22 r">text</span>, <b>object</b> <span id="r23 rd" class="r23 r">other</span>)
+        {
+            <b>if</b> (<span class="r22 r">text</span> == <b>null</b> || <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#b62ec9ce54fac5c3" class="i method">ToString</a>(<span class="r22 r">text</span>) == <span class="s">&quot;&quot;</span>)
+            {
+                <b>return</b> <span class="r23 r">other</span>;
+            }
+ 
+            <b>return</b> <span class="r22 r">text</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the full escaped path of the current request.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public string</b> <a id="5dc12841ebc61079" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">FullRequestPath</a> =&gt; <span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span> + <span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">Path</span> + <span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">QueryString</span>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Infrastructure.Abstractions/A.html#e627b55b9075d808" class="t t">ISite</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> instance.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e627b55b9075d808" class="t t">ISite</a> <a id="bbe5ad13a0f2d346" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Site</a>
+        {
+            <b>get</b>
+            {
+                <b>if</b> (<a href="#70447d10733c7b2a" class="i field">_site</a> == <b>null</b>)
+                {
+                    <a href="#70447d10733c7b2a" class="i field">_site</a> = <span class="i property">HttpContext</span>.<span class="i property">Features</span>.<span class="i method">Get</span>&lt;<a href="../Razor/RazorViewFeature.cs.html#4b925b4175f7b077" class="t t">RazorViewFeature</a>&gt;()?.<a href="../Razor/RazorViewFeature.cs.html#00a8c3b3339ac002" class="i property">Site</a>;
+                }
+ 
+                <b>return</b> <a href="#70447d10733c7b2a" class="i field">_site</a>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

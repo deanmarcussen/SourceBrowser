@@ -1,0 +1,157 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellFileVersionProvider.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(148);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Mvc.Core/ShellFileVersionProvider.cs" target="_top">ShellFileVersionProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Mvc.Core" target="_top">src\OrchardCore\OrchardCore.Mvc.Core\OrchardCore.Mvc.Core.csproj</a> (OrchardCore.Mvc.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">WebUtilities</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>.<span class="i n">FileProviders</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Mvc</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Provides version hash for a specified file.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="e0e4e10ffc229ffb" href="R/e0e4e10ffc229ffb.html" target="n" data-glyph="0,0" class="t t">ShellFileVersionProvider</a> : <span class="t t">IFileVersionProvider</span>
+    {
+        <b>private const string</b> <a id="5e8f1277a72e5d9e" href="R/5e8f1277a72e5d9e.html" target="n" data-glyph="10,1" class="i field">VersionKey</a> = <span class="s">&quot;v&quot;</span>;
+        <b>private static readonly char</b>[] <a id="b274a91f64ad4ae8" href="R/b274a91f64ad4ae8.html" target="n" data-glyph="46,1" class="i field">QueryStringAndFragmentTokens</a> = <b>new</b>[] { <span class="s">&#39;?&#39;</span>, <span class="s">&#39;#&#39;</span> };
+        <b>private static readonly</b> <span class="t t">MemoryCache</span> <a id="91f95def382e9025" href="R/91f95def382e9025.html" target="n" data-glyph="46,1" class="i field">_sharedCache</a> = <b>new</b> <span class="t constructor">MemoryCache</span>(<b>new</b> <span class="t constructor">MemoryCacheOptions</span>());
+ 
+        <b>private readonly</b> <span class="t t">IFileProvider</span>[] <a id="4586203582edec0c" href="R/4586203582edec0c.html" target="n" data-glyph="46,1" class="i field">_fileProviders</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="770cdd76bc10d10f" href="R/770cdd76bc10d10f.html" target="n" data-glyph="46,1" class="i field">_cache</a>;
+ 
+        <b>public</b> <a id="995b803002f14d54" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShellFileVersionProvider</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#3ef54e47612cb402" class="t t">IStaticFileProvider</a>&gt; <span id="r0 rd" class="r0 r">staticFileProviders</span>,
+            <span class="t t">IWebHostEnvironment</span> <span id="r1 rd" class="r1 r">environment</span>,
+            <span class="t t">IMemoryCache</span> <span id="r2 rd" class="r2 r">cache</span>)
+        {
+            <a href="#4586203582edec0c" class="i field">_fileProviders</a> = <span class="r0 r">staticFileProviders</span>
+                .<span class="i method">Concat</span>(<b>new</b>[] { <span class="r1 r">environment</span>.<span class="i property">WebRootFileProvider</span> })
+                .<span class="i method">ToArray</span>();
+ 
+            <a href="#770cdd76bc10d10f" class="i field">_cache</a> = <span class="r2 r">cache</span>;
+        }
+ 
+        <b>public string</b> <a id="a99c65fe9ea142af" href="R/a99c65fe9ea142af.html" target="n" data-glyph="72,1" class="i method">AddFileVersionToPath</a>(<span class="t t">PathString</span> <span id="r3 rd" class="r3 r">requestPathBase</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">path</span>)
+        {
+            <b>if</b> (<span class="r4 r">path</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r4 r">path</span>));
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">resolvedPath</span> = <span class="r4 r">path</span>;
+ 
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r6 rd" class="r6 r">queryStringOrFragmentStartIndex</span> = <span class="r4 r">path</span>.<a href="@1@System.Runtime/A.html#299d36326434ba20" class="i method">IndexOfAny</a>(<a href="#b274a91f64ad4ae8" class="i field">QueryStringAndFragmentTokens</a>);
+            <b>if</b> (<span class="r6 r">queryStringOrFragmentStartIndex</span> != -1)
+            {
+                <span class="r5 r">resolvedPath</span> = <span class="r4 r">path</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r6 r">queryStringOrFragmentStartIndex</span>);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#49754736d6982eb6" class="i method">TryCreate</a>(<span class="r5 r">resolvedPath</span>, <a href="@1@System.Runtime/A.html#ac43655101ad74be" class="t t">UriKind</a>.<a href="@1@System.Runtime/A.html#d734108197254429" class="i field">Absolute</a>, <b>out</b> <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="k">var</a> <span id="r7 rd" class="r7 r">uri</span>) &amp;&amp; !<span class="r7 r">uri</span>.<a href="@1@System.Runtime/A.html#21d6dc4857449a4a" class="i property">IsFile</a>)
+            {
+                <span class="c">// Don&#39;t append version if the path is absolute.</span>
+                <b>return</b> <span class="r4 r">path</span>;
+            }
+ 
+            <span class="c">// Try to get the hash from the tenant level cache.</span>
+            <b>if</b> (<a href="#770cdd76bc10d10f" class="i field">_cache</a>.<span class="i method">TryGetValue</span>(<span class="r5 r">resolvedPath</span>, <b>out string</b> <span id="r8 rd" class="r8 r">value</span>))
+            {
+                <b>if</b> (<span class="r8 r">value</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> &gt; 0)
+                {
+                    <b>return</b> <span class="t t">QueryHelpers</span>.<span class="i method">AddQueryString</span>(<span class="r4 r">path</span>, <a href="#5e8f1277a72e5d9e" class="i field">VersionKey</a>, <span class="r8 r">value</span>);
+                }
+ 
+                <b>return</b> <span class="r4 r">path</span>;
+            }
+ 
+            <span class="c">// Try to get the hash from the cache shared across tenants.</span>
+            <b>if</b> (<span class="r5 r">resolvedPath</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="r3 r">requestPathBase</span>.<span class="i property">Value</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>if</b> (<a href="#91f95def382e9025" class="i field">_sharedCache</a>.<span class="i method">TryGetValue</span>(<span class="r5 r">resolvedPath</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r3 r">requestPathBase</span>.<span class="i property">Value</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>), <b>out</b> <span class="r8 r">value</span>))
+                {
+                    <b>return</b> <span class="t t">QueryHelpers</span>.<span class="i method">AddQueryString</span>(<span class="r4 r">path</span>, <a href="#5e8f1277a72e5d9e" class="i field">VersionKey</a>, <span class="r8 r">value</span>);
+                }
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">cacheKey</span> = <span class="r5 r">resolvedPath</span>;
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">cacheEntryOptions</span> = <b>new</b> <span class="t constructor">MemoryCacheEntryOptions</span>();
+            <b>foreach</b> (<b>var</b> <span id="r11 rd" class="r11 r">fileProvider</span> <b>in</b> <a href="#4586203582edec0c" class="i field">_fileProviders</a>)
+            {
+                <span class="r10 r">cacheEntryOptions</span>.<span class="i method">AddExpirationToken</span>(<span class="r11 r">fileProvider</span>.<span class="i method">Watch</span>(<span class="r5 r">resolvedPath</span>));
+                <b>var</b> <span id="r12 rd" class="r12 r">fileInfo</span> = <span class="r11 r">fileProvider</span>.<span class="i method">GetFileInfo</span>(<span class="r5 r">resolvedPath</span>);
+ 
+                <span class="c">// Perform check against requestPathBase.</span>
+                <b>if</b> (!<span class="r12 r">fileInfo</span>.<span class="i property">Exists</span> &amp;&amp;
+                    <span class="r3 r">requestPathBase</span>.<span class="i property">HasValue</span> &amp;&amp;
+                    <span class="r5 r">resolvedPath</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="r3 r">requestPathBase</span>.<span class="i property">Value</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <span class="r5 r">resolvedPath</span> = <span class="r5 r">resolvedPath</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r3 r">requestPathBase</span>.<span class="i property">Value</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+                    <span class="r10 r">cacheEntryOptions</span>.<span class="i method">AddExpirationToken</span>(<span class="r11 r">fileProvider</span>.<span class="i method">Watch</span>(<span class="r5 r">resolvedPath</span>));
+                    <span class="r12 r">fileInfo</span> = <span class="r11 r">fileProvider</span>.<span class="i method">GetFileInfo</span>(<span class="r5 r">resolvedPath</span>);
+                }
+ 
+                <span class="c">// Perform check against VirtualPathBase.</span>
+                <b>if</b> (!<span class="r12 r">fileInfo</span>.<span class="i property">Exists</span> &amp;&amp;
+                    <span class="r11 r">fileProvider</span> <b>is</b> <a href="/OrchardCore.Abstractions/A.html#80733b25b6172164" class="t t">IVirtualPathBaseProvider</a> <span id="r13 rd" class="r13 r">virtualPathBaseProvider</span> &amp;&amp;
+                    <span class="r13 r">virtualPathBaseProvider</span>.<a href="/OrchardCore.Abstractions/A.html#fe3bb4514409b831" class="i property">VirtualPathBase</a>.<span class="i property">HasValue</span> &amp;&amp;
+                    <span class="r5 r">resolvedPath</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="r13 r">virtualPathBaseProvider</span>.<a href="/OrchardCore.Abstractions/A.html#fe3bb4514409b831" class="i property">VirtualPathBase</a>.<span class="i property">Value</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <span class="r5 r">resolvedPath</span> = <span class="r5 r">resolvedPath</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r13 r">virtualPathBaseProvider</span>.<a href="/OrchardCore.Abstractions/A.html#fe3bb4514409b831" class="i property">VirtualPathBase</a>.<span class="i property">Value</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+                    <span class="r10 r">cacheEntryOptions</span>.<span class="i method">AddExpirationToken</span>(<span class="r11 r">fileProvider</span>.<span class="i method">Watch</span>(<span class="r5 r">resolvedPath</span>));
+                    <span class="r12 r">fileInfo</span> = <span class="r11 r">fileProvider</span>.<span class="i method">GetFileInfo</span>(<span class="r5 r">resolvedPath</span>);
+                }
+ 
+                <b>if</b> (<span class="r12 r">fileInfo</span>.<span class="i property">Exists</span>)
+                {
+                    <span class="r8 r">value</span> = <a href="#8e6ddf95b2cbd611" class="i method">GetHashForFile</a>(<span class="r12 r">fileInfo</span>);
+                    <span class="r10 r">cacheEntryOptions</span>.<span class="i method">SetSize</span>(<span class="r8 r">value</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> * <b>sizeof</b>(<b>char</b>));
+ 
+                    <span class="c">// Cache module static files to the shared cache.</span>
+                    <b>if</b> (<span class="r11 r">fileProvider</span> <b>is</b> <a href="/OrchardCore.Abstractions/A.html#0448af9b2bae05a5" class="t t">IModuleStaticFileProvider</a>)
+                    {
+                        <a href="#91f95def382e9025" class="i field">_sharedCache</a>.<span class="i method">Set</span>(<span class="r5 r">resolvedPath</span>, <span class="r8 r">value</span>, <span class="r10 r">cacheEntryOptions</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <a href="#770cdd76bc10d10f" class="i field">_cache</a>.<span class="i method">Set</span>(<span class="r9 r">cacheKey</span>, <span class="r8 r">value</span>, <span class="r10 r">cacheEntryOptions</span>);
+                    }
+ 
+                    <b>return</b> <span class="t t">QueryHelpers</span>.<span class="i method">AddQueryString</span>(<span class="r4 r">path</span>, <a href="#5e8f1277a72e5d9e" class="i field">VersionKey</a>, <span class="r8 r">value</span>);
+                }
+            }
+ 
+            <span class="c">// If the file is not in the current server, set cache so no further checks are done.</span>
+            <span class="r10 r">cacheEntryOptions</span>.<span class="i method">SetSize</span>(0);
+            <a href="#770cdd76bc10d10f" class="i field">_cache</a>.<span class="i method">Set</span>(<span class="r9 r">cacheKey</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>, <span class="r10 r">cacheEntryOptions</span>);
+            <b>return</b> <span class="r4 r">path</span>;
+        }
+ 
+        <b>private static string</b> <a id="8e6ddf95b2cbd611" href="R/8e6ddf95b2cbd611.html" target="n" data-glyph="76,1" class="i method">GetHashForFile</a>(<span class="t t">IFileInfo</span> <span id="r14 rd" class="r14 r">fileInfo</span>)
+        {
+            <b>using</b> (<b>var</b> <span id="r15 rd" class="r15 r">sha256</span> = <span class="t t">SHA256</span>.<span class="i method">Create</span>())
+            {
+                <b>using</b> (<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r16 rd" class="r16 r">readStream</span> = <span class="r14 r">fileInfo</span>.<span class="i method">CreateReadStream</span>())
+                {
+                    <b>var</b> <span id="r17 rd" class="r17 r">hash</span> = <span class="r15 r">sha256</span>.<span class="i method">ComputeHash</span>(<span class="r16 r">readStream</span>);
+                    <b>return</b> <span class="t t">WebEncoders</span>.<span class="i method">Base64UrlEncode</span>(<span class="r17 r">hash</span>);
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html><head><title>ResizeUrlFilter.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(136);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Filters/ResizeUrlFilter.cs" target="_top">Filters\ResizeUrlFilter.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">WebUtilities</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Fields</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Filters</span>
+{
+    <b>public class</b> <a id="6f887aff345f8a83" href="../R/6f887aff345f8a83.html" target="n" data-glyph="0,0" class="t t">ResizeUrlFilter</a> : <a href="/OrchardCore.Liquid.Abstractions/A.html#e3ebfc606d5ff056" class="t t">ILiquidFilter</a>
+    {
+        <b>private readonly</b> <a href="../Services/IMediaProfileService.cs.html#293ab5eeae9c1f84" class="t t">IMediaProfileService</a> <a id="6420a4425004bcc9" href="../R/6420a4425004bcc9.html" target="n" data-glyph="46,1" class="i field">_mediaProfileService</a>;
+        <b>private readonly</b> <span class="i">IMediaTokenService</span> <a id="ea1ef40e190d2909" href="../R/ea1ef40e190d2909.html" target="n" data-glyph="46,1" class="i field">_mediaTokenService</a>;
+        <b>private readonly</b> <span class="i">MediaOptions</span> <a id="b37ca66a1ac19a2a" href="../R/b37ca66a1ac19a2a.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+ 
+        <b>public</b> <a id="0d9241fee5760741" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ResizeUrlFilter</a>(<a href="../Services/IMediaProfileService.cs.html#293ab5eeae9c1f84" class="t t">IMediaProfileService</a> <span id="r0 rd" class="r0 r">mediaProfileService</span>, <span class="i">IMediaTokenService</span> <span id="r1 rd" class="r1 r">mediaTokenService</span>, <span class="t t">IOptions</span>&lt;<span class="i">MediaOptions</span>&gt; <span id="r2 rd" class="r2 r">options</span>)
+        {
+            <a href="#6420a4425004bcc9" class="i field">_mediaProfileService</a> = <span class="r0 r">mediaProfileService</span>;
+            <a href="#ea1ef40e190d2909" class="i field">_mediaTokenService</a> = <span class="r1 r">mediaTokenService</span>;
+            <a href="#b37ca66a1ac19a2a" class="i field">_options</a> = <span class="r2 r">options</span>.<span class="i property">Value</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="1c0f4a8a5b191162" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="i">FluidValue</span> <span id="r3 rd" class="r3 r">input</span>, <span class="i">FilterArguments</span> <span id="r4 rd" class="r4 r">arguments</span>, <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">url</span> = <span class="r3 r">input</span>.<span class="i">ToStringValue</span>();
+ 
+            <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r7 rd" class="r7 r">queryStringParams</span> = <b>null</b>;
+ 
+            <span class="c">// Profile is a named argument only.</span>
+            <b>var</b> <span id="r8 rd" class="r8 r">profile</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;profile&quot;</span>];
+ 
+            <b>if</b> (!<span class="r8 r">profile</span>.<span class="i">IsNil</span>())
+            {
+                <span class="r7 r">queryStringParams</span> = <b>await</b> <a href="#6420a4425004bcc9" class="i field">_mediaProfileService</a>.<span class="i">GetMediaProfileCommands</span>(<span class="r8 r">profile</span>.<span class="i">ToStringValue</span>());
+ 
+                <span class="c">// Additional commands to a profile must be named.</span>
+                <b>var</b> <span id="r9 rd" class="r9 r">width</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;width&quot;</span>];
+                <b>var</b> <span id="r10 rd" class="r10 r">height</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;height&quot;</span>];
+                <b>var</b> <span id="r11 rd" class="r11 r">mode</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;mode&quot;</span>];
+                <b>var</b> <span id="r12 rd" class="r12 r">quality</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;quality&quot;</span>];
+                <b>var</b> <span id="r13 rd" class="r13 r">format</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;format&quot;</span>];
+                <b>var</b> <span id="r14 rd" class="r14 r">anchor</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;anchor&quot;</span>];
+                <b>var</b> <span id="r15 rd" class="r15 r">bgcolor</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;bgcolor&quot;</span>];
+ 
+                <span class="i">ApplyQueryStringParams</span>(<span class="r7 r">queryStringParams</span>, <span class="r9 r">width</span>, <span class="r10 r">height</span>, <span class="r11 r">mode</span>, <span class="r12 r">quality</span>, <span class="r13 r">format</span>, <span class="r14 r">anchor</span>, <span class="r15 r">bgcolor</span>);
+            }
+            <b>else</b>
+            {
+                <span class="r7 r">queryStringParams</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r16 rd" class="r16 r">useNamed</span> = <span class="r4 r">arguments</span>.<span class="i">Names</span>.<span class="i">Any</span>(); <span class="c">// Never mix named and indexed arguments as this leads to unpredictable results</span>
+ 
+                <b>var</b> <span id="r17 rd" class="r17 r">width</span> = <span class="r16 r">useNamed</span> ? <span class="r4 r">arguments</span>[<span class="s">&quot;width&quot;</span>] : <span class="r4 r">arguments</span>.<span class="i">At</span>(0);
+                <b>var</b> <span id="r18 rd" class="r18 r">height</span> = <span class="r16 r">useNamed</span> ? <span class="r4 r">arguments</span>[<span class="s">&quot;height&quot;</span>] : <span class="r4 r">arguments</span>.<span class="i">At</span>(1);
+                <b>var</b> <span id="r19 rd" class="r19 r">mode</span> = <span class="r16 r">useNamed</span> ? <span class="r4 r">arguments</span>[<span class="s">&quot;mode&quot;</span>] : <span class="r4 r">arguments</span>.<span class="i">At</span>(2);
+                <b>var</b> <span id="r20 rd" class="r20 r">quality</span> = <span class="r16 r">useNamed</span> ? <span class="r4 r">arguments</span>[<span class="s">&quot;quality&quot;</span>] : <span class="r4 r">arguments</span>.<span class="i">At</span>(3);
+                <b>var</b> <span id="r21 rd" class="r21 r">format</span> = <span class="r16 r">useNamed</span> ? <span class="r4 r">arguments</span>[<span class="s">&quot;format&quot;</span>] : <span class="r4 r">arguments</span>.<span class="i">At</span>(4);
+                <b>var</b> <span id="r22 rd" class="r22 r">anchor</span> = <span class="r16 r">useNamed</span> ? <span class="r4 r">arguments</span>[<span class="s">&quot;anchor&quot;</span>] : <span class="r4 r">arguments</span>.<span class="i">At</span>(5);
+                <b>var</b> <span id="r23 rd" class="r23 r">bgcolor</span> = <span class="r16 r">useNamed</span> ? <span class="r4 r">arguments</span>[<span class="s">&quot;bgcolor&quot;</span>] : <span class="r4 r">arguments</span>.<span class="i">At</span>(6);
+ 
+                <span class="i">ApplyQueryStringParams</span>(<span class="r7 r">queryStringParams</span>, <span class="r17 r">width</span>, <span class="r18 r">height</span>, <span class="r19 r">mode</span>, <span class="r20 r">quality</span>, <span class="r21 r">format</span>, <span class="r22 r">anchor</span>, <span class="r23 r">bgcolor</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r24 rd" class="r24 r">resizedUrl</span> = <span class="t t">QueryHelpers</span>.<span class="i">AddQueryString</span>(<span class="r6 r">url</span>, <span class="r7 r">queryStringParams</span>);
+ 
+ 
+            <b>if</b> (<a href="#b37ca66a1ac19a2a" class="i field">_options</a>.<span class="i">UseTokenizedQueryString</span>)
+            {
+                <span class="r24 r">resizedUrl</span> = <a href="#ea1ef40e190d2909" class="i field">_mediaTokenService</a>.<span class="i">AddTokenToPath</span>(<span class="r24 r">resizedUrl</span>);
+            }
+ 
+            <b>return</b> <b>new</b> <span class="i">StringValue</span>(<span class="r24 r">resizedUrl</span>);
+        }
+ 
+        <b>private static void</b> <a id="4f0dabfac7634ffe" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">ApplyQueryStringParams</a>(<a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r25 rd" class="r25 r">queryStringParams</span>, <span class="i">FluidValue</span> <span id="r26 rd" class="r26 r">width</span>, <span class="i">FluidValue</span> <span id="r27 rd" class="r27 r">height</span>, <span class="i">FluidValue</span> <span id="r28 rd" class="r28 r">mode</span>, <span class="i">FluidValue</span> <span id="r29 rd" class="r29 r">quality</span>, <span class="i">FluidValue</span> <span id="r30 rd" class="r30 r">format</span>, <span class="i">FluidValue</span> <span id="r31 rd" class="r31 r">anchorValue</span>, <span class="i">FluidValue</span> <span id="r32 rd" class="r32 r">bgcolor</span>)
+        {
+            <b>if</b> (!<span class="r26 r">width</span>.<span class="i">IsNil</span>())
+            {
+                <span class="r25 r">queryStringParams</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;width&quot;</span>] = <span class="r26 r">width</span>.<span class="i">ToStringValue</span>();
+            }
+ 
+            <b>if</b> (!<span class="r27 r">height</span>.<span class="i">IsNil</span>())
+            {
+                <span class="r25 r">queryStringParams</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;height&quot;</span>] = <span class="r27 r">height</span>.<span class="i">ToStringValue</span>();
+            }
+ 
+            <b>if</b> (!<span class="r28 r">mode</span>.<span class="i">IsNil</span>())
+            {
+                <span class="r25 r">queryStringParams</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;rmode&quot;</span>] = <span class="r28 r">mode</span>.<span class="i">ToStringValue</span>();
+            }
+ 
+            <b>if</b> (!<span class="r29 r">quality</span>.<span class="i">IsNil</span>())
+            {
+                <span class="r25 r">queryStringParams</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;quality&quot;</span>] = <span class="r29 r">quality</span>.<span class="i">ToStringValue</span>();
+            }
+ 
+            <b>if</b> (!<span class="r30 r">format</span>.<span class="i">IsNil</span>())
+            {
+                <span class="r25 r">queryStringParams</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;format&quot;</span>] = <span class="r30 r">format</span>.<span class="i">ToStringValue</span>();
+            }
+ 
+            <b>if</b> (!<span class="r31 r">anchorValue</span>.<span class="i">IsNil</span>())
+            {
+                <b>var</b> <span id="r33 rd" class="r33 r">obj</span> = <span class="r31 r">anchorValue</span>.<span class="i">ToObjectValue</span>();
+ 
+                <b>if</b> (!(<span class="r33 r">obj</span> <b>is</b> <a href="../Fields/Anchor.cs.html#8331f92f85867cdb" class="t t">Anchor</a> <span id="r34 rd" class="r34 r">anchor</span>))
+                {
+                    <span class="r34 r">anchor</span> = <b>null</b>;
+ 
+                    <b>if</b> (<span class="r33 r">obj</span> <b>is</b> <span class="i">JObject</span> <span id="r35 rd" class="r35 r">jObject</span>)
+                    {
+                        <span class="r34 r">anchor</span> = <span class="r35 r">jObject</span>.<span class="i">ToObject</span>&lt;<a href="../Fields/Anchor.cs.html#8331f92f85867cdb" class="t t">Anchor</a>&gt;();
+                    }
+                }
+                <b>if</b> (<span class="r34 r">anchor</span> != <b>null</b>)
+                {
+                    <span class="r25 r">queryStringParams</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;rxy&quot;</span>] = <span class="r34 r">anchor</span>.<a href="../Fields/Anchor.cs.html#3c2a9fc6ffa2c6a9" class="i property">X</a>.<a href="@1@System.Runtime/A.html#770446762447fac0" class="i method">ToString</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>) + <span class="s">&#39;,&#39;</span> + <span class="r34 r">anchor</span>.<a href="../Fields/Anchor.cs.html#3e198a93cade2029" class="i property">Y</a>.<a href="@1@System.Runtime/A.html#770446762447fac0" class="i method">ToString</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>);
+                }
+            }
+ 
+            <b>if</b> (!<span class="r32 r">bgcolor</span>.<span class="i">IsNil</span>())
+            {
+                <span class="r25 r">queryStringParams</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="s">&quot;bgcolor&quot;</span>] = <span class="r32 r">bgcolor</span>.<span class="i">ToStringValue</span>();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

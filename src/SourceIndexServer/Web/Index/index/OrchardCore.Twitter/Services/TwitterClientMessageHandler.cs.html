@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html><head><title>TwitterClientMessageHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(115);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Twitter/Services/TwitterClientMessageHandler.cs" target="_top">Services\TwitterClientMessageHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Twitter" target="_top">src\OrchardCore.Modules\OrchardCore.Twitter\OrchardCore.Twitter.csproj</a> (OrchardCore.Twitter)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Twitter</span>.<span class="i n">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Twitter</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="3b39643ff97e649a" href="../R/3b39643ff97e649a.html" target="n" data-glyph="0,0" class="t t">TwitterClientMessageHandler</a> : <span class="t t">DelegatingHandler</span>
+    {
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="58c0670f8878181c" href="../R/58c0670f8878181c.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="f33dd787c1ee528c" href="../R/f33dd787c1ee528c.html" target="n" data-glyph="46,1" class="i field">_dataProtectionProvider</a>;
+        <b>private readonly</b> <span class="i">IClock</span> <a id="27ee1b902dd83fa6" href="../R/27ee1b902dd83fa6.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+ 
+        <b>public</b> <a id="17a2246a04de2624" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">TwitterClientMessageHandler</a>(<span class="i">IClock</span> <span id="r0 rd" class="r0 r">clock</span>, <span class="i">ISiteService</span> <span id="r1 rd" class="r1 r">siteService</span>, <span class="t t">IDataProtectionProvider</span> <span id="r2 rd" class="r2 r">dataProtectionProvider</span>)
+        {
+            <a href="#58c0670f8878181c" class="i field">_siteService</a> = <span class="r1 r">siteService</span>;
+            <a href="#f33dd787c1ee528c" class="i field">_dataProtectionProvider</a> = <span class="r2 r">dataProtectionProvider</span>;
+            <a href="#27ee1b902dd83fa6" class="i field">_clock</a> = <span class="r0 r">clock</span>;
+        }
+ 
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">HttpResponseMessage</span>&gt; <a id="db8c2f5be6229567" href="../R/db8c2f5be6229567.html" target="n" data-glyph="75,1" class="i method">SendAsync</a>(<span class="t t">HttpRequestMessage</span> <span id="r3 rd" class="r3 r">request</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r4 rd" class="r4 r">cancellationToken</span>)
+        {
+            <b>await</b> <a href="#b16e65313edecdd2" class="i method">ConfigureOAuthAsync</a>(<span class="r3 r">request</span>);
+            <b>return</b> <b>await</b> <b>base</b>.<span class="i method">SendAsync</span>(<span class="r3 r">request</span>, <span class="r4 r">cancellationToken</span>);
+        }
+ 
+        <b>public virtual string</b> <a id="217bd3d7a906c4c5" href="../R/217bd3d7a906c4c5.html" target="n" data-glyph="72,1" class="i method">GetNonce</a>()
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToBase64String</span>(<b>new</b> <span class="t constructor">ASCIIEncoding</span>().<span class="i">GetBytes</span>(<a href="#27ee1b902dd83fa6" class="i field">_clock</a>.<span class="i">UtcNow</span>.<span class="i">Ticks</span>.<span class="i">ToString</span>()));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b16e65313edecdd2" href="../R/b16e65313edecdd2.html" target="n" data-glyph="72,1" class="i method">ConfigureOAuthAsync</a>(<span class="t t">HttpRequestMessage</span> <span id="r5 rd" class="r5 r">request</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">container</span> = <b>await</b> <a href="#58c0670f8878181c" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+            <b>var</b> <span id="r7 rd" class="r7 r">settings</span> = <span class="r6 r">container</span>.<span class="i">As</span>&lt;<a href="../Settings/TwitterSettings.cs.html#b11b0f6cb28ce038" class="t t">TwitterSettings</a>&gt;();
+            <b>var</b> <span id="r8 rd" class="r8 r">protrector</span> = <a href="#f33dd787c1ee528c" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="../TwitterConstants.cs.html#f486ecd4e05b54c1" class="t t">TwitterConstants</a>.<a href="../TwitterConstants.cs.html#477ab797f9794487" class="t t">Features</a>.<a href="../TwitterConstants.cs.html#05ce3bcecf94bb2c" class="i field">Twitter</a>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">queryString</span> = <span class="r5 r">request</span>.<span class="i property">RequestUri</span>.<a href="@1@System.Runtime/A.html#5177e12380d8e70d" class="i property">Query</a>;
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r7 r">settings</span>.<span class="i">ConsumerSecret</span>))
+                <span class="r7 r">settings</span>.<span class="i">ConsumerSecret</span> = <span class="r8 r">protrector</span>.<span class="i">Unprotect</span>(<span class="r7 r">settings</span>.<span class="i">ConsumerSecret</span>);
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r7 r">settings</span>.<span class="i">ConsumerSecret</span>))
+                <span class="r7 r">settings</span>.<span class="i">AccessTokenSecret</span> = <span class="r8 r">protrector</span>.<span class="i">Unprotect</span>(<span class="r7 r">settings</span>.<span class="i">AccessTokenSecret</span>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">nonce</span> = <a href="#217bd3d7a906c4c5" class="i method">GetNonce</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">timeStamp</span> = <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToInt64</span>((<a href="#27ee1b902dd83fa6" class="i field">_clock</a>.<span class="i">UtcNow</span> - <b>new</b> <a href="@1@System.Runtime/A.html#68bcb1d5fe78e8df" class="t constructor">DateTime</a>(1970, 1, 1, 0, 0, 0, 0, <a href="@1@System.Runtime/A.html#0fc5fd70e6154b43" class="t t">DateTimeKind</a>.<a href="@1@System.Runtime/A.html#58a49ca04b18b1f2" class="i field">Utc</a>)).<span class="i">TotalSeconds</span>).<a href="@1@System.Runtime/A.html#76873dfc1b95c712" class="i method">ToString</a>();
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">sortedParameters</span> = <b>new</b> <span class="t constructor">SortedDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;oauth_consumer_key&quot;</span>), <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<span class="i">EscapeDataString</span>(<span class="r7 r">settings</span>.<span class="i">ConsumerKey</span>));
+            <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;oauth_nonce&quot;</span>), <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r10 r">nonce</span>));
+            <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;oauth_signature_method&quot;</span>), <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;HMAC-SHA1&quot;</span>));
+            <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;oauth_timestamp&quot;</span>), <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r11 r">timeStamp</span>));
+            <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;oauth_token&quot;</span>), <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<span class="i">EscapeDataString</span>(<span class="r7 r">settings</span>.<span class="i">AccessToken</span>));
+            <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;oauth_version&quot;</span>), <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;1.0&quot;</span>));
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r5 r">request</span>.<span class="i property">RequestUri</span>.<a href="@1@System.Runtime/A.html#5177e12380d8e70d" class="i property">Query</a>))
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">item</span> <b>in</b> <span class="r5 r">request</span>.<span class="i property">RequestUri</span>.<a href="@1@System.Runtime/A.html#5177e12380d8e70d" class="i property">Query</a>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;&amp;&#39;</span>))
+                {
+                    <b>var</b> <span id="r14 rd" class="r14 r">parts</span> = <span class="r13 r">item</span>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;=&#39;</span>);
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">key</span> = <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r14 r">parts</span>[0]);
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">value</span> = <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r14 r">parts</span>[1]);
+                    <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<span class="r15 r">key</span>, <span class="r16 r">value</span>);
+                }
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">contentString</span> = <b>await</b> <span class="r5 r">request</span>.<span class="i property">Content</span>.<span class="i method">ReadAsStringAsync</span>();
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r17 r">contentString</span>))
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">item</span> <b>in</b> <span class="r17 r">contentString</span>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;&amp;&#39;</span>))
+                {
+                    <b>var</b> <span id="r19 rd" class="r19 r">parts</span> = <span class="r18 r">item</span>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;=&#39;</span>);
+ 
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">key</span> = <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<a href="@1@System.Runtime/A.html#be62bd8978189a87" class="t t">WebUtility</a>.<a href="@1@System.Runtime/A.html#73c04b8a4fde5039" class="i method">UrlDecode</a>(<span class="r19 r">parts</span>[0]));
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r21 rd" class="r21 r">value</span> = <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<a href="@1@System.Runtime/A.html#be62bd8978189a87" class="t t">WebUtility</a>.<a href="@1@System.Runtime/A.html#73c04b8a4fde5039" class="i method">UrlDecode</a>(<span class="r19 r">parts</span>[1]));
+                    <span class="r12 r">sortedParameters</span>.<span class="i method">Add</span>(<span class="r20 r">key</span>, <span class="r21 r">value</span>);
+                }
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">baseString</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#75e4bdc056f3daf0" class="i method">Concat</a>(<span class="r5 r">request</span>.<span class="i property">Method</span>.<span class="i property">Method</span>.<a href="@1@System.Runtime/A.html#b1bb64f94f2814f6" class="i method">ToUpperInvariant</a>(), <span class="s">&quot;&amp;&quot;</span>,
+                <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r5 r">request</span>.<span class="i property">RequestUri</span>.<a href="@1@System.Runtime/A.html#e335fec0022465e6" class="i property">AbsoluteUri</a>.<a href="@1@System.Runtime/A.html#efa5e6c14683e022" class="i method">ToString</a>()), <span class="s">&quot;&amp;&quot;</span>,
+                <a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot;&amp;&quot;</span>, <span class="r12 r">sortedParameters</span>.<span class="i method">Select</span>(<span id="r23 rd" class="r23 r">c</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#7432dab173fae5fc" class="i method">Format</a>(<span class="s">&quot;{0}={1}&quot;</span>, <span class="r23 r">c</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r23 r">c</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>)))));
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r24 rd" class="r24 r">secret</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">Concat</span>(<span class="r7 r">settings</span>.<span class="i">ConsumerSecret</span>, <span class="s">&quot;&amp;&quot;</span>, <span class="r7 r">settings</span>.<span class="i">AccessTokenSecret</span>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">signature</span>;
+            <b>using</b> (<b>var</b> <span id="r26 rd" class="r26 r">hasher</span> = <b>new</b> <span class="t constructor">HMACSHA1</span>(<span class="t t">ASCIIEncoding</span>.<a href="@1@System.Runtime/A.html#65768102b7ace585" class="i property">ASCII</a>.<a href="@1@System.Runtime/A.html#83f2d2c6f22db1a9" class="i method">GetBytes</a>(<span class="r24 r">secret</span>)))
+            {
+                <span class="r25 r">signature</span> = <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#f9e5bd7b69c5f334" class="i method">ToBase64String</a>(<span class="r26 r">hasher</span>.<span class="i method">ComputeHash</span>(<span class="t t">ASCIIEncoding</span>.<a href="@1@System.Runtime/A.html#65768102b7ace585" class="i property">ASCII</a>.<a href="@1@System.Runtime/A.html#83f2d2c6f22db1a9" class="i method">GetBytes</a>(<span class="r22 r">baseString</span>)));
+            }
+ 
+            <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="k">var</a> <span id="r27 rd" class="r27 r">sb</span> = <b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>();
+            <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;oauth_consumer_key=\&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<span class="i">EscapeDataString</span>(<span class="r7 r">settings</span>.<span class="i">ConsumerKey</span>)).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;\&quot;, &quot;</span>);
+            <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;oauth_nonce=\&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r10 r">nonce</span>)).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;\&quot;, &quot;</span>);
+            <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;oauth_signature=\&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r25 r">signature</span>)).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;\&quot;, &quot;</span>);
+            <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">$&quot;</span><span class="s">oauth_signature_method=\&quot;HMAC-SHA1\&quot;, </span><span class="s">&quot;</span>);
+            <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;oauth_timestamp=\&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="r11 r">timeStamp</span>)).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;\&quot;, &quot;</span>);
+            <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;oauth_token=\&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<span class="i">EscapeDataString</span>(<span class="r7 r">settings</span>.<span class="i">AccessToken</span>)).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;\&quot;, &quot;</span>);
+            <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;oauth_version=\&quot;&quot;</span>).<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<a href="@1@System.Runtime/A.html#991565dd25f47c90" class="t t">Uri</a>.<a href="@1@System.Runtime/A.html#39926dc8cc434ff4" class="i method">EscapeDataString</a>(<span class="s">&quot;1.0&quot;</span>)).<a href="@1@System.Runtime/A.html#a2e7c78d85807da5" class="i method">Append</a>(<span class="s">&#39;&quot;&#39;</span>);
+ 
+            <span class="r5 r">request</span>.<span class="i property">Headers</span>.<span class="i property">Authorization</span> = <b>new</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Http</span>.<span class="i n">Headers</span>.<span class="t constructor">AuthenticationHeaderValue</span>(<span class="s">&quot;OAuth&quot;</span>, <span class="r27 r">sb</span>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>());
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

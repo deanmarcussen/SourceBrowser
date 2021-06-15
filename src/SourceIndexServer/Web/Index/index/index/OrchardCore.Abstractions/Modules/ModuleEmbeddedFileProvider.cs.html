@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModuleEmbeddedFileProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(123);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Modules/ModuleEmbeddedFileProvider.cs" target="_top">Modules\ModuleEmbeddedFileProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Physical</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>.<span class="i n">FileProviders</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This custom </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IFileProvider</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> implementation provides the file contents</span>
+    <span class="c">///</span><span class="c"> of embedded files in Module assemblies.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="4383723727f43cab" href="../R/4383723727f43cab.html" target="n" data-glyph="0,0" class="t t">ModuleEmbeddedFileProvider</a> : <span class="t t">IFileProvider</span>
+    {
+        <b>private readonly</b> <a href="ModularApplicationContext.cs.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <a id="369923174d73c44c" href="../R/369923174d73c44c.html" target="n" data-glyph="46,1" class="i field">_applicationContext</a>;
+ 
+        <b>public</b> <a id="a8780dcc2fad786a" href="../R/a8780dcc2fad786a.html" target="n" data-glyph="72,1" class="t constructor">ModuleEmbeddedFileProvider</a>(<a href="ModularApplicationContext.cs.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <span id="r0 rd" class="r0 r">applicationContext</span>)
+        {
+            <a href="#369923174d73c44c" class="i field">_applicationContext</a> = <span class="r0 r">applicationContext</span>;
+        }
+ 
+        <b>private</b> <a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a> <a id="2e1c1d9617fc28b0" href="../R/2e1c1d9617fc28b0.html" target="n" data-glyph="106,1" class="i property">Application</a> =&gt; <a href="#369923174d73c44c" class="i field">_applicationContext</a>.<a href="ModularApplicationContext.cs.html#99a608bfb7e2ccd2" class="i property">Application</a>;
+ 
+        <b>public</b> <span class="t t">IDirectoryContents</span> <a id="0783aa13e6adf59b" href="../R/0783aa13e6adf59b.html" target="n" data-glyph="72,1" class="i method">GetDirectoryContents</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">subpath</span>)
+        {
+            <b>if</b> (<span class="r1 r">subpath</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="t t">NotFoundDirectoryContents</span>.<span class="i property">Singleton</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r2 rd" class="r2 r">folder</span> = <a href="#cf9b1fae02d5b042" class="i method">NormalizePath</a>(<span class="r1 r">subpath</span>);
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">entries</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">IFileInfo</span>&gt;();
+ 
+            <span class="c">// Under the root.</span>
+            <b>if</b> (<span class="r2 r">folder</span> == <span class="s">&quot;&quot;</span>)
+            {
+                <span class="c">// Add the virtual folder &quot;Areas&quot; containing all modules.</span>
+                <span class="r3 r">entries</span>.<span class="i method">Add</span>(<b>new</b> <a href="FileProviders/EmbeddedDirectoryInfo.cs.html#f0bef49c5bf31322" class="t constructor">EmbeddedDirectoryInfo</a>(<a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a>.<a href="Application.cs.html#808ad59b0316bf76" class="i field">ModulesPath</a>));
+            }
+            <span class="c">// Under &quot;Areas&quot;.</span>
+            <b>else</b> <b>if</b> (<span class="r2 r">folder</span> == <a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a>.<a href="Application.cs.html#808ad59b0316bf76" class="i field">ModulesPath</a>)
+            {
+                <span class="c">// Add virtual folders for all modules by using their assembly names (module ids).</span>
+                <span class="r3 r">entries</span>.<span class="i method">AddRange</span>(<a href="#2e1c1d9617fc28b0" class="i property">Application</a>.<a href="Application.cs.html#a705dc00e756f50a" class="i property">Modules</a>.<span class="i method">Select</span>(<span id="r4 rd" class="r4 r">m</span> =&gt; <b>new</b> <a href="FileProviders/EmbeddedDirectoryInfo.cs.html#f0bef49c5bf31322" class="t constructor">EmbeddedDirectoryInfo</a>(<span class="r4 r">m</span>.<a href="Module.cs.html#147ef2ed9f2da85c" class="i property">Name</a>)));
+            }
+            <span class="c">// Under &quot;Areas/{ModuleId}&quot; or &quot;Areas/{ModuleId}/**&quot;.</span>
+            <b>else</b> <b>if</b> (<span class="r2 r">folder</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a>.<a href="Application.cs.html#41f34776c4c9c4f6" class="i field">ModulesRoot</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="c">// Skip &quot;Areas/&quot; from the folder path.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">path</span> = <span class="r2 r">folder</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a>.<a href="Application.cs.html#41f34776c4c9c4f6" class="i field">ModulesRoot</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r6 rd" class="r6 r">index</span> = <span class="r5 r">path</span>.<a href="@1@System.Runtime/A.html#eb06d6d166f6a3d9" class="i method">IndexOf</a>(<span class="s">&#39;/&#39;</span>);
+ 
+                <span class="c">// Resolve the module id and get all its asset paths.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r7 rd" class="r7 r">name</span> = <span class="r6 r">index</span> == -1 ? <span class="r5 r">path</span> : <span class="r5 r">path</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r6 r">index</span>);
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r8 rd" class="r8 r">paths</span> = <a href="#2e1c1d9617fc28b0" class="i property">Application</a>.<a href="Application.cs.html#4ffe95156342bfca" class="i method">GetModule</a>(<span class="r7 r">name</span>).<a href="Module.cs.html#559351468e710216" class="i property">AssetPaths</a>;
+ 
+                <span class="c">// Resolve all files and folders directly under this given folder.</span>
+                <a href="FileProviders/NormalizedPaths.cs.html#acae5e2b8501c86d" class="t t">NormalizedPaths</a>.<a href="FileProviders/NormalizedPaths.cs.html#2c77ba9d2b4f0984" class="i method">ResolveFolderContents</a>(<span class="r2 r">folder</span>, <span class="r8 r">paths</span>, <b>out</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r9 rd" class="r9 r">files</span>, <b>out</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r10 rd" class="r10 r">folders</span>);
+ 
+                <span class="c">// And add them to the directory contents.</span>
+                <span class="r3 r">entries</span>.<span class="i method">AddRange</span>(<span class="r9 r">files</span>.<span class="i method">Select</span>(<span id="r11 rd" class="r11 r">p</span> =&gt; <a href="#0d262fa6e6413af0" class="i method">GetFileInfo</a>(<span class="r11 r">p</span>)));
+                <span class="r3 r">entries</span>.<span class="i method">AddRange</span>(<span class="r10 r">folders</span>.<span class="i method">Select</span>(<span id="r12 rd" class="r12 r">n</span> =&gt; <b>new</b> <a href="FileProviders/EmbeddedDirectoryInfo.cs.html#f0bef49c5bf31322" class="t constructor">EmbeddedDirectoryInfo</a>(<span class="r12 r">n</span>)));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="FileProviders/EmbeddedDirectoryContents.cs.html#75251a026f500fea" class="t constructor">EmbeddedDirectoryContents</a>(<span class="r3 r">entries</span>);
+        }
+ 
+        <b>public</b> <span class="t t">IFileInfo</span> <a id="0d262fa6e6413af0" href="../R/0d262fa6e6413af0.html" target="n" data-glyph="72,1" class="i method">GetFileInfo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r13 rd" class="r13 r">subpath</span>)
+        {
+            <b>if</b> (<span class="r13 r">subpath</span> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r13 r">subpath</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">path</span> = <a href="#cf9b1fae02d5b042" class="i method">NormalizePath</a>(<span class="r13 r">subpath</span>);
+ 
+            <span class="c">// &quot;Areas/**/*.*&quot;.</span>
+            <b>if</b> (<span class="r14 r">path</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a>.<a href="Application.cs.html#41f34776c4c9c4f6" class="i field">ModulesRoot</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="c">// Skip the &quot;Areas/&quot; root.</span>
+                <span class="r14 r">path</span> = <span class="r14 r">path</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a>.<a href="Application.cs.html#41f34776c4c9c4f6" class="i field">ModulesRoot</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r15 rd" class="r15 r">index</span> = <span class="r14 r">path</span>.<a href="@1@System.Runtime/A.html#eb06d6d166f6a3d9" class="i method">IndexOf</a>(<span class="s">&#39;/&#39;</span>);
+ 
+                <span class="c">// &quot;{ModuleId}/**/*.*&quot;.</span>
+                <b>if</b> (<span class="r15 r">index</span> != -1)
+                {
+                    <span class="c">// Resolve the module id.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">module</span> = <span class="r14 r">path</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r15 r">index</span>);
+ 
+                    <span class="c">// Skip the module id to resolve the subpath.</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">fileSubPath</span> = <span class="r14 r">path</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r15 r">index</span> + 1);
+ 
+                    <span class="c">// If it is the app&#39;s module.</span>
+                    <b>if</b> (<span class="r16 r">module</span> == <a href="#2e1c1d9617fc28b0" class="i property">Application</a>.<a href="Application.cs.html#08ec73d4a56226e9" class="i property">Name</a>)
+                    {
+                        <span class="c">// Serve the file from the physical application root folder.</span>
+                        <b>return</b> <b>new</b> <span class="t constructor">PhysicalFileInfo</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<a href="#2e1c1d9617fc28b0" class="i property">Application</a>.<a href="Application.cs.html#39d5d9d0153e84eb" class="i property">Root</a> + <span class="r17 r">fileSubPath</span>));
+                    }
+ 
+                    <span class="c">// Get the embedded file info from the module assembly.</span>
+                    <b>return</b> <a href="#2e1c1d9617fc28b0" class="i property">Application</a>.<a href="Application.cs.html#4ffe95156342bfca" class="i method">GetModule</a>(<span class="r16 r">module</span>).<a href="Module.cs.html#c3d768ed13f82528" class="i method">GetFileInfo</a>(<span class="r17 r">fileSubPath</span>);
+                }
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r13 r">subpath</span>);
+        }
+ 
+        <b>public</b> <span class="t t">IChangeToken</span> <a id="affab6d125a1b5fc" href="../R/affab6d125a1b5fc.html" target="n" data-glyph="72,1" class="i method">Watch</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r18 rd" class="r18 r">filter</span>)
+        {
+            <b>return</b> <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+        }
+ 
+        <b>private string</b> <a id="cf9b1fae02d5b042" href="../R/cf9b1fae02d5b042.html" target="n" data-glyph="76,1" class="i method">NormalizePath</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">path</span>)
+        {
+            <b>return</b> <span class="r19 r">path</span>.<a href="@1@System.Runtime/A.html#987da5dfb39f1927" class="i method">Replace</a>(<span class="s">&#39;\\&#39;</span>, <span class="s">&#39;/&#39;</span>).<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>).<a href="@1@System.Runtime/A.html#69fc1d0aa6df8a90" class="i method">Replace</a>(<span class="s">&quot;//&quot;</span>, <span class="s">&quot;/&quot;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

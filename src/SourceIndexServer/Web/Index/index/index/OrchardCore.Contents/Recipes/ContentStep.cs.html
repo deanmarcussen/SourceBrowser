@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentStep.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(51);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Recipes/ContentStep.cs" target="_top">Recipes\ContentStep.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Recipes</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This recipe step creates a set of content items.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="e67c4fb65067f5db" href="../R/e67c4fb65067f5db.html" target="n" data-glyph="0,0" class="t t"><span id="0477584fd5814181">ContentStep</span></a> : <a href="/OrchardCore.Recipes.Abstractions/A.html#30c546cf8f65a6eb" class="t t">IRecipeStepHandler</a>
+    {
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ad3d32b16cb18951" href="../R/ad3d32b16cb18951.html" target="n" data-glyph="72,1" class="i method">ExecuteAsync</a>(<a href="/OrchardCore.Recipes.Abstractions/A.html#62144c85232f4f1c" class="t t">RecipeExecutionContext</a> <span id="r0 rd" class="r0 r">context</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r0 r">context</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#21252a5abe295c58" class="i property">Name</a>, <span class="s">&quot;Content&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <b>var</b> <span id="r1 rd" class="r1 r">model</span> = <span class="r0 r">context</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#615c9d45aa327ca8" class="i property">Step</a>.<span class="i">ToObject</span>&lt;<a href="#28cf820f7d2cbbe0" class="t t">ContentStepModel</a>&gt;();
+            <b>var</b> <span id="r2 rd" class="r2 r">contentItems</span> = <span class="r1 r">model</span>.<span class="i">Data</span>.<span class="i">ToObject</span>&lt;<span class="i">ContentItem</span>[]&gt;();
+ 
+            <span class="c">// If the shell is activated there is no migration in progress.</span>
+            <b>if</b> (<span class="i">ShellScope</span>.<span class="i">Context</span>.<span class="i">IsActivated</span>)
+            {
+                <b>var</b> <span id="r3 rd" class="r3 r">contentManager</span> = <span class="i">ShellScope</span>.<span class="i">Services</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">IContentManager</span>&gt;();
+                <b>return</b> <span class="r3 r">contentManager</span>.<span class="i">ImportAsync</span>(<span class="r2 r">contentItems</span>);
+            }
+ 
+            <span class="c">// Otherwise, the import of content items is deferred after all migrations are completed,</span>
+            <span class="c">// this prevents e.g. a content handler to trigger a workflow before worflows migrations.</span>
+            <span class="i">ShellScope</span>.<span class="i">AddDeferredTask</span>(<span id="r4 rd" class="r4 r">scope</span> =&gt;
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">contentManager</span> = <span class="r4 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">IContentManager</span>&gt;();
+                <b>return</b> <span class="r5 r">contentManager</span>.<span class="i">ImportAsync</span>(<span class="r2 r">contentItems</span>);
+            });
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+    }
+ 
+    <b>public class</b> <a id="28cf820f7d2cbbe0" href="../R/28cf820f7d2cbbe0.html" target="n" data-glyph="0,0" class="t t"><span id="81eb06d5fb05124e">ContentStepModel</span></a>
+    {
+        <b>public</b> <span class="i">JArray</span> <a id="c8206d839722104b" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Data</a> { <b>get</b>; <b>set</b>; }
+    }
+}
+</pre></td></tr></table></div></body></html>

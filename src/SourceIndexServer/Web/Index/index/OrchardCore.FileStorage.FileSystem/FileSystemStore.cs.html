@@ -1,0 +1,259 @@
+﻿<!DOCTYPE html>
+<html><head><title>FileSystemStore.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(250);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.FileStorage.FileSystem/FileSystemStore.cs" target="_top">FileSystemStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.FileStorage.FileSystem" target="_top">src\OrchardCore\OrchardCore.FileStorage.FileSystem\OrchardCore.FileStorage.FileSystem.csproj</a> (OrchardCore.FileStorage.FileSystem)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Physical</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>.<span class="i n">FileSystem</span>
+{
+    <b>public class</b> <a id="ee9641f929abd967" href="R/ee9641f929abd967.html" target="n" data-glyph="0,0" class="t t">FileSystemStore</a> : <a href="/OrchardCore.FileStorage.Abstractions/A.html#178c85b58b6d5003" class="t t">IFileStore</a>
+    {
+        <b>private readonly string</b> <a id="ee46be1825d59a85" href="R/ee46be1825d59a85.html" target="n" data-glyph="46,1" class="i field">_fileSystemPath</a>;
+ 
+        <b>public</b> <a id="84d4545001bd4c37" href="R/84d4545001bd4c37.html" target="n" data-glyph="72,1" class="t constructor">FileSystemStore</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r0 rd" class="r0 r">fileSystemPath</span>)
+        {
+            <a href="#ee46be1825d59a85" class="i field">_fileSystemPath</a> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#1274738792cce835" class="i method">GetFullPath</a>(<span class="r0 r">fileSystemPath</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="7c85cab9e7bde427" href="R/7c85cab9e7bde427.html" target="n" data-glyph="72,1" class="i method">GetFileInfoAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r2 rd" class="r2 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r1 r">path</span>);
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">fileInfo</span> = <b>new</b> <span class="t constructor">PhysicalFileInfo</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<span class="r2 r">physicalPath</span>));
+ 
+            <b>if</b> (<span class="r3 r">fileInfo</span>.<span class="i property">Exists</span>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt;(<b>new</b> <a href="FileSystemStoreEntry.cs.html#5175567618db56ed" class="t constructor">FileSystemStoreEntry</a>(<span class="r1 r">path</span>, <span class="r3 r">fileInfo</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt;(<b>null</b>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="7e54954c6b6f850d" href="R/7e54954c6b6f850d.html" target="n" data-glyph="72,1" class="i method">GetDirectoryInfoAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r4 r">path</span>);
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">directoryInfo</span> = <b>new</b> <span class="t constructor">PhysicalDirectoryInfo</span>(<b>new</b> <span class="t constructor">DirectoryInfo</span>(<span class="r5 r">physicalPath</span>));
+ 
+            <b>if</b> (<span class="r6 r">directoryInfo</span>.<span class="i property">Exists</span>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt;(<b>new</b> <a href="FileSystemStoreEntry.cs.html#5175567618db56ed" class="t constructor">FileSystemStoreEntry</a>(<span class="r4 r">path</span>, <span class="r6 r">directoryInfo</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt;(<b>null</b>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="d4484b1007929ef1" href="R/d4484b1007929ef1.html" target="n" data-glyph="72,1" class="i method">GetDirectoryContentAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">path</span> = <b>null</b>, <b>bool</b> <span id="r8 rd" class="r8 r">includeSubDirectories</span> = <b>false</b>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r7 r">path</span>);
+            <b>var</b> <span id="r10 rd" class="r10 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt;();
+ 
+            <b>if</b> (!<span class="t t">Directory</span>.<span class="i method">Exists</span>(<span class="r9 r">physicalPath</span>))
+            {
+                <b>return</b> <span class="r10 r">results</span>.<span class="i">ToAsyncEnumerable</span>();
+            }
+ 
+            <span class="c">// Add directories.</span>
+            <span class="r10 r">results</span>.<span class="i method">AddRange</span>(
+                <span class="t t">Directory</span>
+                    .<span class="i method">GetDirectories</span>(<span class="r9 r">physicalPath</span>, <span class="s">&quot;*&quot;</span>, <span class="r8 r">includeSubDirectories</span> ? <span class="t t">SearchOption</span>.<span class="i field">AllDirectories</span> : <span class="t t">SearchOption</span>.<span class="i field">TopDirectoryOnly</span>)
+                    .<span class="i method">Select</span>(<span id="r11 rd" class="r11 r">f</span> =&gt;
+                    {
+                        <b>var</b> <span id="r12 rd" class="r12 r">fileSystemInfo</span> = <b>new</b> <span class="t constructor">PhysicalDirectoryInfo</span>(<b>new</b> <span class="t constructor">DirectoryInfo</span>(<span class="r11 r">f</span>));
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">fileRelativePath</span> = <span class="r11 r">f</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#ee46be1825d59a85" class="i field">_fileSystemPath</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">filePath</span> = <a href="#ee9641f929abd967" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#1201a56b26b3a1e9" class="i method">NormalizePath</a>(<span class="r13 r">fileRelativePath</span>);
+                        <b>return</b> <b>new</b> <a href="FileSystemStoreEntry.cs.html#5175567618db56ed" class="t constructor">FileSystemStoreEntry</a>(<span class="r14 r">filePath</span>, <span class="r12 r">fileSystemInfo</span>);
+                    }));
+ 
+            <span class="c">// Add files.</span>
+            <span class="r10 r">results</span>.<span class="i method">AddRange</span>(
+                <span class="t t">Directory</span>
+                    .<span class="i method">GetFiles</span>(<span class="r9 r">physicalPath</span>, <span class="s">&quot;*&quot;</span>, <span class="r8 r">includeSubDirectories</span> ? <span class="t t">SearchOption</span>.<span class="i field">AllDirectories</span> : <span class="t t">SearchOption</span>.<span class="i field">TopDirectoryOnly</span>)
+                    .<span class="i method">Select</span>(<span id="r15 rd" class="r15 r">f</span> =&gt;
+                    {
+                        <b>var</b> <span id="r16 rd" class="r16 r">fileSystemInfo</span> = <b>new</b> <span class="t constructor">PhysicalFileInfo</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<span class="r15 r">f</span>));
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">fileRelativePath</span> = <span class="r15 r">f</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<a href="#ee46be1825d59a85" class="i field">_fileSystemPath</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">filePath</span> = <a href="#ee9641f929abd967" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#1201a56b26b3a1e9" class="i method">NormalizePath</a>(<span class="r17 r">fileRelativePath</span>);
+                        <b>return</b> <b>new</b> <a href="FileSystemStoreEntry.cs.html#5175567618db56ed" class="t constructor">FileSystemStoreEntry</a>(<span class="r18 r">filePath</span>, <span class="r16 r">fileSystemInfo</span>);
+                    }));
+ 
+            <b>return</b> <span class="r10 r">results</span>.<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="09d08c2285459c33" href="R/09d08c2285459c33.html" target="n" data-glyph="72,1" class="i method">TryCreateDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r19 r">path</span>);
+ 
+            <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r20 r">physicalPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot create directory because the path &#39;</span>{<span class="r19 r">path</span>}<span class="s">&#39; already exists and is a file.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>if</b> (<span class="t t">Directory</span>.<span class="i method">Exists</span>(<span class="r20 r">physicalPath</span>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>false</b>);
+            }
+ 
+            <span class="t t">Directory</span>.<span class="i method">CreateDirectory</span>(<span class="r20 r">physicalPath</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>true</b>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="f8e7b16ce02548c6" href="R/f8e7b16ce02548c6.html" target="n" data-glyph="72,1" class="i method">TryDeleteFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r21 r">path</span>);
+ 
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r22 r">physicalPath</span>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>false</b>);
+            }
+ 
+            <span class="t t">File</span>.<span class="i method">Delete</span>(<span class="r22 r">physicalPath</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>true</b>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="00dd7f4a694e4aca" href="R/00dd7f4a694e4aca.html" target="n" data-glyph="72,1" class="i method">TryDeleteDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r23 rd" class="r23 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r24 rd" class="r24 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r23 r">path</span>);
+ 
+            <b>if</b> (!<span class="t t">Directory</span>.<span class="i method">Exists</span>(<span class="r24 r">physicalPath</span>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>false</b>);
+            }
+ 
+            <span class="t t">Directory</span>.<span class="i method">Delete</span>(<span class="r24 r">physicalPath</span>, <span class="r25 r">recursive</span>: <b>true</b>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>true</b>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="e285f65d03a1cd72" href="R/e285f65d03a1cd72.html" target="n" data-glyph="72,1" class="i method">MoveFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">oldPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">newPath</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r28 rd" class="r28 r">physicalOldPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r26 r">oldPath</span>);
+ 
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r28 r">physicalOldPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot move file &#39;</span>{<span class="r26 r">oldPath</span>}<span class="s">&#39; because it does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r29 rd" class="r29 r">physicalNewPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r27 r">newPath</span>);
+ 
+            <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r29 r">physicalNewPath</span>) || <span class="t t">Directory</span>.<span class="i method">Exists</span>(<span class="r29 r">physicalNewPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot move file because the new path &#39;</span>{<span class="r27 r">newPath</span>}<span class="s">&#39; already exists.</span><span class="s">&quot;</span>);
+            }
+ 
+            <span class="t t">File</span>.<span class="i method">Move</span>(<span class="r28 r">physicalOldPath</span>, <span class="r29 r">physicalNewPath</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4ddcabe3e2d10f33" href="R/4ddcabe3e2d10f33.html" target="n" data-glyph="72,1" class="i method">CopyFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r30 rd" class="r30 r">srcPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">dstPath</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r32 rd" class="r32 r">physicalSrcPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r30 r">srcPath</span>);
+ 
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r32 r">physicalSrcPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">The file &#39;</span>{<span class="r30 r">srcPath</span>}<span class="s">&#39; does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r33 rd" class="r33 r">physicalDstPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r31 r">dstPath</span>);
+ 
+            <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r33 r">physicalDstPath</span>) || <span class="t t">Directory</span>.<span class="i method">Exists</span>(<span class="r33 r">physicalDstPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot copy file because the destination path &#39;</span>{<span class="r31 r">dstPath</span>}<span class="s">&#39; already exists.</span><span class="s">&quot;</span>);
+            }
+ 
+            <span class="t t">File</span>.<span class="i method">Copy</span>(<a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r30 r">srcPath</span>), <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r31 r">dstPath</span>));
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt; <a id="9de9c7971f972593" href="R/9de9c7971f972593.html" target="n" data-glyph="72,1" class="i method">GetFileStreamAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r34 rd" class="r34 r">path</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r35 rd" class="r35 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r34 r">path</span>);
+ 
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r35 r">physicalPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot get file stream because the file &#39;</span>{<span class="r34 r">path</span>}<span class="s">&#39; does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r36 rd" class="r36 r">stream</span> = <span class="t t">File</span>.<span class="i method">OpenRead</span>(<span class="r35 r">physicalPath</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt;(<span class="r36 r">stream</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt; <a id="7999fd9acb89daf3" href="R/7999fd9acb89daf3.html" target="n" data-glyph="72,1" class="i method">GetFileStreamAsync</a>(<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a> <span id="r37 rd" class="r37 r">fileStoreEntry</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r38 rd" class="r38 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r37 r">fileStoreEntry</span>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#87bcc81e6615fbee" class="i property">Path</a>);
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r38 r">physicalPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot get file stream because the file &#39;</span>{<span class="r37 r">fileStoreEntry</span>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#87bcc81e6615fbee" class="i property">Path</a>}<span class="s">&#39; does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r39 rd" class="r39 r">stream</span> = <span class="t t">File</span>.<span class="i method">OpenRead</span>(<span class="r38 r">physicalPath</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt;(<span class="r39 r">stream</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="753ffcfcb96b76b7" href="R/753ffcfcb96b76b7.html" target="n" data-glyph="72,1" class="i method">CreateFileFromStreamAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r40 rd" class="r40 r">path</span>, <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r41 rd" class="r41 r">inputStream</span>, <b>bool</b> <span id="r42 rd" class="r42 r">overwrite</span> = <b>false</b>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r43 rd" class="r43 r">physicalPath</span> = <a href="#34c217d7b5acd30f" class="i method">GetPhysicalPath</a>(<span class="r40 r">path</span>);
+ 
+            <b>if</b> (!<span class="r42 r">overwrite</span> &amp;&amp; <span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r43 r">physicalPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot create file &#39;</span>{<span class="r40 r">path</span>}<span class="s">&#39; because it already exists.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>if</b> (<span class="t t">Directory</span>.<span class="i method">Exists</span>(<span class="r43 r">physicalPath</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">Cannot create file &#39;</span>{<span class="r40 r">path</span>}<span class="s">&#39; because it already exists as a directory.</span><span class="s">&quot;</span>);
+            }
+ 
+            <span class="c">// Create directory path if it doesn&#39;t exist.</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r44 rd" class="r44 r">physicalDirectoryPath</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r43 r">physicalPath</span>);
+            <span class="t t">Directory</span>.<span class="i method">CreateDirectory</span>(<span class="r44 r">physicalDirectoryPath</span>);
+ 
+            <b>var</b> <span id="r45 rd" class="r45 r">fileInfo</span> = <b>new</b> <span class="t constructor">FileInfo</span>(<span class="r43 r">physicalPath</span>);
+            <b>using</b> (<a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r46 rd" class="r46 r">outputStream</span> = <span class="r45 r">fileInfo</span>.<span class="i method">Create</span>())
+            {
+                <b>await</b> <span class="r41 r">inputStream</span>.<a href="@1@System.Runtime/A.html#1ed7a6d41a19abf9" class="i method">CopyToAsync</a>(<span class="r46 r">outputStream</span>);
+            }
+ 
+            <b>return</b> <span class="r40 r">path</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Translates a relative path in the virtual file store to a physical path in the underlying file system.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r47 r">path</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The relative path within the file store.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span><span class="c">The resulting physical path is verified to be inside designated root file system path.</span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <b>private string</b> <a id="34c217d7b5acd30f" href="R/34c217d7b5acd30f.html" target="n" data-glyph="76,1" class="i method">GetPhysicalPath</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r47 rd" class="r47 r">path</span>)
+        {
+            <span class="r47 r">path</span> = <a href="#ee9641f929abd967" class="k">this</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#1201a56b26b3a1e9" class="i method">NormalizePath</a>(<span class="r47 r">path</span>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r48 rd" class="r48 r">physicalPath</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r47 r">path</span>) ? <a href="#ee46be1825d59a85" class="i field">_fileSystemPath</a> : <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<a href="#ee46be1825d59a85" class="i field">_fileSystemPath</a>, <span class="r47 r">path</span>);
+ 
+            <span class="c">// Verify that the resulting path is inside the root file system path.</span>
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r49 rd" class="r49 r">pathIsAllowed</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#1274738792cce835" class="i method">GetFullPath</a>(<span class="r48 r">physicalPath</span>).<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="#ee46be1825d59a85" class="i field">_fileSystemPath</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>);
+            <b>if</b> (!<span class="r49 r">pathIsAllowed</span>)
+            {
+                <b>throw</b> <b>new</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#747726e9407c2de6" class="t constructor">FileStoreException</a>(<span class="s">$&quot;</span><span class="s">The path &#39;</span>{<span class="r47 r">path</span>}<span class="s">&#39; resolves to a physical path outside the file system store root.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>return</b> <span class="r48 r">physicalPath</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

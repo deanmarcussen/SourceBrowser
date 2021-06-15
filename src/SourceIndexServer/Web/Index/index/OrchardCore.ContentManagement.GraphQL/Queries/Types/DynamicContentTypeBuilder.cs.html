@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html><head><title>DynamicContentTypeBuilder.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(126);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentManagement.GraphQL/Queries/Types/DynamicContentTypeBuilder.cs" target="_top">Queries\Types\DynamicContentTypeBuilder.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentManagement.GraphQL" target="_top">src\OrchardCore\OrchardCore.ContentManagement.GraphQL\OrchardCore.ContentManagement.GraphQL.csproj</a> (OrchardCore.ContentManagement.GraphQL)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Types</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">GraphQL</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">GraphQL</span>.<span class="i n">Queries</span>.<span class="i n">Types</span>
+{
+    <b>public class</b> <a id="05349b4f063c3f3c" href="../../R/05349b4f063c3f3c.html" target="n" data-glyph="0,0" class="t t">DynamicContentTypeBuilder</a> : <a href="IContentTypeBuilder.cs.html#a935372a58cef55b" class="t t">IContentTypeBuilder</a>
+    {
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="555bd7f4f319323d" href="../../R/555bd7f4f319323d.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <a href="../../Options/GraphQLContentOptions.cs.html#5dba51e923df7933" class="t t">GraphQLContentOptions</a> <a id="8a8b60d9039fdaa1" href="../../R/8a8b60d9039fdaa1.html" target="n" data-glyph="46,1" class="i field">_contentOptions</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="6346ac65cf4790b6" href="../../R/6346ac65cf4790b6.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FieldType</span>&gt; <a id="60e44d63f1913686" href="../../R/60e44d63f1913686.html" target="n" data-glyph="46,1" class="i field">_dynamicPartFields</a>;
+ 
+        <b>public</b> <a id="3708f0fdf8217650" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DynamicContentTypeBuilder</a>(<span class="t t">IHttpContextAccessor</span> <span id="r0 rd" class="r0 r">httpContextAccessor</span>,
+            <span class="t t">IOptions</span>&lt;<a href="../../Options/GraphQLContentOptions.cs.html#5dba51e923df7933" class="t t">GraphQLContentOptions</a>&gt; <span id="r1 rd" class="r1 r">contentOptionsAccessor</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#05349b4f063c3f3c" class="t t">DynamicContentTypeBuilder</a>&gt; <span id="r2 rd" class="r2 r">localizer</span>)
+        {
+            <a href="#555bd7f4f319323d" class="i field">_httpContextAccessor</a> = <span class="r0 r">httpContextAccessor</span>;
+            <a href="#8a8b60d9039fdaa1" class="i field">_contentOptions</a> = <span class="r1 r">contentOptionsAccessor</span>.<span class="i property">Value</span>;
+            <a href="#60e44d63f1913686" class="i field">_dynamicPartFields</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FieldType</span>&gt;();
+ 
+            <a href="#6346ac65cf4790b6" class="i field">S</a> = <span class="r2 r">localizer</span>;
+        }
+ 
+        <b>public void</b> <a id="fa6ba290eefa1978" href="../../R/fa6ba290eefa1978.html" target="n" data-glyph="72,1" class="i method">Build</a>(<span class="i">FieldType</span> <span id="r3 rd" class="r3 r">contentQuery</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r4 rd" class="r4 r">contentTypeDefinition</span>, <a href="ContentItemType.cs.html#550ccb7479ccab16" class="t t">ContentItemType</a> <span id="r5 rd" class="r5 r">contentItemType</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">serviceProvider</span> = <a href="#555bd7f4f319323d" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>;
+            <b>var</b> <span id="r7 rd" class="r7 r">contentFieldProviders</span> = <span class="r6 r">serviceProvider</span>.<span class="i method">GetServices</span>&lt;<a href="IContentFieldProvider.cs.html#808777ed67584a0c" class="t t">IContentFieldProvider</a>&gt;().<span class="i method">ToList</span>();
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="k">var</a> <span id="r8 rd" class="r8 r">part</span> <b>in</b> <span class="r4 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">partName</span> = <span class="r8 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+ 
+                <span class="c">// This builder only handles parts with fields.</span>
+                <b>if</b> (!<span class="r8 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">Any</span>()) 
+                {
+                    <b>continue</b>;
+                }
+ 
+                <b>if</b> (<a href="#8a8b60d9039fdaa1" class="i field">_contentOptions</a>.<a href="../../Options/GraphQLContentOptions.cs.html#e6a82dcf05509895" class="i method">ShouldSkip</a>(<span class="r8 r">part</span>)) 
+                {
+                    <b>continue</b>;
+                }
+ 
+                <b>if</b> (<a href="#8a8b60d9039fdaa1" class="i field">_contentOptions</a>.<a href="../../Options/GraphQLContentOptions.cs.html#ddf500c63283cf65" class="i method">ShouldCollapse</a>(<span class="r8 r">part</span>))
+                {
+                    <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r10 rd" class="r10 r">field</span> <b>in</b> <span class="r8 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>)
+                    {
+                        <b>foreach</b> (<a href="IContentFieldProvider.cs.html#808777ed67584a0c" class="k">var</a> <span id="r11 rd" class="r11 r">fieldProvider</span> <b>in</b> <span class="r7 r">contentFieldProviders</span>)
+                        {
+                            <b>var</b> <span id="r12 rd" class="r12 r">fieldType</span> = <span class="r11 r">fieldProvider</span>.<a href="IContentFieldProvider.cs.html#15fab49ba4299a8d" class="i method">GetField</a>(<span class="r10 r">field</span>);
+ 
+                            <b>if</b> (<span class="r12 r">fieldType</span> != <b>null</b>)
+                            {
+                                <b>if</b> (<a href="#8a8b60d9039fdaa1" class="i field">_contentOptions</a>.<span class="i">ShouldSkip</span>(<span class="r12 r">fieldType</span>.<span class="i">Type</span>, <span class="r12 r">fieldType</span>.<span class="i">Name</span>)) 
+                                {
+                                    <b>continue</b>;
+                                }
+ 
+                                <span class="r5 r">contentItemType</span>.<a href="ContentItemType.cs.html#07f186ea0be5cdc5" class="i method">AddField</a>(<span class="r12 r">fieldType</span>);
+                                <b>break</b>;
+                            }
+                        }
+                    }
+                }
+                <b>else</b>
+                {
+                    <span class="c">// Check if another builder has already added a field for this part.</span>
+                    <b>var</b> <span id="r13 rd" class="r13 r">existingField</span> = <span class="r5 r">contentItemType</span>.<span class="i">GetField</span>(<span class="r9 r">partName</span>.<a href="../../Extensions/StringExtensions.cs.html#64432dc2010217d9" class="i method">ToFieldName</a>());
+                    <b>if</b> (<span class="r13 r">existingField</span> != <b>null</b>)
+                    {
+                        <span class="c">// Add content field types.</span>
+                        <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r14 rd" class="r14 r">field</span> <b>in</b> <span class="r8 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>)
+                        {
+                            <b>foreach</b> (<a href="IContentFieldProvider.cs.html#808777ed67584a0c" class="k">var</a> <span id="r15 rd" class="r15 r">fieldProvider</span> <b>in</b> <span class="r7 r">contentFieldProviders</span>)
+                            {
+                                <b>var</b> <span id="r16 rd" class="r16 r">contentFieldType</span> = <span class="r15 r">fieldProvider</span>.<a href="IContentFieldProvider.cs.html#15fab49ba4299a8d" class="i method">GetField</a>(<span class="r14 r">field</span>);
+ 
+                                <b>if</b> (<span class="r16 r">contentFieldType</span> != <b>null</b> &amp;&amp; !<span class="r5 r">contentItemType</span>.<span class="i">HasField</span>(<span class="r16 r">contentFieldType</span>.<span class="i">Name</span>))
+                                {
+                                    <span class="r5 r">contentItemType</span>.<a href="ContentItemType.cs.html#07f186ea0be5cdc5" class="i method">AddField</a>(<span class="r16 r">contentFieldType</span>);
+                                    <b>break</b>;
+                                }
+                            }
+                        }
+                        <b>continue</b>;
+                    }
+ 
+                    <b>if</b> (<a href="#60e44d63f1913686" class="i field">_dynamicPartFields</a>.<span class="i method">TryGetValue</span>(<span class="r9 r">partName</span>, <b>out</b> <b>var</b> <span id="r17 rd" class="r17 r">fieldType</span>))
+                    {
+                        <span class="r5 r">contentItemType</span>.<a href="ContentItemType.cs.html#07f186ea0be5cdc5" class="i method">AddField</a>(<span class="r17 r">fieldType</span>);
+                    }
+                    <b>else</b>
+                    {
+                        <b>var</b> <span id="r18 rd" class="r18 r">field</span> = <span class="r5 r">contentItemType</span>.<span class="i">Field</span>(
+                            <b>typeof</b>(<a href="DynamicPartGraphType.cs.html#036af7419db33f48" class="t t">DynamicPartGraphType</a>),
+                            <span class="r9 r">partName</span>.<a href="../../Extensions/StringExtensions.cs.html#64432dc2010217d9" class="i method">ToFieldName</a>(),
+                            <span class="i">description</span>: <a href="#6346ac65cf4790b6" class="i field">S</a>[<span class="s">&quot;Represents a {0}.&quot;</span>, <span class="r8 r">part</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>],
+                            <span class="i">resolve</span>: <span id="r19 rd" class="r19 r">context</span> =&gt;
+                            {
+                                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">nameToResolve</span> = <span class="r9 r">partName</span>;
+                                <b>var</b> <span id="r21 rd" class="r21 r">typeToResolve</span> = <span class="r19 r">context</span>.<span class="i">ReturnType</span>.<span class="i">GetType</span>().<span class="i">BaseType</span>.<span class="i">GetGenericArguments</span>().<span class="i">First</span>();
+ 
+                                <b>return</b> <span class="r19 r">context</span>.<span class="i">Source</span>.<span class="i">Get</span>(<span class="r21 r">typeToResolve</span>, <span class="r20 r">nameToResolve</span>);
+                            });
+ 
+                        <span class="r18 r">field</span>.<span class="i">ResolvedType</span> = <b>new</b> <a href="DynamicPartGraphType.cs.html#70f7f5745efdec81" class="t constructor">DynamicPartGraphType</a>(<a href="#555bd7f4f319323d" class="i field">_httpContextAccessor</a>, <span class="r8 r">part</span>);
+                        <a href="#60e44d63f1913686" class="i field">_dynamicPartFields</a>[<span class="r9 r">partName</span>] = <span class="r18 r">field</span>;
+                    }
+                }
+            }
+        }
+ 
+        <b>public void</b> <a id="27aea5705e4a1fdd" href="../../R/27aea5705e4a1fdd.html" target="n" data-glyph="72,1" class="i method">Clear</a>()
+        {
+            <a href="#60e44d63f1913686" class="i field">_dynamicPartFields</a>.<span class="i method">Clear</span>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

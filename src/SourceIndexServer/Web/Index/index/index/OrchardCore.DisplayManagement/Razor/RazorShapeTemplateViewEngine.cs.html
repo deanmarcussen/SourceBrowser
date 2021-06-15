@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html><head><title>RazorShapeTemplateViewEngine.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(182);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/Razor/RazorShapeTemplateViewEngine.cs" target="_top">Razor\RazorShapeTemplateViewEngine.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Abstractions</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Infrastructure</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewEngines</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Abstractions</span>.<span class="i">Pooling</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Descriptors</span>.<span class="i n">ShapeTemplateStrategy</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Implementation</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Razor</span>
+{
+    <b>public class</b> <a id="15b2b4e03a0007e4" href="../R/15b2b4e03a0007e4.html" target="n" data-glyph="0,0" class="t t">RazorShapeTemplateViewEngine</a> : <a href="../Descriptors/ShapeTemplateStrategy/IShapeTemplateViewEngine.cs.html#a1d8f4748f26c68e" class="t t">IShapeTemplateViewEngine</a>
+    {
+        <b>private readonly</b> <span class="t t">IOptions</span>&lt;<span class="t t">MvcViewOptions</span>&gt; <a id="c4aae4ddaf2f568d" href="../R/c4aae4ddaf2f568d.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="d9a13f25eb74f5a3" href="../R/d9a13f25eb74f5a3.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <a href="../ViewContextAccessor.cs.html#e4beefc493c22244" class="t t">ViewContextAccessor</a> <a id="c8c499aa85a1d941" href="../R/c8c499aa85a1d941.html" target="n" data-glyph="46,1" class="i field">_viewContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">ITempDataProvider</span> <a id="cea1434a13d47b4f" href="../R/cea1434a13d47b4f.html" target="n" data-glyph="46,1" class="i field">_tempDataProvider</a>;
+        <b>private readonly</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="c545dcabb8f70213" href="../R/c545dcabb8f70213.html" target="n" data-glyph="46,1" class="i field">_templateFileExtensions</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<b>new</b>[] { <span class="t t">RazorViewEngine</span>.<span class="i field">ViewExtension</span> });
+ 
+        <b>public</b> <a id="99ae255e290896fe" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RazorShapeTemplateViewEngine</a>(
+            <span class="t t">IOptions</span>&lt;<span class="t t">MvcViewOptions</span>&gt; <span id="r0 rd" class="r0 r">options</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IRazorViewExtensionProvider.cs.html#d771f7e0ae0d9a2a" class="t t">IRazorViewExtensionProvider</a>&gt; <span id="r1 rd" class="r1 r">viewExtensionProviders</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>,
+            <a href="../ViewContextAccessor.cs.html#e4beefc493c22244" class="t t">ViewContextAccessor</a> <span id="r3 rd" class="r3 r">viewContextAccessor</span>,
+            <span class="t t">ITempDataProvider</span> <span id="r4 rd" class="r4 r">tempDataProvider</span>)
+        {
+            <a href="#c4aae4ddaf2f568d" class="i field">_options</a> = <span class="r0 r">options</span>;
+            <a href="#d9a13f25eb74f5a3" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+            <a href="#c8c499aa85a1d941" class="i field">_viewContextAccessor</a> = <span class="r3 r">viewContextAccessor</span>;
+            <a href="#cea1434a13d47b4f" class="i field">_tempDataProvider</a> = <span class="r4 r">tempDataProvider</span>;
+            <a href="#c545dcabb8f70213" class="i field">_templateFileExtensions</a>.<span class="i method">AddRange</span>(<span class="r1 r">viewExtensionProviders</span>.<span class="i method">Select</span>(<span id="r5 rd" class="r5 r">x</span> =&gt; <span class="r5 r">x</span>.<a href="IRazorViewExtensionProvider.cs.html#f75c05785f59ab6a" class="i property">ViewExtension</a>));
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="5e715fd3dd37526e" href="../R/5e715fd3dd37526e.html" target="n" data-glyph="102,1" class="i property">TemplateFileExtensions</a>
+        {
+            <b>get</b>
+            {
+                <b>return</b> <a href="#c545dcabb8f70213" class="i field">_templateFileExtensions</a>;
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="6f3d72a58a7091cf" href="../R/6f3d72a58a7091cf.html" target="n" data-glyph="72,1" class="i method">RenderAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">relativePath</span>, <a href="../Implementation/DisplayContext.cs.html#dc4c3fe34aa709f5" class="t t">DisplayContext</a> <span id="r7 rd" class="r7 r">displayContext</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">viewName</span> = <span class="s">&quot;/&quot;</span> + <span class="r6 r">relativePath</span>;
+            <span class="r8 r">viewName</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#8b380aa7025bf5f6" class="i method">ChangeExtension</a>(<span class="r8 r">viewName</span>, <span class="t t">RazorViewEngine</span>.<span class="i field">ViewExtension</span>);
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">viewContext</span> = <a href="#c8c499aa85a1d941" class="i field">_viewContextAccessor</a>.<a href="../ViewContextAccessor.cs.html#508e067b11296606" class="i property">ViewContext</a>;
+ 
+            <b>if</b> (<span class="r9 r">viewContext</span>?.<span class="i property">View</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r10 rd" class="r10 r">viewData</span> = <b>new</b> <span class="t constructor">ViewDataDictionary</span>(<span class="r9 r">viewContext</span>.<span class="i property">ViewData</span>);
+                <span class="r10 r">viewData</span>.<span class="i property">TemplateInfo</span>.<span class="i property">HtmlFieldPrefix</span> = <span class="r7 r">displayContext</span>.<a href="../Implementation/DisplayContext.cs.html#9af35ae5ed8d992c" class="i property">HtmlFieldPrefix</a>;
+ 
+                <b>var</b> <span id="r11 rd" class="r11 r">htmlHelper</span> = <a href="#6cda4bd56f6ad24d" class="i method">MakeHtmlHelper</a>(<span class="r9 r">viewContext</span>, <span class="r10 r">viewData</span>);
+                <b>return</b> <span class="r11 r">htmlHelper</span>.<span class="i method">PartialAsync</span>(<span class="r8 r">viewName</span>, <span class="r7 r">displayContext</span>.<a href="../Implementation/DisplayContext.cs.html#e0c4a68f91ac671c" class="i property">Value</a>);
+            }
+            <b>else</b>
+            {
+                <b>return</b> <a href="#f60604f76f2e78ef" class="i method">RenderRazorViewAsync</a>(<span class="r8 r">viewName</span>, <span class="r7 r">displayContext</span>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="f60604f76f2e78ef" href="../R/f60604f76f2e78ef.html" target="n" data-glyph="76,1" class="i method">RenderRazorViewAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">viewName</span>, <a href="../Implementation/DisplayContext.cs.html#dc4c3fe34aa709f5" class="t t">DisplayContext</a> <span id="r13 rd" class="r13 r">displayContext</span>)
+        {
+            <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r14 rd" class="r14 r">viewEngines</span> = <a href="#c4aae4ddaf2f568d" class="i field">_options</a>.<span class="i property">Value</span>.<span class="i property">ViewEngines</span>;
+ 
+            <b>if</b> (<span class="r14 r">viewEngines</span>.<a href="@1@System.Runtime/A.html#3d6c21c4e9bd5f63" class="i property">Count</a> == 0)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#6e5f254563fed78e" class="i method">Format</a>(<span class="s">&quot;&#39;{0}.{1}&#39; must not be empty. At least one &#39;{2}&#39; is required to locate a view for rendering.&quot;</span>,
+                    <b>typeof</b>(<span class="t t">MvcViewOptions</span>).<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a>,
+                    <b>nameof</b>(<span class="t t">MvcViewOptions</span>.<span class="i property">ViewEngines</span>),
+                    <b>typeof</b>(<span class="t t">IViewEngine</span>).<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a>));
+            }
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">viewEngine</span> = <span class="r14 r">viewEngines</span>[0];
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">result</span> = <b>await</b> <a href="#4caf78418ba5a189" class="i method">RenderViewToStringAsync</a>(<span class="r12 r">viewName</span>, <span class="r13 r">displayContext</span>.<a href="../Implementation/DisplayContext.cs.html#e0c4a68f91ac671c" class="i property">Value</a>, <span class="r15 r">viewEngine</span>);
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">HtmlString</span>(<span class="r16 r">result</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="4caf78418ba5a189" href="../R/4caf78418ba5a189.html" target="n" data-glyph="72,1" class="i method">RenderViewToStringAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">viewName</span>, <b>object</b> <span id="r18 rd" class="r18 r">model</span>, <span class="t t">IViewEngine</span> <span id="r19 rd" class="r19 r">viewEngine</span>)
+        {
+            <b>var</b> <span id="r20 rd" class="r20 r">actionContext</span> = <b>await</b> <a href="#5b5837ae0a7fd114" class="i method">GetActionContextAsync</a>();
+            <b>var</b> <span id="r21 rd" class="r21 r">view</span> = <a href="#6434d8c3ee17e7a1" class="i method">FindView</a>(<span class="r20 r">actionContext</span>, <span class="r17 r">viewName</span>, <span class="r19 r">viewEngine</span>);
+ 
+            <b>using</b> <b>var</b> <span id="r22 rd" class="r22 r">output</span> = <b>new</b> <span class="i">ZStringWriter</span>();
+            <b>var</b> <span id="r23 rd" class="r23 r">viewContext</span> = <b>new</b> <span class="t">ViewContext</span>(
+                <span class="r20 r">actionContext</span>,
+                <span class="r21 r">view</span>,
+                <b>new</b> <span class="t constructor">ViewDataDictionary</span>(
+                    <span class="r24 r">metadataProvider</span>: <b>new</b> <span class="t constructor">EmptyModelMetadataProvider</span>(),
+                    <span class="r25 r">modelState</span>: <b>new</b> <span class="t constructor">ModelStateDictionary</span>())
+                {
+                    <span class="i property">Model</span> = <span class="r18 r">model</span>
+                },
+                <b>new</b> <span class="t constructor">TempDataDictionary</span>(
+                    <span class="r20 r">actionContext</span>.<span class="i property">HttpContext</span>,
+                    <a href="#cea1434a13d47b4f" class="i field">_tempDataProvider</a>),
+                <span class="r22 r">output</span>,
+                <b>new</b> <span class="t constructor">HtmlHelperOptions</span>());
+ 
+            <b>await</b> <span class="r21 r">view</span>.<span class="i method">RenderAsync</span>(<span class="r23 r">viewContext</span>);
+ 
+            <b>return</b> <span class="r22 r">output</span>.<span class="i">ToString</span>();
+        }
+ 
+        <b>private</b> <span class="t t">IView</span> <a id="6434d8c3ee17e7a1" href="../R/6434d8c3ee17e7a1.html" target="n" data-glyph="76,1" class="i method">FindView</a>(<span class="t t">ActionContext</span> <span id="r26 rd" class="r26 r">actionContext</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">viewName</span>, <span class="t t">IViewEngine</span> <span id="r28 rd" class="r28 r">viewEngine</span>)
+        {
+            <b>var</b> <span id="r29 rd" class="r29 r">getViewResult</span> = <span class="r28 r">viewEngine</span>.<span class="i method">GetView</span>(<span class="r30 r">executingFilePath</span>: <b>null</b>, <span class="r31 r">viewPath</span>: <span class="r27 r">viewName</span>, <span class="r32 r">isMainPage</span>: <b>true</b>);
+            <b>if</b> (<span class="r29 r">getViewResult</span>.<span class="i property">Success</span>)
+            {
+                <b>return</b> <span class="r29 r">getViewResult</span>.<span class="i property">View</span>;
+            }
+ 
+            <b>var</b> <span id="r33 rd" class="r33 r">findViewResult</span> = <span class="r28 r">viewEngine</span>.<span class="i method">FindView</span>(<span class="r26 r">actionContext</span>, <span class="r27 r">viewName</span>, <span class="r34 r">isMainPage</span>: <b>true</b>);
+            <b>if</b> (<span class="r33 r">findViewResult</span>.<span class="i property">Success</span>)
+            {
+                <b>return</b> <span class="r33 r">findViewResult</span>.<span class="i property">View</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r35 rd" class="r35 r">searchedLocations</span> = <span class="r29 r">getViewResult</span>.<span class="i property">SearchedLocations</span>.<span class="i method">Concat</span>(<span class="r33 r">findViewResult</span>.<span class="i property">SearchedLocations</span>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r36 rd" class="r36 r">errorMessage</span> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(
+                <span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>,
+                <b>new</b>[] { <span class="s">$&quot;</span><span class="s">Unable to find view &#39;</span>{<span class="r27 r">viewName</span>}<span class="s">&#39;. The following locations were searched:</span><span class="s">&quot;</span> }.<span class="i method">Concat</span>(<span class="r35 r">searchedLocations</span>)); ;
+ 
+            <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="r36 r">errorMessage</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionContext</span>&gt; <a id="5b5837ae0a7fd114" href="../R/5b5837ae0a7fd114.html" target="n" data-glyph="76,1" class="i method">GetActionContextAsync</a>()
+        {
+            <b>var</b> <span id="r37 rd" class="r37 r">httpContext</span> = <a href="#d9a13f25eb74f5a3" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>;
+            <b>var</b> <span id="r38 rd" class="r38 r">actionContext</span> = <span class="r37 r">httpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetService</span>&lt;<span class="t t">IActionContextAccessor</span>&gt;()?.<span class="i property">ActionContext</span>;
+ 
+            <b>if</b> (<span class="r38 r">actionContext</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="r38 r">actionContext</span>;
+            }
+ 
+            <b>var</b> <span id="r39 rd" class="r39 r">routeData</span> = <b>new</b> <span class="t constructor">RouteData</span>();
+            <span class="r39 r">routeData</span>.<span class="i property">Routers</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<b>new</b> <span class="t constructor">RouteCollection</span>());
+ 
+            <span class="r38 r">actionContext</span> = <b>new</b> <span class="t constructor">ActionContext</span>(<span class="r37 r">httpContext</span>, <span class="r39 r">routeData</span>, <b>new</b> <span class="t constructor">ActionDescriptor</span>());
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r40 rd" class="r40 r">filters</span> = <span class="r37 r">httpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetServices</span>&lt;<a href="../IAsyncViewActionFilter.cs.html#22215d5c17a3bd24" class="t t">IAsyncViewActionFilter</a>&gt;();
+ 
+            <b>foreach</b> (<a href="../IAsyncViewActionFilter.cs.html#22215d5c17a3bd24" class="k">var</a> <span id="r41 rd" class="r41 r">filter</span> <b>in</b> <span class="r40 r">filters</span>)
+            {
+                <b>await</b> <span class="r41 r">filter</span>.<a href="../IAsyncViewActionFilter.cs.html#a3311c360203839b" class="i method">OnActionExecutionAsync</a>(<span class="r38 r">actionContext</span>);
+            }
+ 
+            <b>return</b> <span class="r38 r">actionContext</span>;
+        }
+ 
+        <b>private static</b> <span class="t t">IHtmlHelper</span> <a id="6cda4bd56f6ad24d" href="../R/6cda4bd56f6ad24d.html" target="n" data-glyph="76,1" class="i method">MakeHtmlHelper</a>(<span class="t t">ViewContext</span> <span id="r42 rd" class="r42 r">viewContext</span>, <span class="t t">ViewDataDictionary</span> <span id="r43 rd" class="r43 r">viewData</span>)
+        {
+            <b>var</b> <span id="r44 rd" class="r44 r">newHelper</span> = <span class="r42 r">viewContext</span>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IHtmlHelper</span>&gt;();
+ 
+            <b>var</b> <span id="r45 rd" class="r45 r">contextable</span> = <span class="r44 r">newHelper</span> <b>as</b> <span class="t t">IViewContextAware</span>;
+            <b>if</b> (<span class="r45 r">contextable</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r46 rd" class="r46 r">newViewContext</span> = <b>new</b> <span class="t constructor">ViewContext</span>(<span class="r42 r">viewContext</span>, <span class="r42 r">viewContext</span>.<span class="i property">View</span>, <span class="r43 r">viewData</span>, <span class="r42 r">viewContext</span>.<span class="i property">Writer</span>);
+                <span class="r45 r">contextable</span>.<span class="i method">Contextualize</span>(<span class="r46 r">newViewContext</span>);
+            }
+ 
+            <b>return</b> <span class="r44 r">newHelper</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

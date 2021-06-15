@@ -1,0 +1,194 @@
+﻿<!DOCTYPE html>
+<html><head><title>UserRoleDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(185);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users/Drivers/UserRoleDisplayDriver.cs" target="_top">Drivers\UserRoleDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users" target="_top">src\OrchardCore.Modules\OrchardCore.Users\OrchardCore.Users.csproj</a> (OrchardCore.Users)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Security</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="80b269c93bcff890" href="../R/80b269c93bcff890.html" target="n" data-glyph="0,0" class="t t">UserRoleDisplayDriver</a> : <a href="/OrchardCore.DisplayManagement/A.html#65ff4d3d4e853e70" class="t t">DisplayDriver</a>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>&gt;
+    {
+        <b>private const string</b> <a id="e3b4f778ed988a97" href="../R/e3b4f778ed988a97.html" target="n" data-glyph="10,1" class="i field">AdministratorRole</a> = <span class="s">&quot;Administrator&quot;</span>;
+ 
+        <b>private readonly</b> <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <a id="c1171c5e5a5e9c3e" href="../R/c1171c5e5a5e9c3e.html" target="n" data-glyph="46,1" class="i field">_userManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <a id="df23e2288a280a7f" href="../R/df23e2288a280a7f.html" target="n" data-glyph="46,1" class="i field">_roleService</a>;
+        <b>private readonly</b> <span class="t t">IUserRoleStore</span>&lt;<span class="i">IUser</span>&gt; <a id="dc06b276f23c4bac" href="../R/dc06b276f23c4bac.html" target="n" data-glyph="46,1" class="i field">_userRoleStore</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="d8ccb41a0cf67e69" href="../R/d8ccb41a0cf67e69.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="13c9b296cca95d8f" href="../R/13c9b296cca95d8f.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="bba9de65203529b4" href="../R/bba9de65203529b4.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="999c6e645ad3af1b" href="../R/999c6e645ad3af1b.html" target="n" data-glyph="46,1" class="i field">H</a>;
+ 
+        <b>public</b> <a id="165bec5e6fecc284" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UserRoleDisplayDriver</a>(
+            <span class="t t">UserManager</span>&lt;<span class="i">IUser</span>&gt; <span id="r0 rd" class="r0 r">userManager</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <span id="r1 rd" class="r1 r">roleService</span>,
+            <span class="t t">IUserRoleStore</span>&lt;<span class="i">IUser</span>&gt; <span id="r2 rd" class="r2 r">userRoleStore</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r3 rd" class="r3 r">httpContextAccessor</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r4 rd" class="r4 r">notifier</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r5 rd" class="r5 r">authorizationService</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#80b269c93bcff890" class="t t">UserRoleDisplayDriver</a>&gt; <span id="r6 rd" class="r6 r">htmlLocalizer</span>)
+        {
+            <a href="#c1171c5e5a5e9c3e" class="i field">_userManager</a> = <span class="r0 r">userManager</span>;
+            <a href="#df23e2288a280a7f" class="i field">_roleService</a> = <span class="r1 r">roleService</span>;
+            <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a> = <span class="r2 r">userRoleStore</span>;
+            <a href="#d8ccb41a0cf67e69" class="i field">_httpContextAccessor</a> = <span class="r3 r">httpContextAccessor</span>;
+            <a href="#13c9b296cca95d8f" class="i field">_notifier</a> = <span class="r4 r">notifier</span>;
+            <a href="#bba9de65203529b4" class="i field">_authorizationService</a> = <span class="r5 r">authorizationService</span>;
+            <a href="#999c6e645ad3af1b" class="i field">H</a> = <span class="r6 r">htmlLocalizer</span>;
+        }
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="6f9e924e519e43a3" href="../R/6f9e924e519e43a3.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a> <span id="r7 rd" class="r7 r">user</span>)
+        {
+            <span class="c">// This view is always rendered, however there will be no editable roles if the user does not have permission to edit them.</span>
+            <b>return</b> <span class="i">Initialize</span>&lt;<a href="../ViewModels/EditUserRoleViewModel.cs.html#0b06269679b8428a" class="t t">EditUserRoleViewModel</a>&gt;(<span class="s">&quot;UserRoleFields_Edit&quot;</span>, <b>async</b> <span id="r8 rd" class="r8 r">model</span> =&gt;
+            {
+                <span class="c">// The current user can only view their roles if they have list users, to prevent listing roles when managing their own profile.</span>
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<a href="#d8ccb41a0cf67e69" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <span class="r7 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>) &amp;&amp; 
+                    !<b>await</b> <a href="#bba9de65203529b4" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<a href="#d8ccb41a0cf67e69" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>, <a href="../Permissions.cs.html#4ff21952129a1a69" class="t t">Permissions</a>.<a href="../Permissions.cs.html#f17b872f1cb00bc1" class="i field">ViewUsers</a>))
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r9 rd" class="r9 r">roleNames</span> = <b>await</b> <a href="#7edc546497f4faf6" class="i method">GetRoleNamesAsync</a>();
+ 
+                <span class="c">// When a user is in a role that the current user cannot manage the role is shown but selection is disabled.</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r10 rd" class="r10 r">authorizedRoleNames</span> = <b>await</b> <a href="#372ec6b4c5f62525" class="i method">GetAuthorizedRoleNamesAsync</a>(<span class="r9 r">roleNames</span>);
+                <b>var</b> <span id="r11 rd" class="r11 r">userRoleNames</span> = <b>await</b> <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a>.<span class="i">GetRolesAsync</span>(<span class="r7 r">user</span>, <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>));
+ 
+                <b>var</b> <span id="r12 rd" class="r12 r">roleEntries</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="../ViewModels/EditUserRoleViewModel.cs.html#62c5708ebc9e68ea" class="t t">RoleEntry</a>&gt;();
+                <b>foreach</b>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">roleName</span> <b>in</b> <span class="r9 r">roleNames</span>)
+                {
+                    <a href="../ViewModels/EditUserRoleViewModel.cs.html#62c5708ebc9e68ea" class="k">var</a> <span id="r14 rd" class="r14 r">roleEntry</span> = <b>new</b> <a href="../ViewModels/EditUserRoleViewModel.cs.html#62c5708ebc9e68ea" class="t constructor">RoleEntry</a> 
+                    { 
+                        <a href="../ViewModels/EditUserRoleViewModel.cs.html#14a58b6610ecd49d" class="i property">Role</a> = <span class="r13 r">roleName</span>, 
+                        <a href="../ViewModels/EditUserRoleViewModel.cs.html#90104432ec2f0c31" class="i property">IsSelected</a> = <span class="r11 r">userRoleNames</span>.<span class="i">Contains</span>(<span class="r13 r">roleName</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>) 
+                    };
+ 
+                    <b>if</b> (!<span class="r10 r">authorizedRoleNames</span>.<span class="i method">Contains</span>(<span class="r13 r">roleName</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>))
+                    {
+                        <span class="r14 r">roleEntry</span>.<a href="../ViewModels/EditUserRoleViewModel.cs.html#a640b9ef23958258" class="i property">IsEditingDisabled</a> = <b>true</b>;
+                    }
+ 
+                    <span class="r12 r">roleEntries</span>.<span class="i method">Add</span>(<span class="r14 r">roleEntry</span>);
+                }
+ 
+                <span class="r8 r">model</span>.<a href="../ViewModels/EditUserRoleViewModel.cs.html#b17cbe935d3c03bc" class="i property">Roles</a> = <span class="r12 r">roleEntries</span>.<span class="i method">ToArray</span>();                
+            })
+            .<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Content:1.10&quot;</span>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="5c9e351ed3a1a4ad" href="../R/5c9e351ed3a1a4ad.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a> <span id="r15 rd" class="r15 r">user</span>, <a href="/OrchardCore.DisplayManagement/A.html#688c28d1f0b44917" class="t t">UpdateEditorContext</a> <span id="r16 rd" class="r16 r">context</span>)
+        {
+            <a href="../ViewModels/EditUserRoleViewModel.cs.html#0b06269679b8428a" class="k">var</a> <span id="r17 rd" class="r17 r">model</span> = <b>new</b> <a href="../ViewModels/EditUserRoleViewModel.cs.html#0b06269679b8428a" class="t constructor">EditUserRoleViewModel</a>();
+ 
+            <span class="c">// The current user cannot alter their own roles. This prevents them removing access to the site for themselves.</span>
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<a href="#d8ccb41a0cf67e69" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>), <span class="r15 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <a href="#6f9e924e519e43a3" class="i method">Edit</a>(<span class="r15 r">user</span>);
+            }
+ 
+            <b>if</b> (<b>await</b> <span class="r16 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">TryUpdateModelAsync</span>(<span class="r17 r">model</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>))
+            {
+                <span class="c">// Authorize each role in the model to prevent html injection.</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r18 rd" class="r18 r">authorizedRoleNames</span> = <b>await</b> <a href="#372ec6b4c5f62525" class="i method">GetAuthorizedRoleNamesAsync</a>(<span class="r17 r">model</span>.<a href="../ViewModels/EditUserRoleViewModel.cs.html#b17cbe935d3c03bc" class="i property">Roles</a>.<span class="i method">Select</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <span class="r19 r">x</span>.<a href="../ViewModels/EditUserRoleViewModel.cs.html#14a58b6610ecd49d" class="i property">Role</a>));
+                <b>var</b> <span id="r20 rd" class="r20 r">userRoleNames</span> = <b>await</b> <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a>.<span class="i">GetRolesAsync</span>(<span class="r15 r">user</span>, <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>));
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r21 rd" class="r21 r">authorizedSelectedRoleNames</span> = <b>await</b> <a href="#372ec6b4c5f62525" class="i method">GetAuthorizedRoleNamesAsync</a>(<span class="r17 r">model</span>.<a href="../ViewModels/EditUserRoleViewModel.cs.html#b17cbe935d3c03bc" class="i property">Roles</a>.<span class="i method">Where</span>(<span id="r22 rd" class="r22 r">x</span> =&gt; <span class="r22 r">x</span>.<a href="../ViewModels/EditUserRoleViewModel.cs.html#90104432ec2f0c31" class="i property">IsSelected</a>).<span class="i method">Select</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<a href="../ViewModels/EditUserRoleViewModel.cs.html#14a58b6610ecd49d" class="i property">Role</a>));
+ 
+                <b>if</b> (<span class="r16 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#938066832c926ce5" class="i property">IsNew</a>)
+                {
+                    <span class="c">// Only add authorized new roles.</span>
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r24 rd" class="r24 r">role</span> <b>in</b> <span class="r21 r">authorizedSelectedRoleNames</span>)
+                    {
+                        <b>await</b> <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a>.<span class="i">AddToRoleAsync</span>(<span class="r15 r">user</span>, <a href="#c1171c5e5a5e9c3e" class="i field">_userManager</a>.<span class="i method">NormalizeName</span>(<span class="r24 r">role</span>), <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>));
+                    }
+                }
+                <b>else</b>
+                {
+                    <span class="c">// Remove roles in two steps to prevent an iteration on a modified collection</span>
+                    <b>var</b> <span id="r25 rd" class="r25 r">rolesToRemove</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                    <b>foreach</b> (<b>var</b> <span id="r26 rd" class="r26 r">role</span> <b>in</b> <span class="r20 r">userRoleNames</span>)
+                    {
+                        <span class="c">// When the user has permission to manage the role and it is no longer selected the role can be removed.</span>
+                        <b>if</b> (<span class="r18 r">authorizedRoleNames</span>.<span class="i">Contains</span>(<span class="r26 r">role</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>) &amp;&amp; !<span class="r21 r">authorizedSelectedRoleNames</span>.<span class="i">Contains</span>(<span class="r26 r">role</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>))
+                        {
+                            <span class="r25 r">rolesToRemove</span>.<span class="i">Add</span>(<span class="r26 r">role</span>);
+                        }
+                    }
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r27 rd" class="r27 r">role</span> <b>in</b> <span class="r25 r">rolesToRemove</span>)
+                    {
+                        <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r27 r">role</span>, <a href="#e3b4f778ed988a97" class="i field">AdministratorRole</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                        {
+                            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r28 rd" class="r28 r">usersOfAdminRole</span> = (<b>await</b> <a href="#c1171c5e5a5e9c3e" class="i field">_userManager</a>.<span class="i method">GetUsersInRoleAsync</span>(<a href="#e3b4f778ed988a97" class="i field">AdministratorRole</a>)).<span class="i method">Cast</span>&lt;<a href="/OrchardCore.Users.Core/A.html#63066ddf792dff6e" class="t t">User</a>&gt;();
+                            <span class="c">// Make sure we always have at least one administrator account</span>
+                            <b>if</b> (<span class="r28 r">usersOfAdminRole</span>.<span class="i method">Count</span>() == 1 &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r15 r">user</span>.<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <span class="r28 r">usersOfAdminRole</span>.<span class="i method">First</span>().<a href="/OrchardCore.Users.Core/A.html#5266f2eb7ec27bf4" class="i property">UserId</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                            {
+                                <a href="#13c9b296cca95d8f" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#d76d0a932a0405e2" class="i method">Warning</a>(<a href="#999c6e645ad3af1b" class="i field">H</a>[<span class="s">&quot;Cannot remove administrator role from the only administrator.&quot;</span>]);
+                                <b>continue</b>;
+                            }
+                            <b>else</b>
+                            {
+                                <b>await</b> <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a>.<span class="i">RemoveFromRoleAsync</span>(<span class="r15 r">user</span>, <a href="#c1171c5e5a5e9c3e" class="i field">_userManager</a>.<span class="i method">NormalizeName</span>(<span class="r27 r">role</span>), <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>));
+                            }
+                        }
+                        <b>else</b>
+                        {
+                            <b>await</b> <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a>.<span class="i">RemoveFromRoleAsync</span>(<span class="r15 r">user</span>, <a href="#c1171c5e5a5e9c3e" class="i field">_userManager</a>.<span class="i method">NormalizeName</span>(<span class="r27 r">role</span>), <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>));
+                        }
+                    }
+ 
+                    <span class="c">// Add new roles</span>
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r29 rd" class="r29 r">role</span> <b>in</b> <span class="r21 r">authorizedSelectedRoleNames</span>)
+                    {
+                        <b>if</b> (!<b>await</b> <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a>.<span class="i">IsInRoleAsync</span>(<span class="r15 r">user</span>, <a href="#c1171c5e5a5e9c3e" class="i field">_userManager</a>.<span class="i method">NormalizeName</span>(<span class="r29 r">role</span>), <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>)))
+                        {
+                            <b>await</b> <a href="#dc06b276f23c4bac" class="i field">_userRoleStore</a>.<span class="i">AddToRoleAsync</span>(<span class="r15 r">user</span>, <a href="#c1171c5e5a5e9c3e" class="i field">_userManager</a>.<span class="i method">NormalizeName</span>(<span class="r29 r">role</span>), <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>));
+                        }
+                    }
+                }
+            }
+ 
+            <b>return</b> <a href="#6f9e924e519e43a3" class="i method">Edit</a>(<span class="r15 r">user</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="7edc546497f4faf6" href="../R/7edc546497f4faf6.html" target="n" data-glyph="76,1" class="i method">GetRoleNamesAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r30 rd" class="r30 r">roleNames</span> = <b>await</b> <a href="#df23e2288a280a7f" class="i field">_roleService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#c0d6f9800c7eea42" class="i method">GetRoleNamesAsync</a>();
+            <b>return</b> <span class="r30 r">roleNames</span>.<span class="i method">Except</span>(<b>new</b>[] { <span class="s">&quot;Anonymous&quot;</span>, <span class="s">&quot;Authenticated&quot;</span> }, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="372ec6b4c5f62525" href="../R/372ec6b4c5f62525.html" target="n" data-glyph="76,1" class="i method">GetAuthorizedRoleNamesAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r31 rd" class="r31 r">roleNames</span>)
+        {
+            <b>var</b> <span id="r32 rd" class="r32 r">authorizedRoleNames</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r33 rd" class="r33 r">roleName</span> <b>in</b> <span class="r31 r">roleNames</span>)
+            {
+                <b>if</b> (<b>await</b> <a href="#bba9de65203529b4" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<a href="#d8ccb41a0cf67e69" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>, <span class="i n">OrchardCore</span>.<span class="i n">Roles</span>.<a href="/OrchardCore.Roles.Core/A.html#13628af5abdd6cc0" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Roles.Core/A.html#c75b0fce7999cb56" class="i method">CreatePermissionForAssignRole</a>(<span class="r33 r">roleName</span>)))
+                {
+                    <span class="r32 r">authorizedRoleNames</span>.<span class="i method">Add</span>(<span class="r33 r">roleName</span>);
+                }
+            }
+ 
+            <b>return</b> <span class="r32 r">authorizedRoleNames</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

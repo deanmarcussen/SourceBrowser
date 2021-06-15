@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html><head><title>Signal.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(62);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Caching/Signal.cs" target="_top">Caching\Signal.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Cache</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This component is a singleton that holds all the existing signal tokens for a tenant.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="0fb6f82836ef3581" href="../R/0fb6f82836ef3581.html" target="n" data-glyph="0,0" class="t t">Signal</a> : <a href="/OrchardCore.Abstractions/A.html#47b83c36a71e7171" class="t t">ModularTenantEvents</a>, <a href="/OrchardCore.Abstractions/A.html#d99cd404bc7ce41e" class="t t">ISignal</a>
+    {
+        <b>private readonly</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="#851f4257a25d7887" class="t t">ChangeTokenInfo</a>&gt; <a id="6d97c11d77f76d38" href="../R/6d97c11d77f76d38.html" target="n" data-glyph="46,1" class="i field">_changeTokens</a>;
+ 
+        <b>public</b> <a id="daa4e64dec12602c" href="../R/daa4e64dec12602c.html" target="n" data-glyph="72,1" class="t constructor">Signal</a>()
+        {
+            <a href="#6d97c11d77f76d38" class="i field">_changeTokens</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="#851f4257a25d7887" class="t t">ChangeTokenInfo</a>&gt;();
+        }
+ 
+        <b>public</b> <span class="t t">IChangeToken</span> <a id="8e49a3f7005a1e6c" href="../R/8e49a3f7005a1e6c.html" target="n" data-glyph="72,1" class="i method">GetToken</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r0 rd" class="r0 r">key</span>)
+        {
+            <b>return</b> <a href="#6d97c11d77f76d38" class="i field">_changeTokens</a>.<span class="i method">GetOrAdd</span>(
+                <span class="r0 r">key</span>,
+                <span id="r1 rd" class="r1 r">_</span> =&gt;
+                {
+                    <a href="@1@System.Runtime/A.html#130a9536ac96b392" class="k">var</a> <span id="r2 rd" class="r2 r">cancellationTokenSource</span> = <b>new</b> <a href="@1@System.Runtime/A.html#0fd973cb6741d972" class="t constructor">CancellationTokenSource</a>();
+                    <b>var</b> <span id="r3 rd" class="r3 r">changeToken</span> = <b>new</b> <span class="t constructor">CancellationChangeToken</span>(<span class="r2 r">cancellationTokenSource</span>.<a href="@1@System.Runtime/A.html#9e22b9c8995bf195" class="i property">Token</a>);
+                    <b>return</b> <b>new</b> <a href="#2d1825a7170c65dd" class="t constructor">ChangeTokenInfo</a>(<span class="r3 r">changeToken</span>, <span class="r2 r">cancellationTokenSource</span>);
+                })
+                .<a href="#8bb8370311991ac4" class="i property">ChangeToken</a>;
+        }
+ 
+        <b>public void</b> <a id="cedffe8bde4c5386" href="../R/cedffe8bde4c5386.html" target="n" data-glyph="72,1" class="i method">SignalToken</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">key</span>)
+        {
+            <b>if</b> (<a href="#6d97c11d77f76d38" class="i field">_changeTokens</a>.<span class="i method">TryRemove</span>(<span class="r4 r">key</span>, <b>out</b> <a href="#851f4257a25d7887" class="k">var</a> <span id="r5 rd" class="r5 r">changeTokenInfo</span>))
+            {
+                <span class="r5 r">changeTokenInfo</span>.<a href="#bbbbd30446efb779" class="i property">TokenSource</a>.<a href="@1@System.Runtime/A.html#93c25ccd0946470f" class="i method">Cancel</a>();
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="8aaa9f83a6950694" href="../R/8aaa9f83a6950694.html" target="n" data-glyph="72,1" class="i method">SignalTokenAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">key</span>)
+        {
+            <a href="#cedffe8bde4c5386" class="i method">SignalToken</a>(<span class="r6 r">key</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>private struct</b> <a id="851f4257a25d7887" href="../R/851f4257a25d7887.html" target="n" data-glyph="112,1" class="t t"><span id="5f29935cc5844d5e">ChangeTokenInfo</span></a>
+        {
+            <b>public</b> <a id="2d1825a7170c65dd" href="../R/2d1825a7170c65dd.html" target="n" data-glyph="72,2" class="t constructor">ChangeTokenInfo</a>(<span class="t t">IChangeToken</span> <span id="r7 rd" class="r7 r">changeToken</span>, <a href="@1@System.Runtime/A.html#130a9536ac96b392" class="t t">CancellationTokenSource</a> <span id="r8 rd" class="r8 r">tokenSource</span>)
+            {
+                <a href="#8bb8370311991ac4" class="i property">ChangeToken</a> = <span class="r7 r">changeToken</span>;
+                <a href="#bbbbd30446efb779" class="i property">TokenSource</a> = <span class="r8 r">tokenSource</span>;
+            }
+ 
+            <b>public</b> <span class="t t">IChangeToken</span> <a id="8bb8370311991ac4" href="../R/8bb8370311991ac4.html" target="n" data-glyph="102,2" class="i property">ChangeToken</a> { <b>get</b>; }
+ 
+            <b>public</b> <a href="@1@System.Runtime/A.html#130a9536ac96b392" class="t t">CancellationTokenSource</a> <a id="bbbbd30446efb779" href="../R/bbbbd30446efb779.html" target="n" data-glyph="102,2" class="i property">TokenSource</a> { <b>get</b>; }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

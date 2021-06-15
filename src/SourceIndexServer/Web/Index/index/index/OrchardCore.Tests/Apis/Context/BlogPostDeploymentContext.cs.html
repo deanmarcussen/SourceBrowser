@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html><head><title>BlogPostDeploymentContext.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(114);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Apis/Context/BlogPostDeploymentContext.cs" target="_top">Apis\Context\BlogPostDeploymentContext.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>.<span class="i n">Compression</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Deployment</span>.<span class="i">Remote</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Deployment</span>.<span class="i">Remote</span>.<span class="i">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Apis</span>.<span class="i n">Context</span>
+{
+    <b>public class</b> <a id="2ff9e31462ded4ec" href="../../R/2ff9e31462ded4ec.html" target="n" data-glyph="0,0" class="t t"><span id="16565888b4d75ea2">BlogPostDeploymentContext</span></a> : <a href="SiteContext.cs.html#cc2a047ff23fb874" class="t t">SiteContext</a>
+    {
+        <b>public const string</b> <a id="23acb896654958e1" href="../../R/23acb896654958e1.html" target="n" data-glyph="6,1" class="i field">RemoteDeploymentClientName</a> = <span class="s">&quot;testserver&quot;</span>;
+        <b>public const string</b> <a id="16d9cc2190a8b6e3" href="../../R/16d9cc2190a8b6e3.html" target="n" data-glyph="6,1" class="i field">RemoteDeploymentApiKey</a> = <span class="s">&quot;testkey&quot;</span>;
+        <b>public static</b> <span class="i">IShellHost</span> <a id="ec961dc95b0bbc0c" href="../../R/ec961dc95b0bbc0c.html" target="n" data-glyph="102,1" class="i property">ShellHost</a> { <b>get</b>; }
+ 
+        <b>public string</b> <a id="12ca88ca3249a7ac" href="../../R/12ca88ca3249a7ac.html" target="n" data-glyph="102,1" class="i property">BlogPostContentItemId</a> { <b>get</b>; <b>private set</b>; }
+        <b>public</b> <span class="i">ContentItem</span> <a id="c5e33caa67bfec44" href="../../R/c5e33caa67bfec44.html" target="n" data-glyph="102,1" class="i property">OriginalBlogPost</a> { <b>get</b>; <b>private set</b>; }
+        <b>public string</b> <a id="6493c8a9f25aee49" href="../../R/6493c8a9f25aee49.html" target="n" data-glyph="102,1" class="i property">OriginalBlogPostVersionId</a> { <b>get</b>; <b>private set</b>; }
+ 
+        <b>static</b> <a id="de0ed6a613044035" href="../../R/../../0000000000.html" target="n" data-glyph="76,1" class="t method">BlogPostDeploymentContext</a>()
+        {
+            <a href="#ec961dc95b0bbc0c" class="i property">ShellHost</a> = <a href="SiteContext.cs.html#73b42433881da22e" class="i property">Site</a>.<span class="i">Services</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">IShellHost</span>&gt;();
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="fd98d0a0d44420d7" href="../../R/fd98d0a0d44420d7.html" target="n" data-glyph="72,1" class="i method">InitializeAsync</a>()
+        {
+            <b>await</b> <a href="SiteContext.cs.html#cc2a047ff23fb874" class="k">base</a>.<a href="SiteContext.cs.html#b2d36471a22dff42" class="i method">InitializeAsync</a>();
+ 
+            <b>var</b> <span id="r0 rd" class="r0 r">result</span> = <b>await</b> <a href="SiteContext.cs.html#06cb4389785d6417" class="i property">GraphQLClient</a>
+                .<a href="/OrchardCore.Apis.GraphQL.Client/A.html#abefefb3efdbad36" class="i property">Content</a>
+                .<a href="/OrchardCore.Apis.GraphQL.Client/A.html#98dcdcec2bd893a9" class="i method">Query</a>(<span class="s">&quot;blogPost&quot;</span>, <span id="r1 rd" class="r1 r">builder</span> =&gt;
+                {
+                    <span class="r1 r">builder</span>
+                        .<a href="/OrchardCore.Apis.GraphQL.Client/A.html#f11cb42147974d64" class="i method">WithField</a>(<span class="s">&quot;contentItemId&quot;</span>);
+                });
+ 
+            <a href="#12ca88ca3249a7ac" class="i property">BlogPostContentItemId</a> = <span class="r0 r">result</span>[<span class="s">&quot;data&quot;</span>][<span class="s">&quot;blogPost&quot;</span>].<span class="i">First</span>[<span class="s">&quot;contentItemId&quot;</span>].<span class="i">ToString</span>();
+ 
+            <b>var</b> <span id="r2 rd" class="r2 r">content</span> = <b>await</b> <a href="SiteContext.cs.html#f49a596e3567867c" class="i property">Client</a>.<span class="i method">GetAsync</span>(<span class="s">$&quot;</span><span class="s">api/content/</span>{<a href="#12ca88ca3249a7ac" class="i property">BlogPostContentItemId</a>}<span class="s">&quot;</span>);
+            <a href="#c5e33caa67bfec44" class="i property">OriginalBlogPost</a> = <b>await</b> <span class="r2 r">content</span>.<span class="i property">Content</span>.<a href="Extensions/HttpContentExtensions.cs.html#233b0d84ea299825" class="i method">ReadAsAsync</a>&lt;<span class="i">ContentItem</span>&gt;();
+            <a href="#6493c8a9f25aee49" class="i property">OriginalBlogPostVersionId</a> = <a href="#c5e33caa67bfec44" class="i property">OriginalBlogPost</a>.<span class="i">ContentItemVersionId</span>;
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">shellScope</span> = <b>await</b> <a href="#ec961dc95b0bbc0c" class="i property">ShellHost</a>.<span class="i">GetScopeAsync</span>(<a href="SiteContext.cs.html#30815ce146f49762" class="i property">TenantName</a>);
+            <b>await</b> <span class="r3 r">shellScope</span>.<span class="i">UsingAsync</span>(<b>async</b> <span id="r4 rd" class="r4 r">scope</span> =&gt;
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">remoteClientService</span> = <span class="r4 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">RemoteClientService</span>&gt;();
+ 
+                <b>await</b> <span class="r5 r">remoteClientService</span>.<span class="i">CreateRemoteClientAsync</span>(<a href="#23acb896654958e1" class="i field">RemoteDeploymentClientName</a>, <a href="#16d9cc2190a8b6e3" class="i field">RemoteDeploymentApiKey</a>);
+            });
+        }
+ 
+        <b>public</b> <span class="i">JObject</span> <a id="d8fcb77c20712405" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetContentStepRecipe</a>(<span class="i">ContentItem</span> <span id="r6 rd" class="r6 r">contentItem</span>, <a href="@1@System.Runtime/A.html#486d58da4553e12d" class="t t">Action</a>&lt;<span class="i">JObject</span>&gt; <span id="r7 rd" class="r7 r">mutation</span>)
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">jContentItem</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r6 r">contentItem</span>);
+            <span class="r7 r">mutation</span>.<span class="i">Invoke</span>(<span class="r8 r">jContentItem</span>);
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">recipe</span> = <b>new</b> <span class="i">JObject</span>
+            {
+                [<span class="s">&quot;steps&quot;</span>] = <b>new</b> <span class="i">JArray</span>
+                {
+                    <b>new</b> <span class="i">JObject</span>
+                    {
+                        [<span class="s">&quot;name&quot;</span>] = <span class="s">&quot;content&quot;</span>,
+                        [<span class="s">&quot;Data&quot;</span>] = <b>new</b> <span class="i">JArray</span> { <span class="r8 r">jContentItem</span> }
+                    }
+                }
+            };
+ 
+            <b>return</b> <span class="r9 r">recipe</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">HttpResponseMessage</span>&gt; <a id="7a6a9334eac0bdb6" href="../../R/7a6a9334eac0bdb6.html" target="n" data-glyph="72,1" class="i method">PostRecipeAsync</a>(<span class="i">JObject</span> <span id="r10 rd" class="r10 r">recipe</span>, <b>bool</b> <span id="r11 rd" class="r11 r">ensureSuccess</span> = <b>true</b>)
+        {
+            <b>using</b> (<a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r12 rd" class="r12 r">zipStream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>())
+            {
+                <b>using</b> (<b>var</b> <span id="r13 rd" class="r13 r">zip</span> = <b>new</b> <span class="t constructor">ZipArchive</span>(<span class="r12 r">zipStream</span>, <span class="t t">ZipArchiveMode</span>.<span class="i field">Create</span>, <b>true</b>))
+                {
+                    <b>var</b> <span id="r14 rd" class="r14 r">entry</span> = <span class="r13 r">zip</span>.<span class="i method">CreateEntry</span>(<span class="s">&quot;Recipe.json&quot;</span>);
+                    <b>using</b> (<a href="@1@System.Runtime/A.html#9e38cb1c84769eba" class="k">var</a> <span id="r15 rd" class="r15 r">streamWriter</span> = <b>new</b> <a href="@1@System.Runtime/A.html#c73af21c3340883d" class="t constructor">StreamWriter</a>(<span class="r14 r">entry</span>.<span class="i method">Open</span>()))
+                    {
+                        <b>using</b> (<b>var</b> <span id="r16 rd" class="r16 r">jsonWriter</span> = <b>new</b> <span class="i">JsonTextWriter</span>(<span class="r15 r">streamWriter</span>))
+                        {
+                            <b>await</b> <span class="r10 r">recipe</span>.<span class="i">WriteToAsync</span>(<span class="r16 r">jsonWriter</span>);
+                            <b>await</b> <span class="r16 r">jsonWriter</span>.<span class="i">FlushAsync</span>();
+                        }
+                    }
+                }
+                <span class="r12 r">zipStream</span>.<a href="@1@System.Runtime/A.html#ad08f8ca81a5a763" class="i property">Position</a> = 0;
+ 
+                <b>using</b> (<b>var</b> <span id="r17 rd" class="r17 r">requestContent</span> = <b>new</b> <span class="t constructor">MultipartFormDataContent</span>())
+                {
+                    <span class="r17 r">requestContent</span>.<span class="i method">Add</span>(<b>new</b> <span class="t constructor">StreamContent</span>(<span class="r12 r">zipStream</span>), <b>nameof</b>(<span class="i">ImportViewModel</span>.<span class="i">Content</span>), <span class="s">&quot;Recipe.zip&quot;</span>);
+                    <span class="r17 r">requestContent</span>.<span class="i method">Add</span>(<b>new</b> <span class="t constructor">StringContent</span>(<a href="#23acb896654958e1" class="i field">RemoteDeploymentClientName</a>), <b>nameof</b>(<span class="i">ImportViewModel</span>.<span class="i">ClientName</span>));
+                    <span class="r17 r">requestContent</span>.<span class="i method">Add</span>(<b>new</b> <span class="t constructor">StringContent</span>(<a href="#16d9cc2190a8b6e3" class="i field">RemoteDeploymentApiKey</a>), <b>nameof</b>(<span class="i">ImportViewModel</span>.<span class="i">ApiKey</span>));
+ 
+                    <b>var</b> <span id="r18 rd" class="r18 r">response</span> = <b>await</b> <a href="SiteContext.cs.html#f49a596e3567867c" class="i property">Client</a>.<span class="i method">PostAsync</span>(<span class="s">&quot;OrchardCore.Deployment.Remote/ImportRemoteInstance/Import&quot;</span>, <span class="r17 r">requestContent</span>);
+                    <b>if</b> (<span class="r11 r">ensureSuccess</span>)
+                    {
+                        <span class="r18 r">response</span>.<span class="i method">EnsureSuccessStatusCode</span>();
+                    }
+ 
+                    <b>return</b> <span class="r18 r">response</span>;
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

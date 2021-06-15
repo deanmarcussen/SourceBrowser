@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html><head><title>CulturePickerService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(97);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentLocalization/Services/CulturePickerService.cs" target="_top">Services\CulturePickerService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentLocalization" target="_top">src\OrchardCore.Modules\OrchardCore.ContentLocalization\OrchardCore.ContentLocalization.csproj</a> (OrchardCore.ContentLocalization)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="18aa0720049a745b" href="../R/18aa0720049a745b.html" target="n" data-glyph="0,0" class="t t">ContentCulturePickerService</a> : <a href="ICulturePickerService.cs.html#f8631fe80bd79619" class="t t">IContentCulturePickerService</a>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d0fc4dd4c522c9a4" class="t t">IAutorouteEntries</a> <a id="c1747e5a01292ad8" href="../R/c1747e5a01292ad8.html" target="n" data-glyph="46,1" class="i field">_autorouteEntries</a>;
+        <b>private readonly</b> <a href="ILocalizationEntries.cs.html#c58b4375f37c4d43" class="t t">ILocalizationEntries</a> <a id="6f0b9bc6b7f3123d" href="../R/6f0b9bc6b7f3123d.html" target="n" data-glyph="46,1" class="i field">_localizationEntries</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="eec5ce424b5d2a45" href="../R/eec5ce424b5d2a45.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+ 
+        <b>public</b> <a id="2e974bef7118e314" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentCulturePickerService</a>(
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d0fc4dd4c522c9a4" class="t t">IAutorouteEntries</a> <span id="r0 rd" class="r0 r">autorouteEntries</span>,
+            <a href="ILocalizationEntries.cs.html#c58b4375f37c4d43" class="t t">ILocalizationEntries</a> <span id="r1 rd" class="r1 r">localizationEntries</span>,
+            <span class="i">ISiteService</span> <span id="r2 rd" class="r2 r">siteService</span>)
+        {
+            <a href="#c1747e5a01292ad8" class="i field">_autorouteEntries</a> = <span class="r0 r">autorouteEntries</span>;
+            <a href="#6f0b9bc6b7f3123d" class="i field">_localizationEntries</a> = <span class="r1 r">localizationEntries</span>;
+            <a href="#eec5ce424b5d2a45" class="i field">_siteService</a> = <span class="r2 r">siteService</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="5de755609c81126e" href="../R/5de755609c81126e.html" target="n" data-glyph="72,1" class="i method">GetContentItemIdFromRouteAsync</a>(<span class="t t">PathString</span> <span id="r3 rd" class="r3 r">url</span>)
+        {
+            <b>if</b> (!<span class="r3 r">url</span>.<span class="i property">HasValue</span>)
+            {
+                <span class="r3 r">url</span> = <span class="s">&quot;/&quot;</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">contentItemId</span> = <b>null</b>;
+ 
+            <b>if</b> (<span class="r3 r">url</span> == <span class="s">&quot;/&quot;</span>)
+            {
+                <span class="c">// get contentItemId from homeroute</span>
+                <b>var</b> <span id="r5 rd" class="r5 r">siteSettings</span> = <b>await</b> <a href="#eec5ce424b5d2a45" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+                <span class="r4 r">contentItemId</span> = <span class="r5 r">siteSettings</span>.<span class="i">HomeRoute</span>[<span class="s">&quot;contentItemId&quot;</span>]?.<span class="i">ToString</span>();
+            }
+            <b>else</b>
+            {
+                <span class="c">// Try to get from autorouteEntries.</span>
+                <span class="c">// This should not consider contained items, so will redirect to the parent item.</span>
+                (<a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r6 rd" class="r6 r">found</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#ebcc749147e70a28" class="k">var</a> <span id="r7 rd" class="r7 r">entry</span>) = <b>await</b> <a href="#c1747e5a01292ad8" class="i field">_autorouteEntries</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#84527cfcbfbabca0" class="i method">TryGetEntryByPathAsync</a>(<span class="r3 r">url</span>.<span class="i property">Value</span>);
+ 
+                <b>if</b> (<span class="r6 r">found</span>)
+                {
+                    <span class="r4 r">contentItemId</span> = <span class="r7 r">entry</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ea487d9703b079f6" class="i field">ContentItemId</a>;
+                };
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r4 r">contentItemId</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <span class="r4 r">contentItemId</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt; <a id="6d8e91433c884fcd" href="../R/6d8e91433c884fcd.html" target="n" data-glyph="72,1" class="i method">GetLocalizationFromRouteAsync</a>(<span class="t t">PathString</span> <span id="r8 rd" class="r8 r">url</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">contentItemId</span> = <b>await</b> <a href="#5de755609c81126e" class="i method">GetContentItemIdFromRouteAsync</a>(<span class="r8 r">url</span>);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r9 r">contentItemId</span>))
+            {
+                (<a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r10 rd" class="r10 r">found</span>, <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="k">var</a> <span id="r11 rd" class="r11 r">localization</span>) = <b>await</b> <a href="#6f0b9bc6b7f3123d" class="i field">_localizationEntries</a>.<a href="ILocalizationEntries.cs.html#8f9b2b0c3183a381" class="i method">TryGetLocalizationAsync</a>(<span class="r9 r">contentItemId</span>);
+ 
+                <b>if</b> (<span class="r10 r">found</span>)
+                {
+                    <b>return</b> <span class="r11 r">localization</span>;
+                }
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt;&gt; <a id="9f7ffde5c36febae" href="../R/9f7ffde5c36febae.html" target="n" data-glyph="72,1" class="i method">GetLocalizationsFromRouteAsync</a>(<span class="t t">PathString</span> <span id="r12 rd" class="r12 r">url</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">contentItemId</span> = <b>await</b> <a href="#5de755609c81126e" class="i method">GetContentItemIdFromRouteAsync</a>(<span class="r12 r">url</span>);
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r13 r">contentItemId</span>))
+            {
+                (<a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r14 rd" class="r14 r">found</span>, <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="k">var</a> <span id="r15 rd" class="r15 r">localization</span>) = <b>await</b> <a href="#6f0b9bc6b7f3123d" class="i field">_localizationEntries</a>.<a href="ILocalizationEntries.cs.html#8f9b2b0c3183a381" class="i method">TryGetLocalizationAsync</a>(<span class="r13 r">contentItemId</span>);
+ 
+                <b>if</b> (<span class="r14 r">found</span>)
+                {
+                    <b>return</b> <b>await</b> <a href="#6f0b9bc6b7f3123d" class="i field">_localizationEntries</a>.<a href="ILocalizationEntries.cs.html#c382d11f18a0bfe9" class="i method">GetLocalizationsAsync</a>(<span class="r15 r">localization</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#03bed8ec33d88dee" class="i field">LocalizationSet</a>);
+                }
+            }
+ 
+            <b>return</b> <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt;();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

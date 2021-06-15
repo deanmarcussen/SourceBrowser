@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+<html><head><title>LayerFilter.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(152);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Layers/Services/LayerFilter.cs" target="_top">Services\LayerFilter.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Layers" target="_top">src\OrchardCore.Modules\OrchardCore.Layers\OrchardCore.Layers.csproj</a> (OrchardCore.Layers)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Filters</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">RazorPages</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Layout</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Shapes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Theming</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Zones</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Layers</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Layers</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Layers</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Rules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Layers</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="f93e83f431786dbe" href="../R/f93e83f431786dbe.html" target="n" data-glyph="0,0" class="t t">LayerFilter</a> : <span class="t t">IAsyncResultFilter</span>
+    {
+        <b>private const string</b> <a id="2a37e9e4b80a8962" href="../R/2a37e9e4b80a8962.html" target="n" data-glyph="10,1" class="i field">WidgetsKey</a> = <span class="s">&quot;OrchardCore.Layers.LayerFilter:AllWidgets&quot;</span>;
+ 
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#1db760e65443bcbe" class="t t">ILayoutAccessor</a> <a id="9d941a38d5187a8f" href="../R/9d941a38d5187a8f.html" target="n" data-glyph="46,1" class="i field">_layoutAccessor</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Display/A.html#ccb0f2621bf941ec" class="t t">IContentItemDisplayManager</a> <a id="d5b9f892cb546b91" href="../R/d5b9f892cb546b91.html" target="n" data-glyph="46,1" class="i field">_contentItemDisplayManager</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="f0326d93f717797b" href="../R/f0326d93f717797b.html" target="n" data-glyph="46,1" class="i field">_modelUpdaterAccessor</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Rules.Abstractions/A.html#d803900b93f943ee" class="t t">IRuleService</a> <a id="1011b2401e4115c6" href="../R/1011b2401e4115c6.html" target="n" data-glyph="46,1" class="i field">_ruleService</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="ee1eb1587cd1c0b2" href="../R/ee1eb1587cd1c0b2.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#1a73ced9421ccec3" class="t t">IThemeManager</a> <a id="e2a339cb518f2abb" href="../R/e2a339cb518f2abb.html" target="n" data-glyph="46,1" class="i field">_themeManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Admin.Abstractions/A.html#dbedb83751faa60a" class="t t">IAdminThemeService</a> <a id="ad7153d48295b310" href="../R/ad7153d48295b310.html" target="n" data-glyph="46,1" class="i field">_adminThemeService</a>;
+        <b>private readonly</b> <a href="ILayerService.cs.html#bd6b049f28eda706" class="t t">ILayerService</a> <a id="1b47a72454b28886" href="../R/1b47a72454b28886.html" target="n" data-glyph="46,1" class="i field">_layerService</a>;
+        <b>private readonly</b> <span class="i">IVolatileDocumentManager</span>&lt;<a href="../Handlers/LayerMetadataHandler.cs.html#be09fec8e5f3ad20" class="t t">LayerState</a>&gt; <a id="bc0a9d18eca0fec3" href="../R/bc0a9d18eca0fec3.html" target="n" data-glyph="46,1" class="i field">_layerStateManager</a>;
+ 
+        <b>public</b> <a id="7ea5a2db7bb9f254" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LayerFilter</a>(
+            <a href="ILayerService.cs.html#bd6b049f28eda706" class="t t">ILayerService</a> <span id="r0 rd" class="r0 r">layerService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#1db760e65443bcbe" class="t t">ILayoutAccessor</a> <span id="r1 rd" class="r1 r">layoutAccessor</span>,
+            <a href="/OrchardCore.ContentManagement.Display/A.html#ccb0f2621bf941ec" class="t t">IContentItemDisplayManager</a> <span id="r2 rd" class="r2 r">contentItemDisplayManager</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r3 rd" class="r3 r">modelUpdaterAccessor</span>,
+            <a href="/OrchardCore.Rules.Abstractions/A.html#d803900b93f943ee" class="t t">IRuleService</a> <span id="r4 rd" class="r4 r">ruleService</span>,
+            <span class="t t">IMemoryCache</span> <span id="r5 rd" class="r5 r">memoryCache</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#1a73ced9421ccec3" class="t t">IThemeManager</a> <span id="r6 rd" class="r6 r">themeManager</span>,
+            <a href="/OrchardCore.Admin.Abstractions/A.html#dbedb83751faa60a" class="t t">IAdminThemeService</a> <span id="r7 rd" class="r7 r">adminThemeService</span>,
+            <span class="i">IVolatileDocumentManager</span>&lt;<a href="../Handlers/LayerMetadataHandler.cs.html#be09fec8e5f3ad20" class="t t">LayerState</a>&gt; <span id="r8 rd" class="r8 r">layerStateManager</span>)
+        {
+            <a href="#1b47a72454b28886" class="i field">_layerService</a> = <span class="r0 r">layerService</span>;
+            <a href="#9d941a38d5187a8f" class="i field">_layoutAccessor</a> = <span class="r1 r">layoutAccessor</span>;
+            <a href="#d5b9f892cb546b91" class="i field">_contentItemDisplayManager</a> = <span class="r2 r">contentItemDisplayManager</span>;
+            <a href="#f0326d93f717797b" class="i field">_modelUpdaterAccessor</a> = <span class="r3 r">modelUpdaterAccessor</span>;
+            <a href="#1011b2401e4115c6" class="i field">_ruleService</a> = <span class="r4 r">ruleService</span>;
+            <a href="#ee1eb1587cd1c0b2" class="i field">_memoryCache</a> = <span class="r5 r">memoryCache</span>;
+            <a href="#e2a339cb518f2abb" class="i field">_themeManager</a> = <span class="r6 r">themeManager</span>;
+            <a href="#ad7153d48295b310" class="i field">_adminThemeService</a> = <span class="r7 r">adminThemeService</span>;
+            <a href="#bc0a9d18eca0fec3" class="i field">_layerStateManager</a> = <span class="r8 r">layerStateManager</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ec2f667230bd0fed" href="../R/ec2f667230bd0fed.html" target="n" data-glyph="72,1" class="i method">OnResultExecutionAsync</a>(<span class="t t">ResultExecutingContext</span> <span id="r9 rd" class="r9 r">context</span>, <span class="t t">ResultExecutionDelegate</span> <span id="r10 rd" class="r10 r">next</span>)
+        {
+            <span class="c">// Should only run on the front-end for a full view</span>
+            <b>if</b> ((<span class="r9 r">context</span>.<span class="i property">Result</span> <b>is</b> <span class="t t">ViewResult</span> || <span class="r9 r">context</span>.<span class="i property">Result</span> <b>is</b> <span class="t t">PageResult</span>) &amp;&amp;
+                !<a href="/OrchardCore.Admin.Abstractions/A.html#355da12553f76dbe" class="t t">AdminAttribute</a>.<a href="/OrchardCore.Admin.Abstractions/A.html#9b903ec2fb197016" class="i method">IsApplied</a>(<span class="r9 r">context</span>.<span class="i property">HttpContext</span>))
+            {
+                <span class="c">// Even if the Admin attribute is not applied we might be using the admin theme, for instance in Login views.</span>
+                <span class="c">// In this case don&#39;t render Layers.</span>
+                <b>var</b> <span id="r11 rd" class="r11 r">selectedTheme</span> = (<b>await</b> <a href="#e2a339cb518f2abb" class="i field">_themeManager</a>.<span class="i">GetThemeAsync</span>())?.<span class="i">Id</span>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">adminTheme</span> = <b>await</b> <a href="#ad7153d48295b310" class="i field">_adminThemeService</a>.<a href="/OrchardCore.Admin.Abstractions/A.html#234c516b5fc512e7" class="i method">GetAdminThemeNameAsync</a>();
+                <b>if</b> (<span class="r11 r">selectedTheme</span> == <span class="r12 r">adminTheme</span>)
+                {
+                    <b>await</b> <span class="r10 r">next</span>.<span class="i method">Invoke</span>();
+                    <b>return</b>;
+                }
+ 
+                <b>var</b> <span id="r13 rd" class="r13 r">layerState</span> = <b>await</b> <a href="#bc0a9d18eca0fec3" class="i field">_layerStateManager</a>.<span class="i">GetOrCreateImmutableAsync</span>();
+ 
+                <b>if</b> (!<a href="#ee1eb1587cd1c0b2" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>&lt;<a href="#059697557666ff6f" class="t t">CacheEntry</a>&gt;(<a href="#2a37e9e4b80a8962" class="i field">WidgetsKey</a>, <b>out</b> <a href="#059697557666ff6f" class="k">var</a> <span id="r14 rd" class="r14 r">cacheEntry</span>) || <span class="r14 r">cacheEntry</span>.<a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a> != <span class="r13 r">layerState</span>.<span class="i">Identifier</span>)
+                {
+                    <span class="r14 r">cacheEntry</span> = <b>new</b> <a href="#059697557666ff6f" class="t constructor">CacheEntry</a>()
+                    {
+                        <a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a> = <span class="r13 r">layerState</span>.<span class="i">Identifier</span>,
+                        <a href="#2e85f37453d8b23b" class="i property">Widgets</a> = <b>await</b> <a href="#1b47a72454b28886" class="i field">_layerService</a>.<a href="ILayerService.cs.html#eda4fa5789b7a92a" class="i method">GetLayerWidgetsMetadataAsync</a>(<span id="r15 rd" class="r15 r">x</span> =&gt; <span class="r15 r">x</span>.<a href="/OrchardCore.ContentManagement/A.html#d2c083d48c33f13a" class="i property">Published</a>)
+                    };
+ 
+                    <a href="#ee1eb1587cd1c0b2" class="i field">_memoryCache</a>.<span class="i method">Set</span>(<a href="#2a37e9e4b80a8962" class="i field">WidgetsKey</a>, <span class="r14 r">cacheEntry</span>);
+                }
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r16 rd" class="r16 r">widgets</span> = <span class="r14 r">cacheEntry</span>.<a href="#2e85f37453d8b23b" class="i property">Widgets</a>;
+ 
+                <b>var</b> <span id="r17 rd" class="r17 r">layers</span> = (<b>await</b> <a href="#1b47a72454b28886" class="i field">_layerService</a>.<a href="ILayerService.cs.html#3d4b717e88b1e03f" class="i method">GetLayersAsync</a>()).<a href="../Models/LayersDocument.cs.html#9fc90dd2504ea058" class="i property">Layers</a>.<span class="i method">ToDictionary</span>(<span id="r18 rd" class="r18 r">x</span> =&gt; <span class="r18 r">x</span>.<a href="../Models/Layer.cs.html#0acefff32be25500" class="i property">Name</a>);
+ 
+                <a href="/OrchardCore.DisplayManagement/A.html#d5c0b8db92fbeb7b" class="k">var</a> <span id="r19 rd" class="r19 r">layout</span> = <b>await</b> <a href="#9d941a38d5187a8f" class="i field">_layoutAccessor</a>.<a href="/OrchardCore.DisplayManagement/A.html#eda786ce061efb69" class="i method">GetLayoutAsync</a>();
+                <b>var</b> <span id="r20 rd" class="r20 r">updater</span> = <a href="#f0326d93f717797b" class="i field">_modelUpdaterAccessor</a>.<span class="i">ModelUpdater</span>;
+ 
+                <b>var</b> <span id="r21 rd" class="r21 r">layersCache</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>bool</b>&gt;();
+ 
+                <b>foreach</b> (<a href="../Models/LayerMetadata.cs.html#579bed763ac045dc" class="k">var</a> <span id="r22 rd" class="r22 r">widget</span> <b>in</b> <span class="r16 r">widgets</span>)
+                {
+                    <a href="../Models/Layer.cs.html#1c0d592a36c3a08b" class="k">var</a> <span id="r23 rd" class="r23 r">layer</span> = <span class="r22 r">widget</span>.<a href="../Models/LayerMetadata.cs.html#db91fa5ebc5ef808" class="i property">Layer</a> != <b>null</b> &amp;&amp; <span class="r17 r">layers</span>.<span class="i method">TryGetValue</span>(<span class="r22 r">widget</span>.<a href="../Models/LayerMetadata.cs.html#db91fa5ebc5ef808" class="i property">Layer</a>, <b>out</b> <a href="../Models/Layer.cs.html#1c0d592a36c3a08b" class="k">var</a> <span id="r24 rd" class="r24 r">widgetLayer</span>) ? <span class="r24 r">widgetLayer</span> : <b>null</b>;
+ 
+                    <b>if</b> (<span class="r23 r">layer</span> == <b>null</b>)
+                    {
+                        <b>continue</b>;
+                    }
+ 
+                    <b>bool</b> <span id="r25 rd" class="r25 r">display</span>;
+                    <b>if</b> (!<span class="r21 r">layersCache</span>.<span class="i method">TryGetValue</span>(<span class="r23 r">layer</span>.<a href="../Models/Layer.cs.html#0acefff32be25500" class="i property">Name</a>, <b>out</b> <span class="r25 r">display</span>))
+                    {
+                        <span class="r25 r">display</span> = <b>await</b> <a href="#1011b2401e4115c6" class="i field">_ruleService</a>.<a href="/OrchardCore.Rules.Abstractions/A.html#11e5313244c4f63e" class="i method">EvaluateAsync</a>(<span class="r23 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a>);
+ 
+                        <span class="r21 r">layersCache</span>[<span class="r23 r">layer</span>.<a href="../Models/Layer.cs.html#0acefff32be25500" class="i property">Name</a>] = <span class="r25 r">display</span>;
+                    }
+ 
+                    <b>if</b> (!<span class="r25 r">display</span>)
+                    {
+                        <b>continue</b>;
+                    }
+ 
+                    <b>var</b> <span id="r26 rd" class="r26 r">widgetContent</span> = <b>await</b> <a href="#d5b9f892cb546b91" class="i field">_contentItemDisplayManager</a>.<span class="i">BuildDisplayAsync</span>(<span class="r22 r">widget</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>, <span class="r20 r">updater</span>);
+ 
+                    <span class="r26 r">widgetContent</span>.<span class="i">Classes</span>.<span class="i">Add</span>(<span class="s">&quot;widget&quot;</span>);
+                    <span class="r26 r">widgetContent</span>.<span class="i">Classes</span>.<span class="i">Add</span>(<span class="s">&quot;widget-&quot;</span> + <span class="r22 r">widget</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>.<span class="i">HtmlClassify</span>());
+ 
+                    <a href="../ViewModels/WidgetWrapper.cs.html#932656c77cfb4163" class="k">var</a> <span id="r27 rd" class="r27 r">wrapper</span> = <b>new</b> <a href="../ViewModels/WidgetWrapper.cs.html#3750a6840a5fc05e" class="t constructor">WidgetWrapper</a>
+                    {
+                        <a href="../ViewModels/WidgetWrapper.cs.html#3969954220a8ef02" class="i property">Widget</a> = <span class="r22 r">widget</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>,
+                        <a href="../ViewModels/WidgetWrapper.cs.html#6d86816191670ded" class="i property">Content</a> = <span class="r26 r">widgetContent</span>
+                    };
+ 
+                    <span class="r27 r">wrapper</span>.<a href="/OrchardCore.DisplayManagement/A.html#4b32e6f48d532013" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">&quot;Widget_Wrapper__&quot;</span> + <span class="r22 r">widget</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3eb4531412e2a732" class="i property">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>);
+                    <span class="r27 r">wrapper</span>.<a href="/OrchardCore.DisplayManagement/A.html#4b32e6f48d532013" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">&quot;Widget_Wrapper__Zone__&quot;</span> + <span class="r22 r">widget</span>.<a href="../Models/LayerMetadata.cs.html#54798dda07003f4b" class="i property">Zone</a>);
+ 
+                    <a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="k">var</a> <span id="r28 rd" class="r28 r">contentZone</span> = <span class="r19 r">layout</span>.<a href="/OrchardCore.DisplayManagement/A.html#43d22e96543b7e25" class="i property">Zones</a><a href="/OrchardCore.DisplayManagement/A.html#26d913ee76532e50">[</a><span class="r22 r">widget</span>.<a href="../Models/LayerMetadata.cs.html#54798dda07003f4b" class="i property">Zone</a>];
+ 
+                    <b>await</b> <span class="r28 r">contentZone</span>.<a href="/OrchardCore.DisplayManagement/A.html#44ffd0ce4d56f405" class="i method">AddAsync</a>(<span class="r27 r">wrapper</span>, <span class="s">&quot;&quot;</span>);                    
+                }
+            }
+ 
+            <b>await</b> <span class="r10 r">next</span>.<span class="i method">Invoke</span>();
+        }
+ 
+        <b>internal class</b> <a id="059697557666ff6f" href="../R/059697557666ff6f.html" target="n" data-glyph="2,1" class="t t"><span id="54eed8c30d261246">CacheEntry</span></a> : <a href="/OrchardCore.Data.Abstractions/A.html#95440bfe168ecdb2" class="t t">Document</a>
+        {
+            <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="../Models/LayerMetadata.cs.html#579bed763ac045dc" class="t t">LayerMetadata</a>&gt; <a id="2e85f37453d8b23b" href="../R/2e85f37453d8b23b.html" target="n" data-glyph="102,2" class="i property">Widgets</a> { <b>get</b>; <b>set</b>; }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

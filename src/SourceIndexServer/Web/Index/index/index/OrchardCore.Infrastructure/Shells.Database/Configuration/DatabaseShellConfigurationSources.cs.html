@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html><head><title>DatabaseShellConfigurationSources.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(149);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Infrastructure/Shells.Database/Configuration/DatabaseShellConfigurationSources.cs" target="_top">Shells.Database\Configuration\DatabaseShellConfigurationSources.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Infrastructure" target="_top">src\OrchardCore\OrchardCore.Infrastructure\OrchardCore.Infrastructure.csproj</a> (OrchardCore.Infrastructure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shells</span>.<span class="i n">Database</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shells</span>.<span class="i n">Database</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Shells</span>.<span class="i n">Database</span>.<span class="i n">Configuration</span>
+{
+    <b>public class</b> <a id="27385850a6c75f21" href="../../R/27385850a6c75f21.html" target="n" data-glyph="0,0" class="t t">DatabaseShellConfigurationSources</a> : <span class="i">IShellConfigurationSources</span>
+    {
+        <b>private readonly</b> <a href="DatabaseShellsStorageOptions.cs.html#28abac946b1c78e6" class="t t">DatabaseShellsStorageOptions</a> <a id="a670d545a3984a96" href="../../R/a670d545a3984a96.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+        <b>private readonly</b> <span class="i">IShellContextFactory</span> <a id="01fa2775f8625893" href="../../R/01fa2775f8625893.html" target="n" data-glyph="46,1" class="i field">_shellContextFactory</a>;
+        <b>private readonly string</b> <a id="42c2c1ff275196be" href="../../R/42c2c1ff275196be.html" target="n" data-glyph="46,1" class="i field">_container</a>;
+ 
+        <b>public</b> <a id="aca11023ce43a127" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DatabaseShellConfigurationSources</a>(
+            <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>.<span class="t t">IConfiguration</span> <span id="r0 rd" class="r0 r">configuration</span>,
+            <span class="i">IShellContextFactory</span> <span id="r1 rd" class="r1 r">shellContextFactory</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">ShellOptions</span>&gt; <span id="r2 rd" class="r2 r">shellOptions</span>)
+ 
+        {
+            <a href="#a670d545a3984a96" class="i field">_options</a> = <span class="r0 r">configuration</span>
+                .<span class="i method">GetSection</span>(<span class="s">&quot;OrchardCore&quot;</span>)
+                .<span class="i">GetSectionCompat</span>(<span class="s">&quot;OrchardCore_Shells_Database&quot;</span>)
+                .<span class="i">Get</span>&lt;<a href="DatabaseShellsStorageOptions.cs.html#28abac946b1c78e6" class="t t">DatabaseShellsStorageOptions</a>&gt;()
+                ?? <b>new</b> <a href="DatabaseShellsStorageOptions.cs.html#28abac946b1c78e6" class="t constructor">DatabaseShellsStorageOptions</a>();
+ 
+            <a href="#01fa2775f8625893" class="i field">_shellContextFactory</a> = <span class="r1 r">shellContextFactory</span>;
+ 
+            <a href="#42c2c1ff275196be" class="i field">_container</a> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">Combine</span>(<span class="r2 r">shellOptions</span>.<span class="i property">Value</span>.<span class="i">ShellsApplicationDataPath</span>, <span class="r2 r">shellOptions</span>.<span class="i property">Value</span>.<span class="i">ShellsContainerName</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="eb1e28e523f40be2" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AddSourcesAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">tenant</span>, <span class="t t">IConfigurationBuilder</span> <span id="r4 rd" class="r4 r">builder</span>)
+        {
+            <span class="i">JObject</span> <span id="r5 rd" class="r5 r">configurations</span> = <b>null</b>;
+ 
+            <b>using</b> <b>var</b> <span id="r6 rd" class="r6 r">context</span> = <b>await</b> <a href="#01fa2775f8625893" class="i field">_shellContextFactory</a>.<a href="../Extensions/DatabaseShellContextFactoryExtensions.cs.html#988882d6a9a194af" class="i method">GetDatabaseContextAsync</a>(<a href="#a670d545a3984a96" class="i field">_options</a>);
+            <b>await</b> <span class="r6 r">context</span>.<span class="i">CreateScope</span>().<span class="i">UsingServiceScopeAsync</span>(<b>async</b> <span id="r7 rd" class="r7 r">scope</span> =&gt;
+            {
+                <b>var</b> <span id="r8 rd" class="r8 r">session</span> = <span class="r7 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">ISession</span>&gt;();
+ 
+                <b>var</b> <span id="r9 rd" class="r9 r">document</span> = <b>await</b> <span class="r8 r">session</span>.<span class="i">Query</span>&lt;<a href="../Models/DatabaseShellConfigurations.cs.html#2d61d3f694369bf6" class="t t">DatabaseShellConfigurations</a>&gt;().<span class="i">FirstOrDefaultAsync</span>();
+ 
+                <b>if</b> (<span class="r9 r">document</span> != <b>null</b>)
+                {
+                    <span class="r5 r">configurations</span> = <span class="r9 r">document</span>.<span class="i">ShellConfigurations</span>;
+                }
+                <b>else</b>
+                {
+                    <span class="r9 r">document</span> = <b>new</b> <a href="../Models/DatabaseShellConfigurations.cs.html#2d61d3f694369bf6" class="t constructor">DatabaseShellConfigurations</a>();
+                    <span class="r5 r">configurations</span> = <b>new</b> <span class="i">JObject</span>();
+                }
+ 
+                <b>if</b> (!<span class="r5 r">configurations</span>.<span class="i">ContainsKey</span>(<span class="r3 r">tenant</span>))
+                {
+                    <b>if</b> (!<a href="#a670d545a3984a96" class="i field">_options</a>.<a href="DatabaseShellsStorageOptions.cs.html#d99321eb9a5dbc45" class="i property">MigrateFromFiles</a> || !<b>await</b> <a href="#6336483ba212499f" class="i method">TryMigrateFromFileAsync</a>(<span class="r3 r">tenant</span>, <span class="r5 r">configurations</span>))
+                    {
+                        <b>return</b>;
+                    }
+ 
+                    <span class="r9 r">document</span>.<span class="i">ShellConfigurations</span> = <span class="r5 r">configurations</span>;
+ 
+                    <span class="r8 r">session</span>.<span class="i">Save</span>(<span class="r9 r">document</span>, <span class="i">checkConcurrency</span>: <b>true</b>);
+                }
+            });
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">configuration</span> = <span class="r5 r">configurations</span>.<span class="i">GetValue</span>(<span class="r3 r">tenant</span>) <b>as</b> <span class="i">JObject</span>;
+            <b>if</b> (<span class="r10 r">configuration</span> != <b>null</b>)
+            {
+                <span class="r4 r">builder</span>.<span class="i method">AddJsonStream</span>(<b>new</b> <span class="t">MemoryStream</span>(<a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<span class="i">GetBytes</span>(<span class="r10 r">configuration</span>.<span class="i">ToString</span>(<span class="i">Formatting</span>.<span class="i">None</span>))));
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="1174c32b75252185" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SaveAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">tenant</span>, <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r12 rd" class="r12 r">data</span>)
+        {
+            <b>using</b> <b>var</b> <span id="r13 rd" class="r13 r">context</span> = <b>await</b> <a href="#01fa2775f8625893" class="i field">_shellContextFactory</a>.<a href="../Extensions/DatabaseShellContextFactoryExtensions.cs.html#988882d6a9a194af" class="i method">GetDatabaseContextAsync</a>(<a href="#a670d545a3984a96" class="i field">_options</a>);
+            <b>await</b> <span class="r13 r">context</span>.<span class="i">CreateScope</span>().<span class="i">UsingServiceScopeAsync</span>(<b>async</b> <span id="r14 rd" class="r14 r">scope</span> =&gt;
+            {
+                <b>var</b> <span id="r15 rd" class="r15 r">session</span> = <span class="r14 r">scope</span>.<span class="i">ServiceProvider</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">ISession</span>&gt;();
+ 
+                <b>var</b> <span id="r16 rd" class="r16 r">document</span> = <b>await</b> <span class="r15 r">session</span>.<span class="i">Query</span>&lt;<a href="../Models/DatabaseShellConfigurations.cs.html#2d61d3f694369bf6" class="t t">DatabaseShellConfigurations</a>&gt;().<span class="i">FirstOrDefaultAsync</span>();
+ 
+                <span class="i">JObject</span> <span id="r17 rd" class="r17 r">configurations</span>;
+                <b>if</b> (<span class="r16 r">document</span> != <b>null</b>)
+                {
+                    <span class="r17 r">configurations</span> = <span class="r16 r">document</span>.<span class="i">ShellConfigurations</span>;
+                }
+                <b>else</b>
+                {
+                    <span class="r16 r">document</span> = <b>new</b> <a href="../Models/DatabaseShellConfigurations.cs.html#2d61d3f694369bf6" class="t constructor">DatabaseShellConfigurations</a>();
+                    <span class="r17 r">configurations</span> = <b>new</b> <span class="i">JObject</span>();
+                }
+ 
+                <b>var</b> <span id="r18 rd" class="r18 r">config</span> = <span class="r17 r">configurations</span>.<span class="i">GetValue</span>(<span class="r11 r">tenant</span>) <b>as</b> <span class="i">JObject</span> ?? <b>new</b> <span class="i">JObject</span>();
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">key</span> <b>in</b> <span class="r12 r">data</span>.<a href="@1@System.Runtime/A.html#6141d2484c7e5c1a" class="i property">Keys</a>)
+                {
+                    <b>if</b> (<span class="r12 r">data</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r19 r">key</span>] != <b>null</b>)
+                    {
+                        <span class="r18 r">config</span>[<span class="r19 r">key</span>] = <span class="r12 r">data</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r19 r">key</span>];
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r18 r">config</span>.<span class="i">Remove</span>(<span class="r19 r">key</span>);
+                    }
+                }
+ 
+                <span class="r17 r">configurations</span>[<span class="r11 r">tenant</span>] = <span class="r18 r">config</span>;
+ 
+                <span class="r16 r">document</span>.<span class="i">ShellConfigurations</span> = <span class="r17 r">configurations</span>;
+ 
+                <span class="r15 r">session</span>.<span class="i">Save</span>(<span class="r16 r">document</span>, <span class="i">checkConcurrency</span>: <b>true</b>);
+            });
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="6336483ba212499f" href="../../R/6336483ba212499f.html" target="n" data-glyph="76,1" class="i method">TryMigrateFromFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">tenant</span>, <span class="i">JObject</span> <span id="r21 rd" class="r21 r">configurations</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">tenantFolder</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<a href="#42c2c1ff275196be" class="i field">_container</a>, <span class="r20 r">tenant</span>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r23 rd" class="r23 r">appsettings</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<span class="r22 r">tenantFolder</span>, <span class="s">&quot;appsettings.json&quot;</span>);
+ 
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r23 r">appsettings</span>))
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r24 rd" class="r24 r">file</span> = <span class="t t">File</span>.<span class="i method">OpenText</span>(<span class="r23 r">appsettings</span>))
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r25 rd" class="r25 r">configuration</span> = <b>await</b> <span class="r24 r">file</span>.<a href="@1@System.Runtime/A.html#670e67dfb6e4b237" class="i method">ReadToEndAsync</a>();
+ 
+                <b>if</b> (<span class="r25 r">configuration</span> != <b>null</b>)
+                {
+                    <span class="r21 r">configurations</span>[<span class="r20 r">tenant</span>] = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r25 r">configuration</span>);
+                }
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

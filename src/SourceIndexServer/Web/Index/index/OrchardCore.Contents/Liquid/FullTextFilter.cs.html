@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html><head><title>FullTextFilter.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(97);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Liquid/FullTextFilter.cs" target="_top">Liquid\FullTextFilter.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Liquid</span>
+{
+    <b>public class</b> <a id="16130719537111b6" href="../R/16130719537111b6.html" target="n" data-glyph="0,0" class="t t">FullTextFilter</a> : <a href="/OrchardCore.Liquid.Abstractions/A.html#e3ebfc606d5ff056" class="t t">ILiquidFilter</a>
+    {
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="25e70499cbe12803" href="../R/25e70499cbe12803.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <a href="ContentItemRecursionHelper.cs.html#7fc1280b2284b80d" class="t t">IContentItemRecursionHelper</a>&lt;<a href="#16130719537111b6" class="t t">FullTextFilter</a>&gt; <a id="29d4d54a31c1eba5" href="../R/29d4d54a31c1eba5.html" target="n" data-glyph="46,1" class="i field">_fullTextRecursionHelper</a>;
+ 
+        <b>public</b> <a id="e88184d3a116df9e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">FullTextFilter</a>(<span class="i">IContentManager</span> <span id="r0 rd" class="r0 r">contentManager</span>, <a href="ContentItemRecursionHelper.cs.html#7fc1280b2284b80d" class="t t">IContentItemRecursionHelper</a>&lt;<a href="#16130719537111b6" class="t t">FullTextFilter</a>&gt; <span id="r1 rd" class="r1 r">fullTextRecursionHelper</span>)
+        {
+            <a href="#25e70499cbe12803" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+            <a href="#29d4d54a31c1eba5" class="i field">_fullTextRecursionHelper</a> = <span class="r1 r">fullTextRecursionHelper</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="d90ae8b3fef2cf1c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="i">FluidValue</span> <span id="r2 rd" class="r2 r">input</span>, <span class="i">FilterArguments</span> <span id="r3 rd" class="r3 r">arguments</span>, <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a> <span id="r4 rd" class="r4 r">ctx</span>)
+        {
+            <b>if</b> (<span class="r2 r">input</span>.<span class="i">Type</span> == <span class="i">FluidValues</span>.<span class="i">Array</span>)
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">contentItems</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">ContentItem</span>&gt;();
+                <b>foreach</b> (<b>var</b> <span id="r6 rd" class="r6 r">objValue</span> <b>in</b> <span class="r2 r">input</span>.<span class="i">Enumerate</span>())
+                {
+                    <b>var</b> <span id="r7 rd" class="r7 r">contentItem</span> = <span class="i">GetContentItem</span>(<span class="r6 r">objValue</span>);
+                    <b>if</b> (<span class="r7 r">contentItem</span> != <b>null</b>)
+                    {
+                        <b>if</b> (!<a href="#29d4d54a31c1eba5" class="i field">_fullTextRecursionHelper</a>.<a href="ContentItemRecursionHelper.cs.html#9ff9b20673c10f10" class="i method">IsRecursive</a>(<span class="r7 r">contentItem</span>))
+                        {
+                            <span class="r5 r">contentItems</span>.<span class="i method">Add</span>(<span class="r7 r">contentItem</span>);
+                        }
+                    }
+                }
+ 
+                <b>if</b> (!<span class="r5 r">contentItems</span>.<span class="i method">Any</span>())
+                {
+                    <b>return</b> <span class="i">NilValue</span>.<span class="i">Instance</span>;
+                }
+ 
+                <b>var</b> <span id="r8 rd" class="r8 r">aspects</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">FullTextAspect</span>&gt;();
+ 
+                <b>foreach</b> (<b>var</b> <span id="r9 rd" class="r9 r">contentItem</span> <b>in</b> <span class="r5 r">contentItems</span>)
+                {
+                    <span class="r8 r">aspects</span>.<span class="i">Add</span>(<b>await</b> <a href="#25e70499cbe12803" class="i field">_contentManager</a>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">FullTextAspect</span>&gt;(<span class="r9 r">contentItem</span>));
+                }
+ 
+                <span class="c">// When returning segments seperate them so multiple segments are indexed individually.</span>
+                <b>return</b> <b>new</b> <span class="i">ArrayValue</span>(<span class="r8 r">aspects</span>.<span class="i">SelectMany</span>(<span id="r10 rd" class="r10 r">x</span> =&gt; <span class="r10 r">x</span>.<span class="i">Segments</span>).<span class="i">Where</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r11 r">x</span>)).<span class="i">Select</span>(<span id="r12 rd" class="r12 r">x</span> =&gt; <b>new</b> <span class="i">StringValue</span>(<span class="r12 r">x</span> + <span class="s">&#39; &#39;</span>)));
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r13 rd" class="r13 r">contentItem</span> = <a href="#bd2ce54807817aaa" class="i method">GetContentItem</a>(<span class="r2 r">input</span>);
+ 
+                <b>if</b> (<span class="r13 r">contentItem</span> == <b>null</b> || <a href="#29d4d54a31c1eba5" class="i field">_fullTextRecursionHelper</a>.<a href="ContentItemRecursionHelper.cs.html#9ff9b20673c10f10" class="i method">IsRecursive</a>(<span class="r13 r">contentItem</span>))
+                {
+                    <b>return</b> <span class="i">NilValue</span>.<span class="i">Instance</span>;
+                }
+ 
+                <b>var</b> <span id="r14 rd" class="r14 r">fullTextAspect</span> = <b>await</b> <a href="#25e70499cbe12803" class="i field">_contentManager</a>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">FullTextAspect</span>&gt;(<span class="r13 r">contentItem</span>);
+ 
+                <span class="c">// Remove empty strings as display text is often unused in contained content items.</span>
+                <b>return</b> <b>new</b> <span class="i">ArrayValue</span>(<span class="r14 r">fullTextAspect</span>.<span class="i">Segments</span>.<span class="i">Where</span>(<span id="r15 rd" class="r15 r">x</span> =&gt; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r15 r">x</span>)).<span class="i">Select</span>(<span id="r16 rd" class="r16 r">x</span> =&gt; <b>new</b> <span class="i">StringValue</span>(<span class="r16 r">x</span>)));
+            }
+        }
+ 
+        <b>private static</b> <span class="i">ContentItem</span> <a id="bd2ce54807817aaa" href="../R/bd2ce54807817aaa.html" target="n" data-glyph="76,1" class="i method">GetContentItem</a>(<span class="i">FluidValue</span> <span id="r17 rd" class="r17 r">input</span>)
+        {
+            <b>var</b> <span id="r18 rd" class="r18 r">obj</span> = <span class="r17 r">input</span>.<span class="i">ToObjectValue</span>();
+ 
+            <b>if</b> (!(<span class="r18 r">obj</span> <b>is</b> <span class="i">ContentItem</span> <span id="r19 rd" class="r19 r">contentItem</span>))
+            {
+                <span class="r19 r">contentItem</span> = <b>null</b>;
+ 
+                <b>if</b> (<span class="r18 r">obj</span> <b>is</b> <span class="i">JObject</span> <span id="r20 rd" class="r20 r">jObject</span>)
+                {
+                    <span class="r19 r">contentItem</span> = <span class="r20 r">jObject</span>.<span class="i">ToObject</span>&lt;<span class="i">ContentItem</span>&gt;();
+                    <span class="c">// If input is a &#39;JObject&#39; but which not represents a &#39;ContentItem&#39;,</span>
+                    <span class="c">// a &#39;ContentItem&#39; is still created but with some null properties.</span>
+                    <b>if</b> (<span class="r19 r">contentItem</span>?.<span class="i">ContentItemId</span> == <b>null</b>)
+                    {
+                        <b>return</b> <b>null</b>;
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="r19 r">contentItem</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

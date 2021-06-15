@@ -1,0 +1,339 @@
+﻿<!DOCTYPE html>
+<html><head><title>ApiController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(330);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tenants/Controllers/ApiController.cs" target="_top">Controllers\ApiController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tenants" target="_top">src\OrchardCore.Modules\OrchardCore.Tenants\OrchardCore.Tenants.csproj</a> (OrchardCore.Tenants)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">RegularExpressions</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Abstractions</span>.<span class="i">Setup</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Email</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Setup</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Tenants</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tenants</span>.<span class="i n">Controllers</span>
+{
+    [<span class="t constructor">Route</span>(<span class="s">&quot;api/tenants&quot;</span>)]
+    [<span class="t constructor">ApiController</span>]
+    [<span class="t constructor">Authorize</span>(<span class="i property">AuthenticationSchemes</span> = <span class="s">&quot;Api&quot;</span>), <span class="t constructor">IgnoreAntiforgeryToken</span>, <span class="t constructor">AllowAnonymous</span>]
+    <b>public class</b> <a id="b99bbaec6c1a7db2" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">ApiController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="d90bc2c304cbbf37" href="../R/d90bc2c304cbbf37.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="8e391d36d9759fc5" href="../R/8e391d36d9759fc5.html" target="n" data-glyph="46,1" class="i field">_currentShellSettings</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="f5b16dd0c18bcf86" href="../R/f5b16dd0c18bcf86.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">IShellSettingsManager</span> <a id="70620aee2d359c9f" href="../R/70620aee2d359c9f.html" target="n" data-glyph="46,1" class="i field">_shellSettingsManager</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="ca7447514d8084a7" href="../R/ca7447514d8084a7.html" target="n" data-glyph="46,1" class="i field">_dataProtectorProvider</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a> <a id="cb108676b64094c6" href="../R/cb108676b64094c6.html" target="n" data-glyph="46,1" class="i field">_setupService</a>;
+        <b>private readonly</b> <span class="i">IClock</span> <a id="73e0f86cce917e75" href="../R/73e0f86cce917e75.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <a id="82b23fe1604bb533" href="../R/82b23fe1604bb533.html" target="n" data-glyph="46,1" class="i field">_emailAddressValidator</a>;
+        <b>private readonly</b> <span class="t t">IdentityOptions</span> <a id="1f22655969008e14" href="../R/1f22655969008e14.html" target="n" data-glyph="46,1" class="i field">_identityOptions</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Data.Abstractions/A.html#d178ebc8fe681605" class="t t">DatabaseProvider</a>&gt; <a id="b19f655927d34626" href="../R/b19f655927d34626.html" target="n" data-glyph="46,1" class="i field">_databaseProviders</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="61af464293a69916" href="../R/61af464293a69916.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="baffb975b6979011" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ApiController</a>(
+            <span class="i">IShellHost</span> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">currentShellSettings</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r2 rd" class="r2 r">authorizationService</span>,
+            <span class="i">IShellSettingsManager</span> <span id="r3 rd" class="r3 r">shellSettingsManager</span>,
+            <span class="t t">IDataProtectionProvider</span> <span id="r4 rd" class="r4 r">dataProtectorProvider</span>,
+            <a href="/OrchardCore.Setup.Abstractions/A.html#6d47644ab865a70f" class="t t">ISetupService</a> <span id="r5 rd" class="r5 r">setupService</span>,
+            <span class="i">IClock</span> <span id="r6 rd" class="r6 r">clock</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#e61445d62906d869" class="t t">IEmailAddressValidator</a> <span id="r7 rd" class="r7 r">emailAddressValidator</span>,
+            <span class="t t">IOptions</span>&lt;<span class="t t">IdentityOptions</span>&gt; <span id="r8 rd" class="r8 r">identityOptions</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Data.Abstractions/A.html#d178ebc8fe681605" class="t t">DatabaseProvider</a>&gt; <span id="r9 rd" class="r9 r">databaseProviders</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="AdminController.cs.html#d22b70e5d25010da" class="t t">AdminController</a>&gt; <span id="r10 rd" class="r10 r">stringLocalizer</span>)
+        {
+            <a href="#d90bc2c304cbbf37" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#8e391d36d9759fc5" class="i field">_currentShellSettings</a> = <span class="r1 r">currentShellSettings</span>;
+            <a href="#f5b16dd0c18bcf86" class="i field">_authorizationService</a> = <span class="r2 r">authorizationService</span>;
+            <a href="#ca7447514d8084a7" class="i field">_dataProtectorProvider</a> = <span class="r4 r">dataProtectorProvider</span>;
+            <a href="#70620aee2d359c9f" class="i field">_shellSettingsManager</a> = <span class="r3 r">shellSettingsManager</span>;
+            <a href="#cb108676b64094c6" class="i field">_setupService</a> = <span class="r5 r">setupService</span>;
+            <a href="#73e0f86cce917e75" class="i field">_clock</a> = <span class="r6 r">clock</span>;
+            <a href="#82b23fe1604bb533" class="i field">_emailAddressValidator</a> = <span class="r7 r">emailAddressValidator</span>;
+            <a href="#1f22655969008e14" class="i field">_identityOptions</a> = <span class="r8 r">identityOptions</span>.<span class="i property">Value</span>;
+            <a href="#b19f655927d34626" class="i field">_databaseProviders</a> = <span class="r9 r">databaseProviders</span>;
+            <a href="#61af464293a69916" class="i field">S</a> = <span class="r10 r">stringLocalizer</span>;
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">Route</span>(<span class="s">&quot;create&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="248e9ca48aa3f407" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="../ViewModels/CreateApiViewModel.cs.html#0541025d5d4228df" class="t t">CreateApiViewModel</a> <span id="r11 rd" class="r11 r">model</span>)
+        {
+            <b>if</b> (!<a href="#f9c481764fb0732f" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#f5b16dd0c18bcf86" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <a href="#b99bbaec6c1a7db2" class="k">this</a>.<span class="i">ChallengeOrForbid</span>(<span class="s">&quot;Api&quot;</span>);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#4813713423d4a9f3" class="i property">Name</a>) &amp;&amp; !<span class="t t">Regex</span>.<span class="i method">IsMatch</span>(<span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#4813713423d4a9f3" class="i property">Name</a>, <span class="s">@&quot;^\w+$&quot;</span>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/CreateApiViewModel.cs.html#0541025d5d4228df" class="t t">CreateApiViewModel</a>.<a href="../ViewModels/CreateApiViewModel.cs.html#4813713423d4a9f3" class="i property">Name</a>), <a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;Invalid tenant name. Must contain characters only and no spaces.&quot;</span>]);
+            }
+ 
+            <span class="c">// Creates a default shell settings based on the configuration.</span>
+            <b>var</b> <span id="r12 rd" class="r12 r">shellSettings</span> = <a href="#70620aee2d359c9f" class="i field">_shellSettingsManager</a>.<span class="i">CreateDefaultSettings</span>();
+ 
+            <span class="r12 r">shellSettings</span>.<span class="i">Name</span> = <span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#4813713423d4a9f3" class="i property">Name</a>;
+            <span class="r12 r">shellSettings</span>.<span class="i">RequestUrlHost</span> = <span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#f545f90b39ff001d" class="i property">RequestUrlHost</a>;
+            <span class="r12 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span> = <span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#c5afafa4b86bda76" class="i property">RequestUrlPrefix</a>;
+            <span class="r12 r">shellSettings</span>.<span class="i">State</span> = <span class="i">TenantState</span>.<span class="i">Uninitialized</span>;
+ 
+            <span class="r12 r">shellSettings</span>[<span class="s">&quot;ConnectionString&quot;</span>] = <span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#9c00cb051bc23739" class="i property">ConnectionString</a>;
+            <span class="r12 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>] = <span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#21ab25668c0c30cb" class="i property">TablePrefix</a>;
+            <span class="r12 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>] = <span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#0562d58986748866" class="i property">DatabaseProvider</a>;
+            <span class="r12 r">shellSettings</span>[<span class="s">&quot;Secret&quot;</span>] = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#a6547a472def7796" class="i method">ToString</a>();
+            <span class="r12 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>] = <span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#de41f3c9090aa454" class="i property">RecipeName</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r12 r">shellSettings</span>.<span class="i">RequestUrlHost</span>) &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r12 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/CreateApiViewModel.cs.html#0541025d5d4228df" class="t t">CreateApiViewModel</a>.<a href="../ViewModels/CreateApiViewModel.cs.html#c5afafa4b86bda76" class="i property">RequestUrlPrefix</a>), <a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;Host and url prefix can not be empty at the same time.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r12 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>))
+            {
+                <b>if</b> (<span class="r12 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>.<span class="i">Contains</span>(<span class="s">&#39;/&#39;</span>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/CreateApiViewModel.cs.html#0541025d5d4228df" class="t t">CreateApiViewModel</a>.<a href="../ViewModels/CreateApiViewModel.cs.html#c5afafa4b86bda76" class="i property">RequestUrlPrefix</a>), <a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;The url prefix can not contain more than one segment.&quot;</span>]);
+                }
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>if</b> (<a href="#d90bc2c304cbbf37" class="i field">_shellHost</a>.<span class="i">TryGetSettings</span>(<span class="r11 r">model</span>.<a href="../ViewModels/CreateApiViewModel.cs.html#4813713423d4a9f3" class="i property">Name</a>, <b>out</b> <b>var</b> <span id="r13 rd" class="r13 r">settings</span>))
+                {
+                    <span class="c">// Site already exists, return 201 for indempotency purpose</span>
+ 
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">token</span> = <span class="i">CreateSetupToken</span>(<span class="r13 r">settings</span>);
+ 
+                    <b>return</b> <span class="i method">StatusCode</span>(201, <span class="i">GetEncodedUrl</span>(<span class="r13 r">settings</span>, <span class="r14 r">token</span>));
+                }
+                <b>else</b>
+                {
+                    <b>await</b> <a href="#d90bc2c304cbbf37" class="i field">_shellHost</a>.<span class="i">UpdateShellSettingsAsync</span>(<span class="r12 r">shellSettings</span>);
+ 
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">token</span> = <span class="i">CreateSetupToken</span>(<span class="r12 r">shellSettings</span>);
+ 
+                    <b>return</b> <span class="i method">Ok</span>(<span class="i">GetEncodedUrl</span>(<span class="r12 r">shellSettings</span>, <span class="r15 r">token</span>));
+                }
+            }
+ 
+            <b>return</b> <span class="i method">BadRequest</span>(<span class="i property">ModelState</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">Route</span>(<span class="s">&quot;setup&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="c126b536fdd3c9bc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Setup</a>(<a href="../ViewModels/SetupApiViewModel.cs.html#ddb52486fa091942" class="t t">SetupApiViewModel</a> <span id="r16 rd" class="r16 r">model</span>)
+        {
+            <b>if</b> (!<a href="#f9c481764fb0732f" class="i method">IsDefaultShell</a>())
+            {
+                <b>return</b> <a href="#b99bbaec6c1a7db2" class="k">this</a>.<span class="i">ChallengeOrForbid</span>(<span class="s">&quot;Api&quot;</span>);
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#f5b16dd0c18bcf86" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64dd15b4083bf5f6" class="i method">AuthorizeAsync</a>(<span class="i property">User</span>, <a href="../Permissions.cs.html#415283566f4c1195" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a596ffc73876e455" class="i field">ManageTenants</a>))
+            {
+                <b>return</b> <a href="#b99bbaec6c1a7db2" class="k">this</a>.<span class="i">ChallengeOrForbid</span>(<span class="s">&quot;Api&quot;</span>);
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#9e7f4045ed98e4a1" class="i property">UserName</a>) &amp;&amp; <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#9e7f4045ed98e4a1" class="i property">UserName</a>.<span class="i method">Any</span>(<span id="r17 rd" class="r17 r">c</span> =&gt; !<a href="#1f22655969008e14" class="i field">_identityOptions</a>.<span class="i property">User</span>.<span class="i property">AllowedUserNameCharacters</span>.<a href="@1@System.Runtime/A.html#98876d0c1980f5ef" class="i method">Contains</a>(<span class="r17 r">c</span>)))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#9e7f4045ed98e4a1" class="i property">UserName</a>), <a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;User name &#39;{0}&#39; is invalid, can only contain letters or digits.&quot;</span>, <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#9e7f4045ed98e4a1" class="i property">UserName</a>]);
+            }
+ 
+            <span class="c">// Only add additional error if attribute validation has passed.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#5257121e95d9241c" class="i property">Email</a>) &amp;&amp; !<a href="#82b23fe1604bb533" class="i field">_emailAddressValidator</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#20ced43e7c1e4aca" class="i method">Validate</a>(<span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#5257121e95d9241c" class="i property">Email</a>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#5257121e95d9241c" class="i property">Email</a>), <a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;The email is invalid.&quot;</span>]);
+            }
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>return</b> <span class="i method">BadRequest</span>();
+            }
+ 
+            <b>if</b> (!<a href="#d90bc2c304cbbf37" class="i field">_shellHost</a>.<span class="i">TryGetSettings</span>(<span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#6d6db6989de02f43" class="i property">Name</a>, <b>out</b> <b>var</b> <span id="r18 rd" class="r18 r">shellSettings</span>))
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/SetupApiViewModel.cs.html#ddb52486fa091942" class="t t">SetupApiViewModel</a>.<a href="../ViewModels/SetupApiViewModel.cs.html#6d6db6989de02f43" class="i property">Name</a>), <a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;Tenant not found: &#39;{0}&#39;&quot;</span>, <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#6d6db6989de02f43" class="i property">Name</a>]);
+            }
+ 
+            <b>if</b> (<span class="r18 r">shellSettings</span>.<span class="i">State</span> == <span class="i">TenantState</span>.<span class="i">Running</span>)
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(201);
+            }
+ 
+            <b>if</b> (<span class="r18 r">shellSettings</span>.<span class="i">State</span> != <span class="i">TenantState</span>.<span class="i">Uninitialized</span>)
+            {
+                <b>return</b> <span class="i method">BadRequest</span>(<a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;The tenant can&#39;t be setup.&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">databaseProvider</span> = <span class="r18 r">shellSettings</span>[<span class="s">&quot;DatabaseProvider&quot;</span>];
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r19 r">databaseProvider</span>))
+            {
+                <span class="r19 r">databaseProvider</span> = <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#9d23b093403389b7" class="i property">DatabaseProvider</a>;
+            }
+ 
+            <a href="/OrchardCore.Data.Abstractions/A.html#d178ebc8fe681605" class="k">var</a> <span id="r20 rd" class="r20 r">selectedProvider</span> = <a href="#b19f655927d34626" class="i field">_databaseProviders</a>.<span class="i method">FirstOrDefault</span>(<span id="r21 rd" class="r21 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r21 r">x</span>.<a href="/OrchardCore.Data.Abstractions/A.html#510dfe948d5d8f46" class="i property">Value</a>, <span class="r19 r">databaseProvider</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+ 
+            <b>if</b> (<span class="r20 r">selectedProvider</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">BadRequest</span>(<a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;The database provider is not defined.&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">tablePrefix</span> = <span class="r18 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>];
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r22 r">tablePrefix</span>))
+            {
+                <span class="r22 r">tablePrefix</span> = <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#9ab43f7521f7459b" class="i property">TablePrefix</a>;
+            }
+ 
+            <b>var</b> <span id="r23 rd" class="r23 r">connectionString</span> = <span class="r18 r">shellSettings</span>[<span class="s">&quot;connectionString&quot;</span>];
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r23 r">connectionString</span>))
+            {
+                <span class="r23 r">connectionString</span> = <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#67967860a614cd4d" class="i property">ConnectionString</a>;
+            }
+ 
+            <b>if</b> (<span class="r20 r">selectedProvider</span>.<a href="/OrchardCore.Data.Abstractions/A.html#37e07aecdbd2a523" class="i property">HasConnectionString</a> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r23 r">connectionString</span>))
+            {
+                <b>return</b> <span class="i method">BadRequest</span>(<a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;The connection string is required for this database provider.&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r24 rd" class="r24 r">recipeName</span> = <span class="r18 r">shellSettings</span>[<span class="s">&quot;RecipeName&quot;</span>];
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r24 r">recipeName</span>))
+            {
+                <span class="r24 r">recipeName</span> = <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#7903a9caf1ea75d4" class="i property">RecipeName</a>;
+            }
+ 
+            <a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="t t">RecipeDescriptor</a> <span id="r25 rd" class="r25 r">recipeDescriptor</span> = <b>null</b>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r24 r">recipeName</span>))
+            {
+                <b>if</b> (<span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#a0d7005bcda83c09" class="i property">Recipe</a> == <b>null</b>)
+                {
+                    <b>return</b> <span class="i method">BadRequest</span>(<a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;Either &#39;Recipe&#39; or &#39;RecipeName&#39; is required.&quot;</span>]);
+                }
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r26 rd" class="r26 r">tempFilename</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#3f28ce894873de0a" class="i method">GetTempFileName</a>();
+ 
+                <b>using</b> (<a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r27 rd" class="r27 r">fs</span> = <span class="i n">System</span>.<span class="i n">IO</span>.<span class="t t">File</span>.<span class="i method">Create</span>(<span class="r26 r">tempFilename</span>))
+                {
+                    <b>await</b> <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#a0d7005bcda83c09" class="i property">Recipe</a>.<span class="i method">CopyToAsync</span>(<span class="r27 r">fs</span>);
+                }
+ 
+                <b>var</b> <span id="r28 rd" class="r28 r">fileProvider</span> = <b>new</b> <span class="t constructor">PhysicalFileProvider</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r26 r">tempFilename</span>));
+ 
+                <span class="r25 r">recipeDescriptor</span> = <b>new</b> <a href="/OrchardCore.Recipes.Abstractions/A.html#bd38e084344164e6" class="t constructor">RecipeDescriptor</a>
+                {
+                    <a href="/OrchardCore.Recipes.Abstractions/A.html#a00fd06476ccdc31" class="i property">FileProvider</a> = <span class="r28 r">fileProvider</span>,
+                    <a href="/OrchardCore.Recipes.Abstractions/A.html#54cff118760f8671" class="i property">BasePath</a> = <span class="s">&quot;&quot;</span>,
+                    <a href="/OrchardCore.Recipes.Abstractions/A.html#9ab16c40e79bac09" class="i property">RecipeFileInfo</a> = <span class="r28 r">fileProvider</span>.<span class="i method">GetFileInfo</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#95facc58d06cadd0" class="i method">GetFileName</a>(<span class="r26 r">tempFilename</span>))
+                };
+            }
+            <b>else</b>
+            {
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r29 rd" class="r29 r">setupRecipes</span> = <b>await</b> <a href="#cb108676b64094c6" class="i field">_setupService</a>.<a href="/OrchardCore.Setup.Abstractions/A.html#ae01aaaec25167ae" class="i method">GetSetupRecipesAsync</a>();
+                <span class="r25 r">recipeDescriptor</span> = <span class="r29 r">setupRecipes</span>.<span class="i method">FirstOrDefault</span>(<span id="r30 rd" class="r30 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r30 r">x</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#7158f1f797da090d" class="i property">Name</a>, <span class="r24 r">recipeName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+ 
+                <b>if</b> (<span class="r25 r">recipeDescriptor</span> == <b>null</b>)
+                {
+                    <b>return</b> <span class="i method">BadRequest</span>(<a href="#61af464293a69916" class="i field">S</a>[<span class="s">&quot;Recipe &#39;{0}&#39; not found.&quot;</span>, <span class="r24 r">recipeName</span>]);
+                }
+            }
+ 
+            <a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="k">var</a> <span id="r31 rd" class="r31 r">setupContext</span> = <b>new</b> <a href="/OrchardCore.Setup.Abstractions/A.html#32a9d167ddfc5a62" class="t constructor">SetupContext</a>
+            {
+                <a href="/OrchardCore.Setup.Abstractions/A.html#7e0790c543c5025c" class="i property">ShellSettings</a> = <span class="r18 r">shellSettings</span>,
+                <a href="/OrchardCore.Setup.Abstractions/A.html#5c4a5562e1cf7e7a" class="i property">EnabledFeatures</a> = <b>null</b>, <span class="c">// default list,</span>
+                <a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(),
+                <a href="/OrchardCore.Setup.Abstractions/A.html#374fdc99d51319ef" class="i property">Recipe</a> = <span class="r25 r">recipeDescriptor</span>,
+                <a href="/OrchardCore.Setup.Abstractions/A.html#188f43b1ed1be904" class="i property">Properties</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;
+                {
+                    { <span class="i">SetupConstants</span>.<span class="i">SiteName</span>, <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#a46600362a32bcf2" class="i property">SiteName</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminUsername</span>, <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#9e7f4045ed98e4a1" class="i property">UserName</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminEmail</span>, <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#5257121e95d9241c" class="i property">Email</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">AdminPassword</span>, <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#69de9a4ea547035f" class="i property">Password</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">SiteTimeZone</span>, <span class="r16 r">model</span>.<a href="../ViewModels/SetupApiViewModel.cs.html#df15d3ff254bb574" class="i property">SiteTimeZone</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">DatabaseProvider</span>, <span class="r20 r">selectedProvider</span>.<a href="/OrchardCore.Data.Abstractions/A.html#510dfe948d5d8f46" class="i property">Value</a> },
+                    { <span class="i">SetupConstants</span>.<span class="i">DatabaseConnectionString</span>, <span class="r23 r">connectionString</span> },
+                    { <span class="i">SetupConstants</span>.<span class="i">DatabaseTablePrefix</span>, <span class="r22 r">tablePrefix</span> },
+                }
+            };
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r32 rd" class="r32 r">executionId</span> = <b>await</b> <a href="#cb108676b64094c6" class="i field">_setupService</a>.<a href="/OrchardCore.Setup.Abstractions/A.html#16ade5dbf324eb8c" class="i method">SetupAsync</a>(<span class="r31 r">setupContext</span>);
+ 
+            <span class="c">// Check if a component in the Setup failed</span>
+            <b>if</b> (<span class="r31 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>.<span class="i method">Any</span>())
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r33 rd" class="r33 r">error</span> <b>in</b> <span class="r31 r">setupContext</span>.<a href="/OrchardCore.Setup.Abstractions/A.html#85da671dfa4d3bc3" class="i property">Errors</a>)
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="r33 r">error</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r33 r">error</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                }
+ 
+                <b>return</b> <span class="i method">StatusCode</span>(500, <span class="i property">ModelState</span>);
+            }
+ 
+            <b>return</b> <span class="i method">Ok</span>(<span class="r32 r">executionId</span>);
+        }
+ 
+        <b>private bool</b> <a id="f9c481764fb0732f" href="../R/f9c481764fb0732f.html" target="n" data-glyph="76,1" class="i method">IsDefaultShell</a>()
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<a href="#8e391d36d9759fc5" class="i field">_currentShellSettings</a>.<span class="i">Name</span>, <span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>);
+        }
+ 
+        <b>private string</b> <a id="1513b588d723394c" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">GetEncodedUrl</a>(<span class="i">ShellSettings</span> <span id="r34 rd" class="r34 r">shellSettings</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">token</span>)
+        {
+            <b>var</b> <span id="r36 rd" class="r36 r">host</span> = <span class="r34 r">shellSettings</span>.<span class="i">RequestUrlHost</span>?.<span class="i">Split</span>(<b>new</b>[] { <span class="s">&#39;,&#39;</span>, <span class="s">&#39; &#39;</span> }, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>).<span class="i">FirstOrDefault</span>();
+            <b>var</b> <span id="r37 rd" class="r37 r">hostString</span> = <span class="r36 r">host</span> != <b>null</b> ? <b>new</b> <span class="t">HostString</span>(<span class="r36 r">host</span>) : <span class="i property">Request</span>.<span class="i property">Host</span>;
+ 
+            <b>var</b> <span id="r38 rd" class="r38 r">pathString</span> = <span class="i property">HttpContext</span>.<span class="i property">Features</span>.<span class="i method">Get</span>&lt;<span class="i">ShellContextFeature</span>&gt;().<span class="i">OriginalPathBase</span>;
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r34 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>))
+            {
+                <span class="r38 r">pathString</span> = <span class="r38 r">pathString</span>.<span class="i">Add</span>(<span class="s">&#39;/&#39;</span> + <span class="r34 r">shellSettings</span>.<span class="i">RequestUrlPrefix</span>);
+            }
+ 
+            <b>var</b> <span id="r39 rd" class="r39 r">queryString</span> = <span class="t t">QueryString</span>.<span class="i field">Empty</span>;
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r35 r">token</span>))
+            {
+                <span class="r39 r">queryString</span> = <span class="t t">QueryString</span>.<span class="i method">Create</span>(<span class="s">&quot;token&quot;</span>, <span class="r35 r">token</span>);
+            }
+ 
+            <b>return</b> <span class="s">$&quot;</span>{<span class="i property">Request</span>.<span class="i property">Scheme</span>}<span class="s">://</span>{<span class="r37 r">hostString</span> + <span class="r38 r">pathString</span> + <span class="r39 r">queryString</span>}<span class="s">&quot;</span>;
+        }
+ 
+        <b>private string</b> <a id="da7cfaee268247f9" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">CreateSetupToken</a>(<span class="i">ShellSettings</span> <span id="r40 rd" class="r40 r">shellSettings</span>)
+        {
+            <span class="c">// Create a public url to setup the new tenant</span>
+            <b>var</b> <span id="r41 rd" class="r41 r">dataProtector</span> = <a href="#ca7447514d8084a7" class="i field">_dataProtectorProvider</a>.<span class="i method">CreateProtector</span>(<span class="s">&quot;Tokens&quot;</span>).<span class="i method">ToTimeLimitedDataProtector</span>();
+            <b>var</b> <span id="r42 rd" class="r42 r">token</span> = <span class="r41 r">dataProtector</span>.<span class="i">Protect</span>(<span class="r40 r">shellSettings</span>[<span class="s">&quot;Secret&quot;</span>], <a href="#73e0f86cce917e75" class="i field">_clock</a>.<span class="i">UtcNow</span>.<span class="i">Add</span>(<b>new</b> <a href="@1@System.Runtime/A.html#22fd9aa3d49cf498" class="t constructor">TimeSpan</a>(24, 0, 0)));
+            <b>return</b> <span class="r42 r">token</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

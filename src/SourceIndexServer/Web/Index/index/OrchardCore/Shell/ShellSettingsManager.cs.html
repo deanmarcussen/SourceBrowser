@@ -1,0 +1,283 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellSettingsManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(274);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Shell/ShellSettingsManager.cs" target="_top">Shell\ShellSettingsManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>.<span class="i n">CommandLine</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>.<span class="i n">EnvironmentVariables</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>
+{
+    <b>public class</b> <a id="96201bb399206230" href="../R/96201bb399206230.html" target="n" data-glyph="0,0" class="t t">ShellSettingsManager</a> : <a href="/OrchardCore.Abstractions/A.html#b384cb770bdec8af" class="t t">IShellSettingsManager</a>
+    {
+        <b>private readonly</b> <span class="t t">IConfiguration</span> <a id="9bff8cad455cbe35" href="../R/9bff8cad455cbe35.html" target="n" data-glyph="46,1" class="i field">_applicationConfiguration</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#4a21f4bb917e2df0" class="t t">IShellsConfigurationSources</a> <a id="fa912512706c69e6" href="../R/fa912512706c69e6.html" target="n" data-glyph="46,1" class="i field">_tenantsConfigSources</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#36b104ea9b06e52f" class="t t">IShellConfigurationSources</a> <a id="189eb00beb612104" href="../R/189eb00beb612104.html" target="n" data-glyph="46,1" class="i field">_tenantConfigSources</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#583fd975843e6000" class="t t">IShellsSettingsSources</a> <a id="3beb796596f6f6b2" href="../R/3beb796596f6f6b2.html" target="n" data-glyph="46,1" class="i field">_settingsSources</a>;
+ 
+        <b>private</b> <span class="t t">IConfiguration</span> <a id="4dcc697021b54bbf" href="../R/4dcc697021b54bbf.html" target="n" data-glyph="46,1" class="i field">_configuration</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="deffc235155ee7bb" href="../R/deffc235155ee7bb.html" target="n" data-glyph="46,1" class="i field">_configuredTenants</a>;
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="e095cf1feff968b7" href="../R/e095cf1feff968b7.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IConfigurationBuilder</span>&gt;&gt; <a id="2aae4e5c93366bf5" href="../R/2aae4e5c93366bf5.html" target="n" data-glyph="46,1" class="i field">_tenantConfigBuilderFactory</a>;
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="830a7cde4ee21045" href="../R/830a7cde4ee21045.html" target="n" data-glyph="46,1" class="i field">_tenantConfigSemaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>public</b> <a id="ece32dcd6f0a7751" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShellSettingsManager</a>(
+            <span class="t t">IConfiguration</span> <span id="r0 rd" class="r0 r">applicationConfiguration</span>,
+            <a href="/OrchardCore.Abstractions/A.html#4a21f4bb917e2df0" class="t t">IShellsConfigurationSources</a> <span id="r1 rd" class="r1 r">tenantsConfigSources</span>,
+            <a href="/OrchardCore.Abstractions/A.html#36b104ea9b06e52f" class="t t">IShellConfigurationSources</a> <span id="r2 rd" class="r2 r">tenantConfigSources</span>,
+            <a href="/OrchardCore.Abstractions/A.html#583fd975843e6000" class="t t">IShellsSettingsSources</a> <span id="r3 rd" class="r3 r">settingsSources</span>)
+        {
+            <a href="#9bff8cad455cbe35" class="i field">_applicationConfiguration</a> = <span class="r0 r">applicationConfiguration</span>;
+            <a href="#fa912512706c69e6" class="i field">_tenantsConfigSources</a> = <span class="r1 r">tenantsConfigSources</span>;
+            <a href="#189eb00beb612104" class="i field">_tenantConfigSources</a> = <span class="r2 r">tenantConfigSources</span>;
+            <a href="#3beb796596f6f6b2" class="i field">_settingsSources</a> = <span class="r3 r">settingsSources</span>;
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <a id="bd696395d643e463" href="../R/bd696395d643e463.html" target="n" data-glyph="72,1" class="i method">CreateDefaultSettings</a>()
+        {
+            <b>return</b> <b>new</b> <a href="/OrchardCore.Abstractions/A.html#dfbc2854d35fc8e7" class="t constructor">ShellSettings</a>
+            (
+                <b>new</b> <a href="/OrchardCore.Abstractions/A.html#efb13771a274ecc6" class="t constructor">ShellConfiguration</a>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>),
+                <b>new</b> <a href="/OrchardCore.Abstractions/A.html#efb13771a274ecc6" class="t constructor">ShellConfiguration</a>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>)
+            );
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt;&gt; <a id="9cbbe47eff665f31" href="../R/9cbbe47eff665f31.html" target="n" data-glyph="72,1" class="i method">LoadSettingsAsync</a>()
+        {
+            <b>await</b> <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>await</b> <a href="#57033d7df3d2aff9" class="i method">EnsureConfigurationAsync</a>();
+ 
+                <b>var</b> <span id="r4 rd" class="r4 r">tenantsSettings</span> = (<b>await</b> <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                    .<a href="/OrchardCore.Abstractions/A.html#37623836d4ec8744" class="i method">AddSourcesAsync</a>(<a href="#3beb796596f6f6b2" class="i field">_settingsSources</a>))
+                    .<span class="i method">Build</span>();
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r5 rd" class="r5 r">tenants</span> = <span class="r4 r">tenantsSettings</span>.<span class="i method">GetChildren</span>().<span class="i method">Select</span>(<span id="r6 rd" class="r6 r">section</span> =&gt; <span class="r6 r">section</span>.<span class="i property">Key</span>);
+                <b>var</b> <span id="r7 rd" class="r7 r">allTenants</span> = <a href="#deffc235155ee7bb" class="i field">_configuredTenants</a>.<span class="i method">Concat</span>(<span class="r5 r">tenants</span>).<span class="i method">Distinct</span>().<span class="i method">ToArray</span>();
+ 
+                <b>var</b> <span id="r8 rd" class="r8 r">allSettings</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt;();
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">tenant</span> <b>in</b> <span class="r7 r">allTenants</span>)
+                {
+                    <b>var</b> <span id="r10 rd" class="r10 r">tenantSettings</span> = <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                        .<span class="i method">AddConfiguration</span>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>)
+                        .<span class="i method">AddConfiguration</span>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>.<span class="i method">GetSection</span>(<span class="r9 r">tenant</span>))
+                        .<span class="i method">AddConfiguration</span>(<span class="r4 r">tenantsSettings</span>.<span class="i method">GetSection</span>(<span class="r9 r">tenant</span>))
+                        .<span class="i method">Build</span>();
+ 
+                    <a href="/OrchardCore.Abstractions/A.html#23b550a8b4ce9459" class="k">var</a> <span id="r11 rd" class="r11 r">settings</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#efb13771a274ecc6" class="t constructor">ShellConfiguration</a>(<span class="r10 r">tenantSettings</span>);
+                    <a href="/OrchardCore.Abstractions/A.html#23b550a8b4ce9459" class="k">var</a> <span id="r12 rd" class="r12 r">configuration</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#4ff529cc8ac19302" class="t constructor">ShellConfiguration</a>(<span class="r9 r">tenant</span>, <a href="#2aae4e5c93366bf5" class="i field">_tenantConfigBuilderFactory</a>);
+ 
+                    <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r13 rd" class="r13 r">shellSettings</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#dfbc2854d35fc8e7" class="t constructor">ShellSettings</a>(<span class="r11 r">settings</span>, <span class="r12 r">configuration</span>)
+                    {
+                        <a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> = <span class="r9 r">tenant</span>,
+                    };
+ 
+                    <span class="r8 r">allSettings</span>.<span class="i method">Add</span>(<span class="r13 r">shellSettings</span>);
+                };
+ 
+                <b>return</b> <span class="r8 r">allSettings</span>;
+            }
+            <b>finally</b>
+            {
+                <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="599fd10210caeffd" href="../R/599fd10210caeffd.html" target="n" data-glyph="72,1" class="i method">LoadSettingsNamesAsync</a>()
+        {
+            <b>await</b> <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>await</b> <a href="#57033d7df3d2aff9" class="i method">EnsureConfigurationAsync</a>();
+ 
+                <b>var</b> <span id="r14 rd" class="r14 r">tenantsSettings</span> = (<b>await</b> <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                    .<a href="/OrchardCore.Abstractions/A.html#37623836d4ec8744" class="i method">AddSourcesAsync</a>(<a href="#3beb796596f6f6b2" class="i field">_settingsSources</a>))
+                    .<span class="i method">Build</span>();
+ 
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r15 rd" class="r15 r">tenants</span> = <span class="r14 r">tenantsSettings</span>.<span class="i method">GetChildren</span>().<span class="i method">Select</span>(<span id="r16 rd" class="r16 r">section</span> =&gt; <span class="r16 r">section</span>.<span class="i property">Key</span>);
+                <b>return</b> <a href="#deffc235155ee7bb" class="i field">_configuredTenants</a>.<span class="i method">Concat</span>(<span class="r15 r">tenants</span>).<span class="i method">Distinct</span>().<span class="i method">ToArray</span>();
+            }
+            <b>finally</b>
+            {
+                <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt; <a id="e9d1dbfd33087649" href="../R/e9d1dbfd33087649.html" target="n" data-glyph="72,1" class="i method">LoadSettingsAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">tenant</span>)
+        {
+            <b>await</b> <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>await</b> <a href="#57033d7df3d2aff9" class="i method">EnsureConfigurationAsync</a>();
+ 
+                <b>var</b> <span id="r18 rd" class="r18 r">tenantsSettings</span> = (<b>await</b> <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                    .<a href="/OrchardCore.Abstractions/A.html#37623836d4ec8744" class="i method">AddSourcesAsync</a>(<a href="#3beb796596f6f6b2" class="i field">_settingsSources</a>))
+                    .<span class="i method">Build</span>();
+ 
+                <b>var</b> <span id="r19 rd" class="r19 r">tenantSettings</span> = <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                    .<span class="i method">AddConfiguration</span>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>)
+                    .<span class="i method">AddConfiguration</span>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>.<span class="i method">GetSection</span>(<span class="r17 r">tenant</span>))
+                    .<span class="i method">AddConfiguration</span>(<span class="r18 r">tenantsSettings</span>.<span class="i method">GetSection</span>(<span class="r17 r">tenant</span>))
+                    .<span class="i method">Build</span>();
+ 
+                <a href="/OrchardCore.Abstractions/A.html#23b550a8b4ce9459" class="k">var</a> <span id="r20 rd" class="r20 r">settings</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#efb13771a274ecc6" class="t constructor">ShellConfiguration</a>(<span class="r19 r">tenantSettings</span>);
+                <a href="/OrchardCore.Abstractions/A.html#23b550a8b4ce9459" class="k">var</a> <span id="r21 rd" class="r21 r">configuration</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#4ff529cc8ac19302" class="t constructor">ShellConfiguration</a>(<span class="r17 r">tenant</span>, <a href="#2aae4e5c93366bf5" class="i field">_tenantConfigBuilderFactory</a>);
+ 
+                <b>return</b> <b>new</b> <a href="/OrchardCore.Abstractions/A.html#dfbc2854d35fc8e7" class="t constructor">ShellSettings</a>(<span class="r20 r">settings</span>, <span class="r21 r">configuration</span>)
+                {
+                    <a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> = <span class="r17 r">tenant</span>,
+                };
+            }
+            <b>finally</b>
+            {
+                <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="2fa6b340961dc8b6" href="../R/2fa6b340961dc8b6.html" target="n" data-glyph="72,1" class="i method">SaveSettingsAsync</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r22 rd" class="r22 r">settings</span>)
+        {
+            <b>await</b> <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>await</b> <a href="#57033d7df3d2aff9" class="i method">EnsureConfigurationAsync</a>();
+ 
+                <b>if</b> (<span class="r22 r">settings</span> == <b>null</b>)
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r22 r">settings</span>));
+                }
+ 
+                <b>var</b> <span id="r23 rd" class="r23 r">configuration</span> = <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                    .<span class="i method">AddConfiguration</span>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>)
+                    .<span class="i method">AddConfiguration</span>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>.<span class="i method">GetSection</span>(<span class="r22 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>))
+                    .<span class="i method">Build</span>();
+ 
+                <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r24 rd" class="r24 r">shellSettings</span> = <b>new</b> <a href="/OrchardCore.Abstractions/A.html#ca043a07c4eae179" class="t constructor">ShellSettings</a>()
+                {
+                    <a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a> = <span class="r22 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>
+                };
+ 
+                <span class="r23 r">configuration</span>.<span class="i method">Bind</span>(<span class="r24 r">shellSettings</span>);
+ 
+                <b>var</b> <span id="r25 rd" class="r25 r">configSettings</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r24 r">shellSettings</span>);
+                <b>var</b> <span id="r26 rd" class="r26 r">tenantSettings</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r22 r">settings</span>);
+ 
+                <b>foreach</b> (<b>var</b> <span id="r27 rd" class="r27 r">property</span> <b>in</b> <span class="r25 r">configSettings</span>)
+                {
+                    <b>var</b> <span id="r28 rd" class="r28 r">tenantValue</span> = <span class="r26 r">tenantSettings</span>.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r27 r">property</span>.<span class="i">Key</span>);
+                    <b>var</b> <span id="r29 rd" class="r29 r">configValue</span> = <span class="r25 r">configSettings</span>.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r27 r">property</span>.<span class="i">Key</span>);
+ 
+                    <b>if</b> (<span class="r28 r">tenantValue</span> != <span class="r29 r">configValue</span>)
+                    {
+                        <span class="r26 r">tenantSettings</span>[<span class="r27 r">property</span>.<span class="i">Key</span>] = <span class="r28 r">tenantValue</span>;
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r26 r">tenantSettings</span>[<span class="r27 r">property</span>.<span class="i">Key</span>] = <b>null</b>;
+                    }
+                }
+ 
+                <span class="r26 r">tenantSettings</span>.<span class="i">Remove</span>(<span class="s">&quot;Name&quot;</span>);
+ 
+                <b>await</b> <a href="#3beb796596f6f6b2" class="i field">_settingsSources</a>.<span class="i">SaveAsync</span>(<span class="r22 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <span class="r26 r">tenantSettings</span>.<span class="i">ToObject</span>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;());
+ 
+                <b>var</b> <span id="r30 rd" class="r30 r">tenantConfig</span> = <b>new</b> <span class="i">JObject</span>();
+ 
+                <b>var</b> <span id="r31 rd" class="r31 r">sections</span> = <span class="r22 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#e4b9d4720fdc9d27" class="i property">ShellConfiguration</a>.<span class="i method">GetChildren</span>()
+                    .<span class="i method">Where</span>(<span id="r32 rd" class="r32 r">s</span> =&gt; !<span class="r32 r">s</span>.<span class="i method">GetChildren</span>().<span class="i method">Any</span>())
+                    .<span class="i method">ToArray</span>();
+ 
+                <b>foreach</b> (<b>var</b> <span id="r33 rd" class="r33 r">section</span> <b>in</b> <span class="r31 r">sections</span>)
+                {
+                    <b>if</b> (<span class="r22 r">settings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="r33 r">section</span>.<span class="i property">Key</span>] != <span class="r23 r">configuration</span>[<span class="r33 r">section</span>.<span class="i property">Key</span>])
+                    {
+                        <span class="r30 r">tenantConfig</span>[<span class="r33 r">section</span>.<span class="i property">Key</span>] = <span class="r22 r">settings</span><a href="/OrchardCore.Abstractions/A.html#aa9c97124fa359fb">[</a><span class="r33 r">section</span>.<span class="i property">Key</span>];
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r30 r">tenantConfig</span>[<span class="r33 r">section</span>.<span class="i property">Key</span>] = <b>null</b>;
+                    }
+                }
+ 
+                <span class="r30 r">tenantConfig</span>.<span class="i">Remove</span>(<span class="s">&quot;Name&quot;</span>);
+ 
+                <b>await</b> <a href="#830a7cde4ee21045" class="i field">_tenantConfigSemaphore</a>.<span class="i method">WaitAsync</span>();
+                <b>try</b>
+                {
+                    <b>await</b> <a href="#189eb00beb612104" class="i field">_tenantConfigSources</a>.<span class="i">SaveAsync</span>(<span class="r22 r">settings</span>.<a href="/OrchardCore.Abstractions/A.html#7248e6f40dfe7c7f" class="i property">Name</a>, <span class="r30 r">tenantConfig</span>.<span class="i">ToObject</span>&lt;<span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;());
+                }
+                <b>finally</b>
+                {
+                    <a href="#830a7cde4ee21045" class="i field">_tenantConfigSemaphore</a>.<span class="i method">Release</span>();
+                }
+            }
+            <b>finally</b>
+            {
+                <a href="#e095cf1feff968b7" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="57033d7df3d2aff9" href="../R/57033d7df3d2aff9.html" target="n" data-glyph="76,1" class="i method">EnsureConfigurationAsync</a>()
+        {
+            <b>if</b> (<a href="#4dcc697021b54bbf" class="i field">_configuration</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r34 rd" class="r34 r">lastProviders</span> = (<a href="#9bff8cad455cbe35" class="i field">_applicationConfiguration</a> <b>as</b> <span class="t t">IConfigurationRoot</span>)?.<span class="i property">Providers</span>
+                .<span class="i method">Where</span>(<span id="r35 rd" class="r35 r">p</span> =&gt; <span class="r35 r">p</span> <b>is</b> <span class="t t">EnvironmentVariablesConfigurationProvider</span> ||
+                            <span class="r35 r">p</span> <b>is</b> <span class="t t">CommandLineConfigurationProvider</span>)
+                .<span class="i method">ToArray</span>();
+ 
+            <b>var</b> <span id="r36 rd" class="r36 r">configurationBuilder</span> = <b>await</b> <b>new</b> <span class="t constructor">ConfigurationBuilder</span>()
+                .<span class="i method">AddConfiguration</span>(<a href="#9bff8cad455cbe35" class="i field">_applicationConfiguration</a>)
+                .<a href="/OrchardCore.Abstractions/A.html#f3fe40ff32af9030" class="i method">AddSourcesAsync</a>(<a href="#fa912512706c69e6" class="i field">_tenantsConfigSources</a>);
+ 
+            <b>if</b> (<span class="r34 r">lastProviders</span>.<span class="i method">Count</span>() &gt; 0)
+            {
+                <span class="r36 r">configurationBuilder</span>.<span class="i method">AddConfiguration</span>(<b>new</b> <span class="t constructor">ConfigurationRoot</span>(<span class="r34 r">lastProviders</span>));
+            }
+ 
+            <b>var</b> <span id="r37 rd" class="r37 r">configuration</span> = <span class="r36 r">configurationBuilder</span>.<span class="i method">Build</span>().<span class="i method">GetSection</span>(<span class="s">&quot;OrchardCore&quot;</span>);
+ 
+            <a href="#deffc235155ee7bb" class="i field">_configuredTenants</a> = <span class="r37 r">configuration</span>.<span class="i method">GetChildren</span>()
+                .<span class="i method">Where</span>(<span id="r38 rd" class="r38 r">section</span> =&gt; <a href="@1@System.Runtime/A.html#36729210e317a805" class="t t">Enum</a>.<a href="@1@System.Runtime/A.html#7ef4c46032079d2b" class="i method">TryParse</a>&lt;<a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>&gt;(<span class="r38 r">section</span>[<span class="s">&quot;State&quot;</span>], <span class="r39 r">ignoreCase</span>: <b>true</b>, <b>out _</b>))
+                .<span class="i method">Select</span>(<span id="r40 rd" class="r40 r">section</span> =&gt; <span class="r40 r">section</span>.<span class="i property">Key</span>)
+                .<span class="i method">Distinct</span>()
+                .<span class="i method">ToArray</span>();
+ 
+            <a href="#2aae4e5c93366bf5" class="i field">_tenantConfigBuilderFactory</a> = <b>async</b> (<span id="r41 rd" class="r41 r">tenant</span>) =&gt;
+            {
+                <b>await</b> <a href="#830a7cde4ee21045" class="i field">_tenantConfigSemaphore</a>.<span class="i method">WaitAsync</span>();
+                <b>try</b>
+                {
+                    <b>var</b> <span id="r42 rd" class="r42 r">builder</span> = <b>new</b> <span class="t constructor">ConfigurationBuilder</span>().<span class="i method">AddConfiguration</span>(<a href="#4dcc697021b54bbf" class="i field">_configuration</a>);
+                    <span class="r42 r">builder</span>.<span class="i method">AddConfiguration</span>(<span class="r37 r">configuration</span>.<span class="i method">GetSection</span>(<span class="r41 r">tenant</span>));
+                    <b>return</b> <b>await</b> <span class="r42 r">builder</span>.<a href="/OrchardCore.Abstractions/A.html#1e8fedcc87e00706" class="i method">AddSourcesAsync</a>(<span class="r41 r">tenant</span>, <a href="#189eb00beb612104" class="i field">_tenantConfigSources</a>);
+                }
+                <b>finally</b>
+                {
+                    <a href="#830a7cde4ee21045" class="i field">_tenantConfigSemaphore</a>.<span class="i method">Release</span>();
+                }
+            };
+ 
+            <a href="#4dcc697021b54bbf" class="i field">_configuration</a> = <span class="r37 r">configuration</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

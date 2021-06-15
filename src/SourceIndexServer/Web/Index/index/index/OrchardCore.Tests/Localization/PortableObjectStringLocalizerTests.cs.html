@@ -1,0 +1,408 @@
+﻿<!DOCTYPE html>
+<html><head><title>PortableObjectStringLocalizerTests.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(399);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Localization/PortableObjectStringLocalizerTests.cs" target="_top">Localization\PortableObjectStringLocalizerTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Builder</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Moq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Localization</span>.<span class="i">PortableObject</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Localization</span>
+{
+    <b>public class</b> <a id="d1ab5afd90ae31dc" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">PortableObjectStringLocalizerTests</a>
+    {
+        <b>private static</b> <span class="i">PluralizationRuleDelegate</span> <a id="3fc10a2654c8863d" href="../R/3fc10a2654c8863d.html" target="n" data-glyph="46,1" class="i field">_csPluralRule</a> = <span id="r0 rd" class="r0 r">n</span> =&gt; ((<span class="r0 r">n</span> == 1) ? 0 : (<span class="r0 r">n</span> &gt;= 2 &amp;&amp; <span class="r0 r">n</span> &lt;= 4) ? 1 : 2);
+        <b>private static</b> <span class="i">PluralizationRuleDelegate</span> <a id="ca809d468d3e697f" href="../R/ca809d468d3e697f.html" target="n" data-glyph="46,1" class="i field">_enPluralRule</a> = <span id="r1 rd" class="r1 r">n</span> =&gt; (<span class="r1 r">n</span> == 1) ? 0 : 1;
+        <b>private static</b> <span class="i">PluralizationRuleDelegate</span> <a id="e948df6f77d4b1ba" href="../R/e948df6f77d4b1ba.html" target="n" data-glyph="46,1" class="i field">_arPluralRule</a> = <span id="r2 rd" class="r2 r">n</span> =&gt; (<span class="r2 r">n</span> == 0 ? 0 : <span class="r2 r">n</span> == 1 ? 1 : <span class="r2 r">n</span> == 2 ? 2 : <span class="r2 r">n</span> % 100 &gt;= 3 &amp;&amp; <span class="r2 r">n</span> % 100 &lt;= 10 ? 3 : <span class="r2 r">n</span> % 100 &gt;= 11 ? 4 : 5);
+        <b>private</b> <span class="i">Mock</span>&lt;<span class="i">ILocalizationManager</span>&gt; <a id="95a7929bece08bd5" href="../R/95a7929bece08bd5.html" target="n" data-glyph="46,1" class="i field">_localizationManager</a>;
+        <b>private</b> <span class="i">Mock</span>&lt;<span class="t t">ILogger</span>&gt; <a id="912111f2d50dda5c" href="../R/912111f2d50dda5c.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="85bee40f9fb15a00" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">PortableObjectStringLocalizerTests</a>()
+        {
+            <a href="#95a7929bece08bd5" class="i field">_localizationManager</a> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">ILocalizationManager</span>&gt;();
+            <a href="#912111f2d50dda5c" class="i field">_logger</a> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">ILogger</span>&gt;();
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="8a6f17b1e0e934ea" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsTranslationsFromProvidedDictionary</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;míče&quot;</span>, <span class="s">&quot;míčů&quot;</span>)
+            });
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+ 
+                <b>var</b> <span id="r4 rd" class="r4 r">translation</span> = <span class="r3 r">localizer</span>[<span class="s">&quot;ball&quot;</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;míč&quot;</span>, <span class="r4 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="0af29b3863df4230" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsOriginalTextIfTranslationsDoesntExistInProvidedDictionary</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;míče&quot;</span>, <span class="s">&quot;míčů&quot;</span>)
+            });
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r6 rd" class="r6 r">translation</span> = <span class="r5 r">localizer</span>[<span class="s">&quot;car&quot;</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;car&quot;</span>, <span class="r6 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="276e2c20b578eb7c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsOriginalTextIfDictionaryIsEmpty</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b> <span class="i">CultureDictionaryRecord</span>[] { });
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r8 rd" class="r8 r">translation</span> = <span class="r7 r">localizer</span>[<span class="s">&quot;car&quot;</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;car&quot;</span>, <span class="r8 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="dcf77d3737ce1b5c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerFallbacksToParentCultureIfTranslationDoesntExistInSpecificCulture</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;míče&quot;</span>, <span class="s">&quot;míčů&quot;</span>)
+            });
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs-CZ&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;car&quot;</span>, <span class="s">&quot;auto&quot;</span>, <span class="s">&quot;auta&quot;</span>, <span class="s">&quot;aut&quot;</span>)
+            });
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs-cz&quot;</span>))
+            {
+                <b>var</b> <span id="r10 rd" class="r10 r">translation</span> = <span class="r9 r">localizer</span>[<span class="s">&quot;ball&quot;</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;míč&quot;</span>, <span class="r10 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="1e32f5f470b197ba" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsTranslationFromSpecificCultureIfItExists</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;míče&quot;</span>, <span class="s">&quot;míčů&quot;</span>)
+            });
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs-CZ&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;balón&quot;</span>, <span class="s">&quot;balóny&quot;</span>, <span class="s">&quot;balónů&quot;</span>)
+            });
+            <b>var</b> <span id="r11 rd" class="r11 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs-CZ&quot;</span>))
+            {
+                <b>var</b> <span id="r12 rd" class="r12 r">translation</span> = <span class="r11 r">localizer</span>[<span class="s">&quot;ball&quot;</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;balón&quot;</span>, <span class="r12 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="0b21cd02883d27ed" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsTranslationWithSpecificContext</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;míče&quot;</span>, <span class="s">&quot;míčů&quot;</span>),
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;small&quot;</span>,  <b>new</b> [] { <span class="s">&quot;míček&quot;</span>, <span class="s">&quot;míčky&quot;</span>, <span class="s">&quot;míčků&quot;</span> })
+            });
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<span class="s">&quot;small&quot;</span>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r14 rd" class="r14 r">translation</span> = <span class="r13 r">localizer</span>[<span class="s">&quot;ball&quot;</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;míček&quot;</span>, <span class="r14 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="3cd182b8f8889e4e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsTranslationWithoutContextIfTranslationWithContextDoesntExist</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;míče&quot;</span>, <span class="s">&quot;míčů&quot;</span>),
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;big&quot;</span>, <b>new</b> [] { <span class="s">&quot;míček&quot;</span>, <span class="s">&quot;míčky&quot;</span>, <span class="s">&quot;míčků&quot;</span> })
+            });
+            <b>var</b> <span id="r15 rd" class="r15 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<span class="s">&quot;small&quot;</span>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r16 rd" class="r16 r">translation</span> = <span class="r15 r">localizer</span>[<span class="s">&quot;ball&quot;</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;míč&quot;</span>, <span class="r16 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="a874edae1d075df8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsFormattedTranslation</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;The page (ID:{0}) was deleted.&quot;</span>, <span class="s">&quot;Stránka (ID:{0}) byla smazána.&quot;</span>)
+            });
+            <b>var</b> <span id="r17 rd" class="r17 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<span class="s">&quot;small&quot;</span>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r18 rd" class="r18 r">translation</span> = <span class="r17 r">localizer</span>[<span class="s">&quot;The page (ID:{0}) was deleted.&quot;</span>, 1];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Stránka (ID:1) byla smazána.&quot;</span>, <span class="r18 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public void</b> <a id="0d83e9ebcfb5ff6c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">HtmlLocalizerDoesNotFormatTwiceIfFormattedTranslationContainsCurlyBraces</a>()
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;The page (ID:{0}) was deleted.&quot;</span>, <span class="s">&quot;Stránka (ID:{0}) byla smazána.&quot;</span>)
+            });
+            <b>var</b> <span id="r19 rd" class="r19 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<span class="s">&quot;small&quot;</span>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r20 rd" class="r20 r">htmlLocalizer</span> = <b>new</b> <span class="i">PortableObjectHtmlLocalizer</span>(<span class="r19 r">localizer</span>);
+                <b>var</b> <span id="r21 rd" class="r21 r">unformatted</span> = <span class="r20 r">htmlLocalizer</span>[<span class="s">&quot;The page (ID:{0}) was deleted.&quot;</span>, <span class="s">&quot;{1}&quot;</span>];
+                <a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r22 rd" class="r22 r">memStream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>();
+                <a href="@1@System.Runtime/A.html#9e38cb1c84769eba" class="k">var</a> <span id="r23 rd" class="r23 r">textWriter</span> = <b>new</b> <a href="@1@System.Runtime/A.html#c73af21c3340883d" class="t constructor">StreamWriter</a>(<span class="r22 r">memStream</span>);
+                <a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r24 rd" class="r24 r">textReader</span> = <b>new</b> <a href="@1@System.Runtime/A.html#72447927169f6b77" class="t constructor">StreamReader</a>(<span class="r22 r">memStream</span>);
+ 
+                <span class="r21 r">unformatted</span>.<span class="i">WriteTo</span>(<span class="r23 r">textWriter</span>, <span class="t t">HtmlEncoder</span>.<span class="i property">Default</span>);
+ 
+                <span class="r23 r">textWriter</span>.<a href="@1@System.Runtime/A.html#4d8cd91791f0d47c" class="i method">Flush</a>();
+                <span class="r22 r">memStream</span>.<a href="@1@System.Runtime/A.html#30f00da49c798fe1" class="i method">Seek</a>(0, <a href="@1@System.Runtime/A.html#2cc1cf6635f00a52" class="t t">SeekOrigin</a>.<a href="@1@System.Runtime/A.html#c29481af7c617299" class="i field">Begin</a>);
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r25 rd" class="r25 r">formatted</span> = <span class="r24 r">textReader</span>.<a href="@1@System.Runtime/A.html#dc5c2420e739a03e" class="i method">ReadToEnd</a>();
+ 
+                <span class="r23 r">textWriter</span>.<a href="@1@System.Runtime/A.html#2e39b8daeeed8db5" class="i method">Dispose</a>();
+                <span class="r24 r">textReader</span>.<a href="@1@System.Runtime/A.html#c4d3482c89273f24" class="i method">Dispose</a>();
+                <span class="r22 r">memStream</span>.<a href="@1@System.Runtime/A.html#f1b4285950a82354" class="i method">Dispose</a>();
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Stránka (ID:{1}) byla smazána.&quot;</span>, <span class="r25 r">formatted</span>);
+            }
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;car&quot;</span>, 1)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;cars&quot;</span>, 2)]
+        <b>public void</b> <a id="38ed2c6c78621b45" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsOriginalTextForPluralIfTranslationDoesntExist</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">expected</span>, <b>int</b> <span id="r27 rd" class="r27 r">count</span>)
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;míče&quot;</span>, <span class="s">&quot;míčů&quot;</span>),
+            });
+ 
+            <b>var</b> <span id="r28 rd" class="r28 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r29 rd" class="r29 r">translation</span> = <span class="r28 r">localizer</span>.<span class="i">Plural</span>(<span class="r27 r">count</span>, <span class="s">&quot;car&quot;</span>, <span class="s">&quot;cars&quot;</span>);
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r26 r">expected</span>, <span class="r29 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;zh-Hans&quot;</span>, <span class="s">&quot;球&quot;</span>, 1, <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="s">&quot;球&quot;</span> })]
+        [<span class="i">InlineData</span>(<span class="s">&quot;zh-Hans&quot;</span>, <span class="s">&quot;球&quot;</span>, 2, <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] { <span class="s">&quot;球&quot;</span> })]
+        <b>public void</b> <a id="ba856070d47f6230" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsCorrectTranslationForPluralIfNoPluralFormsSpecified</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r30 rd" class="r30 r">culture</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">expected</span>, <b>int</b> <span id="r32 rd" class="r32 r">count</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r33 rd" class="r33 r">translations</span>)
+        {
+            <b>using</b> (<b>var</b> <span id="r34 rd" class="r34 r">cultureScope</span> = <span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="r30 r">culture</span>))
+            {
+                <span class="c">// using DefaultPluralRuleProvider to test it returns correct rule</span>
+                <span class="i">TryGetRuleFromDefaultPluralRuleProvider</span>(<span class="r34 r">cultureScope</span>.<span class="i">UICulture</span>, <b>out</b> <b>var</b> <span id="r35 rd" class="r35 r">rule</span>);
+                <span class="i">Assert</span>.<span class="i">NotNull</span>(<span class="r35 r">rule</span>);
+ 
+                <a href="#1206f3b2856f0c03" class="i method">SetupDictionary</a>(<span class="r30 r">culture</span>, <b>new</b>[] { <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="r33 r">translations</span>), }, <span class="r35 r">rule</span>);
+                <b>var</b> <span id="r36 rd" class="r36 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+                <b>var</b> <span id="r37 rd" class="r37 r">translation</span> = <span class="r36 r">localizer</span>.<span class="i">Plural</span>(<span class="r32 r">count</span>, <span class="s">&quot;ball&quot;</span>, <span class="s">&quot;{0} balls&quot;</span>, <span class="r32 r">count</span>);
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r31 r">expected</span>, <span class="r37 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;míč&quot;</span>, 1)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;2 míče&quot;</span>, 2)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;5 míčů&quot;</span>, 5)]
+        <b>public void</b> <a id="5e84059a8f5d8401" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsTranslationInCorrectPluralForm</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">expected</span>, <b>int</b> <span id="r39 rd" class="r39 r">count</span>)
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;cs&quot;</span>, <b>new</b>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;ball&quot;</span>, <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;{0} míče&quot;</span>, <span class="s">&quot;{0} míčů&quot;</span>),
+            });
+ 
+            <b>var</b> <span id="r40 rd" class="r40 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;cs&quot;</span>))
+            {
+                <b>var</b> <span id="r41 rd" class="r41 r">translation</span> = <span class="r40 r">localizer</span>.<span class="i">Plural</span>(<span class="r39 r">count</span>, <span class="s">&quot;ball&quot;</span>, <span class="s">&quot;{0} balls&quot;</span>, <span class="r39 r">count</span>);
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r38 r">expected</span>, <span class="r41 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;míč&quot;</span>, 1)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;2 míče&quot;</span>, 2)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;5 míčů&quot;</span>, 5)]
+        <b>public void</b> <a id="2f489e52044f251a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsOriginalValuesIfTranslationDoesntExistAndMultiplePluraflFormsAreSpecified</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r42 rd" class="r42 r">expected</span>, <b>int</b> <span id="r43 rd" class="r43 r">count</span>)
+        {
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="s">&quot;en&quot;</span>, <b>new</b> <span class="i">CultureDictionaryRecord</span>[] { });
+            <b>var</b> <span id="r44 rd" class="r44 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;en&quot;</span>))
+            {
+                <b>var</b> <span id="r45 rd" class="r45 r">translation</span> = <span class="r44 r">localizer</span>.<span class="i">Plural</span>(<span class="r43 r">count</span>, <b>new</b>[] { <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;{0} míče&quot;</span>, <span class="s">&quot;{0} míčů&quot;</span> }, <span class="r43 r">count</span>);
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r42 r">expected</span>, <span class="r45 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;ball&quot;</span>, 1)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;2 balls&quot;</span>, 2)]
+        <b>public void</b> <a id="38e621affe87c1e7" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsCorrectPluralFormIfMultiplePluraflFormsAreSpecified</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r46 rd" class="r46 r">expected</span>, <b>int</b> <span id="r47 rd" class="r47 r">count</span>)
+        {
+            <a href="#1206f3b2856f0c03" class="i method">SetupDictionary</a>(<span class="s">&quot;en&quot;</span>, <b>new</b> <span class="i">CultureDictionaryRecord</span>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;míč&quot;</span>, <span class="s">&quot;ball&quot;</span>, <span class="s">&quot;{0} balls&quot;</span>)
+            }, <a href="#ca809d468d3e697f" class="i field">_enPluralRule</a>);
+            <b>var</b> <span id="r48 rd" class="r48 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;en&quot;</span>))
+            {
+                <b>var</b> <span id="r49 rd" class="r49 r">translation</span> = <span class="r48 r">localizer</span>.<span class="i">Plural</span>(<span class="r47 r">count</span>, <b>new</b>[] { <span class="s">&quot;míč&quot;</span>, <span class="s">&quot;{0} míče&quot;</span>, <span class="s">&quot;{0} míčů&quot;</span> }, <span class="r47 r">count</span>);
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r46 r">expected</span>, <span class="r49 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<b>false</b>, <span class="s">&quot;hello&quot;</span>, <span class="s">&quot;hello&quot;</span>)]
+        [<span class="i">InlineData</span>(<b>true</b>, <span class="s">&quot;hello&quot;</span>, <span class="s">&quot;مرحبا&quot;</span>)]
+        <b>public void</b> <a id="9f02b079744717a3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerFallBackToParentCultureIfFallBackToParentUICulturesIsTrue</a>(<b>bool</b> <span id="r50 rd" class="r50 r">fallBackToParentCulture</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r51 rd" class="r51 r">resourceKey</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r52 rd" class="r52 r">expected</span>)
+        {
+            <a href="#1206f3b2856f0c03" class="i method">SetupDictionary</a>(<span class="s">&quot;ar&quot;</span>, <b>new</b> <span class="i">CultureDictionaryRecord</span>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;hello&quot;</span>, <span class="s">&quot;مرحبا&quot;</span>)
+            }, <a href="#e948df6f77d4b1ba" class="i field">_arPluralRule</a>);
+            <a href="#1206f3b2856f0c03" class="i method">SetupDictionary</a>(<span class="s">&quot;ar-YE&quot;</span>, <b>new</b> <span class="i">CultureDictionaryRecord</span>[] { }, <a href="#e948df6f77d4b1ba" class="i field">_arPluralRule</a>);
+            <b>var</b> <span id="r53 rd" class="r53 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <span class="r50 r">fallBackToParentCulture</span>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;ar-YE&quot;</span>))
+            {
+                <b>var</b> <span id="r54 rd" class="r54 r">translation</span> = <span class="r53 r">localizer</span>[<span class="r51 r">resourceKey</span>];
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r52 r">expected</span>, <span class="r54 r">translation</span>);
+            }
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<b>false</b>, <b>new</b>[] { <span class="s">&quot;مدونة&quot;</span>, <span class="s">&quot;منتج&quot;</span> })]
+        [<span class="i">InlineData</span>(<b>true</b>, <b>new</b>[] { <span class="s">&quot;مدونة&quot;</span>, <span class="s">&quot;منتج&quot;</span>, <span class="s">&quot;قائمة&quot;</span>, <span class="s">&quot;صفحة&quot;</span>, <span class="s">&quot;مقالة&quot;</span> })]
+        <b>public void</b> <a id="7ae6f22ad5531579" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerReturnsGetAllStrings</a>(<b>bool</b> <span id="r55 rd" class="r55 r">includeParentCultures</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r56 rd" class="r56 r">expected</span>)
+        {
+            <a href="#1206f3b2856f0c03" class="i method">SetupDictionary</a>(<span class="s">&quot;ar&quot;</span>, <b>new</b> <span class="i">CultureDictionaryRecord</span>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;Blog&quot;</span>, <span class="s">&quot;مدونة&quot;</span>),
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;Menu&quot;</span>, <span class="s">&quot;قائمة&quot;</span>),
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;Page&quot;</span>, <span class="s">&quot;صفحة&quot;</span>),
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;Article&quot;</span>, <span class="s">&quot;مقالة&quot;</span>)
+            }, <a href="#e948df6f77d4b1ba" class="i field">_arPluralRule</a>);
+            <a href="#1206f3b2856f0c03" class="i method">SetupDictionary</a>(<span class="s">&quot;ar-YE&quot;</span>, <b>new</b> <span class="i">CultureDictionaryRecord</span>[] {
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;Blog&quot;</span>, <span class="s">&quot;مدونة&quot;</span>),
+                <b>new</b> <span class="i">CultureDictionaryRecord</span>(<span class="s">&quot;Product&quot;</span>, <span class="s">&quot;منتج&quot;</span>)
+            }, <a href="#e948df6f77d4b1ba" class="i field">_arPluralRule</a>);
+ 
+            <b>var</b> <span id="r57 rd" class="r57 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<b>null</b>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>false</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <b>using</b> (<span class="i">CultureScope</span>.<span class="i">Create</span>(<span class="s">&quot;ar-YE&quot;</span>))
+            {
+                <b>var</b> <span id="r58 rd" class="r58 r">translations</span> = <span class="r57 r">localizer</span>.<span class="i">GetAllStrings</span>(<span class="r55 r">includeParentCultures</span>).<span class="i">Select</span>(<span id="r59 rd" class="r59 r">l</span> =&gt; <span class="r59 r">l</span>.<span class="i">Value</span>).<span class="i">ToArray</span>();
+ 
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r56 r">expected</span>.<span class="i method">Count</span>(), <span class="r58 r">translations</span>.<span class="i">Count</span>());
+            }
+        }
+ 
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="94d628fe43c599d4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">PortableObjectStringLocalizerShouldRegisterIStringLocalizerOfT</a>()
+            =&gt; <b>await</b> <a href="../Utilities/StartupRunner.cs.html#aabf126ac8f27891" class="t t">StartupRunner</a>.<a href="../Utilities/StartupRunner.cs.html#1ee1ee6eb322a4ef" class="i method">Run</a>(<b>typeof</b>(<a href="#31305cd8a8f409ca" class="t t">PortableObjectLocalizationStartup</a>), <span class="s">&quot;en&quot;</span>, <span class="s">&quot;Hello&quot;</span>);
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;ar&quot;</span>, 1)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;ar-YE&quot;</span>, 2)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;zh-Hans-CN&quot;</span>, 3)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;zh-Hant-TW&quot;</span>, 3)]
+        <b>public void</b> <a id="f4052ac3e56ec6ce" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">LocalizerWithContextShouldCallGetDictionaryOncePerCulture</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r60 rd" class="r60 r">culture</span>, <b>int</b> <span id="r61 rd" class="r61 r">expectedCalls</span>)
+        {
+            <span class="c">// Arrange</span>
+            <a href="#fe2c643bc6cd1241" class="i method">SetupDictionary</a>(<span class="r60 r">culture</span>, <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<span class="i">CultureDictionaryRecord</span>&gt;());
+ 
+            <b>var</b> <span id="r62 rd" class="r62 r">localizer</span> = <b>new</b> <span class="i">PortableObjectStringLocalizer</span>(<span class="s">&quot;context&quot;</span>, <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Object</span>, <b>true</b>, <a href="#912111f2d50dda5c" class="i field">_logger</a>.<span class="i">Object</span>);
+            <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#ff8fd0bdccb4794e" class="i property">CurrentUICulture</a> = <b>new</b> <a href="@1@System.Runtime/A.html#cb4dd1c3262abd32" class="t constructor">CultureInfo</a>(<span class="r60 r">culture</span>);
+ 
+            <span class="c">// Act</span>
+            <b>var</b> <span id="r63 rd" class="r63 r">translation</span> = <span class="r62 r">localizer</span>[<span class="s">&quot;Hello&quot;</span>];
+ 
+            <span class="c">// Assert</span>
+            <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Verify</span>(<span id="r64 rd" class="r64 r">lm</span> =&gt; <span class="r64 r">lm</span>.<span class="i">GetDictionary</span>(<span class="i">It</span>.<span class="i">IsAny</span>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>&gt;()), <span class="i">Times</span>.<span class="i">Exactly</span>(<span class="r61 r">expectedCalls</span>));
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="s">&quot;Hello&quot;</span>, <span class="r63 r">translation</span>);
+        }
+ 
+        <b>private void</b> <a id="fe2c643bc6cd1241" href="../R/fe2c643bc6cd1241.html" target="n" data-glyph="76,1" class="i method">SetupDictionary</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r65 rd" class="r65 r">cultureName</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">CultureDictionaryRecord</span>&gt; <span id="r66 rd" class="r66 r">records</span>)
+        {
+            <a href="#1206f3b2856f0c03" class="i method">SetupDictionary</a>(<span class="r65 r">cultureName</span>, <span class="r66 r">records</span>, <a href="#3fc10a2654c8863d" class="i field">_csPluralRule</a>);
+        }
+ 
+        <b>private void</b> <a id="1206f3b2856f0c03" href="../R/1206f3b2856f0c03.html" target="n" data-glyph="76,1" class="i method">SetupDictionary</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r67 rd" class="r67 r">cultureName</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">CultureDictionaryRecord</span>&gt; <span id="r68 rd" class="r68 r">records</span>, <span class="i">PluralizationRuleDelegate</span> <span id="r69 rd" class="r69 r">pluralRule</span>)
+        {
+            <b>var</b> <span id="r70 rd" class="r70 r">dictionary</span> = <b>new</b> <span class="i">CultureDictionary</span>(<span class="r67 r">cultureName</span>, <span class="r69 r">pluralRule</span>);
+            <span class="r70 r">dictionary</span>.<span class="i">MergeTranslations</span>(<span class="r68 r">records</span>);
+ 
+            <a href="#95a7929bece08bd5" class="i field">_localizationManager</a>.<span class="i">Setup</span>(<span id="r71 rd" class="r71 r">o</span> =&gt; <span class="r71 r">o</span>.<span class="i">GetDictionary</span>(<span class="i">It</span>.<span class="i">Is</span>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>&gt;(<span id="r72 rd" class="r72 r">c</span> =&gt; <span class="r72 r">c</span>.<span class="i">Name</span> == <span class="r67 r">cultureName</span>))).<span class="i">Returns</span>(<span class="r70 r">dictionary</span>);
+        }
+ 
+        <b>private bool</b> <a id="c10166054468e5d6" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">TryGetRuleFromDefaultPluralRuleProvider</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a> <span id="r73 rd" class="r73 r">culture</span>, <b>out</b> <span class="i">PluralizationRuleDelegate</span> <span id="r74 rd" class="r74 r">rule</span>)
+        {
+            <b>return</b> ((<span class="i">IPluralRuleProvider</span>)<b>new</b> <span class="i">DefaultPluralRuleProvider</span>()).<span class="i">TryGetRule</span>(<span class="r73 r">culture</span>, <b>out</b> <span class="r74 r">rule</span>);
+        }
+ 
+        <b>public class</b> <a id="31305cd8a8f409ca" href="../R/31305cd8a8f409ca.html" target="n" data-glyph="0,1" class="t t"><span id="f0392001a2ee6a1b">PortableObjectLocalizationStartup</span></a>
+        {
+            <b>public void</b> <a id="4be6b3caf40cee69" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">ConfigureServices</a>(<span class="t t">IServiceCollection</span> <span id="r75 rd" class="r75 r">services</span>)
+            {
+                <span class="r75 r">services</span>.<span class="i method">AddMvc</span>();
+                <span class="r75 r">services</span>.<span class="i">AddPortableObjectLocalization</span>();
+            }
+ 
+            <b>public void</b> <a id="94555624f0432ae8" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">Configure</a>(
+                <span class="t t">IApplicationBuilder</span> <span id="r76 rd" class="r76 r">app</span>,
+                <span class="t t">IStringLocalizer</span>&lt;<a href="#31305cd8a8f409ca" class="t t">PortableObjectLocalizationStartup</a>&gt; <span id="r77 rd" class="r77 r">localizer</span>)
+            {
+                <b>var</b> <span id="r78 rd" class="r78 r">supportedCultures</span> = <b>new</b>[] { <span class="s">&quot;ar&quot;</span>, <span class="s">&quot;en&quot;</span> };
+                <span class="r76 r">app</span>.<span class="i method">UseRequestLocalization</span>(<span id="r79 rd" class="r79 r">options</span> =&gt;
+                    <span class="r79 r">options</span>
+                        .<span class="i method">AddSupportedCultures</span>(<span class="r78 r">supportedCultures</span>)
+                        .<span class="i method">AddSupportedUICultures</span>(<span class="r78 r">supportedCultures</span>)
+                        .<span class="i method">SetDefaultCulture</span>(<span class="s">&quot;en&quot;</span>)
+                );
+ 
+                <span class="r76 r">app</span>.<span class="i method">Run</span>(<b>async</b> (<span id="r80 rd" class="r80 r">context</span>) =&gt;
+                {
+                    <b>await</b> <span class="r80 r">context</span>.<span class="i property">Response</span>.<span class="i method">WriteAsync</span>(<span class="r77 r">localizer</span>[<span class="s">&quot;Hello&quot;</span>]);
+                });
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

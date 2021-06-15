@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html><head><title>TwitterSettingsDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(120);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Twitter/Drivers/TwitterSettingsDisplayDriver.cs" target="_top">Drivers\TwitterSettingsDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Twitter" target="_top">src\OrchardCore.Modules\OrchardCore.Twitter\OrchardCore.Twitter.csproj</a> (OrchardCore.Twitter)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Twitter</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Twitter</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Twitter</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="3204cca801aba0eb" href="../R/3204cca801aba0eb.html" target="n" data-glyph="0,0" class="t t">TwitterSettingsDisplayDriver</a> : <a href="/OrchardCore.DisplayManagement/A.html#24bbc1028255b02b" class="t t">SectionDisplayDriver</a>&lt;<span class="i">ISite</span>, <a href="../Settings/TwitterSettings.cs.html#b11b0f6cb28ce038" class="t t">TwitterSettings</a>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="da81712a206dac20" href="../R/da81712a206dac20.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="f90fbf6106f245a4" href="../R/f90fbf6106f245a4.html" target="n" data-glyph="46,1" class="i field">_dataProtectionProvider</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="2e2d71e78e9f7f9e" href="../R/2e2d71e78e9f7f9e.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="f761d4d60fa31d9f" href="../R/f761d4d60fa31d9f.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="9443764e006dcb65" href="../R/9443764e006dcb65.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="0ccfd4465d2e59c4" href="../R/0ccfd4465d2e59c4.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="22ec0da4156f0b28" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">TwitterSettingsDisplayDriver</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <span class="t t">IDataProtectionProvider</span> <span id="r1 rd" class="r1 r">dataProtectionProvider</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>,
+            <span class="i">IShellHost</span> <span id="r3 rd" class="r3 r">shellHost</span>,
+            <span class="i">ShellSettings</span> <span id="r4 rd" class="r4 r">shellSettings</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#3204cca801aba0eb" class="t t">TwitterSettingsDisplayDriver</a>&gt; <span id="r5 rd" class="r5 r">logger</span>)
+        {
+            <a href="#da81712a206dac20" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#f90fbf6106f245a4" class="i field">_dataProtectionProvider</a> = <span class="r1 r">dataProtectionProvider</span>;
+            <a href="#2e2d71e78e9f7f9e" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+            <a href="#f761d4d60fa31d9f" class="i field">_shellHost</a> = <span class="r3 r">shellHost</span>;
+            <a href="#9443764e006dcb65" class="i field">_shellSettings</a> = <span class="r4 r">shellSettings</span>;
+            <a href="#0ccfd4465d2e59c4" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="703fb637b1ad2bd4" href="../R/703fb637b1ad2bd4.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<a href="../Settings/TwitterSettings.cs.html#b11b0f6cb28ce038" class="t t">TwitterSettings</a> <span id="r6 rd" class="r6 r">settings</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r7 rd" class="r7 r">context</span>)
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">user</span> = <a href="#2e2d71e78e9f7f9e" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>;
+            <b>if</b> (!<b>await</b> <a href="#da81712a206dac20" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r8 r">user</span>, <a href="../Permissions.cs.html#0b943e6ba39454c3" class="t t">Permissions</a>.<a href="../Permissions.cs.html#e399655438909b49" class="i field">ManageTwitterSignin</a>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+                <b>return</b> <a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/TwitterSettingsViewModel.cs.html#b5141e63d039b491" class="t t">TwitterSettingsViewModel</a>&gt;(<span class="s">&quot;TwitterSettings_Edit&quot;</span>, <span id="r9 rd" class="r9 r">model</span> =&gt;
+                {
+                    <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#665810caf0ca5aef" class="i property">APIKey</a> = <span class="r6 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#f9adaefee878752a" class="i property">ConsumerKey</a>;
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#1db463be638a17d2" class="i property">ConsumerSecret</a>))
+                    {
+                        <b>try</b>
+                        {
+                            <b>var</b> <span id="r10 rd" class="r10 r">protector</span> = <a href="#f90fbf6106f245a4" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="../TwitterConstants.cs.html#f486ecd4e05b54c1" class="t t">TwitterConstants</a>.<a href="../TwitterConstants.cs.html#477ab797f9794487" class="t t">Features</a>.<a href="../TwitterConstants.cs.html#05ce3bcecf94bb2c" class="i field">Twitter</a>);
+                            <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#05b5f336fd3ea4f1" class="i property">APISecretKey</a> = <span class="r10 r">protector</span>.<span class="i method">Unprotect</span>(<span class="r6 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#1db463be638a17d2" class="i property">ConsumerSecret</a>);
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#0b7aa8a209a7f19f" class="t t">CryptographicException</a>)
+                        {
+                            <a href="#0ccfd4465d2e59c4" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;The API secret key could not be decrypted. It may have been encrypted using a different key.&quot;</span>);
+                            <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#05b5f336fd3ea4f1" class="i property">APISecretKey</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                            <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#c60b2000a47c996e" class="i property">HasDecryptionError</a> = <b>true</b>;
+                        }
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#05b5f336fd3ea4f1" class="i property">APISecretKey</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                    }
+                    <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#ac863c2e109e2b83" class="i property">AccessToken</a> = <span class="r6 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#5d5dcee5e3234588" class="i property">AccessToken</a>;
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#69827f497018e944" class="i property">AccessTokenSecret</a>))
+                    {
+                        <b>try</b>
+                        {
+                            <b>var</b> <span id="r11 rd" class="r11 r">protector</span> = <a href="#f90fbf6106f245a4" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="../TwitterConstants.cs.html#f486ecd4e05b54c1" class="t t">TwitterConstants</a>.<a href="../TwitterConstants.cs.html#477ab797f9794487" class="t t">Features</a>.<a href="../TwitterConstants.cs.html#05ce3bcecf94bb2c" class="i field">Twitter</a>);
+                            <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#fb3fb0e943f79766" class="i property">AccessTokenSecret</a> = <span class="r11 r">protector</span>.<span class="i method">Unprotect</span>(<span class="r6 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#69827f497018e944" class="i property">AccessTokenSecret</a>);
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#0b7aa8a209a7f19f" class="t t">CryptographicException</a>)
+                        {
+                            <a href="#0ccfd4465d2e59c4" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;The access token secret could not be decrypted. It may have been encrypted using a different key.&quot;</span>);
+                            <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#fb3fb0e943f79766" class="i property">AccessTokenSecret</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                            <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#c60b2000a47c996e" class="i property">HasDecryptionError</a> = <b>true</b>;
+                        }
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r9 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#fb3fb0e943f79766" class="i property">AccessTokenSecret</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                    }
+                }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Content:5&quot;</span>).<a href="/OrchardCore.DisplayManagement/A.html#5d3c3bbc7f9050df" class="i method">OnGroup</a>(<a href="../TwitterConstants.cs.html#f486ecd4e05b54c1" class="t t">TwitterConstants</a>.<a href="../TwitterConstants.cs.html#477ab797f9794487" class="t t">Features</a>.<a href="../TwitterConstants.cs.html#05ce3bcecf94bb2c" class="i field">Twitter</a>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="20ebbbed646b4fd6" href="../R/20ebbbed646b4fd6.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="../Settings/TwitterSettings.cs.html#b11b0f6cb28ce038" class="t t">TwitterSettings</a> <span id="r12 rd" class="r12 r">settings</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r13 rd" class="r13 r">context</span>)
+        {
+            <b>if</b> (<span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#4089a2311ccff5cd" class="i property">GroupId</a> == <a href="../TwitterConstants.cs.html#f486ecd4e05b54c1" class="t t">TwitterConstants</a>.<a href="../TwitterConstants.cs.html#477ab797f9794487" class="t t">Features</a>.<a href="../TwitterConstants.cs.html#05ce3bcecf94bb2c" class="i field">Twitter</a>)
+            {
+                <b>var</b> <span id="r14 rd" class="r14 r">user</span> = <a href="#2e2d71e78e9f7f9e" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>;
+                <b>if</b> (!<b>await</b> <a href="#da81712a206dac20" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r14 r">user</span>, <a href="../Permissions.cs.html#0b943e6ba39454c3" class="t t">Permissions</a>.<a href="../Permissions.cs.html#82b8b64e8b656fcf" class="i field">ManageTwitter</a>))
+                {
+                    <b>return</b> <b>null</b>;
+                }
+ 
+                <a href="../ViewModels/TwitterSettingsViewModel.cs.html#b5141e63d039b491" class="k">var</a> <span id="r15 rd" class="r15 r">model</span> = <b>new</b> <a href="../ViewModels/TwitterSettingsViewModel.cs.html#b5141e63d039b491" class="t constructor">TwitterSettingsViewModel</a>();
+                <b>await</b> <span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">TryUpdateModelAsync</span>(<span class="r15 r">model</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>);
+ 
+                <b>if</b> (<span class="r13 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">ModelState</span>.<span class="i">IsValid</span>)
+                {
+                    <b>var</b> <span id="r16 rd" class="r16 r">protector</span> = <a href="#f90fbf6106f245a4" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="../TwitterConstants.cs.html#f486ecd4e05b54c1" class="t t">TwitterConstants</a>.<a href="../TwitterConstants.cs.html#477ab797f9794487" class="t t">Features</a>.<a href="../TwitterConstants.cs.html#05ce3bcecf94bb2c" class="i field">Twitter</a>);
+ 
+                    <span class="r12 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#f9adaefee878752a" class="i property">ConsumerKey</a> = <span class="r15 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#665810caf0ca5aef" class="i property">APIKey</a>;
+                    <span class="r12 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#1db463be638a17d2" class="i property">ConsumerSecret</a> = <span class="r16 r">protector</span>.<span class="i method">Protect</span>(<span class="r15 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#05b5f336fd3ea4f1" class="i property">APISecretKey</a>);
+                    <span class="r12 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#5d5dcee5e3234588" class="i property">AccessToken</a> = <span class="r15 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#ac863c2e109e2b83" class="i property">AccessToken</a>;
+                    <span class="r12 r">settings</span>.<a href="../Settings/TwitterSettings.cs.html#69827f497018e944" class="i property">AccessTokenSecret</a> = <span class="r16 r">protector</span>.<span class="i method">Protect</span>(<span class="r15 r">model</span>.<a href="../ViewModels/TwitterSettingsViewModel.cs.html#fb3fb0e943f79766" class="i property">AccessTokenSecret</a>);
+                    <b>await</b> <a href="#f761d4d60fa31d9f" class="i field">_shellHost</a>.<span class="i">ReleaseShellContextAsync</span>(<a href="#9443764e006dcb65" class="i field">_shellSettings</a>);
+                }
+            }
+            <b>return</b> <b>await</b> <a href="#703fb637b1ad2bd4" class="i method">EditAsync</a>(<span class="r12 r">settings</span>, <span class="r13 r">context</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,390 @@
+﻿<!DOCTYPE html>
+<html><head><title>DataMigrationManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(381);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Data.YesSql/Migration/DataMigrationManager.cs" target="_top">Migration\DataMigrationManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Data.YesSql" target="_top">src\OrchardCore\OrchardCore.Data.YesSql\OrchardCore.Data.YesSql.csproj</a> (OrchardCore.Data.YesSql)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Migration</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Sql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Migration</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Represents a class that manages the database migrations.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="7c4923d04c5267f6" href="../R/7c4923d04c5267f6.html" target="n" data-glyph="0,0" class="t t">DataMigrationManager</a> : <span class="i">IDataMigrationManager</span>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a>&gt; <a id="69b52fa03740c292" href="../R/69b52fa03740c292.html" target="n" data-glyph="46,1" class="i field">_dataMigrations</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="fed6911feeb4071c" href="../R/fed6911feeb4071c.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="i">IStore</span> <a id="dd5020c3ee78b43f" href="../R/dd5020c3ee78b43f.html" target="n" data-glyph="46,1" class="i field">_store</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <a id="f4bb375807074015" href="../R/f4bb375807074015.html" target="n" data-glyph="46,1" class="i field">_extensionManager</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="7d5272649ee44dd3" href="../R/7d5272649ee44dd3.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#1a9a5e92836c8867" class="t t">ITypeFeatureProvider</a> <a id="1e0d3f0cb9af588b" href="../R/1e0d3f0cb9af588b.html" target="n" data-glyph="46,1" class="i field">_typeFeatureProvider</a>;
+        <b>private readonly</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="ca5a7ad548f79f76" href="../R/ca5a7ad548f79f76.html" target="n" data-glyph="46,1" class="i field">_processedFeatures</a>;
+ 
+        <b>private</b> <a href="/OrchardCore.Data/A.html#2ca48d2f0484b283" class="t t">DataMigrationRecord</a> <a id="8b17da28f3e991f3" href="../R/8b17da28f3e991f3.html" target="n" data-glyph="46,1" class="i field">_dataMigrationRecord</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a new instance of the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#7c4923d04c5267f6" class="t t">DataMigrationManager</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r0 r">typeFeatureProvider</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#1a9a5e92836c8867" class="t t">ITypeFeatureProvider</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r">dataMigrations</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">A list of </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r2 r">session</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">ISession</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r3 r">store</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IStore</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r4 r">extensionManager</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r5 r">logger</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">ILogger</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a id="a60e2c20462d01a6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DataMigrationManager</a>(
+            <a href="/OrchardCore.Abstractions/A.html#1a9a5e92836c8867" class="t t">ITypeFeatureProvider</a> <span id="r0 rd" class="r0 r">typeFeatureProvider</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a>&gt; <span id="r1 rd" class="r1 r">dataMigrations</span>,
+            <span class="i">ISession</span> <span id="r2 rd" class="r2 r">session</span>,
+            <span class="i">IStore</span> <span id="r3 rd" class="r3 r">store</span>,
+            <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <span id="r4 rd" class="r4 r">extensionManager</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#7c4923d04c5267f6" class="t t">DataMigrationManager</a>&gt; <span id="r5 rd" class="r5 r">logger</span>)
+        {
+            <a href="#1e0d3f0cb9af588b" class="i field">_typeFeatureProvider</a> = <span class="r0 r">typeFeatureProvider</span>;
+            <a href="#69b52fa03740c292" class="i field">_dataMigrations</a> = <span class="r1 r">dataMigrations</span>;
+            <a href="#fed6911feeb4071c" class="i field">_session</a> = <span class="r2 r">session</span>;
+            <a href="#dd5020c3ee78b43f" class="i field">_store</a> = <span class="r3 r">store</span>;
+            <a href="#f4bb375807074015" class="i field">_extensionManager</a> = <span class="r4 r">extensionManager</span>;
+            <a href="#7d5272649ee44dd3" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+            <a href="#ca5a7ad548f79f76" class="i field">_processedFeatures</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdocs</span> <span class="c">/&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Data/A.html#2ca48d2f0484b283" class="t t">DataMigrationRecord</a>&gt; <a id="0bd7d4c498042989" href="../R/0bd7d4c498042989.html" target="n" data-glyph="72,1" class="i method">GetDataMigrationRecordAsync</a>()
+        {
+            <b>if</b> (<a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a> == <b>null</b>)
+            {
+                <a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a> = <b>await</b> <a href="#fed6911feeb4071c" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="/OrchardCore.Data/A.html#2ca48d2f0484b283" class="t t">DataMigrationRecord</a>&gt;().<span class="i">FirstOrDefaultAsync</span>();
+ 
+                <b>if</b> (<a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a> == <b>null</b>)
+                {
+                    <a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a> = <b>new</b> <a href="/OrchardCore.Data/A.html#3fc521d01568f357" class="t constructor">DataMigrationRecord</a>();
+                    <a href="#fed6911feeb4071c" class="i field">_session</a>.<span class="i">Save</span>(<a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a>);
+                }
+            }
+ 
+            <b>return</b> <a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="1aab274532715c67" href="../R/1aab274532715c67.html" target="n" data-glyph="72,1" class="i method">GetFeaturesThatNeedUpdateAsync</a>()
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">currentVersions</span> = (<b>await</b> <a href="#0bd7d4c498042989" class="i method">GetDataMigrationRecordAsync</a>()).<a href="/OrchardCore.Data/A.html#2fa1888001356d1c" class="i property">DataMigrations</a>
+                .<span class="i method">ToDictionary</span>(<span id="r7 rd" class="r7 r">r</span> =&gt; <span class="r7 r">r</span>.<a href="/OrchardCore.Data/A.html#8c6c9bf5f3835361" class="i property">DataMigrationClass</a>);
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r8 rd" class="r8 r">outOfDateMigrations</span> = <a href="#69b52fa03740c292" class="i field">_dataMigrations</a>.<span class="i method">Where</span>(<span id="r9 rd" class="r9 r">dataMigration</span> =&gt;
+            {
+                <span class="i n">Records</span>.<a href="/OrchardCore.Data/A.html#78b33ef282a3efc9" class="t t">DataMigration</a> <span id="r10 rd" class="r10 r">record</span>;
+                <b>if</b> (<span class="r6 r">currentVersions</span>.<span class="i method">TryGetValue</span>(<span class="r9 r">dataMigration</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a>, <b>out</b> <span class="r10 r">record</span>) &amp;&amp; <span class="r10 r">record</span>.<a href="/OrchardCore.Data/A.html#1915c50f2ade78ef" class="i property">Version</a>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+                {
+                    <b>return</b> <a href="#efafb4c844eca48e" class="i method">CreateUpgradeLookupTable</a>(<span class="r9 r">dataMigration</span>).<span class="i method">ContainsKey</span>(<span class="r10 r">record</span>.<a href="/OrchardCore.Data/A.html#1915c50f2ade78ef" class="i property">Version</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+                }
+ 
+                <b>return</b> ((<a href="#10ee9697f02242ba" class="i method">GetCreateMethod</a>(<span class="r9 r">dataMigration</span>) ?? <a href="#d46b427e4d987b25" class="i method">GetCreateAsyncMethod</a>(<span class="r9 r">dataMigration</span>)) != <b>null</b>);
+            });
+ 
+            <b>return</b> <span class="r8 r">outOfDateMigrations</span>.<span class="i method">Select</span>(<span id="r11 rd" class="r11 r">m</span> =&gt; <a href="#1e0d3f0cb9af588b" class="i field">_typeFeatureProvider</a>.<a href="/OrchardCore.Abstractions/A.html#f1ab891a06377dd2" class="i method">GetFeatureForDependency</a>(<span class="r11 r">m</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>()).<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>).<span class="i method">ToList</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a95c4e168a8c163f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Uninstall</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">feature</span>)
+        {
+            <b>if</b> (<a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Uninstalling feature &#39;{FeatureName}&#39;.&quot;</span>, <span class="r12 r">feature</span>);
+            }
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r13 rd" class="r13 r">migrations</span> = <a href="#4c19362e226574d8" class="i method">GetDataMigrations</a>(<span class="r12 r">feature</span>);
+ 
+            <span class="c">// apply update methods to each migration class for the module</span>
+            <b>foreach</b> (<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="k">var</a> <span id="r14 rd" class="r14 r">migration</span> <b>in</b> <span class="r13 r">migrations</span>)
+            {
+                <span class="c">// copy the object for the Linq query</span>
+                <a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="k">var</a> <span id="r15 rd" class="r15 r">tempMigration</span> = <span class="r14 r">migration</span>;
+ 
+                <span class="c">// get current version for this migration</span>
+                <a href="/OrchardCore.Data/A.html#78b33ef282a3efc9" class="k">var</a> <span id="r16 rd" class="r16 r">dataMigrationRecord</span> = <b>await</b> <a href="#b75a0f175d099726" class="i method">GetDataMigrationRecordAsync</a>(<span class="r15 r">tempMigration</span>);
+ 
+                <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r17 rd" class="r17 r">uninstallMethod</span> = <a href="#b81cea7761446420" class="i method">GetUninstallMethod</a>(<span class="r14 r">migration</span>);
+                <b>if</b> (<span class="r17 r">uninstallMethod</span> != <b>null</b>)
+                {
+                    <span class="r17 r">uninstallMethod</span>.<a href="@1@System.Runtime/A.html#c8277ed81262a367" class="i method">Invoke</a>(<span class="r14 r">migration</span>, <b>new</b> <b>object</b>[0]);
+                }
+ 
+                <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r18 rd" class="r18 r">uninstallAsyncMethod</span> = <a href="#40d11cc588fb3b66" class="i method">GetUninstallAsyncMethod</a>(<span class="r14 r">migration</span>);
+                <b>if</b> (<span class="r18 r">uninstallAsyncMethod</span> != <b>null</b>)
+                {
+                    <b>await</b> (<a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>)<span class="r18 r">uninstallAsyncMethod</span>.<a href="@1@System.Runtime/A.html#c8277ed81262a367" class="i method">Invoke</a>(<span class="r14 r">migration</span>, <b>new</b> <b>object</b>[0]);
+                }
+ 
+                <b>if</b> (<span class="r16 r">dataMigrationRecord</span> == <b>null</b>)
+                {
+                    <b>continue</b>;
+                }
+ 
+                (<b>await</b> <a href="#0bd7d4c498042989" class="i method">GetDataMigrationRecordAsync</a>()).<a href="/OrchardCore.Data/A.html#2fa1888001356d1c" class="i property">DataMigrations</a>.<span class="i method">Remove</span>(<span class="r16 r">dataMigrationRecord</span>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f2a89afa1e4d3b48" href="../R/f2a89afa1e4d3b48.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r19 rd" class="r19 r">featureIds</span>)
+        {
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">featureId</span> <b>in</b> <span class="r19 r">featureIds</span>)
+            {
+                <b>if</b> (!<a href="#ca5a7ad548f79f76" class="i field">_processedFeatures</a>.<span class="i method">Contains</span>(<span class="r20 r">featureId</span>))
+                {
+                    <b>await</b> <a href="#5ff3e7a263972f26" class="i method">UpdateAsync</a>(<span class="r20 r">featureId</span>);
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5ff3e7a263972f26" href="../R/5ff3e7a263972f26.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">featureId</span>)
+        {
+            <b>if</b> (<a href="#ca5a7ad548f79f76" class="i field">_processedFeatures</a>.<span class="i method">Contains</span>(<span class="r21 r">featureId</span>))
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#ca5a7ad548f79f76" class="i field">_processedFeatures</a>.<span class="i method">Add</span>(<span class="r21 r">featureId</span>);
+ 
+            <b>if</b> (<a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Updating feature &#39;{FeatureName}&#39;&quot;</span>, <span class="r21 r">featureId</span>);
+            }
+ 
+            <span class="c">// proceed with dependent features first, whatever the module it&#39;s in</span>
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r22 rd" class="r22 r">dependencies</span> = <a href="#f4bb375807074015" class="i field">_extensionManager</a>
+                .<a href="/OrchardCore.Abstractions/A.html#40834bb2f4fa79bf" class="i method">GetFeatureDependencies</a>(
+                    <span class="r21 r">featureId</span>)
+                .<span class="i method">Where</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> != <span class="r21 r">featureId</span>)
+                .<span class="i method">Select</span>(<span id="r24 rd" class="r24 r">x</span> =&gt; <span class="r24 r">x</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>);
+ 
+            <b>await</b> <a href="#f2a89afa1e4d3b48" class="i method">UpdateAsync</a>(<span class="r22 r">dependencies</span>);
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r25 rd" class="r25 r">migrations</span> = <a href="#4c19362e226574d8" class="i method">GetDataMigrations</a>(<span class="r21 r">featureId</span>);
+ 
+            <span class="c">// apply update methods to each migration class for the module</span>
+            <b>foreach</b> (<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="k">var</a> <span id="r26 rd" class="r26 r">migration</span> <b>in</b> <span class="r25 r">migrations</span>)
+            {
+                <b>var</b> <span id="r27 rd" class="r27 r">schemaBuilder</span> = <b>new</b> <span class="i">SchemaBuilder</span>(<a href="#dd5020c3ee78b43f" class="i field">_store</a>.<span class="i">Configuration</span>, <b>await</b> <a href="#fed6911feeb4071c" class="i field">_session</a>.<span class="i">BeginTransactionAsync</span>());
+                <span class="r26 r">migration</span>.<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#d60b922a58044bdb" class="i property">SchemaBuilder</a> = <span class="r27 r">schemaBuilder</span>;
+ 
+                <span class="c">// copy the object for the Linq query</span>
+                <a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="k">var</a> <span id="r28 rd" class="r28 r">tempMigration</span> = <span class="r26 r">migration</span>;
+ 
+                <span class="c">// get current version for this migration</span>
+                <a href="/OrchardCore.Data/A.html#78b33ef282a3efc9" class="k">var</a> <span id="r29 rd" class="r29 r">dataMigrationRecord</span> = <b>await</b> <a href="#b75a0f175d099726" class="i method">GetDataMigrationRecordAsync</a>(<span class="r28 r">tempMigration</span>);
+ 
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r30 rd" class="r30 r">current</span> = 0;
+                <b>if</b> (<span class="r29 r">dataMigrationRecord</span> != <b>null</b>)
+                {
+                    <span class="c">// This can be null if a failed create migration has occurred and the data migration record was saved.</span>
+                    <span class="r30 r">current</span> = <span class="r29 r">dataMigrationRecord</span>.<a href="/OrchardCore.Data/A.html#1915c50f2ade78ef" class="i property">Version</a>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> ? <span class="r29 r">dataMigrationRecord</span>.<a href="/OrchardCore.Data/A.html#1915c50f2ade78ef" class="i property">Version</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a> : <span class="r30 r">current</span>;
+                }
+                <b>else</b>
+                {
+                    <span class="r29 r">dataMigrationRecord</span> = <b>new</b> <span class="i n">Records</span>.<a href="/OrchardCore.Data/A.html#78b33ef282a3efc9" class="t constructor">DataMigration</a> { <a href="/OrchardCore.Data/A.html#8c6c9bf5f3835361" class="i property">DataMigrationClass</a> = <span class="r26 r">migration</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a> };
+                    <a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a>.<a href="/OrchardCore.Data/A.html#2fa1888001356d1c" class="i property">DataMigrations</a>.<span class="i method">Add</span>(<span class="r29 r">dataMigrationRecord</span>);
+                }
+ 
+                <b>try</b>
+                {
+                    <span class="c">// do we need to call Create() ?</span>
+                    <b>if</b> (<span class="r30 r">current</span> == 0)
+                    {
+                        <span class="c">// try to resolve a Create method</span>
+ 
+                        <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r31 rd" class="r31 r">createMethod</span> = <a href="#10ee9697f02242ba" class="i method">GetCreateMethod</a>(<span class="r26 r">migration</span>);
+                        <b>if</b> (<span class="r31 r">createMethod</span> != <b>null</b>)
+                        {
+                            <span class="r30 r">current</span> = (<b>int</b>)<span class="r31 r">createMethod</span>.<a href="@1@System.Runtime/A.html#c8277ed81262a367" class="i method">Invoke</a>(<span class="r26 r">migration</span>, <b>new</b> <b>object</b>[0]);
+                        }
+ 
+                        <span class="c">// try to resolve a CreateAsync method</span>
+ 
+                        <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r32 rd" class="r32 r">createAsyncMethod</span> = <a href="#d46b427e4d987b25" class="i method">GetCreateAsyncMethod</a>(<span class="r26 r">migration</span>);
+                        <b>if</b> (<span class="r32 r">createAsyncMethod</span> != <b>null</b>)
+                        {
+                            <span class="r30 r">current</span> = <b>await</b> (<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>int</b>&gt;)<span class="r32 r">createAsyncMethod</span>.<a href="@1@System.Runtime/A.html#c8277ed81262a367" class="i method">Invoke</a>(<span class="r26 r">migration</span>, <b>new</b> <b>object</b>[0]);
+                        }
+                    }
+ 
+                    <b>var</b> <span id="r33 rd" class="r33 r">lookupTable</span> = <a href="#efafb4c844eca48e" class="i method">CreateUpgradeLookupTable</a>(<span class="r26 r">migration</span>);
+ 
+                    <b>while</b> (<span class="r33 r">lookupTable</span>.<span class="i method">TryGetValue</span>(<span class="r30 r">current</span>, <b>out</b> <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r34 rd" class="r34 r">methodInfo</span>))
+                    {
+                        <b>if</b> (<a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+                        {
+                            <a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Applying migration for &#39;{FeatureName}&#39; from version {Version}.&quot;</span>, <span class="r21 r">featureId</span>, <span class="r30 r">current</span>);
+                        }
+ 
+                        <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r35 rd" class="r35 r">isAwaitable</span> = <span class="r34 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a>.<a href="@1@System.Runtime/A.html#aa0028890b299af1" class="i method">GetMethod</a>(<b>nameof</b>(<a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">GetAwaiter</span>)) != <b>null</b>;
+                        <b>if</b> (<span class="r35 r">isAwaitable</span>)
+                        {
+                            <span class="r30 r">current</span> = <b>await</b> (<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>int</b>&gt;)<span class="r34 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#c8277ed81262a367" class="i method">Invoke</a>(<span class="r26 r">migration</span>, <b>new</b> <b>object</b>[0]);
+                        }
+                        <b>else</b>
+                        {
+                            <span class="r30 r">current</span> = (<b>int</b>)<span class="r34 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#c8277ed81262a367" class="i method">Invoke</a>(<span class="r26 r">migration</span>, <b>new</b> <b>object</b>[0]);
+                        }
+                    }
+ 
+                    <span class="c">// if current is 0, it means no upgrade/create method was found or succeeded</span>
+                    <b>if</b> (<span class="r30 r">current</span> == 0)
+                    {
+                        <b>return</b>;
+                    }
+ 
+                    <span class="r29 r">dataMigrationRecord</span>.<a href="/OrchardCore.Data/A.html#1915c50f2ade78ef" class="i property">Version</a> = <span class="r30 r">current</span>;
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r36 rd" class="r36 r">ex</span>)
+                {
+                    <a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r36 r">ex</span>, <span class="s">&quot;Error while running migration version {Version} for &#39;{FeatureName}&#39;.&quot;</span>, <span class="r30 r">current</span>, <span class="r21 r">featureId</span>);
+ 
+                    <b>await</b> <a href="#fed6911feeb4071c" class="i field">_session</a>.<span class="i">CancelAsync</span>();
+                }
+                <b>finally</b>
+                {
+                    <span class="c">// Persist data migrations</span>
+                    <a href="#fed6911feeb4071c" class="i field">_session</a>.<span class="i">Save</span>(<a href="#8b17da28f3e991f3" class="i field">_dataMigrationRecord</a>);
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i n">Records</span>.<a href="/OrchardCore.Data/A.html#78b33ef282a3efc9" class="t t">DataMigration</a>&gt; <a id="b75a0f175d099726" href="../R/b75a0f175d099726.html" target="n" data-glyph="76,1" class="i method">GetDataMigrationRecordAsync</a>(<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a> <span id="r37 rd" class="r37 r">tempMigration</span>)
+        {
+            <a href="/OrchardCore.Data/A.html#2ca48d2f0484b283" class="k">var</a> <span id="r38 rd" class="r38 r">dataMigrationRecord</span> = <b>await</b> <a href="#0bd7d4c498042989" class="i method">GetDataMigrationRecordAsync</a>();
+            <b>return</b> <span class="r38 r">dataMigrationRecord</span>
+                .<a href="/OrchardCore.Data/A.html#2fa1888001356d1c" class="i property">DataMigrations</a>
+                .<span class="i method">FirstOrDefault</span>(<span id="r39 rd" class="r39 r">dm</span> =&gt; <span class="r39 r">dm</span>.<a href="/OrchardCore.Data/A.html#8c6c9bf5f3835361" class="i property">DataMigrationClass</a> == <span class="r37 r">tempMigration</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns all the available IDataMigration instances for a specific module, and inject necessary builders</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a>&gt; <a id="4c19362e226574d8" href="../R/4c19362e226574d8.html" target="n" data-glyph="76,1" class="i method">GetDataMigrations</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r40 rd" class="r40 r">featureId</span>)
+        {
+            <b>var</b> <span id="r41 rd" class="r41 r">migrations</span> = <a href="#69b52fa03740c292" class="i field">_dataMigrations</a>
+                    .<span class="i method">Where</span>(<span id="r42 rd" class="r42 r">dm</span> =&gt; <a href="#1e0d3f0cb9af588b" class="i field">_typeFeatureProvider</a>.<a href="/OrchardCore.Abstractions/A.html#f1ab891a06377dd2" class="i method">GetFeatureForDependency</a>(<span class="r42 r">dm</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>()).<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <span class="r40 r">featureId</span>)
+                    .<span class="i method">ToList</span>();
+ 
+            <b>return</b> <span class="r41 r">migrations</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Create a list of all available Update methods from a data migration class, indexed by the version number</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private static</b> <span class="t t">Dictionary</span>&lt;<b>int</b>, <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a>&gt; <a id="efafb4c844eca48e" href="../R/efafb4c844eca48e.html" target="n" data-glyph="76,1" class="i method">CreateUpgradeLookupTable</a>(<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a> <span id="r43 rd" class="r43 r">dataMigration</span>)
+        {
+            <b>return</b> <span class="r43 r">dataMigration</span>
+                .<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>()
+                .<a href="@1@System.Runtime/A.html#40399c847276225e" class="i method">GetMethods</a>(<a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>)
+                .<span class="i method">Select</span>(<a href="#a6ffdef168f97ddd" class="i method">GetUpdateMethod</a>)
+                .<span class="i method">Where</span>(<span id="r44 rd" class="r44 r">tuple</span> =&gt; <span class="r44 r">tuple</span> != <b>null</b>)
+                .<span class="i method">ToDictionary</span>(<span id="r45 rd" class="r45 r">tuple</span> =&gt; <span class="r45 r">tuple</span>.<a href="@1@System.Runtime/A.html#d1922db1cf9dcd03" class="i property">Item1</a>, <span id="r46 rd" class="r46 r">tuple</span> =&gt; <span class="r46 r">tuple</span>.<a href="@1@System.Runtime/A.html#85ddc983cace902c" class="i property">Item2</a>);
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#1806cf6634f5a371" class="t t">Tuple</a>&lt;<b>int</b>, <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a>&gt; <a id="a6ffdef168f97ddd" href="../R/a6ffdef168f97ddd.html" target="n" data-glyph="76,1" class="i method">GetUpdateMethod</a>(<a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a> <span id="r47 rd" class="r47 r">methodInfo</span>)
+        {
+            <b>const string</b> <span id="r48 rd" class="r48 r">updateFromPrefix</span> = <span class="s">&quot;UpdateFrom&quot;</span>;
+            <b>const string</b> <span id="r49 rd" class="r49 r">asyncSuffix</span> = <span class="s">&quot;Async&quot;</span>;
+ 
+            <b>if</b> (<span class="r47 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="r48 r">updateFromPrefix</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>) &amp;&amp; (<span class="r47 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<b>int</b>) || <span class="r47 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>int</b>&gt;)))
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r50 rd" class="r50 r">version</span> = <span class="r47 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#41a31e4feec3ef41" class="i method">EndsWith</a>(<span class="r49 r">asyncSuffix</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>)
+                    ? <span class="r47 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(<span class="r48 r">updateFromPrefix</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>, <span class="r47 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - <span class="r48 r">updateFromPrefix</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> - <span class="r49 r">asyncSuffix</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>)
+                    : <span class="r47 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r48 r">updateFromPrefix</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="t t">Int32</a>.<a href="@1@System.Runtime/A.html#325507e509229dbc" class="i method">TryParse</a>(<span class="r50 r">version</span>, <b>out</b> <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r51 rd" class="r51 r">versionValue</span>))
+                {
+                    <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#ee1efa9bd0176f36" class="t constructor">Tuple</a>&lt;<b>int</b>, <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a>&gt;(<span class="r51 r">versionValue</span>, <span class="r47 r">methodInfo</span>);
+                }
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the Create method from a data migration class if it&#39;s found</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private static</b> <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a> <a id="10ee9697f02242ba" href="../R/10ee9697f02242ba.html" target="n" data-glyph="76,1" class="i method">GetCreateMethod</a>(<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a> <span id="r52 rd" class="r52 r">dataMigration</span>)
+        {
+            <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r53 rd" class="r53 r">methodInfo</span> = <span class="r52 r">dataMigration</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#f24e0c9fd5441fd5" class="i method">GetMethod</a>(<span class="s">&quot;Create&quot;</span>, <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>);
+            <b>if</b> (<span class="r53 r">methodInfo</span> != <b>null</b> &amp;&amp; <span class="r53 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<b>int</b>))
+            {
+                <b>return</b> <span class="r53 r">methodInfo</span>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the CreateAsync method from a data migration class if it&#39;s found</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private static</b> <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a> <a id="d46b427e4d987b25" href="../R/d46b427e4d987b25.html" target="n" data-glyph="76,1" class="i method">GetCreateAsyncMethod</a>(<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a> <span id="r54 rd" class="r54 r">dataMigration</span>)
+        {
+            <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r55 rd" class="r55 r">methodInfo</span> = <span class="r54 r">dataMigration</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#f24e0c9fd5441fd5" class="i method">GetMethod</a>(<span class="s">&quot;CreateAsync&quot;</span>, <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>);
+            <b>if</b> (<span class="r55 r">methodInfo</span> != <b>null</b> &amp;&amp; <span class="r55 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>int</b>&gt;))
+            {
+                <b>return</b> <span class="r55 r">methodInfo</span>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the Uninstall method from a data migration class if it&#39;s found</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private static</b> <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a> <a id="b81cea7761446420" href="../R/b81cea7761446420.html" target="n" data-glyph="76,1" class="i method">GetUninstallMethod</a>(<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a> <span id="r56 rd" class="r56 r">dataMigration</span>)
+        {
+            <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r57 rd" class="r57 r">methodInfo</span> = <span class="r56 r">dataMigration</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#f24e0c9fd5441fd5" class="i method">GetMethod</a>(<span class="s">&quot;Uninstall&quot;</span>, <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>);
+            <b>if</b> (<span class="r57 r">methodInfo</span> != <b>null</b> &amp;&amp; <span class="r57 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<b>void</b>))
+            {
+                <b>return</b> <span class="r57 r">methodInfo</span>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the UninstallAsync method from a data migration class if it&#39;s found</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private static</b> <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a> <a id="40d11cc588fb3b66" href="../R/40d11cc588fb3b66.html" target="n" data-glyph="76,1" class="i method">GetUninstallAsyncMethod</a>(<a href="/OrchardCore.Data.YesSql.Abstractions/A.html#67255143ee8e5b4d" class="t t">IDataMigration</a> <span id="r58 rd" class="r58 r">dataMigration</span>)
+        {
+            <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r59 rd" class="r59 r">methodInfo</span> = <span class="r58 r">dataMigration</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#f24e0c9fd5441fd5" class="i method">GetMethod</a>(<span class="s">&quot;UninstallAsync&quot;</span>, <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>);
+            <b>if</b> (<span class="r59 r">methodInfo</span> != <b>null</b> &amp;&amp; <span class="r59 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>))
+            {
+                <b>return</b> <span class="r59 r">methodInfo</span>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="2093fd887ce4ed6e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAllFeaturesAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r60 rd" class="r60 r">featuresThatNeedUpdate</span> = <b>await</b> <a href="#1aab274532715c67" class="i method">GetFeaturesThatNeedUpdateAsync</a>();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r61 rd" class="r61 r">featureId</span> <b>in</b> <span class="r60 r">featuresThatNeedUpdate</span>)
+            {
+                <b>try</b>
+                {
+                    <b>await</b> <a href="#5ff3e7a263972f26" class="i method">UpdateAsync</a>(<span class="r61 r">featureId</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r62 rd" class="r62 r">ex</span>) <b>when</b> (!<span class="r62 r">ex</span>.<a href="/OrchardCore.Abstractions/A.html#659d851a71915a35" class="i method">IsFatal</a>())
+                {
+                    <a href="#7d5272649ee44dd3" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r62 r">ex</span>, <span class="s">&quot;Could not run migrations automatically on &#39;{FeatureName}&#39;&quot;</span>, <span class="r61 r">featureId</span>);
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

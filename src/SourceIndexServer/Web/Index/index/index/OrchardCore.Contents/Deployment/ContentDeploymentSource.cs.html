@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentDeploymentSource.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(66);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Deployment/ContentDeploymentSource.cs" target="_top">Deployment\ContentDeploymentSource.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Deployment</span>
+{
+    <b>public class</b> <a id="d28ebae0ca5a95ea" href="../R/d28ebae0ca5a95ea.html" target="n" data-glyph="0,0" class="t t">ContentDeploymentSource</a> : <a href="/OrchardCore.Deployment.Abstractions/A.html#3725c29c555aae4b" class="t t">IDeploymentSource</a>
+    {
+        <b>private readonly</b> <span class="i">ISession</span> <a id="755c8909993ab648" href="../R/755c8909993ab648.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+ 
+        <b>public</b> <a id="8b856442c0a79aa2" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentDeploymentSource</a>(<span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>)
+        {
+            <a href="#755c8909993ab648" class="i field">_session</a> = <span class="r0 r">session</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="81967fbafdcc7b19" href="../R/81967fbafdcc7b19.html" target="n" data-glyph="72,1" class="i method">ProcessDeploymentStepAsync</a>(<a href="/OrchardCore.Deployment.Abstractions/A.html#a7c74fedc1e66f4c" class="t t">DeploymentStep</a> <span id="r1 rd" class="r1 r">step</span>, <a href="/OrchardCore.Deployment.Abstractions/A.html#89e81a9c2823ef23" class="t t">DeploymentPlanResult</a> <span id="r2 rd" class="r2 r">result</span>)
+        {
+            <span class="c">// TODO: Batch and create separate content files in the result.</span>
+ 
+            <a href="ContentDeploymentStep.cs.html#485dd961619948c0" class="k">var</a> <span id="r3 rd" class="r3 r">contentStep</span> = <span class="r1 r">step</span> <b>as</b> <a href="ContentDeploymentStep.cs.html#485dd961619948c0" class="t t">ContentDeploymentStep</a>;
+ 
+            <b>if</b> (<span class="r3 r">contentStep</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">data</span> = <b>new</b> <span class="i">JArray</span>();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r5 rd" class="r5 r">contentItem</span> <b>in</b> <b>await</b> <a href="#755c8909993ab648" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>, <a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r6 rd" class="r6 r">x</span> =&gt; <span class="r6 r">x</span>.<span class="i">Published</span> &amp;&amp; <span class="r6 r">x</span>.<span class="i">ContentType</span>.<span class="i">IsIn</span>(<span class="r3 r">contentStep</span>.<a href="ContentDeploymentStep.cs.html#cb131d10d365f775" class="i property">ContentTypes</a>)).<span class="i">ListAsync</span>())
+            {
+                <b>var</b> <span id="r7 rd" class="r7 r">objectData</span> = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r5 r">contentItem</span>);
+ 
+                <span class="c">// Don&#39;t serialize the Id as it could be interpreted as an updated object when added back to YesSql.</span>
+                <span class="r7 r">objectData</span>.<span class="i">Remove</span>(<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">Id</span>));
+ 
+                <b>if</b> (<span class="r3 r">contentStep</span>.<a href="ContentDeploymentStep.cs.html#5b93dc2e83fc6124" class="i property">ExportAsSetupRecipe</a>)
+                {
+                    <span class="r7 r">objectData</span>[<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">Owner</span>)] = <span class="s">&quot;[js: parameters(&#39;AdminUserId&#39;)]&quot;</span>;
+                    <span class="r7 r">objectData</span>[<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">Author</span>)] = <span class="s">&quot;[js: parameters(&#39;AdminUsername&#39;)]&quot;</span>;
+                    <span class="r7 r">objectData</span>[<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">ContentItemId</span>)] = <span class="s">&quot;[js: uuid()]&quot;</span>;
+                    <span class="r7 r">objectData</span>.<span class="i">Remove</span>(<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">ContentItemVersionId</span>));
+                    <span class="r7 r">objectData</span>.<span class="i">Remove</span>(<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">CreatedUtc</span>));
+                    <span class="r7 r">objectData</span>.<span class="i">Remove</span>(<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">ModifiedUtc</span>));
+                    <span class="r7 r">objectData</span>.<span class="i">Remove</span>(<b>nameof</b>(<span class="i">ContentItem</span>.<span class="i">PublishedUtc</span>));
+                }
+                <span class="r4 r">data</span>.<span class="i">Add</span>(<span class="r7 r">objectData</span>);
+            }
+ 
+            <b>if</b> (<span class="r4 r">data</span>.<span class="i">HasValues</span>)
+            {
+                <b>var</b> <span id="r8 rd" class="r8 r">jobj</span> = <b>new</b> <span class="i">JObject</span>
+                {
+                    [<span class="s">&quot;name&quot;</span>] = <span class="s">&quot;content&quot;</span>,
+                    [<span class="s">&quot;data&quot;</span>] = <span class="r4 r">data</span>
+                };
+ 
+                <span class="r2 r">result</span>.<a href="/OrchardCore.Deployment.Abstractions/A.html#0084a5e6cbc16111" class="i property">Steps</a>.<span class="i">Add</span>(<span class="r8 r">jobj</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

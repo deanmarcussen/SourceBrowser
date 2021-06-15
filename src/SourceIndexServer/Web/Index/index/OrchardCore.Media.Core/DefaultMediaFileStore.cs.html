@@ -1,0 +1,194 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultMediaFileStore.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(185);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media.Core/DefaultMediaFileStore.cs" target="_top">DefaultMediaFileStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media.Core" target="_top">src\OrchardCore\OrchardCore.Media.Core\OrchardCore.Media.Core.csproj</a> (OrchardCore.Media.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Events</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Core</span>
+{
+    <b>public class</b> <a id="313c23d06e999795" href="R/313c23d06e999795.html" target="n" data-glyph="0,0" class="t t">DefaultMediaFileStore</a> : <a href="/OrchardCore.Media.Abstractions/A.html#56ab3245068be82d" class="t t">IMediaFileStore</a>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.FileStorage.Abstractions/A.html#178c85b58b6d5003" class="t t">IFileStore</a> <a id="067a3d1bff0a1c70" href="R/067a3d1bff0a1c70.html" target="n" data-glyph="46,1" class="i field">_fileStore</a>;
+        <b>private readonly string</b> <a id="df6d59564d6634e8" href="R/df6d59564d6634e8.html" target="n" data-glyph="46,1" class="i field">_requestBasePath</a>;
+        <b>private readonly string</b> <a id="56d0f463268fccd1" href="R/56d0f463268fccd1.html" target="n" data-glyph="46,1" class="i field">_cdnBaseUrl</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Media.Abstractions/A.html#9f02197055319bd3" class="t t">IMediaEventHandler</a>&gt; <a id="3c0c5cf81c1160d2" href="R/3c0c5cf81c1160d2.html" target="n" data-glyph="46,1" class="i field">_mediaEventHandlers</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Media.Abstractions/A.html#c6361f7b336cb080" class="t t">IMediaCreatingEventHandler</a>&gt; <a id="d503be5216400b2d" href="R/d503be5216400b2d.html" target="n" data-glyph="46,1" class="i field">_mediaCreatingEventHandlers</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="704d465b3916854d" href="R/704d465b3916854d.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="23e2209c189554db" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultMediaFileStore</a>(
+            <a href="/OrchardCore.FileStorage.Abstractions/A.html#178c85b58b6d5003" class="t t">IFileStore</a> <span id="r0 rd" class="r0 r">fileStore</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">requestBasePath</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">cdnBaseUrl</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Media.Abstractions/A.html#9f02197055319bd3" class="t t">IMediaEventHandler</a>&gt; <span id="r3 rd" class="r3 r">mediaEventHandlers</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Media.Abstractions/A.html#c6361f7b336cb080" class="t t">IMediaCreatingEventHandler</a>&gt; <span id="r4 rd" class="r4 r">mediaCreatingEventHandlers</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#313c23d06e999795" class="t t">DefaultMediaFileStore</a>&gt; <span id="r5 rd" class="r5 r">logger</span>
+            )
+        {
+            <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a> = <span class="r0 r">fileStore</span>;
+ 
+            <span class="c">// Ensure trailing slash removed.</span>
+            <a href="#df6d59564d6634e8" class="i field">_requestBasePath</a> = <span class="r1 r">requestBasePath</span>.<a href="@1@System.Runtime/A.html#709bf5e4c812089b" class="i method">TrimEnd</a>(<span class="s">&#39;/&#39;</span>);
+ 
+            <span class="c">// Media options configuration ensures any trailing slash is removed.</span>
+            <a href="#56d0f463268fccd1" class="i field">_cdnBaseUrl</a> = <span class="r2 r">cdnBaseUrl</span>;
+ 
+            <a href="#3c0c5cf81c1160d2" class="i field">_mediaEventHandlers</a> = <span class="r3 r">mediaEventHandlers</span>;
+            <a href="#d503be5216400b2d" class="i field">_mediaCreatingEventHandlers</a> = <span class="r4 r">mediaCreatingEventHandlers</span>;
+            <a href="#704d465b3916854d" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="60013d92351c5ef1" href="R/60013d92351c5ef1.html" target="n" data-glyph="72,1" class="i method">GetFileInfoAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">path</span>)
+        {
+            <b>return</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#aa0cbcb15ef60aa6" class="i method">GetFileInfoAsync</a>(<span class="r6 r">path</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="106c5a79500ad816" href="R/106c5a79500ad816.html" target="n" data-glyph="72,1" class="i method">GetDirectoryInfoAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">path</span>)
+        {
+            <b>return</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#e02460e457e2733d" class="i method">GetDirectoryInfoAsync</a>(<span class="r7 r">path</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a>&gt; <a id="361d9ab4b81673a6" href="R/361d9ab4b81673a6.html" target="n" data-glyph="72,1" class="i method">GetDirectoryContentAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">path</span> = <b>null</b>, <b>bool</b> <span id="r9 rd" class="r9 r">includeSubDirectories</span> = <b>false</b>)
+        {
+            <b>return</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#be4314930dd86fa3" class="i method">GetDirectoryContentAsync</a>(<span class="r8 r">path</span>, <span class="r9 r">includeSubDirectories</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="f877df946c88a353" href="R/f877df946c88a353.html" target="n" data-glyph="72,1" class="i method">TryCreateDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">path</span>)
+        {
+            <b>return</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#d20c5ef92bf8419c" class="i method">TryCreateDirectoryAsync</a>(<span class="r10 r">path</span>);
+        }
+ 
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="4233ffc89734594a" href="R/4233ffc89734594a.html" target="n" data-glyph="72,1" class="i method">TryDeleteFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">path</span>)
+        {
+            <a href="/OrchardCore.Media.Abstractions/A.html#0f83bb862084c56d" class="k">var</a> <span id="r12 rd" class="r12 r">deletingContext</span> = <b>new</b> <a href="/OrchardCore.Media.Abstractions/A.html#0f83bb862084c56d" class="t constructor">MediaDeletingContext</a>
+            {
+                <a href="/OrchardCore.Media.Abstractions/A.html#378fd534f8b2b8a6" class="i property">Path</a> = <span class="r11 r">path</span>
+            };
+ 
+            <b>await</b> <a href="#3c0c5cf81c1160d2" class="i field">_mediaEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r13 rd" class="r13 r">handler</span>, <span id="r14 rd" class="r14 r">context</span>) =&gt; <span class="r13 r">handler</span>.<span class="i">MediaDeletingFileAsync</span>(<span class="r14 r">context</span>), <span class="r12 r">deletingContext</span>, <a href="#704d465b3916854d" class="i field">_logger</a>);
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r15 rd" class="r15 r">result</span> = <b>await</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#0858f39e8e38d6ac" class="i method">TryDeleteFileAsync</a>(<span class="r12 r">deletingContext</span>.<a href="/OrchardCore.Media.Abstractions/A.html#378fd534f8b2b8a6" class="i property">Path</a>);
+ 
+            <a href="/OrchardCore.Media.Abstractions/A.html#4c6120fc41c1262c" class="k">var</a> <span id="r16 rd" class="r16 r">deletedContext</span> = <b>new</b> <a href="/OrchardCore.Media.Abstractions/A.html#4c6120fc41c1262c" class="t constructor">MediaDeletedContext</a>
+            {
+                <a href="/OrchardCore.Media.Abstractions/A.html#378fd534f8b2b8a6" class="i property">Path</a> = <span class="r11 r">path</span>,
+                <a href="/OrchardCore.Media.Abstractions/A.html#a283494c3def75e7" class="i property">Result</a> = <span class="r15 r">result</span>
+            };
+ 
+            <b>await</b> <a href="#3c0c5cf81c1160d2" class="i field">_mediaEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r17 rd" class="r17 r">handler</span>, <span id="r18 rd" class="r18 r">deletedContext</span>) =&gt; <span class="r17 r">handler</span>.<span class="i">MediaDeletedFileAsync</span>(<span class="r18 r">deletedContext</span>), <span class="r16 r">deletedContext</span>, <a href="#704d465b3916854d" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r15 r">result</span>;
+        }
+ 
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="8ceb68a1e0297b98" href="R/8ceb68a1e0297b98.html" target="n" data-glyph="72,1" class="i method">TryDeleteDirectoryAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">path</span>)
+        {
+            <a href="/OrchardCore.Media.Abstractions/A.html#0f83bb862084c56d" class="k">var</a> <span id="r20 rd" class="r20 r">deletingContext</span> = <b>new</b> <a href="/OrchardCore.Media.Abstractions/A.html#0f83bb862084c56d" class="t constructor">MediaDeletingContext</a>
+            {
+                <a href="/OrchardCore.Media.Abstractions/A.html#378fd534f8b2b8a6" class="i property">Path</a> = <span class="r19 r">path</span>
+            };
+ 
+            <b>await</b> <a href="#3c0c5cf81c1160d2" class="i field">_mediaEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r21 rd" class="r21 r">handler</span>, <span id="r22 rd" class="r22 r">context</span>) =&gt; <span class="r21 r">handler</span>.<span class="i">MediaDeletingDirectoryAsync</span>(<span class="r22 r">context</span>), <span class="r20 r">deletingContext</span>, <a href="#704d465b3916854d" class="i field">_logger</a>);
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r23 rd" class="r23 r">result</span> = <b>await</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#b772d47ba6201f89" class="i method">TryDeleteDirectoryAsync</a>(<span class="r19 r">path</span>);
+ 
+            <a href="/OrchardCore.Media.Abstractions/A.html#4c6120fc41c1262c" class="k">var</a> <span id="r24 rd" class="r24 r">deletedContext</span> = <b>new</b> <a href="/OrchardCore.Media.Abstractions/A.html#4c6120fc41c1262c" class="t constructor">MediaDeletedContext</a>
+            {
+                <a href="/OrchardCore.Media.Abstractions/A.html#378fd534f8b2b8a6" class="i property">Path</a> = <span class="r19 r">path</span>,
+                <a href="/OrchardCore.Media.Abstractions/A.html#a283494c3def75e7" class="i property">Result</a> = <span class="r23 r">result</span>
+            };
+ 
+            <b>await</b> <a href="#3c0c5cf81c1160d2" class="i field">_mediaEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r25 rd" class="r25 r">handler</span>, <span id="r26 rd" class="r26 r">deletedContext</span>) =&gt; <span class="r25 r">handler</span>.<span class="i">MediaDeletedDirectoryAsync</span>(<span class="r26 r">deletedContext</span>), <span class="r24 r">deletedContext</span>, <a href="#704d465b3916854d" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r23 r">result</span>;
+        }
+ 
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4d6447dbadaebdab" href="R/4d6447dbadaebdab.html" target="n" data-glyph="72,1" class="i method">MoveFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">oldPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">newPath</span>)
+        {
+            <a href="/OrchardCore.Media.Abstractions/A.html#3e503fdb02433d9a" class="k">var</a> <span id="r29 rd" class="r29 r">context</span> = <b>new</b> <a href="/OrchardCore.Media.Abstractions/A.html#3e503fdb02433d9a" class="t constructor">MediaMoveContext</a>
+            {
+                <a href="/OrchardCore.Media.Abstractions/A.html#baf31529dfd90688" class="i property">OldPath</a> = <span class="r27 r">oldPath</span>,
+                <a href="/OrchardCore.Media.Abstractions/A.html#719087ed7fcfe383" class="i property">NewPath</a> = <span class="r28 r">newPath</span>
+            };
+ 
+            <b>await</b> <a href="#3c0c5cf81c1160d2" class="i field">_mediaEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r30 rd" class="r30 r">handler</span>, <span id="r31 rd" class="r31 r">context</span>) =&gt; <span class="r30 r">handler</span>.<span class="i">MediaMovingAsync</span>(<span class="r31 r">context</span>), <span class="r29 r">context</span>, <a href="#704d465b3916854d" class="i field">_logger</a>);
+ 
+            <b>await</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#7fe37c9ccf59f508" class="i method">MoveFileAsync</a>(<span class="r29 r">context</span>.<a href="/OrchardCore.Media.Abstractions/A.html#baf31529dfd90688" class="i property">OldPath</a>, <span class="r29 r">context</span>.<a href="/OrchardCore.Media.Abstractions/A.html#719087ed7fcfe383" class="i property">NewPath</a>);
+ 
+            <b>await</b> <a href="#3c0c5cf81c1160d2" class="i field">_mediaEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r32 rd" class="r32 r">handler</span>, <span id="r33 rd" class="r33 r">context</span>) =&gt; <span class="r32 r">handler</span>.<span class="i">MediaMovedAsync</span>(<span class="r33 r">context</span>), <span class="r29 r">context</span>, <a href="#704d465b3916854d" class="i field">_logger</a>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="dc5d7634cd303b2d" href="R/dc5d7634cd303b2d.html" target="n" data-glyph="72,1" class="i method">CopyFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r34 rd" class="r34 r">srcPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">dstPath</span>)
+        {
+            <b>return</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#ded8adbcd57f7f46" class="i method">CopyFileAsync</a>(<span class="r34 r">srcPath</span>, <span class="r35 r">dstPath</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt; <a id="31f791f4566e99bd" href="R/31f791f4566e99bd.html" target="n" data-glyph="72,1" class="i method">GetFileStreamAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r36 rd" class="r36 r">path</span>)
+        {
+            <b>return</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#8fffe1f919eff8d8" class="i method">GetFileStreamAsync</a>(<span class="r36 r">path</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a>&gt; <a id="9cca2e15ee42b134" href="R/9cca2e15ee42b134.html" target="n" data-glyph="72,1" class="i method">GetFileStreamAsync</a>(<a href="/OrchardCore.FileStorage.Abstractions/A.html#bfb1266f67e7ffda" class="t t">IFileStoreEntry</a> <span id="r37 rd" class="r37 r">fileStoreEntry</span>)
+        {
+            <b>return</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#e7df44ac67689878" class="i method">GetFileStreamAsync</a>(<span class="r37 r">fileStoreEntry</span>);
+        }
+ 
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="6b310015a02ef861" href="R/6b310015a02ef861.html" target="n" data-glyph="72,1" class="i method">CreateFileFromStreamAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">path</span>, <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r39 rd" class="r39 r">inputStream</span>, <b>bool</b> <span id="r40 rd" class="r40 r">overwrite</span> = <b>false</b>)
+        {
+            <b>if</b> (<a href="#d503be5216400b2d" class="i field">_mediaCreatingEventHandlers</a>.<span class="i method">Any</span>())
+            {
+                <span class="c">// Follows https://rules.sonarsource.com/csharp/RSPEC-3966</span>
+                <span class="c">// Assumes that each stream should be disposed of only once by it&#39;s caller.</span>
+                <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r41 rd" class="r41 r">outputStream</span> = <span class="r39 r">inputStream</span>;
+                <b>try</b>
+                {
+                    <a href="/OrchardCore.Media.Abstractions/A.html#4100f31d437b56d7" class="k">var</a> <span id="r42 rd" class="r42 r">context</span> = <b>new</b> <a href="/OrchardCore.Media.Abstractions/A.html#4100f31d437b56d7" class="t constructor">MediaCreatingContext</a>
+                    {
+                        <a href="/OrchardCore.Media.Abstractions/A.html#378fd534f8b2b8a6" class="i property">Path</a> = <span class="r38 r">path</span>
+                    };
+ 
+                    <b>foreach</b> (<a href="/OrchardCore.Media.Abstractions/A.html#c6361f7b336cb080" class="k">var</a> <span id="r43 rd" class="r43 r">mediaCreatingEventHandler</span> <b>in</b> <a href="#d503be5216400b2d" class="i field">_mediaCreatingEventHandlers</a>)
+                    {
+                        <span class="c">// Creating stream disposed by using.</span>
+                        <b>using</b> (<a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="k">var</a> <span id="r44 rd" class="r44 r">creatingStream</span> = <span class="r41 r">outputStream</span>)
+                        {
+                            <span class="c">// Stop disposal of inputStream, as creating stream is the object to dispose.</span>
+                            <span class="r39 r">inputStream</span> = <b>null</b>;
+                            <span class="c">// Outputstream must be created by event handler.</span>
+                            <span class="r41 r">outputStream</span> = <b>null</b>;
+ 
+                            <span class="r41 r">outputStream</span> = <b>await</b> <span class="r43 r">mediaCreatingEventHandler</span>.<a href="/OrchardCore.Media.Abstractions/A.html#bd89e63a94cedac0" class="i method">MediaCreatingAsync</a>(<span class="r42 r">context</span>, <span class="r44 r">creatingStream</span>);
+                        }
+                    }
+ 
+                    <b>return</b> <b>await</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#f8930fc497d8907a" class="i method">CreateFileFromStreamAsync</a>(<span class="r42 r">context</span>.<a href="/OrchardCore.Media.Abstractions/A.html#378fd534f8b2b8a6" class="i property">Path</a>, <span class="r41 r">outputStream</span>, <span class="r40 r">overwrite</span>);
+                }
+                <b>finally</b>
+                {
+                    <span class="c">// This disposes the last outputStream.</span>
+                    <span class="r41 r">outputStream</span>?.<a href="@1@System.Runtime/A.html#f1b4285950a82354" class="i method">Dispose</a>();
+                }
+            }
+            <b>else</b>
+            {
+                <b>return</b> <b>await</b> <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#f8930fc497d8907a" class="i method">CreateFileFromStreamAsync</a>(<span class="r38 r">path</span>, <span class="r39 r">inputStream</span>, <span class="r40 r">overwrite</span>);
+            }
+        }
+ 
+        <b>public virtual string</b> <a id="75fbf0c301273c85" href="R/75fbf0c301273c85.html" target="n" data-glyph="72,1" class="i method">MapPathToPublicUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">path</span>)
+        {
+            <b>return</b> <a href="#56d0f463268fccd1" class="i field">_cdnBaseUrl</a> + <a href="#df6d59564d6634e8" class="i field">_requestBasePath</a> + <span class="s">&quot;/&quot;</span> + <a href="#067a3d1bff0a1c70" class="i field">_fileStore</a>.<a href="/OrchardCore.FileStorage.Abstractions/A.html#1201a56b26b3a1e9" class="i method">NormalizePath</a>(<span class="r45 r">path</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,309 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentFieldDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(300);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentManagement.Display/ContentDisplay/ContentFieldDisplayDriver.cs" target="_top">ContentDisplay\ContentFieldDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentManagement.Display" target="_top">src\OrchardCore\OrchardCore.ContentManagement.Display\OrchardCore.ContentManagement.Display.csproj</a> (OrchardCore.ContentManagement.Display)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>
+{
+    <b>public abstract class</b> <a id="6a2163837f2072da" href="../R/6a2163837f2072da.html" target="n" data-glyph="0,0" class="t t"><span id="89d558e17db24ff4">ContentFieldDisplayDriver</span></a>&lt;<span id="r0 rd t" class="r0 r t">TField</span>&gt; : <a href="/OrchardCore.DisplayManagement/A.html#31b9468352ba7c47" class="t t">DisplayDriverBase</a>, <a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="t t">IContentFieldDisplayDriver</a> <b>where</b> <span class="r0 r t">TField</span> : <a href="/OrchardCore.ContentManagement.Abstractions/A.html#87d34c976492d541" class="t t">ContentField</a>, <b>new</b>()
+    {
+        <b>private const string</b> <a id="2442b003e209b214" href="../R/2442b003e209b214.html" target="n" data-glyph="10,1" class="i field">DisplayToken</a> = <span class="s">&quot;_Display&quot;</span>;
+        <b>private const string</b> <a id="c78341b0ecc46306" href="../R/c78341b0ecc46306.html" target="n" data-glyph="10,1" class="i field">DisplaySeparator</a> = <span class="s">&quot;_Display__&quot;</span>;
+ 
+        <b>private</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="t t">ContentTypePartDefinition</a> <a id="d953e06053ab0bd4" href="../R/d953e06053ab0bd4.html" target="n" data-glyph="46,1" class="i field">_typePartDefinition</a>;
+        <b>private</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <a id="14f3ddb474d2bddd" href="../R/14f3ddb474d2bddd.html" target="n" data-glyph="46,1" class="i field">_partFieldDefinition</a>;
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#9f3c945ca087955a" class="t t">ShapeResult</a> <a id="4de1a7fe8165422c" href="../R/4de1a7fe8165422c.html" target="n" data-glyph="72,1" class="i method">Factory</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">shapeType</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#440581352c3e294c" class="t t">IBuildShapeContext</a>, <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a>&gt;&gt; <span id="r2 rd" class="r2 r">shapeBuilder</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#1b6ae4719962ce25" class="t t">IShape</a>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt; <span id="r3 rd" class="r3 r">initializeAsync</span>)
+        {
+            <span class="c">// e.g., HtmlBodyPart.Summary, HtmlBodyPart-BlogPost, BagPart-LandingPage-Services</span>
+            <span class="c">// context.Shape is the ContentItem shape, we need to alter the part shape</span>
+ 
+            <a href="/OrchardCore.DisplayManagement/A.html#9f3c945ca087955a" class="k">var</a> <span id="r4 rd" class="r4 r">result</span> = <a href="/OrchardCore.DisplayManagement/A.html#31b9468352ba7c47" class="k">base</a>.<a href="/OrchardCore.DisplayManagement/A.html#3afe83407db5ea0e" class="i method">Factory</a>(<span class="r1 r">shapeType</span>, <span class="r2 r">shapeBuilder</span>, <span class="r3 r">initializeAsync</span>).<a href="/OrchardCore.DisplayManagement/A.html#283022d64d81f797" class="i method">Prefix</a>(<a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>);
+ 
+            <b>if</b> (<a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a> != <b>null</b> &amp;&amp; <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a> != <b>null</b>)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">partType</span> = <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">partName</span> = <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r7 rd" class="r7 r">fieldType</span> = <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">fieldName</span> = <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">contentType</span> = <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#2ee287faca788aba" class="i property">ContentTypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">displayMode</span> = <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#fc86b0a399f9eddb" class="i method">DisplayMode</a>();
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r11 rd" class="r11 r">hasDisplayMode</span> = !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">displayMode</span>);
+ 
+                <b>if</b> (<a href="#ed5bf4c158b41b51" class="i method">GetEditorShapeType</a>(<a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a>) == <span class="r1 r">shapeType</span>)
+                {
+                    <span class="c">// HtmlBodyPart-Description, Services-Description</span>
+                    <span class="r4 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#49caf35140b3ffdf" class="i method">Differentiator</a>(<span class="s">$&quot;</span>{<span class="r6 r">partName</span>}<span class="s">-</span>{<span class="r8 r">fieldName</span>}<span class="s">&quot;</span>);
+ 
+                    <span class="c">// We do not need to add alternates on edit as they are handled with field editor types so return before adding alternates</span>
+                    <b>return</b> <span class="r4 r">result</span>;
+                }
+ 
+                <span class="c">// If the shape type and the field type only differ by the display mode</span>
+                <b>if</b> (<span class="r11 r">hasDisplayMode</span> &amp;&amp; <span class="r1 r">shapeType</span> == <span class="r7 r">fieldType</span> + <a href="#c78341b0ecc46306" class="i field">DisplaySeparator</a> + <span class="r10 r">displayMode</span>)
+                {
+                    <span class="c">// Preserve the shape name regardless its differentiator</span>
+                    <span class="r4 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#8c17d6a16f671c95" class="i method">Name</a>(<span class="s">$&quot;</span>{<span class="r6 r">partName</span>}<span class="s">-</span>{<span class="r8 r">fieldName</span>}<span class="s">&quot;</span>);
+                }
+ 
+                <b>if</b> (<span class="r7 r">fieldType</span> == <span class="r1 r">shapeType</span>)
+                {
+                    <span class="c">// HtmlBodyPart-Description, Services-Description</span>
+                    <span class="r4 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#49caf35140b3ffdf" class="i method">Differentiator</a>(<span class="s">$&quot;</span>{<span class="r6 r">partName</span>}<span class="s">-</span>{<span class="r8 r">fieldName</span>}<span class="s">&quot;</span>);
+                }
+                <b>else</b>
+                {
+                    <span class="c">// HtmlBodyPart-Description-TextField, Services-Description-TextField</span>
+                    <span class="r4 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#49caf35140b3ffdf" class="i method">Differentiator</a>(<span class="s">$&quot;</span>{<span class="r6 r">partName</span>}<span class="s">-</span>{<span class="r8 r">fieldName</span>}<span class="s">-</span>{<span class="r1 r">shapeType</span>}<span class="s">&quot;</span>);
+                }
+ 
+                <span class="r4 r">result</span>.<a href="/OrchardCore.DisplayManagement/A.html#df7a673276d55fa1" class="i method">Displaying</a>(<span id="r12 rd" class="r12 r">ctx</span> =&gt;
+                {
+                    <b>var</b> <span id="r13 rd" class="r13 r">displayTypes</span> = <b>new</b>[] { <span class="s">&quot;&quot;</span>, <span class="s">&quot;_&quot;</span> + <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#7cd0e688e269d1a2" class="i property">DisplayType</a> };
+ 
+                    <span class="c">// [ShapeType]_[DisplayType], e.g. TextField.Summary</span>
+                    <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r1 r">shapeType</span>}<span class="s">_</span>{<span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#7cd0e688e269d1a2" class="i property">DisplayType</a>}<span class="s">&quot;</span>);
+ 
+                    <span class="c">// When the shape type is the same as the field, we can ignore one of them in the alternate name</span>
+                    <span class="c">// For instance TextField returns a unique TextField shape type.</span>
+                    <b>if</b> (<span class="r1 r">shapeType</span> == <span class="r7 r">fieldType</span>)
+                    {
+                        <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">displayType</span> <b>in</b> <span class="r13 r">displayTypes</span>)
+                        {
+                            <span class="c">// [PartType]__[FieldName], e.g. HtmlBodyPart-Description</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r5 r">partType</span>}{<span class="r14 r">displayType</span>}<span class="s">__</span>{<span class="r8 r">fieldName</span>}<span class="s">&quot;</span>);
+ 
+                            <span class="c">// [ContentType]__[FieldType], e.g. Blog-TextField, LandingPage-TextField</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r9 r">contentType</span>}{<span class="r14 r">displayType</span>}<span class="s">__</span>{<span class="r7 r">fieldType</span>}<span class="s">&quot;</span>);
+ 
+                            <span class="c">// [ContentType]__[PartName]__[FieldName], e.g. Blog-HtmlBodyPart-Description, LandingPage-Services-Description</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r9 r">contentType</span>}{<span class="r14 r">displayType</span>}<span class="s">__</span>{<span class="r5 r">partType</span>}<span class="s">__</span>{<span class="r8 r">fieldName</span>}<span class="s">&quot;</span>);
+                        }
+                    }
+                    <b>else</b>
+                    {
+                        <b>if</b> (<span class="r11 r">hasDisplayMode</span>)
+                        {
+                            <span class="c">// [FieldType]_[DisplayType]__[DisplayMode]_Display, e.g. TextField-Header.Display.Summary</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r7 r">fieldType</span>}<span class="s">_</span>{<span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#7cd0e688e269d1a2" class="i property">DisplayType</a>}<span class="s">__</span>{<span class="r10 r">displayMode</span>}{<a href="#2442b003e209b214" class="i field">DisplayToken</a>}<span class="s">&quot;</span>);
+                        }
+ 
+                        <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r15 rd" class="r15 r">i</span> = 0; <span class="r15 r">i</span> &lt; <span class="r13 r">displayTypes</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r15 r">i</span>++)
+                        {
+                            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">displayType</span> = <span class="r13 r">displayTypes</span>[<span class="r15 r">i</span>];
+ 
+                            <b>if</b> (<span class="r11 r">hasDisplayMode</span>)
+                            {
+                                <span class="r1 r">shapeType</span> = <span class="s">$&quot;</span>{<span class="r7 r">fieldType</span>}<span class="s">__</span>{<span class="r10 r">displayMode</span>}<span class="s">&quot;</span>;
+ 
+                                <b>if</b> (<span class="r16 r">displayType</span> == <span class="s">&quot;&quot;</span>)
+                                {
+                                    <span class="r16 r">displayType</span> = <a href="#2442b003e209b214" class="i field">DisplayToken</a>;
+                                }
+                                <b>else</b>
+                                {
+                                    <span class="r1 r">shapeType</span> += <a href="#2442b003e209b214" class="i field">DisplayToken</a>;
+                                }
+                            }
+ 
+                            <span class="c">// [FieldType]__[ShapeType], e.g. TextField-TextFieldSummary</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r7 r">fieldType</span>}{<span class="r16 r">displayType</span>}<span class="s">__</span>{<span class="r1 r">shapeType</span>}<span class="s">&quot;</span>);
+ 
+                            <span class="c">// [PartType]__[FieldName]__[ShapeType], e.g. HtmlBodyPart-Description-TextFieldSummary</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r5 r">partType</span>}{<span class="r16 r">displayType</span>}<span class="s">__</span>{<span class="r8 r">fieldName</span>}<span class="s">__</span>{<span class="r1 r">shapeType</span>}<span class="s">&quot;</span>);
+ 
+                            <span class="c">// [ContentType]__[FieldType]__[ShapeType], e.g. Blog-TextField-TextFieldSummary, LandingPage-TextField-TextFieldSummary</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r9 r">contentType</span>}{<span class="r16 r">displayType</span>}<span class="s">__</span>{<span class="r7 r">fieldType</span>}<span class="s">__</span>{<span class="r1 r">shapeType</span>}<span class="s">&quot;</span>);
+ 
+                            <span class="c">// [ContentType]__[PartName]__[FieldName]__[ShapeType], e.g. Blog-HtmlBodyPart-Description-TextFieldSummary, LandingPage-Services-Description-TextFieldSummary</span>
+                            <span class="r12 r">ctx</span>.<a href="/OrchardCore.DisplayManagement/A.html#c53a055e95336931" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#2878e16e7126ef66" class="i property">Metadata</a>.<a href="/OrchardCore.DisplayManagement/A.html#bb3fc0d71dd8679e" class="i property">Alternates</a>.<a href="/OrchardCore.DisplayManagement/A.html#0fa880c465ffac54" class="i method">Add</a>(<span class="s">$&quot;</span>{<span class="r9 r">contentType</span>}{<span class="r16 r">displayType</span>}<span class="s">__</span>{<span class="r6 r">partName</span>}<span class="s">__</span>{<span class="r8 r">fieldName</span>}<span class="s">__</span>{<span class="r1 r">shapeType</span>}<span class="s">&quot;</span>);
+                        }
+                    }
+                });
+            }
+ 
+            <b>return</b> <span class="r4 r">result</span>;
+        }
+ 
+        <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="t t">IContentFieldDisplayDriver</a>.<a href="IContentFieldDisplayDriver.cs.html#45ab07383625e057" class="i method">BuildDisplayAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a> <span id="r17 rd" class="r17 r">contentPart</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r18 rd" class="r18 r">partFieldDefinition</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="t t">ContentTypePartDefinition</a> <span id="r19 rd" class="r19 r">typePartDefinition</span>, <a href="/OrchardCore.DisplayManagement/A.html#c7443c2b211ac7e2" class="t t">BuildDisplayContext</a> <span id="r20 rd" class="r20 r">context</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#372d790ddae4cbb4" class="i method">Equals</a>(<b>typeof</b>(<span class="r0 r t">TField</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <span class="r18 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>) &amp;&amp;
+               !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#372d790ddae4cbb4" class="i method">Equals</a>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#87d34c976492d541" class="t t">ContentField</a>), <span class="r18 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>default</b>(<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>));
+            }
+ 
+            <span class="r0 r t">var</span> <span id="r21 rd" class="r21 r">field</span> = <span class="r17 r">contentPart</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48587e32f68f7c54" class="i method">Get</a>&lt;<span class="r0 r t">TField</span>&gt;(<span class="r18 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>);
+            <b>if</b> (<span class="r21 r">field</span> != <b>null</b>)
+            {
+                <a href="#86e9a76a5ed5e680" class="i method">BuildPrefix</a>(<span class="r19 r">typePartDefinition</span>, <span class="r18 r">partFieldDefinition</span>, <span class="r20 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#acf9c881d0b7d732" class="i property">HtmlFieldPrefix</a>);
+ 
+                <a href="../Models/BuildFieldDisplayContext.cs.html#325f8ad6765863ab" class="k">var</a> <span id="r22 rd" class="r22 r">fieldDisplayContext</span> = <b>new</b> <a href="../Models/BuildFieldDisplayContext.cs.html#8adb66487fc51056" class="t constructor">BuildFieldDisplayContext</a>(<span class="r17 r">contentPart</span>, <span class="r19 r">typePartDefinition</span>, <span class="r18 r">partFieldDefinition</span>, <span class="r20 r">context</span>);
+ 
+                <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a> = <span class="r19 r">typePartDefinition</span>;
+                <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a> = <span class="r18 r">partFieldDefinition</span>;
+ 
+                <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="k">var</a> <span id="r23 rd" class="r23 r">result</span> = <a href="#336a415cb9f679f1" class="i method">DisplayAsync</a>(<span class="r21 r">field</span>, <span class="r22 r">fieldDisplayContext</span>);
+ 
+                <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a> = <b>null</b>;
+                <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a> = <b>null</b>;
+ 
+                <b>return</b> <span class="r23 r">result</span>;
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>default</b>(<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>));
+        }
+ 
+        <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="t t">IContentFieldDisplayDriver</a>.<a href="IContentFieldDisplayDriver.cs.html#b968c5acfc1a4949" class="i method">BuildEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a> <span id="r24 rd" class="r24 r">contentPart</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r25 rd" class="r25 r">partFieldDefinition</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="t t">ContentTypePartDefinition</a> <span id="r26 rd" class="r26 r">typePartDefinition</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r27 rd" class="r27 r">context</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#372d790ddae4cbb4" class="i method">Equals</a>(<b>typeof</b>(<span class="r0 r t">TField</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <span class="r25 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>) &amp;&amp;
+                !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#372d790ddae4cbb4" class="i method">Equals</a>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#87d34c976492d541" class="t t">ContentField</a>), <span class="r25 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>default</b>(<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>));
+            }
+ 
+            <span class="r0 r t">var</span> <span id="r28 rd" class="r28 r">field</span> = <span class="r24 r">contentPart</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b4b31cb36b2deb2c" class="i method">GetOrCreate</a>&lt;<span class="r0 r t">TField</span>&gt;(<span class="r25 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>);
+ 
+            <b>if</b> (<span class="r28 r">field</span> != <b>null</b>)
+            {
+                <a href="#86e9a76a5ed5e680" class="i method">BuildPrefix</a>(<span class="r26 r">typePartDefinition</span>, <span class="r25 r">partFieldDefinition</span>, <span class="r27 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#acf9c881d0b7d732" class="i property">HtmlFieldPrefix</a>);
+ 
+                <a href="../Models/BuildFieldEditorContext.cs.html#e6f5f76a9c1a9fa9" class="k">var</a> <span id="r29 rd" class="r29 r">fieldEditorContext</span> = <b>new</b> <a href="../Models/BuildFieldEditorContext.cs.html#3b9d458907ab68ff" class="t constructor">BuildFieldEditorContext</a>(<span class="r24 r">contentPart</span>, <span class="r26 r">typePartDefinition</span>, <span class="r25 r">partFieldDefinition</span>, <span class="r27 r">context</span>);
+ 
+                <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a> = <span class="r26 r">typePartDefinition</span>;
+                <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a> = <span class="r25 r">partFieldDefinition</span>;
+ 
+                <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="k">var</a> <span id="r30 rd" class="r30 r">result</span> = <a href="#180de2efa4b3da73" class="i method">EditAsync</a>(<span class="r28 r">field</span>, <span class="r29 r">fieldEditorContext</span>);
+ 
+                <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a> = <b>null</b>;
+                <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a> = <b>null</b>;
+ 
+                <b>return</b> <span class="r30 r">result</span>;
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<b>default</b>(<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>));
+        }
+ 
+        <b>async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a href="IContentFieldDisplayDriver.cs.html#254982142dc491ce" class="t t">IContentFieldDisplayDriver</a>.<a href="IContentFieldDisplayDriver.cs.html#9d81eca18095faf9" class="i method">UpdateEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b1bb17f377e21f22" class="t t">ContentPart</a> <span id="r31 rd" class="r31 r">contentPart</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r32 rd" class="r32 r">partFieldDefinition</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="t t">ContentTypePartDefinition</a> <span id="r33 rd" class="r33 r">typePartDefinition</span>, <a href="/OrchardCore.DisplayManagement/A.html#688c28d1f0b44917" class="t t">UpdateEditorContext</a> <span id="r34 rd" class="r34 r">context</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#372d790ddae4cbb4" class="i method">Equals</a>(<b>typeof</b>(<span class="r0 r t">TField</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <span class="r32 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>) &amp;&amp;
+                !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#372d790ddae4cbb4" class="i method">Equals</a>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#87d34c976492d541" class="t t">ContentField</a>), <span class="r32 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <span class="r0 r t">var</span> <span id="r35 rd" class="r35 r">field</span> = <span class="r31 r">contentPart</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b4b31cb36b2deb2c" class="i method">GetOrCreate</a>&lt;<span class="r0 r t">TField</span>&gt;(<span class="r32 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>);
+ 
+            <a href="#86e9a76a5ed5e680" class="i method">BuildPrefix</a>(<span class="r33 r">typePartDefinition</span>, <span class="r32 r">partFieldDefinition</span>, <span class="r34 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#acf9c881d0b7d732" class="i property">HtmlFieldPrefix</a>);
+ 
+            <a href="../Models/UpdateFieldEditorContext.cs.html#d6075fcdf3b6738b" class="k">var</a> <span id="r36 rd" class="r36 r">updateFieldEditorContext</span> = <b>new</b> <a href="../Models/UpdateFieldEditorContext.cs.html#0010f63565415661" class="t constructor">UpdateFieldEditorContext</a>(<span class="r31 r">contentPart</span>, <span class="r33 r">typePartDefinition</span>, <span class="r32 r">partFieldDefinition</span>, <span class="r34 r">context</span>);
+ 
+            <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a> = <span class="r33 r">typePartDefinition</span>;
+            <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a> = <span class="r32 r">partFieldDefinition</span>;
+ 
+            <b>var</b> <span id="r37 rd" class="r37 r">result</span> = <b>await</b> <span class="i">UpdateAsync</span>(<span class="r35 r">field</span>, <span class="r34 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>, <span class="r36 r">updateFieldEditorContext</span>);
+ 
+            <a href="#d953e06053ab0bd4" class="i field">_typePartDefinition</a> = <b>null</b>;
+            <a href="#14f3ddb474d2bddd" class="i field">_partFieldDefinition</a> = <b>null</b>;
+ 
+            <b>if</b> (<span class="r37 r">result</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <span class="r31 r">contentPart</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4c0a8dfa9907adee" class="i method">Apply</a>(<span class="r32 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <span class="r35 r">field</span>);
+ 
+            <b>return</b> <span class="r37 r">result</span>;
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="336a415cb9f679f1" href="../R/336a415cb9f679f1.html" target="n" data-glyph="72,1" class="i method">DisplayAsync</a>(<span class="r0 r t">TField</span> <span id="r38 rd" class="r38 r">field</span>, <a href="../Models/BuildFieldDisplayContext.cs.html#325f8ad6765863ab" class="t t">BuildFieldDisplayContext</a> <span id="r39 rd" class="r39 r">fieldDisplayContext</span>)
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<a href="#941d57089c9787bd" class="i method">Display</a>(<span class="r38 r">field</span>, <span class="r39 r">fieldDisplayContext</span>));
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="180de2efa4b3da73" href="../R/180de2efa4b3da73.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<span class="r0 r t">TField</span> <span id="r40 rd" class="r40 r">field</span>, <a href="../Models/BuildFieldEditorContext.cs.html#e6f5f76a9c1a9fa9" class="t t">BuildFieldEditorContext</a> <span id="r41 rd" class="r41 r">context</span>)
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<a href="#df5f272f6ea933bf" class="i method">Edit</a>(<span class="r40 r">field</span>, <span class="r41 r">context</span>));
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="0c148fecba83bc9e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r0 r t">TField</span> <span id="r42 rd" class="r42 r">field</span>, <span class="i">IUpdateModel</span> <span id="r43 rd" class="r43 r">updater</span>, <a href="../Models/UpdateFieldEditorContext.cs.html#d6075fcdf3b6738b" class="t t">UpdateFieldEditorContext</a> <span id="r44 rd" class="r44 r">context</span>)
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<a href="#5d1b2095133ef104" class="i method">Update</a>(<span class="r42 r">field</span>, <span class="r43 r">updater</span>, <span class="r44 r">context</span>));
+        }
+ 
+        <b>public virtual</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="941d57089c9787bd" href="../R/941d57089c9787bd.html" target="n" data-glyph="72,1" class="i method">Display</a>(<span class="r0 r t">TField</span> <span id="r45 rd" class="r45 r">field</span>, <a href="../Models/BuildFieldDisplayContext.cs.html#325f8ad6765863ab" class="t t">BuildFieldDisplayContext</a> <span id="r46 rd" class="r46 r">fieldDisplayContext</span>)
+        {
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>public virtual</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="df5f272f6ea933bf" href="../R/df5f272f6ea933bf.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<span class="r0 r t">TField</span> <span id="r47 rd" class="r47 r">field</span>, <a href="../Models/BuildFieldEditorContext.cs.html#e6f5f76a9c1a9fa9" class="t t">BuildFieldEditorContext</a> <span id="r48 rd" class="r48 r">context</span>)
+        {
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>public virtual</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="5d1b2095133ef104" href="../R/5d1b2095133ef104.html" target="n" data-glyph="72,1" class="i method">Update</a>(<span class="r0 r t">TField</span> <span id="r49 rd" class="r49 r">field</span>, <span class="i">IUpdateModel</span> <span id="r50 rd" class="r50 r">updater</span>, <a href="../Models/UpdateFieldEditorContext.cs.html#d6075fcdf3b6738b" class="t t">UpdateFieldEditorContext</a> <span id="r51 rd" class="r51 r">context</span>)
+        {
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>protected string</b> <a id="016efd48de8bfb5c" href="../R/016efd48de8bfb5c.html" target="n" data-glyph="75,1" class="i method">GetEditorShapeType</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r52 rd" class="r52 r">shapeType</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r53 rd" class="r53 r">partFieldDefinition</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r54 rd" class="r54 r">editor</span> = <span class="r53 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#55c66ced50b99026" class="i method">Editor</a>();
+            <b>return</b> !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r54 r">editor</span>)
+                ? <span class="r52 r">shapeType</span> + <span class="s">&quot;__&quot;</span> + <span class="r54 r">editor</span>
+                : <span class="r52 r">shapeType</span>;
+        }
+ 
+        <b>protected string</b> <a id="67004d2db3555e6f" href="../R/../../0000000000.html" target="n" data-glyph="75,1" class="i method">GetEditorShapeType</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r55 rd" class="r55 r">shapeType</span>, <a href="../Models/BuildFieldEditorContext.cs.html#e6f5f76a9c1a9fa9" class="t t">BuildFieldEditorContext</a> <span id="r56 rd" class="r56 r">context</span>)
+        {
+            <b>return</b> <a href="#016efd48de8bfb5c" class="i method">GetEditorShapeType</a>(<span class="r55 r">shapeType</span>, <span class="r56 r">context</span>.<a href="../Models/BuildFieldEditorContext.cs.html#329b9c0f1f82fec3" class="i property">PartFieldDefinition</a>);
+        }
+ 
+        <b>protected string</b> <a id="ed5bf4c158b41b51" href="../R/ed5bf4c158b41b51.html" target="n" data-glyph="75,1" class="i method">GetEditorShapeType</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r57 rd" class="r57 r">partFieldDefinition</span>)
+        {
+            <b>return</b> <a href="#016efd48de8bfb5c" class="i method">GetEditorShapeType</a>(<b>typeof</b>(<span class="r0 r t">TField</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a> + <span class="s">&quot;_Edit&quot;</span>, <span class="r57 r">partFieldDefinition</span>);
+        }
+ 
+        <b>protected string</b> <a id="fdc4b59cfa32924d" href="../R/fdc4b59cfa32924d.html" target="n" data-glyph="75,1" class="i method">GetEditorShapeType</a>(<a href="../Models/BuildFieldEditorContext.cs.html#e6f5f76a9c1a9fa9" class="t t">BuildFieldEditorContext</a> <span id="r58 rd" class="r58 r">context</span>)
+        {
+            <b>return</b> <a href="#ed5bf4c158b41b51" class="i method">GetEditorShapeType</a>(<span class="r58 r">context</span>.<a href="../Models/BuildFieldEditorContext.cs.html#329b9c0f1f82fec3" class="i property">PartFieldDefinition</a>);
+        }
+ 
+        <b>protected string</b> <a id="96a16092d0b3801b" href="../R/96a16092d0b3801b.html" target="n" data-glyph="75,1" class="i method">GetDisplayShapeType</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r59 rd" class="r59 r">shapeType</span>, <a href="../Models/BuildFieldDisplayContext.cs.html#325f8ad6765863ab" class="t t">BuildFieldDisplayContext</a> <span id="r60 rd" class="r60 r">context</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r61 rd" class="r61 r">displayMode</span> = <span class="r60 r">context</span>.<a href="../Models/BuildFieldDisplayContext.cs.html#7f37dd4b6f70ad9c" class="i property">PartFieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#fc86b0a399f9eddb" class="i method">DisplayMode</a>();
+            <b>return</b> !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r61 r">displayMode</span>)
+                ? <span class="r59 r">shapeType</span> + <a href="#c78341b0ecc46306" class="i field">DisplaySeparator</a> + <span class="r61 r">displayMode</span>
+                : <span class="r59 r">shapeType</span>;
+        }
+ 
+        <b>protected string</b> <a id="b94e459085e8d09f" href="../R/b94e459085e8d09f.html" target="n" data-glyph="75,1" class="i method">GetDisplayShapeType</a>(<a href="../Models/BuildFieldDisplayContext.cs.html#325f8ad6765863ab" class="t t">BuildFieldDisplayContext</a> <span id="r62 rd" class="r62 r">context</span>)
+        {
+            <b>return</b> <a href="#96a16092d0b3801b" class="i method">GetDisplayShapeType</a>(<b>typeof</b>(<span class="r0 r t">TField</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>, <span class="r62 r">context</span>);
+        }
+ 
+        <b>private void</b> <a id="86e9a76a5ed5e680" href="../R/86e9a76a5ed5e680.html" target="n" data-glyph="76,1" class="i method">BuildPrefix</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="t t">ContentTypePartDefinition</a> <span id="r63 rd" class="r63 r">typePartDefinition</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r64 rd" class="r64 r">partFieldDefinition</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r65 rd" class="r65 r">htmlFieldPrefix</span>)
+        {
+            <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a> = <span class="r63 r">typePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a> + <span class="s">&quot;.&quot;</span> + <span class="r64 r">partFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>;
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r65 r">htmlFieldPrefix</span>))
+            {
+                <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a> = <span class="r65 r">htmlFieldPrefix</span> + <span class="s">&quot;.&quot;</span> + <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

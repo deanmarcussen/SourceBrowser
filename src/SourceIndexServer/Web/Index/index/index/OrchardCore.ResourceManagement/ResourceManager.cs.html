@@ -1,0 +1,810 @@
+﻿<!DOCTYPE html>
+<html><head><title>ResourceManager.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(801);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ResourceManagement/ResourceManager.cs" target="_top">ResourceManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ResourceManagement" target="_top">src\OrchardCore\OrchardCore.ResourceManagement\OrchardCore.ResourceManagement.csproj</a> (OrchardCore.ResourceManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Runtime</span>.<span class="i n">CompilerServices</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ResourceManagement</span>
+{
+    <b>public class</b> <a id="e839c9e1cad3e9b1" href="R/e839c9e1cad3e9b1.html" target="n" data-glyph="0,0" class="t t">ResourceManager</a> : <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#e74e7986e124f65f" class="t t">IResourceManager</a>
+    {
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="#1a5927becb45f246" class="t t">ResourceTypeName</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>&gt; <a id="5cde9e4875b61b71" href="R/5cde9e4875b61b71.html" target="n" data-glyph="46,1" class="i field">_required</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="#1a5927becb45f246" class="t t">ResourceTypeName</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>&gt;();
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="t t">ResourceRequiredContext</a>[]&gt; <a id="bcbb021089a680df" href="R/bcbb021089a680df.html" target="n" data-glyph="46,1" class="i field">_builtResources</a>;
+        <b>private readonly</b> <span class="t t">IFileVersionProvider</span> <a id="b7f2acad80057e2a" href="R/b7f2acad80057e2a.html" target="n" data-glyph="46,1" class="i field">_fileVersionProvider</a>;
+        <b>private</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#a0952d9d6d6908d7" class="t t">ResourceManifest</a> <a id="5c358c5d1d5cde6a" href="R/5c358c5d1d5cde6a.html" target="n" data-glyph="46,1" class="i field">_dynamicManifest</a>;
+ 
+        <b>private</b> <span class="t t">List</span>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1c76df8666805cdd" class="t t">LinkEntry</a>&gt; <a id="f34779854031fa86" href="R/f34779854031fa86.html" target="n" data-glyph="46,1" class="i field">_links</a>;
+        <b>private</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a>&gt; <a id="1463f966d260a055" href="R/1463f966d260a055.html" target="n" data-glyph="46,1" class="i field">_metas</a>;
+        <b>private</b> <span class="t t">List</span>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="05799fcffd2ae940" href="R/05799fcffd2ae940.html" target="n" data-glyph="46,1" class="i field">_headScripts</a>;
+        <b>private</b> <span class="t t">List</span>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="5266528f7d505794" href="R/5266528f7d505794.html" target="n" data-glyph="46,1" class="i field">_footScripts</a>;
+        <b>private</b> <span class="t t">List</span>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="8cd90b9f3251c773" href="R/8cd90b9f3251c773.html" target="n" data-glyph="46,1" class="i field">_styles</a>;
+        <b>private</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="e718586cfdd5e6a3" href="R/e718586cfdd5e6a3.html" target="n" data-glyph="46,1" class="i field">_localScripts</a>;
+        <b>private</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="41b968629f6182b9" href="R/41b968629f6182b9.html" target="n" data-glyph="46,1" class="i field">_localStyles</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#198f1c40eceb2e87" class="t t">ResourceManagementOptions</a> <a id="0867399574ae2bd0" href="R/0867399574ae2bd0.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+ 
+        <b>public</b> <a id="f1c49b318092cb0e" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ResourceManager</a>(
+            <span class="t t">IOptions</span>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#198f1c40eceb2e87" class="t t">ResourceManagementOptions</a>&gt; <span id="r0 rd" class="r0 r">options</span>,
+            <span class="t t">IFileVersionProvider</span> <span id="r1 rd" class="r1 r">fileVersionProvider</span>)
+        {
+            <a href="#0867399574ae2bd0" class="i field">_options</a> = <span class="r0 r">options</span>.<span class="i property">Value</span>;
+            <a href="#b7f2acad80057e2a" class="i field">_fileVersionProvider</a> = <span class="r1 r">fileVersionProvider</span>;
+ 
+            <a href="#bcbb021089a680df" class="i field">_builtResources</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="t t">ResourceRequiredContext</a>[]&gt;(<a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+        }
+ 
+ 
+        <b>public</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#a0952d9d6d6908d7" class="t t">ResourceManifest</a> <a id="0cb8be2ffdaeef63" href="R/0cb8be2ffdaeef63.html" target="n" data-glyph="102,1" class="i property">InlineManifest</a> =&gt; <a href="#5c358c5d1d5cde6a" class="i field">_dynamicManifest</a> ??= <b>new</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#a0952d9d6d6908d7" class="t constructor">ResourceManifest</a>();
+ 
+        <b>public</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <a id="dfca779fb4bff8f4" href="R/dfca779fb4bff8f4.html" target="n" data-glyph="72,1" class="i method">RegisterResource</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">resourceType</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">resourceName</span>)
+        {
+            <b>if</b> (<span class="r2 r">resourceType</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="#53daf448fe9ac691" class="i method">ThrowArgumentNullException</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>&gt;(<b>nameof</b>(<span class="r2 r">resourceType</span>));
+            }
+ 
+            <b>if</b> (<span class="r3 r">resourceName</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="#53daf448fe9ac691" class="i method">ThrowArgumentNullException</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>&gt;(<b>nameof</b>(<span class="r3 r">resourceName</span>));
+            }
+ 
+            <a href="#1a5927becb45f246" class="k">var</a> <span id="r4 rd" class="r4 r">key</span> = <b>new</b> <a href="#b2fee8065cf2b61e" class="t constructor">ResourceTypeName</a>(<span class="r2 r">resourceType</span>, <span class="r3 r">resourceName</span>);
+            <b>if</b> (!<a href="#5cde9e4875b61b71" class="i field">_required</a>.<span class="i method">TryGetValue</span>(<span class="r4 r">key</span>, <b>out</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="k">var</a> <span id="r5 rd" class="r5 r">settings</span>))
+            {
+                <span class="r5 r">settings</span> = <b>new</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#73f947facb4e522a" class="t constructor">RequireSettings</a>(<a href="#0867399574ae2bd0" class="i field">_options</a>)
+                {
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fb0100c588fcde48" class="i property">Type</a> = <span class="r2 r">resourceType</span>,
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a> = <span class="r3 r">resourceName</span>
+                };
+                <a href="#5cde9e4875b61b71" class="i field">_required</a>[<span class="r4 r">key</span>] = <span class="r5 r">settings</span>;
+            }
+            <a href="#bcbb021089a680df" class="i field">_builtResources</a>[<span class="r2 r">resourceType</span>] = <b>null</b>;
+            <b>return</b> <span class="r5 r">settings</span>;
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <a id="6c382480dfe3d1a6" href="R/6c382480dfe3d1a6.html" target="n" data-glyph="72,1" class="i method">RegisterUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r6 rd" class="r6 r">resourceType</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">resourcePath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">resourceDebugPath</span>)
+        {
+            <b>if</b> (<span class="r6 r">resourceType</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="#53daf448fe9ac691" class="i method">ThrowArgumentNullException</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>&gt;(<b>nameof</b>(<span class="r6 r">resourceType</span>));
+            }
+ 
+            <b>if</b> (<span class="r7 r">resourcePath</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="#53daf448fe9ac691" class="i method">ThrowArgumentNullException</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>&gt;(<b>nameof</b>(<span class="r7 r">resourcePath</span>));
+            }
+ 
+            <span class="c">// ~/ ==&gt; convert to absolute path (e.g. /orchard/..)</span>
+ 
+            <b>if</b> (<span class="r7 r">resourcePath</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;~/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="r7 r">resourcePath</span> = <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a> + <span class="r7 r">resourcePath</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(1);
+            }
+ 
+            <b>if</b> (<span class="r8 r">resourceDebugPath</span> != <b>null</b> &amp;&amp; <span class="r8 r">resourceDebugPath</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;~/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="r8 r">resourceDebugPath</span> = <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a> + <span class="r8 r">resourceDebugPath</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(1);
+            }
+ 
+            <b>return</b> <a href="#dfca779fb4bff8f4" class="i method">RegisterResource</a>(
+                <span class="r6 r">resourceType</span>,
+                <a href="#db4ee7c894ae0bb2" class="i method">GetResourceKey</a>(<span class="r7 r">resourcePath</span>, <span class="r8 r">resourceDebugPath</span>)).<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#7f2ff442ac966a55" class="i method">Define</a>(<span id="r9 rd" class="r9 r">d</span> =&gt; <span class="r9 r">d</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#ffad398b85f84887" class="i method">SetUrl</a>(<span class="r7 r">resourcePath</span>, <span class="r8 r">resourceDebugPath</span>));
+        }
+ 
+        <b>public void</b> <a id="a1c648c278e00638" href="R/a1c648c278e00638.html" target="n" data-glyph="72,1" class="i method">RegisterHeadScript</a>(<span class="t t">IHtmlContent</span> <span id="r10 rd" class="r10 r">script</span>)
+        {
+            <b>if</b> (<a href="#05799fcffd2ae940" class="i field">_headScripts</a> == <b>null</b>)
+            {
+                <a href="#05799fcffd2ae940" class="i field">_headScripts</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">IHtmlContent</span>&gt;();
+            }
+ 
+            <a href="#05799fcffd2ae940" class="i field">_headScripts</a>.<span class="i method">Add</span>(<span class="r10 r">script</span>);
+        }
+ 
+        <b>public void</b> <a id="ec1a2cd0bb5c63c5" href="R/ec1a2cd0bb5c63c5.html" target="n" data-glyph="72,1" class="i method">RegisterFootScript</a>(<span class="t t">IHtmlContent</span> <span id="r11 rd" class="r11 r">script</span>)
+        {
+            <b>if</b> (<a href="#5266528f7d505794" class="i field">_footScripts</a> == <b>null</b>)
+            {
+                <a href="#5266528f7d505794" class="i field">_footScripts</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">IHtmlContent</span>&gt;();
+            }
+ 
+            <a href="#5266528f7d505794" class="i field">_footScripts</a>.<span class="i method">Add</span>(<span class="r11 r">script</span>);
+        }
+ 
+        <b>public void</b> <a id="2c2aa86b4db0ce76" href="R/2c2aa86b4db0ce76.html" target="n" data-glyph="72,1" class="i method">RegisterStyle</a>(<span class="t t">IHtmlContent</span> <span id="r12 rd" class="r12 r">style</span>)
+        {
+            <b>if</b> (<a href="#8cd90b9f3251c773" class="i field">_styles</a> == <b>null</b>)
+            {
+                <a href="#8cd90b9f3251c773" class="i field">_styles</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">IHtmlContent</span>&gt;();
+            }
+ 
+            <a href="#8cd90b9f3251c773" class="i field">_styles</a>.<span class="i method">Add</span>(<span class="r12 r">style</span>);
+        }
+ 
+        <b>public void</b> <a id="7a509ae2e6103e43" href="R/7a509ae2e6103e43.html" target="n" data-glyph="72,1" class="i method">NotRequired</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r13 rd" class="r13 r">resourceType</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">resourceName</span>)
+        {
+            <b>if</b> (<span class="r13 r">resourceType</span> == <b>null</b>)
+            {
+                <a href="#3ef85908f7f6c274" class="i method">ThrowArgumentNullException</a>(<b>nameof</b>(<span class="r13 r">resourceType</span>));
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r14 r">resourceName</span> == <b>null</b>)
+            {
+                <a href="#3ef85908f7f6c274" class="i method">ThrowArgumentNullException</a>(<b>nameof</b>(<span class="r14 r">resourceName</span>));
+                <b>return</b>;
+            }
+ 
+            <a href="#1a5927becb45f246" class="k">var</a> <span id="r15 rd" class="r15 r">key</span> = <b>new</b> <a href="#b2fee8065cf2b61e" class="t constructor">ResourceTypeName</a>(<span class="r13 r">resourceType</span>, <span class="r14 r">resourceName</span>);
+            <a href="#bcbb021089a680df" class="i field">_builtResources</a>[<span class="r13 r">resourceType</span>] = <b>null</b>;
+            <a href="#5cde9e4875b61b71" class="i field">_required</a>.<span class="i method">Remove</span>(<span class="r15 r">key</span>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="t t">ResourceDefinition</a> <a id="aaf0570b77c8543a" href="R/aaf0570b77c8543a.html" target="n" data-glyph="72,1" class="i method">FindResource</a>(<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <span id="r16 rd" class="r16 r">settings</span>)
+        {
+            <b>return</b> <a href="#d96c04d73775b3e9" class="i method">FindResource</a>(<span class="r16 r">settings</span>, <b>true</b>);
+        }
+ 
+        <b>private</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="t t">ResourceDefinition</a> <a id="d96c04d73775b3e9" href="R/d96c04d73775b3e9.html" target="n" data-glyph="76,1" class="i method">FindResource</a>(<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <span id="r17 rd" class="r17 r">settings</span>, <b>bool</b> <span id="r18 rd" class="r18 r">resolveInlineDefinitions</span>)
+        {
+            <span class="c">// find the resource with the given type and name</span>
+            <span class="c">// that has at least the given version number. If multiple,</span>
+            <span class="c">// return the resource with the greatest version number.</span>
+            <span class="c">// If not found and an inlineDefinition is given, define the resource on the fly</span>
+            <span class="c">// using the action.</span>
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">name</span> = <span class="r17 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a> ?? <span class="s">&quot;&quot;</span>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">type</span> = <span class="r17 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fb0100c588fcde48" class="i property">Type</a>;
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r21 rd" class="r21 r">stream</span> = <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c22092e70c64d0cb" class="i property">ResourceManifests</a>.<span class="i method">SelectMany</span>(<span id="r22 rd" class="r22 r">x</span> =&gt; <span class="r22 r">x</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c508e1d6a4ffef3d" class="i method">GetResources</a>(<span class="r20 r">type</span>));
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="k">var</a> <span id="r23 rd" class="r23 r">resource</span> = <a href="#22b6c927428d84f5" class="i method">FindMatchingResource</a>(<span class="r21 r">stream</span>, <span class="r17 r">settings</span>, <span class="r19 r">name</span>);
+ 
+            <b>if</b> (<span class="r23 r">resource</span> == <b>null</b> &amp;&amp; <a href="#5c358c5d1d5cde6a" class="i field">_dynamicManifest</a> != <b>null</b>)
+            {
+                <span class="r21 r">stream</span> = <a href="#5c358c5d1d5cde6a" class="i field">_dynamicManifest</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c508e1d6a4ffef3d" class="i method">GetResources</a>(<span class="r20 r">type</span>);
+                <span class="r23 r">resource</span> = <a href="#22b6c927428d84f5" class="i method">FindMatchingResource</a>(<span class="r21 r">stream</span>, <span class="r17 r">settings</span>, <span class="r19 r">name</span>);
+            }
+ 
+            <b>if</b> (<span class="r18 r">resolveInlineDefinitions</span> &amp;&amp; <span class="r23 r">resource</span> == <b>null</b>)
+            {
+                <span class="c">// Does not seem to exist, but it&#39;s possible it is being</span>
+                <span class="c">// defined by a Define() from a RequireSettings somewhere.</span>
+                <b>if</b> (<a href="#4463dab6bc4a0aca" class="i method">ResolveInlineDefinitions</a>(<span class="r17 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fb0100c588fcde48" class="i property">Type</a>))
+                {
+                    <span class="c">// if any were defined, now try to find it</span>
+                    <span class="r23 r">resource</span> = <a href="#d96c04d73775b3e9" class="i method">FindResource</a>(<span class="r17 r">settings</span>, <b>false</b>);
+                }
+            }
+ 
+            <b>return</b> <span class="r23 r">resource</span>;
+        }
+ 
+        <b>private</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="t t">ResourceDefinition</a> <a id="22b6c927428d84f5" href="R/22b6c927428d84f5.html" target="n" data-glyph="76,1" class="i method">FindMatchingResource</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="t t">ResourceDefinition</a>&gt;&gt;&gt; <span id="r24 rd" class="r24 r">stream</span>,
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <span id="r25 rd" class="r25 r">settings</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">name</span>)
+        {
+            <a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="t t">Version</a> <span id="r27 rd" class="r27 r">lower</span> = <b>null</b>;
+            <a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="t t">Version</a> <span id="r28 rd" class="r28 r">upper</span> = <b>null</b>;
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r25 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2b901f0e7a8c7c73" class="i property">Version</a>))
+            {
+                <span class="c">// Specific version, filter</span>
+                <span class="r27 r">lower</span> = <a href="#ad79de2083f122cf" class="i method">GetLowerBoundVersion</a>(<span class="r25 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2b901f0e7a8c7c73" class="i property">Version</a>);
+                <span class="r28 r">upper</span> = <a href="#e4f5d5029beeb03e" class="i method">GetUpperBoundVersion</a>(<span class="r25 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2b901f0e7a8c7c73" class="i property">Version</a>);
+            }
+ 
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="t t">ResourceDefinition</a> <span id="r29 rd" class="r29 r">resource</span> = <b>null</b>;
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r30 rd" class="r30 r">r</span> <b>in</b> <span class="r24 r">stream</span>)
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r30 r">r</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r26 r">name</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="k">var</a> <span id="r31 rd" class="r31 r">resourceDefinition</span> <b>in</b> <span class="r30 r">r</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>)
+                    {
+                        <a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="k">var</a> <span id="r32 rd" class="r32 r">version</span> = <span class="r31 r">resourceDefinition</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#69a28185ceb8c158" class="i property">Version</a> != <b>null</b>
+                            ? <b>new</b> <a href="@1@System.Runtime/A.html#e921b72635f039bd" class="t constructor">Version</a>(<span class="r31 r">resourceDefinition</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#69a28185ceb8c158" class="i property">Version</a>)
+                            : <b>null</b>;
+ 
+                        <b>if</b> (<span class="r27 r">lower</span> != <b>null</b>)
+                        {
+                            <b>if</b> (<span class="r27 r">lower</span> &gt; <span class="r32 r">version</span> || <span class="r32 r">version</span> &gt;= <span class="r28 r">upper</span>)
+                            {
+                                <b>continue</b>;
+                            }
+                        }
+ 
+                        <span class="c">// Use the highest version of all matches</span>
+                        <b>if</b> (<span class="r29 r">resource</span> == <b>null</b>
+                            || (<span class="r31 r">resourceDefinition</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#69a28185ceb8c158" class="i property">Version</a> != <b>null</b> &amp;&amp; <b>new</b> <a href="@1@System.Runtime/A.html#e921b72635f039bd" class="t constructor">Version</a>(<span class="r29 r">resource</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#69a28185ceb8c158" class="i property">Version</a>) &lt; <span class="r32 r">version</span>))
+                        {
+                            <span class="r29 r">resource</span> = <span class="r31 r">resourceDefinition</span>;
+                        }
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="r29 r">resource</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the upper bound value of a required version number.</span>
+        <span class="c">///</span><span class="c"> For instance, 3.1.0 returns 3.1.1, 4 returns 5.0.0, 6.1 returns 6.2.0</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="t t">Version</a> <a id="e4f5d5029beeb03e" href="R/e4f5d5029beeb03e.html" target="n" data-glyph="76,1" class="i method">GetUpperBoundVersion</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r33 rd" class="r33 r">minimumVersion</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="t t">Version</a>.<a href="@1@System.Runtime/A.html#00fd15e77bfb238b" class="i method">TryParse</a>(<span class="r33 r">minimumVersion</span>, <b>out</b> <a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="k">var</a> <span id="r34 rd" class="r34 r">version</span>))
+            {
+                <span class="c">// Is is a single number?</span>
+                <b>if</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="t t">Int32</a>.<a href="@1@System.Runtime/A.html#325507e509229dbc" class="i method">TryParse</a>(<span class="r33 r">minimumVersion</span>, <b>out</b> <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r35 rd" class="r35 r">major</span>))
+                {
+                    <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#eba6bb0c5e0acaff" class="t constructor">Version</a>(<span class="r35 r">major</span> + 1, 0, 0);
+                }
+            }
+ 
+            <b>if</b> (<span class="r34 r">version</span>.<a href="@1@System.Runtime/A.html#6a32db903b116f10" class="i property">Build</a> != -1)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#eba6bb0c5e0acaff" class="t constructor">Version</a>(<span class="r34 r">version</span>.<a href="@1@System.Runtime/A.html#22e3177b6b55f6bc" class="i property">Major</a>, <span class="r34 r">version</span>.<a href="@1@System.Runtime/A.html#a09c5fdb7ad8b87d" class="i property">Minor</a>, <span class="r34 r">version</span>.<a href="@1@System.Runtime/A.html#6a32db903b116f10" class="i property">Build</a> + 1);
+            }
+ 
+            <b>if</b> (<span class="r34 r">version</span>.<a href="@1@System.Runtime/A.html#a09c5fdb7ad8b87d" class="i property">Minor</a> != -1)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#eba6bb0c5e0acaff" class="t constructor">Version</a>(<span class="r34 r">version</span>.<a href="@1@System.Runtime/A.html#22e3177b6b55f6bc" class="i property">Major</a>, <span class="r34 r">version</span>.<a href="@1@System.Runtime/A.html#a09c5fdb7ad8b87d" class="i property">Minor</a> + 1, 0);
+            }
+ 
+            <b>return</b> <span class="r34 r">version</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the lower bound value of a required version number.</span>
+        <span class="c">///</span><span class="c"> For instance, 3.1.0 returns 3.1.0, 4 returns 4.0.0, 6.1 returns 6.1.0</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="t t">Version</a> <a id="ad79de2083f122cf" href="R/ad79de2083f122cf.html" target="n" data-glyph="76,1" class="i method">GetLowerBoundVersion</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r36 rd" class="r36 r">minimumVersion</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="t t">Version</a>.<a href="@1@System.Runtime/A.html#00fd15e77bfb238b" class="i method">TryParse</a>(<span class="r36 r">minimumVersion</span>, <b>out</b> <a href="@1@System.Runtime/A.html#0c15515dfe051d35" class="k">var</a> <span id="r37 rd" class="r37 r">version</span>))
+            {
+                <span class="c">// Is is a single number?</span>
+                <b>if</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="t t">Int32</a>.<a href="@1@System.Runtime/A.html#325507e509229dbc" class="i method">TryParse</a>(<span class="r36 r">minimumVersion</span>, <b>out</b> <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r38 rd" class="r38 r">major</span>))
+                {
+                    <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#eba6bb0c5e0acaff" class="t constructor">Version</a>(<span class="r38 r">major</span>, 0, 0);
+                }
+            }
+ 
+            <b>return</b> <span class="r37 r">version</span>;
+        }
+ 
+        <b>private bool</b> <a id="4463dab6bc4a0aca" href="R/4463dab6bc4a0aca.html" target="n" data-glyph="76,1" class="i method">ResolveInlineDefinitions</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r39 rd" class="r39 r">resourceType</span>)
+        {
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r40 rd" class="r40 r">anyWereDefined</span> = <b>false</b>;
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="k">var</a> <span id="r41 rd" class="r41 r">settings</span> <b>in</b> <a href="#aa06f4a679f96642" class="i method">ResolveRequiredResources</a>(<span class="r39 r">resourceType</span>))
+            {
+                <b>if</b> (<span class="r41 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#64263a00f132cf5e" class="i property">InlineDefinition</a> == <b>null</b>)
+                {
+                    <b>continue</b>;
+                }
+ 
+                <span class="c">// defining it on the fly</span>
+                <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="k">var</a> <span id="r42 rd" class="r42 r">resource</span> = <a href="#d96c04d73775b3e9" class="i method">FindResource</a>(<span class="r41 r">settings</span>, <b>false</b>);
+                <b>if</b> (<span class="r42 r">resource</span> == <b>null</b>)
+                {
+                    <span class="c">// does not already exist, so define it</span>
+                    <span class="r42 r">resource</span> = <a href="#0cb8be2ffdaeef63" class="i property">InlineManifest</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#d6428163e5cd6b51" class="i method">DefineResource</a>(<span class="r39 r">resourceType</span>, <span class="r41 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a>).<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#6cb37814e2ab86cd" class="i method">SetBasePath</a>(<span class="r41 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#9ff301dbe93df8a6" class="i property">BasePath</a>);
+                    <span class="r40 r">anyWereDefined</span> = <b>true</b>;
+                }
+                <span class="r41 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#64263a00f132cf5e" class="i property">InlineDefinition</a>(<span class="r42 r">resource</span>);
+                <span class="r41 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#64263a00f132cf5e" class="i property">InlineDefinition</a> = <b>null</b>;
+            }
+            <b>return</b> <span class="r40 r">anyWereDefined</span>;
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>&gt; <a id="aa06f4a679f96642" href="R/aa06f4a679f96642.html" target="n" data-glyph="76,1" class="i method">ResolveRequiredResources</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r43 rd" class="r43 r">resourceType</span>)
+        {
+            <b>foreach</b> (<b>var</b> (<span id="r44 rd" class="r44 r">key</span>, <span id="r45 rd" class="r45 r">value</span>) <b>in</b> <a href="#5cde9e4875b61b71" class="i field">_required</a>)
+            {
+                <b>if</b> (<span class="r44 r">key</span>.<a href="#7bc4526df4cdbb30" class="i field">Type</a> == <span class="r43 r">resourceType</span>)
+                {
+                    <b>yield</b> <b>return</b> <span class="r45 r">value</span>;
+                }
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1c76df8666805cdd" class="t t">LinkEntry</a>&gt; <a id="3239c43e04a61b2d" href="R/3239c43e04a61b2d.html" target="n" data-glyph="72,1" class="i method">GetRegisteredLinks</a>() =&gt; <a href="#49c7ea0b8c85efe9" class="i method">DoGetRegisteredLinks</a>();
+ 
+        <b>private</b> <span class="t t">List</span>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1c76df8666805cdd" class="t t">LinkEntry</a>&gt; <a id="49c7ea0b8c85efe9" href="R/49c7ea0b8c85efe9.html" target="n" data-glyph="76,1" class="i method">DoGetRegisteredLinks</a>()
+        {
+            <b>return</b> <a href="#f34779854031fa86" class="i field">_links</a> ?? <a href="#cf669be200ff844b" class="t t">EmptyList</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1c76df8666805cdd" class="t t">LinkEntry</a>&gt;.<a href="#048c70a812b7554b" class="i field">Instance</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a>&gt; <a id="1e9608893552e7eb" href="R/1e9608893552e7eb.html" target="n" data-glyph="72,1" class="i method">GetRegisteredMetas</a>() =&gt; <a href="#f9b951d2e774b1e2" class="i method">DoGetRegisteredMetas</a>();
+ 
+        <b>private</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a>&gt;.<span class="t t">ValueCollection</span> <a id="f9b951d2e774b1e2" href="R/f9b951d2e774b1e2.html" target="n" data-glyph="76,1" class="i method">DoGetRegisteredMetas</a>()
+        {
+            <b>return</b> <a href="#1463f966d260a055" class="i field">_metas</a>?.<span class="i property">Values</span> ?? <a href="#e9dcdb80f8584fa3" class="t t">EmptyValueCollection</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a>&gt;.<a href="#c728ed7d52db904d" class="i field">Instance</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="c37ec8f121ed76a6" href="R/c37ec8f121ed76a6.html" target="n" data-glyph="72,1" class="i method">GetRegisteredHeadScripts</a>() =&gt; <a href="#5c8c88a00281854a" class="i method">DoGetRegisteredHeadScripts</a>();
+ 
+        <b>public</b> <span class="t t">List</span>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="5c8c88a00281854a" href="R/5c8c88a00281854a.html" target="n" data-glyph="72,1" class="i method">DoGetRegisteredHeadScripts</a>()
+        {
+            <b>return</b> <a href="#05799fcffd2ae940" class="i field">_headScripts</a> ?? <a href="#cf669be200ff844b" class="t t">EmptyList</a>&lt;<span class="t t">IHtmlContent</span>&gt;.<a href="#048c70a812b7554b" class="i field">Instance</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="41d2328e2723baeb" href="R/41d2328e2723baeb.html" target="n" data-glyph="72,1" class="i method">GetRegisteredFootScripts</a>() =&gt; <a href="#f14efea24318e3f0" class="i method">DoGetRegisteredFootScripts</a>();
+ 
+        <b>public</b> <span class="t t">List</span>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="f14efea24318e3f0" href="R/f14efea24318e3f0.html" target="n" data-glyph="72,1" class="i method">DoGetRegisteredFootScripts</a>()
+        {
+            <b>return</b> <a href="#5266528f7d505794" class="i field">_footScripts</a> ?? <a href="#cf669be200ff844b" class="t t">EmptyList</a>&lt;<span class="t t">IHtmlContent</span>&gt;.<a href="#048c70a812b7554b" class="i field">Instance</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="eec6f3a6b85afb0a" href="R/eec6f3a6b85afb0a.html" target="n" data-glyph="72,1" class="i method">GetRegisteredStyles</a>() =&gt; <a href="#7d6a7f441cf138bd" class="i method">DoGetRegisteredStyles</a>();
+ 
+        <b>public</b> <span class="t t">List</span>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="7d6a7f441cf138bd" href="R/7d6a7f441cf138bd.html" target="n" data-glyph="72,1" class="i method">DoGetRegisteredStyles</a>()
+        {
+            <b>return</b> <a href="#8cd90b9f3251c773" class="i field">_styles</a> ?? <a href="#cf669be200ff844b" class="t t">EmptyList</a>&lt;<span class="t t">IHtmlContent</span>&gt;.<a href="#048c70a812b7554b" class="i field">Instance</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="t t">ResourceRequiredContext</a>&gt; <a id="86e0b3f9dee7a446" href="R/86e0b3f9dee7a446.html" target="n" data-glyph="72,1" class="i method">GetRequiredResources</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r46 rd" class="r46 r">resourceType</span>)
+            =&gt; <a href="#3830a4a0599d3255" class="i method">DoGetRequiredResources</a>(<span class="r46 r">resourceType</span>);
+ 
+        <b>private</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="t t">ResourceRequiredContext</a>[] <a id="3830a4a0599d3255" href="R/3830a4a0599d3255.html" target="n" data-glyph="76,1" class="i method">DoGetRequiredResources</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r47 rd" class="r47 r">resourceType</span>)
+        {
+            <b>if</b> (<a href="#bcbb021089a680df" class="i field">_builtResources</a>.<span class="i method">TryGetValue</span>(<span class="r47 r">resourceType</span>, <b>out</b> <b>var</b> <span id="r48 rd" class="r48 r">requiredResources</span>) &amp;&amp; <span class="r48 r">requiredResources</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="r48 r">requiredResources</span>;
+            }
+ 
+            <a href="ResourceDictionary.cs.html#7067a3fac608f0da" class="k">var</a> <span id="r49 rd" class="r49 r">allResources</span> = <b>new</b> <a href="ResourceDictionary.cs.html#7067a3fac608f0da" class="t constructor">ResourceDictionary</a>();
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="k">var</a> <span id="r50 rd" class="r50 r">settings</span> <b>in</b> <a href="#aa06f4a679f96642" class="i method">ResolveRequiredResources</a>(<span class="r47 r">resourceType</span>))
+            {
+                <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="k">var</a> <span id="r51 rd" class="r51 r">resource</span> = <a href="#aaf0570b77c8543a" class="i method">FindResource</a>(<span class="r50 r">settings</span>);
+                <b>if</b> (<span class="r51 r">resource</span> == <b>null</b>)
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">Could not find a resource of type &#39;</span>{<span class="r50 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fb0100c588fcde48" class="i property">Type</a>}<span class="s">&#39; named &#39;</span>{<span class="r50 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a>}<span class="s">&#39; with version &#39;</span>{<span class="r50 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2b901f0e7a8c7c73" class="i property">Version</a> ?? <span class="s">&quot;any&quot;</span>}<span class="s">&#39;.</span><span class="s">&quot;</span>);
+                }
+ 
+                <a href="#03f9b3c2962dc267" class="i method">ExpandDependencies</a>(<span class="r51 r">resource</span>, <span class="r50 r">settings</span>, <span class="r49 r">allResources</span>);
+            }
+ 
+            <span class="r48 r">requiredResources</span> = <b>new</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="t t">ResourceRequiredContext</a>[<span class="r49 r">allResources</span>.<span class="i property">Count</span>];
+            <b>int</b> <span id="r52 rd" class="r52 r">i</span>, <span id="r53 rd" class="r53 r">first</span> = 0, <span id="r54 rd" class="r54 r">byDependency</span> = <span class="r49 r">allResources</span>.<a href="ResourceDictionary.cs.html#c0d259cd20ebdda0" class="i property">FirstCount</a>, <span id="r55 rd" class="r55 r">last</span> = <span class="r49 r">allResources</span>.<span class="i property">Count</span> - <span class="r49 r">allResources</span>.<a href="ResourceDictionary.cs.html#065f267de2c5f825" class="i property">LastCount</a>;
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#bc17973c0d3568e6" class="t t">DictionaryEntry</a> <span id="r56 rd" class="r56 r">entry</span> <b>in</b> <span class="r49 r">allResources</span>)
+            {
+                <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="k">var</a> <span id="r57 rd" class="r57 r">settings</span> = (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>)<span class="r56 r">entry</span>.<a href="@1@System.Runtime/A.html#63e5445c29844588" class="i property">Value</a>;
+                <b>if</b> (<span class="r57 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#17147914b7f7bbf0" class="i property">Position</a> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#bd7e9d0129fddeae" class="t t">ResourcePosition</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fe67967e50039daf" class="i field">First</a>)
+                {
+                    <span class="r52 r">i</span> = <span class="r53 r">first</span>++;
+                }
+                <b>else</b> <b>if</b> (<span class="r57 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#17147914b7f7bbf0" class="i property">Position</a> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#bd7e9d0129fddeae" class="t t">ResourcePosition</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#5b09222fe09d8378" class="i field">Last</a>)
+                {
+                    <span class="r52 r">i</span> = <span class="r55 r">last</span>++;
+                }
+                <b>else</b>
+                {
+                    <span class="r52 r">i</span> = <span class="r54 r">byDependency</span>++;
+                }
+ 
+                <span class="r48 r">requiredResources</span>[<span class="r52 r">i</span>] = <b>new</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="t constructor">ResourceRequiredContext</a>
+                {
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a> = <span class="r57 r">settings</span>,
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#e8da392c0e527d78" class="i property">Resource</a> = (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="t t">ResourceDefinition</a>)<span class="r56 r">entry</span>.<a href="@1@System.Runtime/A.html#e1f68d163a367e29" class="i property">Key</a>,
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#599551464c7c602a" class="i property">FileVersionProvider</a> = <a href="#b7f2acad80057e2a" class="i field">_fileVersionProvider</a>
+                };
+            }
+ 
+            <b>return</b> <a href="#bcbb021089a680df" class="i field">_builtResources</a>[<span class="r47 r">resourceType</span>] = <span class="r48 r">requiredResources</span>;
+        }
+ 
+        <b>protected virtual void</b> <a id="03f9b3c2962dc267" href="R/03f9b3c2962dc267.html" target="n" data-glyph="75,1" class="i method">ExpandDependencies</a>(
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="t t">ResourceDefinition</a> <span id="r58 rd" class="r58 r">resource</span>,
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <span id="r59 rd" class="r59 r">settings</span>,
+            <a href="ResourceDictionary.cs.html#7067a3fac608f0da" class="t t">ResourceDictionary</a> <span id="r60 rd" class="r60 r">allResources</span>)
+        {
+            <b>if</b> (<span class="r58 r">resource</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="r60 r">allResources</span>.<a href="ResourceDictionary.cs.html#6305979bf501a9d3" class="i method">AddExpandingResource</a>(<span class="r58 r">resource</span>, <span class="r59 r">settings</span>);
+ 
+            <span class="c">// Use any additional dependencies from the settings without mutating the resource that is held in a singleton collection.</span>
+            <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r61 rd" class="r61 r">dependencies</span> = <b>null</b>;
+            <b>if</b> (<span class="r58 r">resource</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#eba63708c1e88b1a" class="i property">Dependencies</a> != <b>null</b>)
+            {
+                <span class="r61 r">dependencies</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r58 r">resource</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#eba63708c1e88b1a" class="i property">Dependencies</a>);
+                <b>if</b> (<span class="r59 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#b0592569e0f1d13f" class="i property">Dependencies</a> != <b>null</b>)
+                {
+                    <span class="r61 r">dependencies</span>.<span class="i method">AddRange</span>(<span class="r59 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#b0592569e0f1d13f" class="i property">Dependencies</a>);
+                }
+            }
+            <b>else</b> <b>if</b> (<span class="r59 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#b0592569e0f1d13f" class="i property">Dependencies</a> != <b>null</b>)
+            {
+                <span class="r61 r">dependencies</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r59 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#b0592569e0f1d13f" class="i property">Dependencies</a>);
+            }
+ 
+            <span class="c">// Settings is given so they can cascade down into dependencies. For example, if Foo depends on Bar, and Foo&#39;s required</span>
+            <span class="c">// location is Head, so too should Bar&#39;s location, similarly, if Foo is First positioned, Bar dependency should be too.</span>
+            <span class="c">//</span>
+            <span class="c">// forge the effective require settings for this resource</span>
+            <span class="c">// (1) If a require exists for the resource, combine with it. Last settings in gets preference for its specified values.</span>
+            <span class="c">// (2) If no require already exists, form a new settings object based on the given one but with its own type/name.</span>
+ 
+            <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="k">var</a> <span id="r62 rd" class="r62 r">dependencySettings</span> = (((<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a>)<span class="r60 r">allResources</span>[<span class="r58 r">resource</span>])
+                    ?.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#a25a7efcefeffef6" class="i method">NewAndCombine</a>(<span class="r59 r">settings</span>)
+                ?? <b>new</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#73f947facb4e522a" class="t constructor">RequireSettings</a>(<a href="#0867399574ae2bd0" class="i field">_options</a>)
+                {
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a> = <span class="r58 r">resource</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#90f5fbb970c78e10" class="i property">Name</a>,
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fb0100c588fcde48" class="i property">Type</a> = <span class="r58 r">resource</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8841b0719690739e" class="i property">Type</a>,
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#17147914b7f7bbf0" class="i property">Position</a> = <span class="r58 r">resource</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#3b145914484e2eb2" class="i property">Position</a>
+                }
+                    .<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#babc1ef0106b0fe4" class="i method">Combine</a>(<span class="r59 r">settings</span>))
+                    .<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#4823149e55c22822" class="i method">CombinePosition</a>(<span class="r59 r">settings</span>)
+                    ;
+ 
+            <b>if</b> (<span class="r61 r">dependencies</span> != <b>null</b>)
+            {
+                <span class="c">// share search instance</span>
+                <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="k">var</a> <span id="r63 rd" class="r63 r">tempSettings</span> = <b>new</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#cff0202a10058d7e" class="t constructor">RequireSettings</a>();
+ 
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r64 rd" class="r64 r">i</span> = 0; <span class="r64 r">i</span> &lt; <span class="r61 r">dependencies</span>.<span class="i property">Count</span>; <span class="r64 r">i</span>++)
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r65 rd" class="r65 r">d</span> = <span class="r61 r">dependencies</span>[<span class="r64 r">i</span>];
+                    <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r66 rd" class="r66 r">idx</span> = <span class="r65 r">d</span>.<a href="@1@System.Runtime/A.html#eb06d6d166f6a3d9" class="i method">IndexOf</a>(<span class="s">&#39;:&#39;</span>);
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r67 rd" class="r67 r">name</span> = <span class="r65 r">d</span>;
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r68 rd" class="r68 r">version</span> = <b>null</b>;
+                    <b>if</b> (<span class="r66 r">idx</span> != -1)
+                    {
+                        <span class="r67 r">name</span> = <span class="r65 r">d</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r66 r">idx</span>);
+                        <span class="r68 r">version</span> = <span class="r65 r">d</span>[(<span class="r66 r">idx</span> + 1)..];
+                    }
+ 
+                    <span class="r63 r">tempSettings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fb0100c588fcde48" class="i property">Type</a> = <span class="r58 r">resource</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8841b0719690739e" class="i property">Type</a>;
+                    <span class="r63 r">tempSettings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a> = <span class="r67 r">name</span>;
+                    <span class="r63 r">tempSettings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2b901f0e7a8c7c73" class="i property">Version</a> = <span class="r68 r">version</span>;
+ 
+                    <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8f421d31a4fa45dc" class="k">var</a> <span id="r69 rd" class="r69 r">dependency</span> = <a href="#aaf0570b77c8543a" class="i method">FindResource</a>(<span class="r63 r">tempSettings</span>);
+                    <b>if</b> (<span class="r69 r">dependency</span> == <b>null</b>)
+                    {
+                        <b>continue</b>;
+                    }
+ 
+                    <a href="#03f9b3c2962dc267" class="i method">ExpandDependencies</a>(<span class="r69 r">dependency</span>, <span class="r62 r">dependencySettings</span>, <span class="r60 r">allResources</span>);
+                }
+            }
+ 
+            <span class="r59 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#cf8062f333c256fb" class="i method">UpdatePositionFromDependency</a>(<span class="r62 r">dependencySettings</span>);
+            <span class="r60 r">allResources</span>.<a href="ResourceDictionary.cs.html#8ad944e32e64b678" class="i method">AddExpandedResource</a>(<span class="r58 r">resource</span>, <span class="r62 r">dependencySettings</span>);
+        }
+ 
+        <b>public void</b> <a id="9745cf0d1638228a" href="R/9745cf0d1638228a.html" target="n" data-glyph="72,1" class="i method">RegisterLink</a>(<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1c76df8666805cdd" class="t t">LinkEntry</a> <span id="r70 rd" class="r70 r">link</span>)
+        {
+            <b>if</b> (<a href="#f34779854031fa86" class="i field">_links</a> == <b>null</b>)
+            {
+                <a href="#f34779854031fa86" class="i field">_links</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1c76df8666805cdd" class="t t">LinkEntry</a>&gt;();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r71 rd" class="r71 r">href</span> = <span class="r70 r">link</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#412f3fb2cab81914" class="i property">Href</a>;
+ 
+            <b>if</b> (<span class="r71 r">href</span> != <b>null</b> &amp;&amp; <span class="r71 r">href</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;~/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="r70 r">link</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#412f3fb2cab81914" class="i property">Href</a> = <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a> + <span class="r71 r">href</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(1);
+            }
+ 
+            <b>if</b> (<span class="r70 r">link</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2fd6f95228b5a5b7" class="i property">AppendVersion</a>)
+            {
+                <span class="r70 r">link</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#412f3fb2cab81914" class="i property">Href</a> = <a href="#b7f2acad80057e2a" class="i field">_fileVersionProvider</a>.<span class="i method">AddFileVersionToPath</span>(<a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a>, <span class="r70 r">link</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#412f3fb2cab81914" class="i property">Href</a>);
+            }
+ 
+            <a href="#f34779854031fa86" class="i field">_links</a>.<span class="i method">Add</span>(<span class="r70 r">link</span>);
+        }
+ 
+        <b>public void</b> <a id="0704e808585cea8c" href="R/0704e808585cea8c.html" target="n" data-glyph="72,1" class="i method">RegisterMeta</a>(<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a> <span id="r72 rd" class="r72 r">meta</span>)
+        {
+            <b>if</b> (<span class="r72 r">meta</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<a href="#1463f966d260a055" class="i field">_metas</a> == <b>null</b>)
+            {
+                <a href="#1463f966d260a055" class="i field">_metas</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a>&gt;();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r73 rd" class="r73 r">index</span> = <span class="r72 r">meta</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#d0a2eeaf3c9e2b8c" class="i property">Name</a> ?? <span class="r72 r">meta</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#72a8d80d7917122f" class="i property">Property</a> ?? <span class="r72 r">meta</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#50edb1233b0662f9" class="i property">HttpEquiv</a> ?? <span class="s">&quot;charset&quot;</span>;
+ 
+            <a href="#1463f966d260a055" class="i field">_metas</a>[<span class="r73 r">index</span>] = <span class="r72 r">meta</span>;
+        }
+ 
+        <b>public void</b> <a id="1cefa2b361f0fc13" href="R/1cefa2b361f0fc13.html" target="n" data-glyph="72,1" class="i method">AppendMeta</a>(<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a> <span id="r74 rd" class="r74 r">meta</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r75 rd" class="r75 r">contentSeparator</span>)
+        {
+            <b>if</b> (<span class="r74 r">meta</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r76 rd" class="r76 r">index</span> = <span class="r74 r">meta</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#d0a2eeaf3c9e2b8c" class="i property">Name</a> ?? <span class="r74 r">meta</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#72a8d80d7917122f" class="i property">Property</a> ?? <span class="r74 r">meta</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#50edb1233b0662f9" class="i property">HttpEquiv</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r76 r">index</span>))
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<a href="#1463f966d260a055" class="i field">_metas</a> == <b>null</b>)
+            {
+                <a href="#1463f966d260a055" class="i field">_metas</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a>&gt;();
+            }
+ 
+            <b>if</b> (<a href="#1463f966d260a055" class="i field">_metas</a>.<span class="i method">TryGetValue</span>(<span class="r76 r">index</span>, <b>out</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="k">var</a> <span id="r77 rd" class="r77 r">existingMeta</span>))
+            {
+                <span class="r74 r">meta</span> = <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="t t">MetaEntry</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#cc5267f6b39b59e7" class="i method">Combine</a>(<span class="r77 r">existingMeta</span>, <span class="r74 r">meta</span>, <span class="r75 r">contentSeparator</span>);
+            }
+ 
+            <a href="#1463f966d260a055" class="i field">_metas</a>[<span class="r76 r">index</span>] = <span class="r74 r">meta</span>;
+        }
+ 
+        <b>public void</b> <a id="ec5d3775ee9203c1" href="R/ec5d3775ee9203c1.html" target="n" data-glyph="72,1" class="i method">RenderMeta</a>(<a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r78 rd" class="r78 r">writer</span>)
+        {
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r79 rd" class="r79 r">first</span> = <b>true</b>;
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#941f2a3649c2e8ac" class="k">var</a> <span id="r80 rd" class="r80 r">meta</span> <b>in</b> <a href="#f9b951d2e774b1e2" class="i method">DoGetRegisteredMetas</a>())
+            {
+                <b>if</b> (!<span class="r79 r">first</span>)
+                {
+                    <span class="r78 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r79 r">first</span> = <b>false</b>;
+ 
+                <span class="r80 r">meta</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1ad7a83daa19dda7" class="i method">GetTag</a>().<span class="i method">WriteTo</span>(<span class="r78 r">writer</span>, <span class="t t">NullHtmlEncoder</span>.<span class="i property">Default</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="606b354c944e2c72" href="R/606b354c944e2c72.html" target="n" data-glyph="72,1" class="i method">RenderHeadLink</a>(<a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r81 rd" class="r81 r">writer</span>)
+        {
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r82 rd" class="r82 r">first</span> = <b>true</b>;
+ 
+            <b>var</b> <span id="r83 rd" class="r83 r">registeredLinks</span> = <a href="#49c7ea0b8c85efe9" class="i method">DoGetRegisteredLinks</a>();
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r84 rd" class="r84 r">i</span> = 0; <span class="r84 r">i</span> &lt; <span class="r83 r">registeredLinks</span>.<span class="i property">Count</span>; <span class="r84 r">i</span>++)
+            {
+                <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1c76df8666805cdd" class="k">var</a> <span id="r85 rd" class="r85 r">link</span> = <span class="r83 r">registeredLinks</span>[<span class="r84 r">i</span>];
+                <b>if</b> (!<span class="r82 r">first</span>)
+                {
+                    <span class="r81 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r82 r">first</span> = <b>false</b>;
+ 
+                <span class="r85 r">link</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#b6a5177897355b5b" class="i method">GetTag</a>().<span class="i method">WriteTo</span>(<span class="r81 r">writer</span>, <span class="t t">NullHtmlEncoder</span>.<span class="i property">Default</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="53aa9898c78c01d7" href="R/53aa9898c78c01d7.html" target="n" data-glyph="72,1" class="i method">RenderStylesheet</a>(<a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r86 rd" class="r86 r">writer</span>)
+        {
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r87 rd" class="r87 r">first</span> = <b>true</b>;
+ 
+            <b>var</b> <span id="r88 rd" class="r88 r">styleSheets</span> = <a href="#3830a4a0599d3255" class="i method">DoGetRequiredResources</a>(<span class="s">&quot;stylesheet&quot;</span>);
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="k">var</a> <span id="r89 rd" class="r89 r">context</span> <b>in</b> <span class="r88 r">styleSheets</span>)
+            {
+                <b>if</b> (<span class="r89 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#ffe2ecffb8eb3f4a" class="i property">Location</a> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#6b18792e2713ad01" class="i field">Inline</a>)
+                {
+                    <b>continue</b>;
+                }
+ 
+                <b>if</b> (!<span class="r87 r">first</span>)
+                {
+                    <span class="r86 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r87 r">first</span> = <b>false</b>;
+ 
+                <span class="r89 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c38db78622d4ecaf" class="i method">WriteTo</a>(<span class="r86 r">writer</span>, <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a>);
+            }
+ 
+            <b>var</b> <span id="r90 rd" class="r90 r">registeredStyles</span> = <a href="#7d6a7f441cf138bd" class="i method">DoGetRegisteredStyles</a>();
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r91 rd" class="r91 r">i</span> = 0; <span class="r91 r">i</span> &lt; <span class="r90 r">registeredStyles</span>.<span class="i property">Count</span>; <span class="r91 r">i</span>++)
+            {
+                <b>var</b> <span id="r92 rd" class="r92 r">context</span> = <span class="r90 r">registeredStyles</span>[<span class="r91 r">i</span>];
+                <b>if</b> (!<span class="r87 r">first</span>)
+                {
+                    <span class="r86 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r87 r">first</span> = <b>false</b>;
+ 
+                <span class="r92 r">context</span>.<span class="i method">WriteTo</span>(<span class="r86 r">writer</span>, <span class="t t">NullHtmlEncoder</span>.<span class="i property">Default</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="75f3fee374e0bc09" href="R/75f3fee374e0bc09.html" target="n" data-glyph="72,1" class="i method">RenderHeadScript</a>(<a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r93 rd" class="r93 r">writer</span>)
+        {
+            <b>var</b> <span id="r94 rd" class="r94 r">headScripts</span> = <a href="#3830a4a0599d3255" class="i method">DoGetRequiredResources</a>(<span class="s">&quot;script&quot;</span>);
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r95 rd" class="r95 r">first</span> = <b>true</b>;
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="k">var</a> <span id="r96 rd" class="r96 r">context</span> <b>in</b> <span class="r94 r">headScripts</span>)
+            {
+                <b>if</b> (<span class="r96 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#ffe2ecffb8eb3f4a" class="i property">Location</a> != <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#fab83ca1dce6a15e" class="i field">Head</a>)
+                {
+                    <b>continue</b>;
+                }
+ 
+                <b>if</b> (!<span class="r95 r">first</span>)
+                {
+                    <span class="r93 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r95 r">first</span> = <b>false</b>;
+ 
+                <span class="r96 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c38db78622d4ecaf" class="i method">WriteTo</a>(<span class="r93 r">writer</span>, <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a>);
+            }
+ 
+            <b>var</b> <span id="r97 rd" class="r97 r">registeredHeadScripts</span> = <a href="#5c8c88a00281854a" class="i method">DoGetRegisteredHeadScripts</a>();
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r98 rd" class="r98 r">i</span> = 0; <span class="r98 r">i</span> &lt; <span class="r97 r">registeredHeadScripts</span>.<span class="i property">Count</span>; <span class="r98 r">i</span>++)
+            {
+                <b>var</b> <span id="r99 rd" class="r99 r">context</span> = <span class="r97 r">registeredHeadScripts</span>[<span class="r98 r">i</span>];
+                <b>if</b> (!<span class="r95 r">first</span>)
+                {
+                    <span class="r93 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r95 r">first</span> = <b>false</b>;
+ 
+                <span class="r99 r">context</span>.<span class="i method">WriteTo</span>(<span class="r93 r">writer</span>, <span class="t t">NullHtmlEncoder</span>.<span class="i property">Default</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="a0e714a98dc88740" href="R/a0e714a98dc88740.html" target="n" data-glyph="72,1" class="i method">RenderFootScript</a>(<a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r100 rd" class="r100 r">writer</span>)
+        {
+            <b>var</b> <span id="r101 rd" class="r101 r">footScripts</span> = <a href="#3830a4a0599d3255" class="i method">DoGetRequiredResources</a>(<span class="s">&quot;script&quot;</span>);
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r102 rd" class="r102 r">first</span> = <b>true</b>;
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="k">var</a> <span id="r103 rd" class="r103 r">context</span> <b>in</b> <span class="r101 r">footScripts</span>)
+            {
+                <b>if</b> (<span class="r103 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#ffe2ecffb8eb3f4a" class="i property">Location</a> != <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#1fc5b3515b530350" class="i field">Foot</a>)
+                {
+                    <b>continue</b>;
+                }
+ 
+                <b>if</b> (!<span class="r102 r">first</span>)
+                {
+                    <span class="r100 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r102 r">first</span> = <b>false</b>;
+ 
+                <span class="r103 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c38db78622d4ecaf" class="i method">WriteTo</a>(<span class="r100 r">writer</span>, <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a>);
+            }
+ 
+            <b>var</b> <span id="r104 rd" class="r104 r">registeredFootScripts</span> = <a href="#f14efea24318e3f0" class="i method">DoGetRegisteredFootScripts</a>();
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r105 rd" class="r105 r">i</span> = 0; <span class="r105 r">i</span> &lt; <span class="r104 r">registeredFootScripts</span>.<span class="i property">Count</span>; <span class="r105 r">i</span>++)
+            {
+                <b>var</b> <span id="r106 rd" class="r106 r">context</span> = <span class="r104 r">registeredFootScripts</span>[<span class="r105 r">i</span>];
+                <b>if</b> (!<span class="r102 r">first</span>)
+                {
+                    <span class="r100 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                }
+ 
+                <span class="r102 r">first</span> = <b>false</b>;
+ 
+                <span class="r106 r">context</span>.<span class="i method">WriteTo</span>(<span class="r100 r">writer</span>, <span class="t t">NullHtmlEncoder</span>.<span class="i property">Default</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="556073334bef6023" href="R/556073334bef6023.html" target="n" data-glyph="72,1" class="i method">RenderLocalScript</a>(<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <span id="r107 rd" class="r107 r">settings</span>, <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r108 rd" class="r108 r">writer</span>)
+        {
+            <b>var</b> <span id="r109 rd" class="r109 r">localScripts</span> = <a href="#3830a4a0599d3255" class="i method">DoGetRequiredResources</a>(<span class="s">&quot;script&quot;</span>);
+            <a href="#e718586cfdd5e6a3" class="i field">_localScripts</a> ??= <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r109 r">localScripts</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>);
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r110 rd" class="r110 r">first</span> = <b>true</b>;
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="k">var</a> <span id="r111 rd" class="r111 r">context</span> <b>in</b> <span class="r109 r">localScripts</span>)
+            {
+                <b>if</b> ((<span class="r111 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#ffe2ecffb8eb3f4a" class="i property">Location</a> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#197599fa26784a64" class="i field">Unspecified</a> || <span class="r111 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#ffe2ecffb8eb3f4a" class="i property">Location</a> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#6b18792e2713ad01" class="i field">Inline</a>) &amp;&amp;
+                    (<a href="#e718586cfdd5e6a3" class="i field">_localScripts</a>.<span class="i method">Add</span>(<span class="r111 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a>) || <span class="r111 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a> == <span class="r107 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a>))
+                {
+                    <b>if</b> (!<span class="r110 r">first</span>)
+                    {
+                        <span class="r108 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                    }
+ 
+                    <span class="r110 r">first</span> = <b>false</b>;
+ 
+                    <span class="r111 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c38db78622d4ecaf" class="i method">WriteTo</a>(<span class="r108 r">writer</span>, <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a>);
+                }
+            }
+        }
+ 
+        <b>public void</b> <a id="45da6fd088ac2269" href="R/45da6fd088ac2269.html" target="n" data-glyph="72,1" class="i method">RenderLocalStyle</a>(<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#f999e83e0f11e1c1" class="t t">RequireSettings</a> <span id="r112 rd" class="r112 r">settings</span>, <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r113 rd" class="r113 r">writer</span>)
+        {
+            <b>var</b> <span id="r114 rd" class="r114 r">localStyles</span> = <a href="#3830a4a0599d3255" class="i method">DoGetRequiredResources</a>(<span class="s">&quot;stylesheet&quot;</span>);
+            <a href="#41b968629f6182b9" class="i field">_localStyles</a> ??= <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r114 r">localStyles</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>);
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r115 rd" class="r115 r">first</span> = <b>true</b>;
+ 
+            <b>foreach</b> (<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#13b31f84cb6c533b" class="k">var</a> <span id="r116 rd" class="r116 r">context</span> <b>in</b> <span class="r114 r">localStyles</span>)
+            {
+                <b>if</b> (<span class="r116 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#ffe2ecffb8eb3f4a" class="i property">Location</a> == <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#28e3b8e608c79be5" class="t t">ResourceLocation</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#6b18792e2713ad01" class="i field">Inline</a> &amp;&amp;
+                    (<a href="#41b968629f6182b9" class="i field">_localStyles</a>.<span class="i method">Add</span>(<span class="r116 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a>) || <span class="r116 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#8981bfd57ef681c8" class="i property">Settings</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a> == <span class="r112 r">settings</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#2da852c350acd3e2" class="i property">Name</a>))
+                {
+                    <b>if</b> (!<span class="r115 r">first</span>)
+                    {
+                        <span class="r113 r">writer</span>.<a href="@1@System.Runtime/A.html#d3fb8ea93246e9a9" class="i method">Write</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>);
+                    }
+ 
+                    <span class="r115 r">first</span> = <b>false</b>;
+ 
+                    <span class="r116 r">context</span>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c38db78622d4ecaf" class="i method">WriteTo</a>(<span class="r113 r">writer</span>, <a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#c29270551ad3a5de" class="i property">ContentBasePath</a>);
+                }
+            }
+        }
+ 
+        <b>private readonly struct</b> <a id="1a5927becb45f246" href="R/1a5927becb45f246.html" target="n" data-glyph="112,1" class="t t"><span id="2122a2dc92f52f4a">ResourceTypeName</span></a> : <a href="@1@System.Runtime/A.html#91a17479daaada86" class="t t">IEquatable</a>&lt;<a href="#1a5927becb45f246" class="t t">ResourceTypeName</a>&gt;
+        {
+            <b>public readonly string</b> <a id="7bc4526df4cdbb30" href="R/7bc4526df4cdbb30.html" target="n" data-glyph="42,2" class="i field">Type</a>;
+            <b>public readonly string</b> <a id="fa19128a85136876" href="R/fa19128a85136876.html" target="n" data-glyph="42,2" class="i field">Name</a>;
+ 
+            <b>public</b> <a id="b2fee8065cf2b61e" href="R/b2fee8065cf2b61e.html" target="n" data-glyph="72,2" class="t constructor">ResourceTypeName</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r117 rd" class="r117 r">resourceType</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r118 rd" class="r118 r">resourceName</span>)
+            {
+                <a href="#7bc4526df4cdbb30" class="i field">Type</a> = <span class="r117 r">resourceType</span>;
+                <a href="#fa19128a85136876" class="i field">Name</a> = <span class="r118 r">resourceName</span>;
+            }
+ 
+            <b>public bool</b> <a id="22199ea8ee0fe8a9" href="R/22199ea8ee0fe8a9.html" target="n" data-glyph="72,2" class="i method">Equals</a>(<a href="#1a5927becb45f246" class="t t">ResourceTypeName</a> <span id="r119 rd" class="r119 r">other</span>)
+            {
+                <b>return</b> <a href="#7bc4526df4cdbb30" class="i field">Type</a> == <span class="r119 r">other</span>.<a href="#7bc4526df4cdbb30" class="i field">Type</a> &amp;&amp; <a href="#fa19128a85136876" class="i field">Name</a> == <span class="r119 r">other</span>.<a href="#fa19128a85136876" class="i field">Name</a>;
+            }
+ 
+            <b>public override int</b> <a id="1e9e1af1486c68fb" href="R/1e9e1af1486c68fb.html" target="n" data-glyph="72,2" class="i method">GetHashCode</a>()
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#5f9e3dc86db22de1" class="t t">HashCode</a>.<a href="@1@System.Runtime/A.html#e4f83f1fbff45fa5" class="i method">Combine</a>(<a href="#7bc4526df4cdbb30" class="i field">Type</a>, <a href="#fa19128a85136876" class="i field">Name</a>);
+            }
+ 
+            <b>public override string</b> <a id="1d07586d2574f355" href="R/1d07586d2574f355.html" target="n" data-glyph="72,2" class="i method">ToString</a>() =&gt; <span class="s">&quot;(&quot;</span> + <a href="#7bc4526df4cdbb30" class="i field">Type</a> + <span class="s">&quot;, &quot;</span> + <a href="#fa19128a85136876" class="i field">Name</a> + <span class="s">&quot;)&quot;</span>;
+        }
+ 
+        <b>private string</b> <a id="db4ee7c894ae0bb2" href="R/db4ee7c894ae0bb2.html" target="n" data-glyph="76,1" class="i method">GetResourceKey</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r120 rd" class="r120 r">releasePath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r121 rd" class="r121 r">debugPath</span>)
+        {
+            <b>if</b> (<a href="#0867399574ae2bd0" class="i field">_options</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#a951821da84d335e" class="i property">DebugMode</a> &amp;&amp; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r121 r">debugPath</span>))
+            {
+                <b>return</b> <span class="r121 r">debugPath</span>;
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="r120 r">releasePath</span>;
+            }
+        }
+ 
+        <b>private static class</b> <a id="cf669be200ff844b" href="R/cf669be200ff844b.html" target="n" data-glyph="4,1" class="t t">EmptyList</a>&lt;<span id="r122 rd t" class="r122 r t">T</span>&gt;
+        {
+            <b>public static readonly</b> <span class="t t">List</span>&lt;<span class="r122 r t">T</span>&gt; <a id="048c70a812b7554b" href="R/048c70a812b7554b.html" target="n" data-glyph="42,2" class="i field">Instance</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="r122 r t">T</span>&gt;();
+        }
+ 
+        <b>private static class</b> <a id="e9dcdb80f8584fa3" href="R/e9dcdb80f8584fa3.html" target="n" data-glyph="4,1" class="t t">EmptyValueCollection</a>&lt;<span id="r123 rd t" class="r123 r t">T</span>&gt;
+        {
+            <b>public static readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="r123 r t">T</span>&gt;.<span class="t t">ValueCollection</span> <a id="c728ed7d52db904d" href="R/c728ed7d52db904d.html" target="n" data-glyph="42,2" class="i field">Instance</a> = <b>new</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="r123 r t">T</span>&gt;.<span class="t constructor">ValueCollection</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="r123 r t">T</span>&gt;());
+        }
+ 
+        [<a href="@1@System.Runtime/A.html#b2f5af2558f436d5" class="t constructor">MethodImpl</a>(<a href="@1@System.Runtime/A.html#4159f5c528de6ee8" class="t t">MethodImplOptions</a>.<a href="@1@System.Runtime/A.html#f7d69d229fb17be2" class="i field">NoInlining</a>)]
+        <b>private static void</b> <a id="3ef85908f7f6c274" href="R/3ef85908f7f6c274.html" target="n" data-glyph="76,1" class="i method">ThrowArgumentNullException</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r124 rd" class="r124 r">paramName</span>)
+        {
+            <a href="#53daf448fe9ac691" class="i method">ThrowArgumentNullException</a>&lt;<b>object</b>&gt;(<span class="r124 r">paramName</span>);
+        }
+ 
+        [<a href="@1@System.Runtime/A.html#b2f5af2558f436d5" class="t constructor">MethodImpl</a>(<a href="@1@System.Runtime/A.html#4159f5c528de6ee8" class="t t">MethodImplOptions</a>.<a href="@1@System.Runtime/A.html#f7d69d229fb17be2" class="i field">NoInlining</a>)]
+        <b>private static</b> <span class="r125 r t">T</span> <a id="53daf448fe9ac691" href="R/53daf448fe9ac691.html" target="n" data-glyph="76,1" class="i method">ThrowArgumentNullException</a>&lt;<span id="r125 rd t" class="r125 r t">T</span>&gt;(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r126 rd" class="r126 r">paramName</span>)
+        {
+            <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<span class="r126 r">paramName</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

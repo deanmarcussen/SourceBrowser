@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html><head><title>ActivityController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(176);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Workflows/Controllers/ActivityController.cs" target="_top">Controllers\ActivityController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Workflows" target="_top">src\OrchardCore.Modules\OrchardCore.Workflows\OrchardCore.Workflows.csproj</a> (OrchardCore.Workflows)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Controllers</span>
+{
+    [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>]
+    <b>public class</b> <a id="1f5308896b723898" href="../R/1f5308896b723898.html" target="n" data-glyph="0,0" class="t t">ActivityController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="i">ISession</span> <a id="a0455b6de7119ace" href="../R/a0455b6de7119ace.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a3d5e2be1b2c78bb" class="t t">IActivityLibrary</a> <a id="ff63893cfb8cd3cf" href="../R/ff63893cfb8cd3cf.html" target="n" data-glyph="46,1" class="i field">_activityLibrary</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a> <a id="88d2099ba61b0c41" href="../R/88d2099ba61b0c41.html" target="n" data-glyph="46,1" class="i field">_workflowManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#bd816b2950e4707b" class="t t">IActivityIdGenerator</a> <a id="c00ee214fb7fd0e8" href="../R/c00ee214fb7fd0e8.html" target="n" data-glyph="46,1" class="i field">_activityIdGenerator</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="706cff8c44e1405b" href="../R/706cff8c44e1405b.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#42476d3d0ad8fc9e" class="t t">IActivityDisplayManager</a> <a id="0b37cc701facb4de" href="../R/0b37cc701facb4de.html" target="n" data-glyph="46,1" class="i field">_activityDisplayManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="178eafaf8d3b4a1d" href="../R/178eafaf8d3b4a1d.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="001d21192a648575" href="../R/001d21192a648575.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="95116d562b21abb5" href="../R/95116d562b21abb5.html" target="n" data-glyph="46,1" class="i field">H</a>;
+ 
+        <b>public</b> <a id="8df63deb94668b45" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ActivityController</a>
+        (
+            <span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#a3d5e2be1b2c78bb" class="t t">IActivityLibrary</a> <span id="r1 rd" class="r1 r">activityLibrary</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a> <span id="r2 rd" class="r2 r">workflowManager</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#bd816b2950e4707b" class="t t">IActivityIdGenerator</a> <span id="r3 rd" class="r3 r">activityIdGenerator</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r4 rd" class="r4 r">authorizationService</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#42476d3d0ad8fc9e" class="t t">IActivityDisplayManager</a> <span id="r5 rd" class="r5 r">activityDisplayManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r6 rd" class="r6 r">notifier</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#1f5308896b723898" class="t t">ActivityController</a>&gt; <span id="r7 rd" class="r7 r">h</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r8 rd" class="r8 r">updateModelAccessor</span>)
+        {
+            <a href="#a0455b6de7119ace" class="i field">_session</a> = <span class="r0 r">session</span>;
+            <a href="#ff63893cfb8cd3cf" class="i field">_activityLibrary</a> = <span class="r1 r">activityLibrary</span>;
+            <a href="#88d2099ba61b0c41" class="i field">_workflowManager</a> = <span class="r2 r">workflowManager</span>;
+            <a href="#c00ee214fb7fd0e8" class="i field">_activityIdGenerator</a> = <span class="r3 r">activityIdGenerator</span>;
+            <a href="#706cff8c44e1405b" class="i field">_authorizationService</a> = <span class="r4 r">authorizationService</span>;
+            <a href="#0b37cc701facb4de" class="i field">_activityDisplayManager</a> = <span class="r5 r">activityDisplayManager</span>;
+            <a href="#178eafaf8d3b4a1d" class="i field">_notifier</a> = <span class="r6 r">notifier</span>;
+            <a href="#001d21192a648575" class="i field">_updateModelAccessor</a> = <span class="r8 r">updateModelAccessor</span>;
+            <a href="#95116d562b21abb5" class="i field">H</a> = <span class="r7 r">h</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="a64b8f264246dd02" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">activityName</span>, <b>int</b> <span id="r10 rd" class="r10 r">workflowTypeId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">returnUrl</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#706cff8c44e1405b" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#9c58b1240cd2160d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#e966c2e6560a0134" class="i field">ManageWorkflows</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#3955e5c8fc68ae12" class="k">var</a> <span id="r12 rd" class="r12 r">activity</span> = <a href="#ff63893cfb8cd3cf" class="i field">_activityLibrary</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#879f98f64f8b774e" class="i method">InstantiateActivity</a>(<span class="r9 r">activityName</span>);
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">activityId</span> = <a href="#c00ee214fb7fd0e8" class="i field">_activityIdGenerator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#9e99386f636063b3" class="i method">GenerateUniqueId</a>(<b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#6b0c59cd6b2160f5" class="t constructor">ActivityRecord</a>());
+            <b>var</b> <span id="r14 rd" class="r14 r">activityEditor</span> = <b>await</b> <a href="#0b37cc701facb4de" class="i field">_activityDisplayManager</a>.<span class="i">BuildEditorAsync</span>(<span class="r12 r">activity</span>, <a href="#001d21192a648575" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>true</b>);
+ 
+            <span class="r14 r">activityEditor</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Activity_Edit&quot;</span>;
+ 
+            <a href="../ViewModels/ActivityEditViewModel.cs.html#2ebf89484755aaca" class="k">var</a> <span id="r15 rd" class="r15 r">viewModel</span> = <b>new</b> <a href="../ViewModels/ActivityEditViewModel.cs.html#2ebf89484755aaca" class="t constructor">ActivityEditViewModel</a>
+            {
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#b70cd0b078539f10" class="i property">Activity</a> = <span class="r12 r">activity</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#148541cca761988a" class="i property">ActivityId</a> = <span class="r13 r">activityId</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#204e6dd23958e7ba" class="i property">ActivityEditor</a> = <span class="r14 r">activityEditor</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#03a5a1ac8ef18829" class="i property">WorkflowTypeId</a> = <span class="r10 r">workflowTypeId</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#f6a1eb86412cb5f1" class="i property">ReturnUrl</a> = <span class="r11 r">returnUrl</span>
+            };
+ 
+            <b>if</b> (!<span class="r12 r">activity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#645765eee0c4c29b" class="i property">HasEditor</a>)
+            {
+                <span class="c">// No editor to show; short-circuit to the &quot;POST&quot; action.</span>
+                <b>return</b> <b>await</b> <a href="#66fd5daf09583994" class="i method">Create</a>(<span class="r9 r">activityName</span>, <span class="r15 r">viewModel</span>);
+            }
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r15 r">viewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="66fd5daf09583994" href="../R/66fd5daf09583994.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">activityName</span>, <a href="../ViewModels/ActivityEditViewModel.cs.html#2ebf89484755aaca" class="t t">ActivityEditViewModel</a> <span id="r17 rd" class="r17 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#706cff8c44e1405b" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#9c58b1240cd2160d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#e966c2e6560a0134" class="i field">ManageWorkflows</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r18 rd" class="r18 r">workflowType</span> = <b>await</b> <a href="#a0455b6de7119ace" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#0d529cb8d2493970" class="t t">WorkflowType</a>&gt;(<span class="r17 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#03a5a1ac8ef18829" class="i property">WorkflowTypeId</a>);
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#3955e5c8fc68ae12" class="k">var</a> <span id="r19 rd" class="r19 r">activity</span> = <a href="#ff63893cfb8cd3cf" class="i field">_activityLibrary</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#879f98f64f8b774e" class="i method">InstantiateActivity</a>(<span class="r16 r">activityName</span>);
+            <b>var</b> <span id="r20 rd" class="r20 r">activityEditor</span> = <b>await</b> <a href="#0b37cc701facb4de" class="i field">_activityDisplayManager</a>.<span class="i">UpdateEditorAsync</span>(<span class="r19 r">activity</span>, <a href="#001d21192a648575" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>true</b>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r20 r">activityEditor</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Activity_Edit&quot;</span>;
+                <span class="r17 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#b70cd0b078539f10" class="i property">Activity</a> = <span class="r19 r">activity</span>;
+                <span class="r17 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#204e6dd23958e7ba" class="i property">ActivityEditor</a> = <span class="r20 r">activityEditor</span>;
+                <b>return</b> <span class="i method">View</span>(<span class="r17 r">model</span>);
+            }
+ 
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#6b0c59cd6b2160f5" class="k">var</a> <span id="r21 rd" class="r21 r">activityRecord</span> = <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#6b0c59cd6b2160f5" class="t constructor">ActivityRecord</a>
+            {
+                <a href="/OrchardCore.Workflows.Abstractions/A.html#038a862a28690a6c" class="i property">ActivityId</a> = <span class="r17 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#148541cca761988a" class="i property">ActivityId</a>,
+                <a href="/OrchardCore.Workflows.Abstractions/A.html#6d6133c767e1b8eb" class="i property">Name</a> = <span class="r19 r">activity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#54253e504c690045" class="i property">Name</a>,
+                <span class="i">Properties</span> = <span class="r19 r">activity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#8d39ae9609ba1d2a" class="i property">Properties</a>,
+            };
+            <span class="r18 r">workflowType</span>.<span class="i">Activities</span>.<span class="i">Add</span>(<span class="r21 r">activityRecord</span>);
+ 
+            <a href="#a0455b6de7119ace" class="i field">_session</a>.<span class="i">Save</span>(<span class="r18 r">workflowType</span>);
+            <a href="#178eafaf8d3b4a1d" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#95116d562b21abb5" class="i field">H</a>[<span class="s">&quot;Activity added successfully.&quot;</span>]);
+ 
+            <b>return</b> <span class="i property">Url</span>.<span class="i method">IsLocalUrl</span>(<span class="r17 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#f6a1eb86412cb5f1" class="i property">ReturnUrl</a>) ? (<span class="t t">IActionResult</span>)<span class="i method">Redirect</span>(<span class="r17 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#f6a1eb86412cb5f1" class="i property">ReturnUrl</a>) : <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <span class="s">&quot;WorkflowType&quot;</span>, <b>new</b> { <a href="#052e6b628d405e0d" class="i property">id</a> = <span class="r17 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#03a5a1ac8ef18829" class="i property">WorkflowTypeId</a> });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="5eea87706ffc0d9c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<b>int</b> <span id="r22 rd" class="r22 r">workflowTypeId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r23 rd" class="r23 r">activityId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r24 rd" class="r24 r">returnUrl</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#706cff8c44e1405b" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#9c58b1240cd2160d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#e966c2e6560a0134" class="i field">ManageWorkflows</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">workflowType</span> = <b>await</b> <a href="#a0455b6de7119ace" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#0d529cb8d2493970" class="t t">WorkflowType</a>&gt;(<span class="r22 r">workflowTypeId</span>);
+            <b>var</b> <span id="r26 rd" class="r26 r">activityRecord</span> = <span class="r25 r">workflowType</span>.<span class="i">Activities</span>.<span class="i">Single</span>(<span id="r27 rd" class="r27 r">x</span> =&gt; <span class="r27 r">x</span>.<span class="i">ActivityId</span> == <span class="r23 r">activityId</span>);
+            <b>var</b> <span id="r28 rd" class="r28 r">activityContext</span> = <b>await</b> <a href="#88d2099ba61b0c41" class="i field">_workflowManager</a>.<span class="i">CreateActivityExecutionContextAsync</span>(<span class="r26 r">activityRecord</span>, <span class="r26 r">activityRecord</span>.<span class="i">Properties</span>);
+            <b>var</b> <span id="r29 rd" class="r29 r">activityEditor</span> = <b>await</b> <a href="#0b37cc701facb4de" class="i field">_activityDisplayManager</a>.<span class="i">BuildEditorAsync</span>(<span class="r28 r">activityContext</span>.<span class="i">Activity</span>, <a href="#001d21192a648575" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>false</b>);
+ 
+            <span class="r29 r">activityEditor</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Activity_Edit&quot;</span>;
+ 
+            <a href="../ViewModels/ActivityEditViewModel.cs.html#2ebf89484755aaca" class="k">var</a> <span id="r30 rd" class="r30 r">viewModel</span> = <b>new</b> <a href="../ViewModels/ActivityEditViewModel.cs.html#2ebf89484755aaca" class="t constructor">ActivityEditViewModel</a>
+            {
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#b70cd0b078539f10" class="i property">Activity</a> = <span class="r28 r">activityContext</span>.<span class="i">Activity</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#148541cca761988a" class="i property">ActivityId</a> = <span class="r23 r">activityId</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#204e6dd23958e7ba" class="i property">ActivityEditor</a> = <span class="r29 r">activityEditor</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#03a5a1ac8ef18829" class="i property">WorkflowTypeId</a> = <span class="r22 r">workflowTypeId</span>,
+                <a href="../ViewModels/ActivityEditViewModel.cs.html#f6a1eb86412cb5f1" class="i property">ReturnUrl</a> = <span class="r24 r">returnUrl</span>
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="s">&quot;EditActivity&quot;</span>, <span class="r30 r">viewModel</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="b239bc296dc2f107" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="../ViewModels/ActivityEditViewModel.cs.html#2ebf89484755aaca" class="t t">ActivityEditViewModel</a> <span id="r31 rd" class="r31 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#706cff8c44e1405b" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#9c58b1240cd2160d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#e966c2e6560a0134" class="i field">ManageWorkflows</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r32 rd" class="r32 r">workflowType</span> = <b>await</b> <a href="#a0455b6de7119ace" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#0d529cb8d2493970" class="t t">WorkflowType</a>&gt;(<span class="r31 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#03a5a1ac8ef18829" class="i property">WorkflowTypeId</a>);
+            <b>var</b> <span id="r33 rd" class="r33 r">activityRecord</span> = <span class="r32 r">workflowType</span>.<span class="i">Activities</span>.<span class="i">Single</span>(<span id="r34 rd" class="r34 r">x</span> =&gt; <span class="r34 r">x</span>.<span class="i">ActivityId</span> == <span class="r31 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#148541cca761988a" class="i property">ActivityId</a>);
+            <b>var</b> <span id="r35 rd" class="r35 r">activityContext</span> = <b>await</b> <a href="#88d2099ba61b0c41" class="i field">_workflowManager</a>.<span class="i">CreateActivityExecutionContextAsync</span>(<span class="r33 r">activityRecord</span>, <span class="r33 r">activityRecord</span>.<span class="i">Properties</span>);
+            <b>var</b> <span id="r36 rd" class="r36 r">activityEditor</span> = <b>await</b> <a href="#0b37cc701facb4de" class="i field">_activityDisplayManager</a>.<span class="i">UpdateEditorAsync</span>(<span class="r35 r">activityContext</span>.<span class="i">Activity</span>, <a href="#001d21192a648575" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="i">isNew</span>: <b>false</b>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r36 r">activityEditor</span>.<span class="i">Metadata</span>.<span class="i">Type</span> = <span class="s">&quot;Activity_Edit&quot;</span>;
+                <span class="r31 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#b70cd0b078539f10" class="i property">Activity</a> = <span class="r35 r">activityContext</span>.<span class="i">Activity</span>;
+                <span class="r31 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#204e6dd23958e7ba" class="i property">ActivityEditor</a> = <span class="r36 r">activityEditor</span>;
+ 
+                <b>return</b> <span class="i method">View</span>(<span class="s">&quot;EditActivity&quot;</span>, <span class="r31 r">model</span>);
+            }
+ 
+            <span class="r33 r">activityRecord</span>.<span class="i">Properties</span> = <span class="r35 r">activityContext</span>.<span class="i">Activity</span>.<span class="i">Properties</span>;
+ 
+            <a href="#a0455b6de7119ace" class="i field">_session</a>.<span class="i">Save</span>(<span class="r32 r">workflowType</span>);
+            <a href="#178eafaf8d3b4a1d" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#95116d562b21abb5" class="i field">H</a>[<span class="s">&quot;Activity updated successfully.&quot;</span>]);
+ 
+            <b>return</b> <span class="i property">Url</span>.<span class="i method">IsLocalUrl</span>(<span class="r31 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#f6a1eb86412cb5f1" class="i property">ReturnUrl</a>)
+                ? (<span class="t t">IActionResult</span>)<span class="i method">Redirect</span>(<span class="r31 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#f6a1eb86412cb5f1" class="i property">ReturnUrl</a>)
+                : <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <span class="s">&quot;WorkflowType&quot;</span>, <b>new</b> { <a href="#052e6b628d405e0d" class="i property">id</a> = <span class="r31 r">model</span>.<a href="../ViewModels/ActivityEditViewModel.cs.html#03a5a1ac8ef18829" class="i property">WorkflowTypeId</a> });
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

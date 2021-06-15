@@ -1,0 +1,241 @@
+﻿<!DOCTYPE html>
+<html><head><title>SeoMetaSettingsHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(232);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Seo/Handlers/SeoMetaSettingsHandler.cs" target="_top">Handlers\SeoMetaSettingsHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Seo" target="_top">src\OrchardCore.Modules\OrchardCore.Seo\OrchardCore.Seo.csproj</a> (OrchardCore.Seo)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Abstractions</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Infrastructure</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Core</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Seo</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Seo</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="e5b685a19d659c6e" href="../R/e5b685a19d659c6e.html" target="n" data-glyph="0,0" class="t t">SeoMetaSettingsHandler</a> : <a href="/OrchardCore.ContentManagement.Abstractions/A.html#31345513d01e3fa0" class="t t">ContentHandlerBase</a>
+    {
+        <b>private readonly</b> <span class="i">IMediaFileStore</span> <a id="e5ff0c3b94378013" href="../R/e5ff0c3b94378013.html" target="n" data-glyph="46,1" class="i field">_mediaFileStore</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="894f07293adfdbce" href="../R/894f07293adfdbce.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <span class="t t">IActionContextAccessor</span> <a id="04688a99b36a7a61" href="../R/04688a99b36a7a61.html" target="n" data-glyph="46,1" class="i field">_actionContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="7eb0a83f45ffe124" href="../R/7eb0a83f45ffe124.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">IUrlHelperFactory</span> <a id="bf2cbae311911be5" href="../R/bf2cbae311911be5.html" target="n" data-glyph="46,1" class="i field">_urlHelperFactory</a>;
+        <b>private</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <a id="79f41877b3b4e64a" href="../R/79f41877b3b4e64a.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+ 
+        <b>public</b> <a id="4e37378c6bc7c15e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SeoMetaSettingsHandler</a>(
+            <span class="i">IMediaFileStore</span> <span id="r0 rd" class="r0 r">mediaFileStore</span>, 
+            <span class="i">ISiteService</span> <span id="r1 rd" class="r1 r">siteService</span>,
+            <span class="t t">IActionContextAccessor</span> <span id="r2 rd" class="r2 r">actionContextAccessor</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r3 rd" class="r3 r">httpContextAccessor</span>,
+            <span class="t t">IUrlHelperFactory</span> <span id="r4 rd" class="r4 r">urlHelperFactory</span>
+            )
+        {
+            <a href="#e5ff0c3b94378013" class="i field">_mediaFileStore</a> = <span class="r0 r">mediaFileStore</span>;
+            <a href="#894f07293adfdbce" class="i field">_siteService</a> = <span class="r1 r">siteService</span>;  
+            <a href="#04688a99b36a7a61" class="i field">_actionContextAccessor</a> = <span class="r2 r">actionContextAccessor</span>;
+            <a href="#7eb0a83f45ffe124" class="i field">_httpContextAccessor</a> = <span class="r3 r">httpContextAccessor</span>;
+            <a href="#bf2cbae311911be5" class="i field">_urlHelperFactory</a> = <span class="r4 r">urlHelperFactory</span>; 
+        }
+        
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="cfd018322c8ef3c3" href="../R/cfd018322c8ef3c3.html" target="n" data-glyph="72,1" class="i method">GetContentItemAspectAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a7f068870ae3c460" class="t t">ContentItemAspectContext</a> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <b>return</b> <span class="r5 r">context</span>.<span class="i">ForAsync</span>&lt;<a href="../Models/SeoAspect.cs.html#d427628dd3cc07fd" class="t t">SeoAspect</a>&gt;(<b>async</b> <span id="r6 rd" class="r6 r">aspect</span> =&gt;
+            {
+                <span class="c">// This handlers provides defaults, either from the Seo Meta Settings, or ensures values by default. (title etc)</span>
+                <a href="#79f41877b3b4e64a" class="i field">_contentManager</a> ??= <a href="#7eb0a83f45ffe124" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a>&gt;();
+ 
+                <b>var</b> <span id="r7 rd" class="r7 r">siteSettings</span> = <b>await</b> <a href="#894f07293adfdbce" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r8 rd" class="r8 r">metaSettings</span> = <span class="r7 r">siteSettings</span>.<span class="i">As</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;(<span class="s">&quot;SocialMetaSettings&quot;</span>);
+ 
+                <b>var</b> <span id="r9 rd" class="r9 r">actionContext</span> = <a href="#04688a99b36a7a61" class="i field">_actionContextAccessor</a>.<span class="i property">ActionContext</span>;
+ 
+                <b>if</b> (<span class="r9 r">actionContext</span> == <b>null</b>)
+                {
+                    <span class="r9 r">actionContext</span> = <b>await</b> <a href="#61757f179904290d" class="i method">GetActionContextAsync</a>(<a href="#7eb0a83f45ffe124" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>);
+                }
+ 
+                <b>var</b> <span id="r10 rd" class="r10 r">urlHelper</span> = <a href="#bf2cbae311911be5" class="i field">_urlHelperFactory</a>.<span class="i method">GetUrlHelper</span>(<span class="r9 r">actionContext</span>);
+                <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="k">var</a> <span id="r11 rd" class="r11 r">contentItemMetadata</span> = <b>await</b> <a href="#79f41877b3b4e64a" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0372dacf25203afe" class="t t">ContentItemMetadata</a>&gt;(<span class="r5 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#56db935ddbd8e34a" class="i property">ContentItem</a>);
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">relativeUrl</span> = <span class="r10 r">urlHelper</span>.<span class="i method">RouteUrl</span>(<span class="r11 r">contentItemMetadata</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#db290d51f53c7c14" class="i property">DisplayRouteValues</a>);
+                <b>var</b> <span id="r13 rd" class="r13 r">absoluteUrl</span> = <span class="r10 r">urlHelper</span>.<span class="i">ToAbsoluteUrl</span>(<span class="r12 r">relativeUrl</span>);
+ 
+                <span class="c">// Logic is this happens last after the part settings.</span>
+                <span class="c">// so if values are not set it is responsible for settings them.</span>
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">defaultImage</span> = (<span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">DefaultSocialImage</span>?.<span class="i">Paths</span> <b>as</b> <span class="i">JArray</span>)?.<span class="i">Count</span> &gt; 0 ? <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>.<span class="i">DefaultSocialImage</span>.<span class="i">Paths</span>[0].<span class="i">ToString</span>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">openGraphImage</span> = (<span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">OpenGraphImage</span>?.<span class="i">Paths</span> <b>as</b> <span class="i">JArray</span>)?.<span class="i">Count</span> &gt; 0 ? <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">OpenGraphImage</span>?.<span class="i">Paths</span>[0]?.<span class="i">ToString</span>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">twitterImage</span> = (<span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">TwitterImage</span>?.<span class="i">Paths</span> <b>as</b> <span class="i">JArray</span>)?.<span class="i">Count</span> &gt; 0 ? <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">TwitterImage</span>?.<span class="i">Paths</span>[0]?.<span class="i">ToString</span>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">defaultAltText</span> = (<span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">DefaultSocialImage</span>?.<span class="i">MediaTexts</span> <b>as</b> <span class="i">JArray</span>)?.<span class="i">Count</span> &gt; 0 ? <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>.<span class="i">DefaultSocialImage</span>.<span class="i">MediaTexts</span>[0].<span class="i">ToString</span>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r18 rd" class="r18 r">openGraphAltText</span> = (<span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">OpenGraphImage</span>?.<span class="i">MediaTexts</span> <b>as</b> <span class="i">JArray</span>)?.<span class="i">Count</span> &gt; 0 ? <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">OpenGraphImage</span>?.<span class="i">MediaTexts</span>[0]?.<span class="i">ToString</span>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">twitterAltText</span> = (<span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">TwitterImage</span>?.<span class="i">MediaTexts</span> <b>as</b> <span class="i">JArray</span>)?.<span class="i">Count</span> &gt; 0 ? <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">TwitterImage</span>?.<span class="i">MediaTexts</span>[0]?.<span class="i">ToString</span>() : <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">twitterCard</span> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">TwitterCard</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">twitterCreator</span> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">TwitterCreator</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">twitterSite</span> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">TwitterSite</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+ 
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r23 rd" class="r23 r">googleSchema</span> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">GoogleSchema</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+ 
+                <span class="c">// Meta</span>
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7d2532f3984e5b19" class="i property">MetaDescription</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7d2532f3984e5b19" class="i property">MetaDescription</a> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">DefaultMetaDescription</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+                }
+ 
+                <span class="c">// OpenGraph</span>
+ 
+                <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#827b5571c6e2779f" class="i property">OpenGraphUrl</a> = <span class="r13 r">absoluteUrl</span>;
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c7d9a5f8bf2d6c8" class="i property">OpenGraphType</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c7d9a5f8bf2d6c8" class="i property">OpenGraphType</a> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">OpenGraphType</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#682068d8cd7d1cf3" class="i property">OpenGraphTitle</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#682068d8cd7d1cf3" class="i property">OpenGraphTitle</a> = <span class="r5 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#56db935ddbd8e34a" class="i property">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a>;
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#5271a8a95a31928d" class="i property">OpenGraphDescription</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#5271a8a95a31928d" class="i property">OpenGraphDescription</a> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">DefaultOpenGraphDescription</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#16ea1291162a98c8" class="i property">OpenGraphSiteName</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#16ea1291162a98c8" class="i property">OpenGraphSiteName</a> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">OpenGraphSiteName</span>?.<span class="i">Text</span>.<span class="i">ToString</span>();
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#16ea1291162a98c8" class="i property">OpenGraphSiteName</a>))
+                    {
+                        <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#16ea1291162a98c8" class="i property">OpenGraphSiteName</a> = <span class="r7 r">siteSettings</span>.<span class="i">SiteName</span>;
+                    }
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c2d2d4c01cb0e76" class="i property">OpenGraphAppId</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c2d2d4c01cb0e76" class="i property">OpenGraphAppId</a> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">OpenGraphAppId</span>?.<span class="i">Text</span>.<span class="i">ToString</span>();
+                }                
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#aa8acb40a52f442b" class="i property">OpenGraphImage</a>))
+                {
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r15 r">openGraphImage</span>))
+                    {
+                        <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">defaultImage</span>))
+                        {
+                            <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#aa8acb40a52f442b" class="i property">OpenGraphImage</a> = <span class="r10 r">urlHelper</span>.<span class="i">ToAbsoluteUrl</span>(<a href="#e5ff0c3b94378013" class="i field">_mediaFileStore</a>.<span class="i">MapPathToPublicUrl</span>(<span class="r14 r">defaultImage</span>));   
+                        }
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#aa8acb40a52f442b" class="i property">OpenGraphImage</a> = <span class="r10 r">urlHelper</span>.<span class="i">ToAbsoluteUrl</span>(<a href="#e5ff0c3b94378013" class="i field">_mediaFileStore</a>.<span class="i">MapPathToPublicUrl</span>(<span class="r15 r">openGraphImage</span>));    
+                    }
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#69aed5407635b02d" class="i property">OpenGraphImageAlt</a>))
+                {
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r18 r">openGraphAltText</span>))
+                    {
+                        <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#69aed5407635b02d" class="i property">OpenGraphImageAlt</a> = <span class="r17 r">defaultAltText</span>;
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#69aed5407635b02d" class="i property">OpenGraphImageAlt</a> = <span class="r18 r">openGraphAltText</span>;
+                    }
+                }
+ 
+                <span class="c">// Twitter</span>
+                <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#23258f4f10bec201" class="i property">TwitterUrl</a> = <span class="r13 r">absoluteUrl</span>;
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#002f66d53ad9e237" class="i property">TwitterTitle</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#002f66d53ad9e237" class="i property">TwitterTitle</a> = <span class="r5 r">context</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#56db935ddbd8e34a" class="i property">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a>;
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#cea05bdca838dd82" class="i property">TwitterDescription</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#cea05bdca838dd82" class="i property">TwitterDescription</a> = <span class="r8 r">metaSettings</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>.<span class="i">SocialMetaSettings</span>?.<span class="i">DefaultTwitterDescription</span>?.<span class="i">Text</span>?.<span class="i">ToString</span>();
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#01040893a19a0d6b" class="i property">TwitterCard</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#01040893a19a0d6b" class="i property">TwitterCard</a> = <span class="r20 r">twitterCard</span>;
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#4d14b746edf4a675" class="i property">TwitterSite</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#4d14b746edf4a675" class="i property">TwitterSite</a> = <span class="r22 r">twitterSite</span>;
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7aab877a395f9372" class="i property">TwitterCreator</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7aab877a395f9372" class="i property">TwitterCreator</a> = <span class="r21 r">twitterCreator</span>;
+                }                
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#6738ac3b4f794b53" class="i property">TwitterImage</a>))
+                {
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r16 r">twitterImage</span>))
+                    {
+                        <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">defaultImage</span>))
+                        {
+                            <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#6738ac3b4f794b53" class="i property">TwitterImage</a> = <span class="r10 r">urlHelper</span>.<span class="i">ToAbsoluteUrl</span>(<a href="#e5ff0c3b94378013" class="i field">_mediaFileStore</a>.<span class="i">MapPathToPublicUrl</span>(<span class="r14 r">defaultImage</span>));   
+                        }
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#6738ac3b4f794b53" class="i property">TwitterImage</a> = <span class="r10 r">urlHelper</span>.<span class="i">ToAbsoluteUrl</span>(<a href="#e5ff0c3b94378013" class="i field">_mediaFileStore</a>.<span class="i">MapPathToPublicUrl</span>(<span class="r16 r">twitterImage</span>));    
+                    }
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#04aa19cbba5847d0" class="i property">TwitterImageAlt</a>))
+                {
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r19 r">twitterAltText</span>))
+                    {
+                        <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#04aa19cbba5847d0" class="i property">TwitterImageAlt</a> = <span class="r17 r">defaultAltText</span>;
+                    }
+                    <b>else</b>
+                    {
+                        <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#04aa19cbba5847d0" class="i property">TwitterImageAlt</a> = <span class="r19 r">twitterAltText</span>;
+                    }
+                }
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#d54dfe3acdd348c4" class="i property">GoogleSchema</a>))
+                {
+                    <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#d54dfe3acdd348c4" class="i property">GoogleSchema</a> = <span class="r23 r">googleSchema</span>;
+                }
+            });
+        }
+ 
+        <b>internal static async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionContext</span>&gt; <a id="61757f179904290d" href="../R/61757f179904290d.html" target="n" data-glyph="74,1" class="i method">GetActionContextAsync</a>(<span class="t t">HttpContext</span> <span id="r24 rd" class="r24 r">httpContext</span>)
+        {
+            <b>var</b> <span id="r25 rd" class="r25 r">routeData</span> = <b>new</b> <span class="t constructor">RouteData</span>();
+            <span class="r25 r">routeData</span>.<span class="i property">Routers</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<b>new</b> <span class="t constructor">RouteCollection</span>());
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">actionContext</span> = <b>new</b> <span class="t constructor">ActionContext</span>(<span class="r24 r">httpContext</span>, <span class="r25 r">routeData</span>, <b>new</b> <span class="t constructor">ActionDescriptor</span>());
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r27 rd" class="r27 r">filters</span> = <span class="r24 r">httpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#22215d5c17a3bd24" class="t t">IAsyncViewActionFilter</a>&gt;();
+ 
+            <b>foreach</b> (<a href="/OrchardCore.DisplayManagement/A.html#22215d5c17a3bd24" class="k">var</a> <span id="r28 rd" class="r28 r">filter</span> <b>in</b> <span class="r27 r">filters</span>)
+            {
+                <b>await</b> <span class="r28 r">filter</span>.<a href="/OrchardCore.DisplayManagement/A.html#a3311c360203839b" class="i method">OnActionExecutionAsync</a>(<span class="r26 r">actionContext</span>);
+            }
+ 
+            <b>return</b> <span class="r26 r">actionContext</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

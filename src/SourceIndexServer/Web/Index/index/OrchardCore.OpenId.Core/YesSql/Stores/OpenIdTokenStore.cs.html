@@ -1,0 +1,690 @@
+﻿<!DOCTYPE html>
+<html><head><title>OpenIdTokenStore.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(681);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId.Core/YesSql/Stores/OpenIdTokenStore.cs" target="_top">YesSql\Stores\OpenIdTokenStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId.Core" target="_top">src\OrchardCore\OrchardCore.OpenId.Core\OrchardCore.OpenId.Core.csproj</a> (OrchardCore.OpenId.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Json</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Stores</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">YesSql</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">YesSql</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+<b>using static</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>.<span class="i">OpenIddictConstants</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">YesSql</span>.<span class="i n">Stores</span>
+{
+    <b>public class</b> <a id="5ec2c5733a7c5760" href="../../R/5ec2c5733a7c5760.html" target="n" data-glyph="0,0" class="t t">OpenIdTokenStore</a>&lt;<span id="r0 rd t" class="r0 r t">TToken</span>&gt; : <a href="../../Abstractions/Stores/IOpenIdTokenStore.cs.html#9e4b6a4c2ae8cdba" class="t t">IOpenIdTokenStore</a>&lt;<span class="r0 r t">TToken</span>&gt;
+        <b>where</b> <span class="r0 r t">TToken</span> : <a href="../Models/OpenIdToken.cs.html#53d267367cbbd241" class="t t">OpenIdToken</a>, <b>new</b>()
+    {
+        <b>private readonly</b> <span class="i">ISession</span> <a id="1a8583f5de56bff5" href="../../R/1a8583f5de56bff5.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private const string</b> <a id="05239381e13e530e" href="../../R/05239381e13e530e.html" target="n" data-glyph="10,1" class="i field">OpenIdCollection</a> = <a href="../Models/OpenIdToken.cs.html#53d267367cbbd241" class="t t">OpenIdToken</a>.<a href="../Models/OpenIdToken.cs.html#769d65079a1fcc79" class="i field">OpenIdCollection</a>;
+ 
+        <b>public</b> <a id="39d0eb7f848077c3" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">OpenIdTokenStore</a>(<span class="i">ISession</span> <span id="r1 rd" class="r1 r">session</span>)
+        {
+            <a href="#1a8583f5de56bff5" class="i field">_session</a> = <span class="r1 r">session</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<b>long</b>&gt; <a id="a73950a139927be0" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CountAsync</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r2 rd" class="r2 r">cancellationToken</span>)
+        {
+            <span class="r2 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>&gt;(<span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">CountAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<b>long</b>&gt; <a id="791f28f075df01db" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CountAsync</a>&lt;<span id="r3 rd t" class="r3 r t">TResult</span>&gt;(<a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="t t">IQueryable</span>&lt;<span class="r0 r t">TToken</span>&gt;, <span class="t t">IQueryable</span>&lt;<span class="r3 r t">TResult</span>&gt;&gt; <span id="r4 rd" class="r4 r">query</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r5 rd" class="r5 r">cancellationToken</span>)
+            =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#ab0acd5f99886747" class="t constructor">NotSupportedException</a>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="73685a3e7492911c" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreateAsync</a>(<span class="r0 r t">TToken</span> <span id="r6 rd" class="r6 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r7 rd" class="r7 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r6 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r6 r">token</span>));
+            }
+ 
+            <span class="r7 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Save</span>(<span class="r6 r">token</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>);
+            <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="5a2521c3eb9563df" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DeleteAsync</a>(<span class="r0 r t">TToken</span> <span id="r8 rd" class="r8 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r9 rd" class="r9 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r8 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r8 r">token</span>));
+            }
+ 
+            <span class="r9 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Delete</span>(<span class="r8 r">token</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>);
+            <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="dc17b659a37bcba9" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">subject</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">client</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r12 rd" class="r12 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">subject</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The subject cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r10 r">subject</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r11 r">client</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The client cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r11 r">client</span>));
+            }
+ 
+            <span class="r12 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(
+                <span id="r13 rd" class="r13 r">index</span> =&gt; <span class="r13 r">index</span>.<span class="i">ApplicationId</span> == <span class="r11 r">client</span> &amp;&amp; <span class="r13 r">index</span>.<span class="i">Subject</span> == <span class="r10 r">subject</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="1c2b660858a00c8d" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">subject</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">client</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">status</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r17 rd" class="r17 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">subject</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The subject cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r14 r">subject</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r15 r">client</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The client identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r15 r">client</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r16 r">status</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The status cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r16 r">status</span>));
+            }
+ 
+            <span class="r17 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(
+                <span id="r18 rd" class="r18 r">index</span> =&gt; <span class="r18 r">index</span>.<span class="i">ApplicationId</span> == <span class="r15 r">client</span> &amp;&amp; <span class="r18 r">index</span>.<span class="i">Subject</span> == <span class="r14 r">subject</span> &amp;&amp; <span class="r18 r">index</span>.<span class="i">Status</span> == <span class="r16 r">status</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="1e02a0f8f78c4055" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">subject</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">client</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">status</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">type</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r23 rd" class="r23 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r19 r">subject</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The subject cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r19 r">subject</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r20 r">client</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The client identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r20 r">client</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r21 r">status</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The status cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r21 r">status</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r22 r">type</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The type cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r22 r">type</span>));
+            }
+ 
+            <span class="r23 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(
+                <span id="r24 rd" class="r24 r">index</span> =&gt; <span class="r24 r">index</span>.<span class="i">ApplicationId</span> == <span class="r20 r">client</span> &amp;&amp; <span class="r24 r">index</span>.<span class="i">Subject</span> == <span class="r19 r">subject</span> &amp;&amp;
+                         <span class="r24 r">index</span>.<span class="i">Status</span> == <span class="r21 r">status</span> &amp;&amp; <span class="r24 r">index</span>.<span class="i">Type</span> == <span class="r22 r">type</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="3d125944296e72da" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByApplicationIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r26 rd" class="r26 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r25 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r25 r">identifier</span>));
+            }
+ 
+            <span class="r26 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(<span id="r27 rd" class="r27 r">index</span> =&gt; <span class="r27 r">index</span>.<span class="i">ApplicationId</span> == <span class="r25 r">identifier</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="21e4ac8e8ae0d4ed" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByAuthorizationIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r29 rd" class="r29 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r28 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r28 r">identifier</span>));
+            }
+ 
+            <span class="r29 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(<span id="r30 rd" class="r30 r">index</span> =&gt; <span class="r30 r">index</span>.<span class="i">AuthorizationId</span> == <span class="r28 r">identifier</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="ca0541a6603c9197" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByReferenceIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r32 rd" class="r32 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r31 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r31 r">identifier</span>));
+            }
+ 
+            <span class="r32 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(<span id="r33 rd" class="r33 r">index</span> =&gt; <span class="r33 r">index</span>.<span class="i">ReferenceId</span> == <span class="r31 r">identifier</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="784d146929c0c6da" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindByIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r34 rd" class="r34 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r35 rd" class="r35 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r34 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r34 r">identifier</span>));
+            }
+ 
+            <span class="r35 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(<span id="r36 rd" class="r36 r">index</span> =&gt; <span class="r36 r">index</span>.<span class="i">TokenId</span> == <span class="r34 r">identifier</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="bcef4145f83895f6" href="../../R/bcef4145f83895f6.html" target="n" data-glyph="72,1" class="i method">FindByPhysicalIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r37 rd" class="r37 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r38 rd" class="r38 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r37 r">identifier</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The identifier cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r37 r">identifier</span>));
+            }
+ 
+            <span class="r38 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="r0 r t">TToken</span>&gt;(<b>int</b>.<a href="@1@System.Runtime/A.html#78ffbe1e274ca0bb" class="i method">Parse</a>(<span class="r37 r">identifier</span>, <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>), <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="dbeb05ea1dd52e34" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">FindBySubjectAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r39 rd" class="r39 r">subject</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r40 rd" class="r40 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r39 r">subject</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The subject cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r39 r">subject</span>));
+            }
+ 
+            <span class="r40 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <b>return</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(<span id="r41 rd" class="r41 r">index</span> =&gt; <span class="r41 r">index</span>.<span class="i">Subject</span> == <span class="r39 r">subject</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r42 r t">TResult</span>&gt; <a id="2936d66d95254da1" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetAsync</a>&lt;<span id="r43 rd t" class="r43 r t">TState</span>, <span id="r42 rd t" class="r42 r t">TResult</span>&gt;(
+            <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<span class="t t">IQueryable</span>&lt;<span class="r0 r t">TToken</span>&gt;, <span class="r43 r t">TState</span>, <span class="t t">IQueryable</span>&lt;<span class="r42 r t">TResult</span>&gt;&gt; <span id="r44 rd" class="r44 r">query</span>,
+            <span class="r43 r t">TState</span> <span id="r45 rd" class="r45 r">state</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r46 rd" class="r46 r">cancellationToken</span>)
+            =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#ab0acd5f99886747" class="t constructor">NotSupportedException</a>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="a2e606bdd3d137e0" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetApplicationIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r47 rd" class="r47 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r48 rd" class="r48 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r47 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r47 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r47 r">token</span>.<a href="../Models/OpenIdToken.cs.html#68dfaabe400bee58" class="i property">ApplicationId</a>?.<a href="@1@System.Runtime/A.html#ae3cba5c0cd9eeb3" class="i method">ToString</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="4163a0bc0bcbb51e" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetAuthorizationIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r49 rd" class="r49 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r50 rd" class="r50 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r49 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r49 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r49 r">token</span>.<a href="../Models/OpenIdToken.cs.html#9b1856305b5e03ea" class="i property">AuthorizationId</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt; <a id="39e9d02c6c5e689b" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetCreationDateAsync</a>(<span class="r0 r t">TToken</span> <span id="r51 rd" class="r51 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r52 rd" class="r52 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r51 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r51 r">token</span>));
+            }
+ 
+            <b>if</b> (<span class="r51 r">token</span>.<a href="../Models/OpenIdToken.cs.html#266a0b4b3d0031a3" class="i property">CreationDate</a> <b>is null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt;(<span class="r53 r">result</span>: <b>null</b>);
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt;(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#2b51a8e930cd96f1" class="i method">SpecifyKind</a>(<span class="r51 r">token</span>.<a href="../Models/OpenIdToken.cs.html#266a0b4b3d0031a3" class="i property">CreationDate</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>, <a href="@1@System.Runtime/A.html#0fc5fd70e6154b43" class="t t">DateTimeKind</a>.<a href="@1@System.Runtime/A.html#58a49ca04b18b1f2" class="i field">Utc</a>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt; <a id="f7f54c82b5996442" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetExpirationDateAsync</a>(<span class="r0 r t">TToken</span> <span id="r54 rd" class="r54 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r55 rd" class="r55 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r54 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r54 r">token</span>));
+            }
+ 
+            <b>if</b> (<span class="r54 r">token</span>.<a href="../Models/OpenIdToken.cs.html#b39c45ee3cf8b2ab" class="i property">ExpirationDate</a> <b>is null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt;(<span class="r53 r">result</span>: <b>null</b>);
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt;(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#2b51a8e930cd96f1" class="i method">SpecifyKind</a>(<span class="r54 r">token</span>.<a href="../Models/OpenIdToken.cs.html#b39c45ee3cf8b2ab" class="i property">ExpirationDate</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>, <a href="@1@System.Runtime/A.html#0fc5fd70e6154b43" class="t t">DateTimeKind</a>.<a href="@1@System.Runtime/A.html#58a49ca04b18b1f2" class="i field">Utc</a>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="9bc5b653797ca341" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r56 rd" class="r56 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r57 rd" class="r57 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r56 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r56 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r56 r">token</span>.<a href="../Models/OpenIdToken.cs.html#d418bffea0026168" class="i property">TokenId</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="dab2a272d28be637" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetPayloadAsync</a>(<span class="r0 r t">TToken</span> <span id="r58 rd" class="r58 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r59 rd" class="r59 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r58 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r58 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r58 r">token</span>.<a href="../Models/OpenIdToken.cs.html#4ecf3c314f4ba794" class="i property">Payload</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="685b65c7bbec6ba7" href="../../R/685b65c7bbec6ba7.html" target="n" data-glyph="72,1" class="i method">GetPhysicalIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r60 rd" class="r60 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r61 rd" class="r61 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r60 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r60 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r60 r">token</span>.<a href="../Models/OpenIdToken.cs.html#32388458c09c6baa" class="i property">Id</a>.<a href="@1@System.Runtime/A.html#2b1c2bd27f3489eb" class="i method">ToString</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#26ef1c020f0dbb7a" class="i property">InvariantCulture</a>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt; <a id="ac3ea4e504275d60" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetPropertiesAsync</a>(<span class="r0 r t">TToken</span> <span id="r62 rd" class="r62 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r63 rd" class="r63 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r62 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r62 r">token</span>));
+            }
+ 
+            <b>if</b> (<span class="r62 r">token</span>.<a href="../Models/OpenIdToken.cs.html#c955cf908dc3b0e5" class="i property">Properties</a> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt;(<a href="@1@System.Collections.Immutable/A.html#cf18d3d905bbe4e9" class="t t">ImmutableDictionary</a>.<a href="@1@System.Collections.Immutable/A.html#fa342a50513d5250" class="i method">Create</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;());
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt;(
+                <span class="t t">JsonSerializer</span>.<span class="i">Deserialize</span>&lt;<a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt;&gt;(<span class="r62 r">token</span>.<a href="../Models/OpenIdToken.cs.html#c955cf908dc3b0e5" class="i property">Properties</a>.<span class="i">ToString</span>()));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt; <a id="97e46b8d969f4f1e" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetRedemptionDateAsync</a>(<span class="r0 r t">TToken</span> <span id="r64 rd" class="r64 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r65 rd" class="r65 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r64 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r64 r">token</span>));
+            }
+ 
+            <b>if</b> (<span class="r64 r">token</span>.<a href="../Models/OpenIdToken.cs.html#bc32b644f952daee" class="i property">RedemptionDate</a> <b>is null</b>)
+            {
+                <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt;(<span class="r53 r">result</span>: <b>null</b>);
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?&gt;(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#2b51a8e930cd96f1" class="i method">SpecifyKind</a>(<span class="r64 r">token</span>.<a href="../Models/OpenIdToken.cs.html#bc32b644f952daee" class="i property">RedemptionDate</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>, <a href="@1@System.Runtime/A.html#0fc5fd70e6154b43" class="t t">DateTimeKind</a>.<a href="@1@System.Runtime/A.html#58a49ca04b18b1f2" class="i field">Utc</a>));
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="803ab37ff744f3c4" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetReferenceIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r66 rd" class="r66 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r67 rd" class="r67 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r66 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r66 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r66 r">token</span>.<a href="../Models/OpenIdToken.cs.html#71a6d77e6bcbb017" class="i property">ReferenceId</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="293fa5ac8b029a96" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetStatusAsync</a>(<span class="r0 r t">TToken</span> <span id="r68 rd" class="r68 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r69 rd" class="r69 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r68 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r68 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r68 r">token</span>.<a href="../Models/OpenIdToken.cs.html#292f623ff0c1866e" class="i property">Status</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="1e65eb3d68b92dc3" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetSubjectAsync</a>(<span class="r0 r t">TToken</span> <span id="r70 rd" class="r70 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r71 rd" class="r71 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r70 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r70 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r70 r">token</span>.<a href="../Models/OpenIdToken.cs.html#7f4c2e259a34ab2d" class="i property">Subject</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="b3c9cbc48335e27c" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetTypeAsync</a>(<span class="r0 r t">TToken</span> <span id="r72 rd" class="r72 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r73 rd" class="r73 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r72 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r72 r">token</span>));
+            }
+ 
+            <b>return</b> <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="r72 r">token</span>.<a href="../Models/OpenIdToken.cs.html#71f54bfe693ac41b" class="i property">Type</a>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="99caa52fead63c03" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">InstantiateAsync</a>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r74 rd" class="r74 r">cancellationToken</span>)
+            =&gt; <b>new</b> <a href="@1@System.Runtime/A.html#681e029e36e2b939" class="t constructor">ValueTask</a>&lt;<span class="r0 r t">TToken</span>&gt;(<b>new</b> <span class="t">TToken</span> { <a href="../Models/OpenIdToken.cs.html#d418bffea0026168" class="i property">TokenId</a> = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#8015cb30da6ca742" class="i method">ToString</a>(<span class="s">&quot;n&quot;</span>) });
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r0 r t">TToken</span>&gt; <a id="d63dc24db3e18df2" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ListAsync</a>(<b>int</b>? <span id="r75 rd" class="r75 r">count</span>, <b>int</b>? <span id="r76 rd" class="r76 r">offset</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r77 rd" class="r77 r">cancellationToken</span>)
+        {
+            <b>var</b> <span id="r78 rd" class="r78 r">query</span> = <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>&gt;(<span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>);
+ 
+            <b>if</b> (<span class="r76 r">offset</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r78 r">query</span> = <span class="r78 r">query</span>.<span class="i">Skip</span>(<span class="r76 r">offset</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+ 
+            <b>if</b> (<span class="r75 r">count</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r78 r">query</span> = <span class="r78 r">query</span>.<span class="i">Take</span>(<span class="r75 r">count</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+ 
+            <b>return</b> <span class="r78 r">query</span>.<span class="i">ToAsyncEnumerable</span>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="r79 r t">TResult</span>&gt; <a id="e7887b1b02ed93af" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ListAsync</a>&lt;<span id="r80 rd t" class="r80 r t">TState</span>, <span id="r79 rd t" class="r79 r t">TResult</span>&gt;(
+            <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<span class="t t">IQueryable</span>&lt;<span class="r0 r t">TToken</span>&gt;, <span class="r80 r t">TState</span>, <span class="t t">IQueryable</span>&lt;<span class="r79 r t">TResult</span>&gt;&gt; <span id="r81 rd" class="r81 r">query</span>,
+            <span class="r80 r t">TState</span> <span id="r82 rd" class="r82 r">state</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r83 rd" class="r83 r">cancellationToken</span>)
+            =&gt; <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#ab0acd5f99886747" class="t constructor">NotSupportedException</a>();
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="bdd63571c5f36a2b" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">PruneAsync</a>(<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a> <span id="r84 rd" class="r84 r">threshold</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r85 rd" class="r85 r">cancellationToken</span> = <b>default</b>)
+        {
+            <span class="c">// Note: Entity Framework Core doesn&#39;t support set-based deletes, which prevents removing</span>
+            <span class="c">// entities in a single command without having to retrieve and materialize them first.</span>
+            <span class="c">// To work around this limitation, entities are manually listed and deleted using a batch logic.</span>
+ 
+            <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a>&gt; <span id="r86 rd" class="r86 r">exceptions</span> = <b>null</b>;
+ 
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r87 rd" class="r87 r">offset</span> = 0; <span class="r87 r">offset</span> &lt; 100_000; <span class="r87 r">offset</span> += 1_000)
+            {
+                <span class="r85 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+                <b>var</b> <span id="r88 rd" class="r88 r">tokens</span> = <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="r0 r t">TToken</span>, <a href="../Indexes/OpenIdTokenIndex.cs.html#32923eb3776c5805" class="t t">OpenIdTokenIndex</a>&gt;(
+                    <span id="r89 rd" class="r89 r">token</span> =&gt; <span class="r89 r">token</span>.<span class="i">CreationDate</span> &lt; <span class="r84 r">threshold</span>.<a href="@1@System.Runtime/A.html#ae3e62dcd82c2422" class="i property">UtcDateTime</a> &amp;&amp;
+                           ((<span class="r89 r">token</span>.<span class="i">Status</span> != <span class="i">Statuses</span>.<span class="i">Inactive</span> &amp;&amp; <span class="r89 r">token</span>.<span class="i">Status</span> != <span class="i">Statuses</span>.<span class="i">Valid</span>) ||
+                             <span class="r89 r">token</span>.<span class="i">AuthorizationId</span>.<span class="i">IsNotIn</span>&lt;<a href="../Indexes/OpenIdAuthorizationIndex.cs.html#6d6b5d00e54f30b9" class="t t">OpenIdAuthorizationIndex</a>&gt;(
+                                <span id="r90 rd" class="r90 r">authorization</span> =&gt; <span class="r90 r">authorization</span>.<span class="i">AuthorizationId</span>,
+                                <span id="r91 rd" class="r91 r">authorization</span> =&gt; <span class="r91 r">authorization</span>.<span class="i">Status</span> == <span class="i">Statuses</span>.<span class="i">Valid</span>) ||
+                             <span class="r89 r">token</span>.<span class="i">ExpirationDate</span> &lt; <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a>), <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>).<span class="i">Skip</span>(<span class="r87 r">offset</span>).<span class="i">Take</span>(1_000).<span class="i">ListAsync</span>();
+ 
+                <b>foreach</b> (<b>var</b> <span id="r92 rd" class="r92 r">token</span> <b>in</b> <span class="r88 r">tokens</span>)
+                {
+                    <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Delete</span>(<span class="r92 r">token</span>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>);
+                }
+ 
+                <b>try</b>
+                {
+                    <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r93 rd" class="r93 r">exception</span>)
+                {
+                    <b>if</b> (<span class="r86 r">exceptions</span> == <b>null</b>)
+                    {
+                        <span class="r86 r">exceptions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a>&gt;(<span class="r94 r">capacity</span>: 1);
+                    }
+ 
+                    <span class="r86 r">exceptions</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r93 r">exception</span>);
+                }
+            }
+ 
+            <b>if</b> (<span class="r86 r">exceptions</span> != <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4dbda9e082b19a1b" class="t constructor">AggregateException</a>(<span class="s">&quot;An error occurred while pruning authorizations.&quot;</span>, <span class="r86 r">exceptions</span>);
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="1e4e2f78eca6dd0a" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetApplicationIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r95 rd" class="r95 r">token</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r96 rd" class="r96 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r97 rd" class="r97 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r95 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r95 r">token</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r96 r">identifier</span>))
+            {
+                <span class="r95 r">token</span>.<a href="../Models/OpenIdToken.cs.html#68dfaabe400bee58" class="i property">ApplicationId</a> = <b>null</b>;
+            }
+            <b>else</b>
+            {
+                <span class="r95 r">token</span>.<a href="../Models/OpenIdToken.cs.html#68dfaabe400bee58" class="i property">ApplicationId</a> = <span class="r96 r">identifier</span>;
+            }
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="95b4bcece7ac9916" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetAuthorizationIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r98 rd" class="r98 r">token</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r99 rd" class="r99 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r100 rd" class="r100 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r98 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r98 r">token</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r99 r">identifier</span>))
+            {
+                <span class="r98 r">token</span>.<a href="../Models/OpenIdToken.cs.html#9b1856305b5e03ea" class="i property">AuthorizationId</a> = <b>null</b>;
+            }
+            <b>else</b>
+            {
+                <span class="r98 r">token</span>.<a href="../Models/OpenIdToken.cs.html#9b1856305b5e03ea" class="i property">AuthorizationId</a> = <span class="r99 r">identifier</span>;
+            }
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="2a69936c0a26b56f" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetCreationDateAsync</a>(<span class="r0 r t">TToken</span> <span id="r101 rd" class="r101 r">token</span>, <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>? <span id="r102 rd" class="r102 r">date</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r103 rd" class="r103 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r101 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r101 r">token</span>));
+            }
+ 
+            <span class="r101 r">token</span>.<a href="../Models/OpenIdToken.cs.html#266a0b4b3d0031a3" class="i property">CreationDate</a> = <span class="r102 r">date</span>?.<a href="@1@System.Runtime/A.html#ae3e62dcd82c2422" class="i property">UtcDateTime</a>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="f5bfd7cd834668b8" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetExpirationDateAsync</a>(<span class="r0 r t">TToken</span> <span id="r104 rd" class="r104 r">token</span>, <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>? <span id="r105 rd" class="r105 r">date</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r106 rd" class="r106 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r104 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r104 r">token</span>));
+            }
+ 
+            <span class="r104 r">token</span>.<a href="../Models/OpenIdToken.cs.html#b39c45ee3cf8b2ab" class="i property">ExpirationDate</a> = <span class="r105 r">date</span>?.<a href="@1@System.Runtime/A.html#ae3e62dcd82c2422" class="i property">UtcDateTime</a>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="07f3f6aa0ad89853" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetPayloadAsync</a>(<span class="r0 r t">TToken</span> <span id="r107 rd" class="r107 r">token</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r108 rd" class="r108 r">payload</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r109 rd" class="r109 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r107 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r107 r">token</span>));
+            }
+ 
+            <span class="r107 r">token</span>.<a href="../Models/OpenIdToken.cs.html#4ecf3c314f4ba794" class="i property">Payload</a> = <span class="r108 r">payload</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="731eec7e71a9ffe9" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetPropertiesAsync</a>(<span class="r0 r t">TToken</span> <span id="r110 rd" class="r110 r">token</span>, <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="t t">JsonElement</span>&gt; <span id="r111 rd" class="r111 r">properties</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r112 rd" class="r112 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r110 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r110 r">token</span>));
+            }
+ 
+            <b>if</b> (<span class="r111 r">properties</span> == <b>null</b> || <span class="r111 r">properties</span>.<a href="@1@System.Collections.Immutable/A.html#4e1e44c5832289cf" class="i property">IsEmpty</a>)
+            {
+                <span class="r110 r">token</span>.<a href="../Models/OpenIdToken.cs.html#c955cf908dc3b0e5" class="i property">Properties</a> = <b>null</b>;
+ 
+                <b>return</b> <b>default</b>;
+            }
+ 
+            <span class="r110 r">token</span>.<a href="../Models/OpenIdToken.cs.html#c955cf908dc3b0e5" class="i property">Properties</a> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="t t">JsonSerializer</span>.<span class="i method">Serialize</span>(<span class="r111 r">properties</span>, <b>new</b> <span class="t constructor">JsonSerializerOptions</span>
+            {
+                <span class="i property">Encoder</span> = <span class="t t">JavaScriptEncoder</span>.<span class="i property">UnsafeRelaxedJsonEscaping</span>,
+                <span class="i property">WriteIndented</span> = <b>false</b>
+            }));
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="c07cc1b85a50746d" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetRedemptionDateAsync</a>(<span class="r0 r t">TToken</span> <span id="r113 rd" class="r113 r">token</span>, <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>? <span id="r114 rd" class="r114 r">date</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r115 rd" class="r115 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r113 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r113 r">token</span>));
+            }
+ 
+            <span class="r113 r">token</span>.<a href="../Models/OpenIdToken.cs.html#bc32b644f952daee" class="i property">RedemptionDate</a> = <span class="r114 r">date</span>?.<a href="@1@System.Runtime/A.html#ae3e62dcd82c2422" class="i property">UtcDateTime</a>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="0fcec961b621f2dc" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetReferenceIdAsync</a>(<span class="r0 r t">TToken</span> <span id="r116 rd" class="r116 r">token</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r117 rd" class="r117 r">identifier</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r118 rd" class="r118 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r116 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r116 r">token</span>));
+            }
+ 
+            <span class="r116 r">token</span>.<a href="../Models/OpenIdToken.cs.html#71a6d77e6bcbb017" class="i property">ReferenceId</a> = <span class="r117 r">identifier</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="4aa85fb63a5ba028" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetStatusAsync</a>(<span class="r0 r t">TToken</span> <span id="r119 rd" class="r119 r">token</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r120 rd" class="r120 r">status</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r121 rd" class="r121 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r119 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r119 r">token</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r120 r">status</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The status cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r120 r">status</span>));
+            }
+ 
+            <span class="r119 r">token</span>.<a href="../Models/OpenIdToken.cs.html#292f623ff0c1866e" class="i property">Status</a> = <span class="r120 r">status</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="50d5beb150566303" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetSubjectAsync</a>(<span class="r0 r t">TToken</span> <span id="r122 rd" class="r122 r">token</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r123 rd" class="r123 r">subject</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r124 rd" class="r124 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r122 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r122 r">token</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r123 r">subject</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The subject cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r123 r">subject</span>));
+            }
+ 
+            <span class="r122 r">token</span>.<a href="../Models/OpenIdToken.cs.html#7f4c2e259a34ab2d" class="i property">Subject</a> = <span class="r123 r">subject</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="8e841354e10dcdba" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetTypeAsync</a>(<span class="r0 r t">TToken</span> <span id="r125 rd" class="r125 r">token</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r126 rd" class="r126 r">type</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r127 rd" class="r127 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r125 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r125 r">token</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r126 r">type</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The token type cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r126 r">type</span>));
+            }
+ 
+            <span class="r125 r">token</span>.<a href="../Models/OpenIdToken.cs.html#71f54bfe693ac41b" class="i property">Type</a> = <span class="r126 r">type</span>;
+ 
+            <b>return</b> <b>default</b>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span><span class="c">/&gt;</span>
+        <b>public virtual async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="dec31ebc5b20afea" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r0 r t">TToken</span> <span id="r128 rd" class="r128 r">token</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r129 rd" class="r129 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r128 r">token</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r128 r">token</span>));
+            }
+ 
+            <span class="r129 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#d2864d73804288fc" class="i method">ThrowIfCancellationRequested</a>();
+ 
+            <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">Save</span>(<span class="r128 r">token</span>, <span class="i">checkConcurrency</span>: <b>true</b>, <span class="i">collection</span>: <a href="#05239381e13e530e" class="i field">OpenIdCollection</a>);
+ 
+            <b>try</b>
+            {
+                <b>await</b> <a href="#1a8583f5de56bff5" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+            }
+            <b>catch</b> (<span class="i">ConcurrencyException</span> <span id="r130 rd" class="r130 r">exception</span>)
+            {
+                <b>throw</b> <b>new</b> <span class="i">OpenIddictExceptions</span>.<span class="i">ConcurrencyException</span>(<b>new</b> <a href="@1@System.Runtime/A.html#6e631639c1e2746b" class="t constructor">StringBuilder</a>()
+                    .<a href="@1@System.Runtime/A.html#73bc75596acbac77" class="i method">AppendLine</a>(<span class="s">&quot;The token was concurrently updated and cannot be persisted in its current state.&quot;</span>)
+                    .<a href="@1@System.Runtime/A.html#e8eaef3c361184bc" class="i method">Append</a>(<span class="s">&quot;Reload the token from the database and retry the operation.&quot;</span>)
+                    .<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>(), <span class="r130 r">exception</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

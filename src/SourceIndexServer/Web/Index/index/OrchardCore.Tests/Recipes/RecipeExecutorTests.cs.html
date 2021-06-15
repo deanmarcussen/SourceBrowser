@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html><head><title>RecipeExecutorTests.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(108);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Recipes/RecipeExecutorTests.cs" target="_top">Recipes\RecipeExecutorTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">Moq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Builders</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i">Events</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>
+{
+    <b>public class</b> <a id="fef37a014a90c4d9" href="../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="dca9168a7bcc51a7">RecipeExecutorTests</span></a>
+    {
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;recipe1&quot;</span>, <span class="s">&quot;[locale en]You have successfully registered![/locale][locale fr]Vous vous êtes inscrit avec succès![/locale]&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;recipe2&quot;</span>, <span class="s">&quot;[1js: valiables(&#39;now&#39;)]&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;recipe3&quot;</span>, <span class="s">&quot;js: valiables(&#39;now&#39;)&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;recipe4&quot;</span>, <span class="s">&quot;[locale en]This text contains a colon &#39;:&#39; symbol[/locale][locale fr]Ce texte contient un deux-points &#39;:&#39;[/locale]&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;recipe5&quot;</span>, <span class="s">&quot;[sc text=&#39;some : text&#39;/]&quot;</span>)]
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="01f210ac2a4a52fb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldTrimValidScriptExpression</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r0 rd" class="r0 r">recipeName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">expected</span>)
+        {
+            <b>return</b> <a href="#a7d389c60ebfae42" class="i method">CreateShellContext</a>().<span class="i">CreateScope</span>().<span class="i">UsingAsync</span>(<b>async</b> <span id="r2 rd" class="r2 r">scope</span> =&gt;
+            {
+                <span class="c">// Arrange</span>
+                <b>var</b> <span id="r3 rd" class="r3 r">shellHostMock</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="i">IShellHost</span>&gt;();
+ 
+                <span class="r3 r">shellHostMock</span>.<span class="i">Setup</span>(<span id="r4 rd" class="r4 r">h</span> =&gt; <span class="r4 r">h</span>.<span class="i">GetScopeAsync</span>(<span class="i">It</span>.<span class="i">IsAny</span>&lt;<span class="i">ShellSettings</span>&gt;()))
+                    .<span class="i">Returns</span>(<span class="i">GetScopeAsync</span>);
+ 
+                <b>var</b> <span id="r5 rd" class="r5 r">recipeEventHandlers</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">IRecipeEventHandler</span>&gt; { <b>new</b> <a href="#3b4c977bcc09155b" class="t constructor">RecipeEventHandler</a>() };
+                <b>var</b> <span id="r6 rd" class="r6 r">loggerMock</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">ILogger</span>&lt;<span class="i">RecipeExecutor</span>&gt;&gt;();
+                <b>var</b> <span id="r7 rd" class="r7 r">recipeExecutor</span> = <b>new</b> <span class="i">RecipeExecutor</span>(
+                    <span class="r3 r">shellHostMock</span>.<span class="i">Object</span>,
+                    <span class="r2 r">scope</span>.<span class="i">ShellContext</span>.<span class="i">Settings</span>,
+                    <span class="r5 r">recipeEventHandlers</span>,
+                    <span class="r6 r">loggerMock</span>.<span class="i">Object</span>);
+ 
+                <span class="c">// Act</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">executionId</span> = <a href="@1@System.Runtime/A.html#b622ef5f6b76c10a" class="t t">Guid</a>.<a href="@1@System.Runtime/A.html#b7fae6994c22c22e" class="i method">NewGuid</a>().<a href="@1@System.Runtime/A.html#8015cb30da6ca742" class="i method">ToString</a>(<span class="s">&quot;n&quot;</span>);
+                <b>var</b> <span id="r9 rd" class="r9 r">recipeDescriptor</span> = <b>new</b> <span class="i">RecipeDescriptor</span> { <span class="i">RecipeFileInfo</span> = <a href="#78a0d03e7104aa1c" class="i method">GetRecipeFileInfo</a>(<span class="r0 r">recipeName</span>) };
+                <b>await</b> <span class="r7 r">recipeExecutor</span>.<span class="i">ExecuteAsync</span>(<span class="r8 r">executionId</span>, <span class="r9 r">recipeDescriptor</span>, <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;(), <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>.<a href="@1@System.Runtime/A.html#ec32c41597007382" class="i property">None</a>);
+ 
+                <span class="c">// Assert</span>
+                <b>var</b> <span id="r10 rd" class="r10 r">recipeStep</span> = (<span class="r5 r">recipeEventHandlers</span>.<span class="i method">Single</span>() <b>as</b> <a href="#3b4c977bcc09155b" class="t t">RecipeEventHandler</a>).<a href="#640efa64ced459cc" class="i property">Context</a>.<span class="i">Step</span>;
+                <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r1 r">expected</span>, <span class="r10 r">recipeStep</span>.<span class="i">SelectToken</span>(<span class="s">&quot;data.[0].TitlePart.Title&quot;</span>).<span class="i">ToString</span>());
+            });
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">ShellScope</span>&gt; <a id="035eae8e84bb30eb" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">GetScopeAsync</a>() =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="i">ShellScope</span>.<span class="i">Context</span>.<span class="i">CreateScope</span>());
+ 
+        <b>private static</b> <span class="i">ShellContext</span> <a id="a7d389c60ebfae42" href="../R/a7d389c60ebfae42.html" target="n" data-glyph="76,1" class="i method">CreateShellContext</a>() =&gt; <b>new</b> <span class="i">ShellContext</span>()
+        {
+            <span class="i">Settings</span> = <b>new</b> <span class="i">ShellSettings</span>() { <span class="i">Name</span> = <span class="i">ShellHelper</span>.<span class="i">DefaultShellName</span>, <span class="i">State</span> = <span class="i">TenantState</span>.<span class="i">Running</span> },
+            <span class="i">ServiceProvider</span> = <a href="#bb74777d3ebab252" class="i method">CreateServiceProvider</a>(),
+        };
+ 
+        <b>private static</b> <span class="t t">IServiceProvider</span> <a id="bb74777d3ebab252" href="../R/bb74777d3ebab252.html" target="n" data-glyph="76,1" class="i method">CreateServiceProvider</a>() =&gt; <b>new</b> <span class="t constructor">ServiceCollection</span>()
+            .<span class="i">AddScripting</span>()
+            .<span class="i">AddSingleton</span>&lt;<span class="i">IDistributedLock</span>, <span class="i">LocalLock</span>&gt;()
+            .<span class="i method">AddLogging</span>()
+            .<span class="i method">BuildServiceProvider</span>();
+ 
+        <b>private</b> <span class="t t">IFileInfo</span> <a id="78a0d03e7104aa1c" href="../R/78a0d03e7104aa1c.html" target="n" data-glyph="76,1" class="i method">GetRecipeFileInfo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">recipeName</span>)
+        {
+            <a href="@1@System.Runtime/A.html#73b5be5e9c2474b2" class="k">var</a> <span id="r12 rd" class="r12 r">assembly</span> = <a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#e87d536bd07fab01" class="i property">Assembly</a>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">path</span> = <span class="s">$&quot;</span><span class="s">Recipes.RecipeFiles.</span>{<span class="r11 r">recipeName</span>}<span class="s">.json</span><span class="s">&quot;</span>;
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">EmbeddedFileProvider</span>(<span class="r12 r">assembly</span>).<span class="i method">GetFileInfo</span>(<span class="r13 r">path</span>);
+        }
+ 
+        <b>private class</b> <a id="3b4c977bcc09155b" href="../R/3b4c977bcc09155b.html" target="n" data-glyph="4,1" class="t t"><span id="92e9be98b6acec09">RecipeEventHandler</span></a> : <span class="i">IRecipeEventHandler</span>
+        {
+            <b>public</b> <span class="i">RecipeExecutionContext</span> <a id="640efa64ced459cc" href="../R/640efa64ced459cc.html" target="n" data-glyph="102,2" class="i property">Context</a> { <b>get</b>; <b>private set</b>; }
+ 
+            <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="880db0fd34d02502" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">RecipeStepExecutedAsync</a>(<span class="i">RecipeExecutionContext</span> <span id="r14 rd" class="r14 r">context</span>)
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r14 r">context</span>.<span class="i">Name</span>, <span class="s">&quot;Content&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <a href="#640efa64ced459cc" class="i property">Context</a> = <span class="r14 r">context</span>;
+                }
+ 
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="71dcd1051a29b0be" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">ExecutionFailedAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">executionId</span>, <span class="i">RecipeDescriptor</span> <span id="r16 rd" class="r16 r">descriptor</span>) =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+ 
+            <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="793481abea142308" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">RecipeExecutedAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">executionId</span>, <span class="i">RecipeDescriptor</span> <span id="r18 rd" class="r18 r">descriptor</span>) =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+ 
+            <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f4ba1e45f43d4bc5" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">RecipeExecutingAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">executionId</span>, <span class="i">RecipeDescriptor</span> <span id="r20 rd" class="r20 r">descriptor</span>) =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+ 
+            <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="da6738e7a4423183" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">RecipeStepExecutingAsync</a>(<span class="i">RecipeExecutionContext</span> <span id="r21 rd" class="r21 r">context</span>) =&gt; <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

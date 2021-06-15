@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html><head><title>UserTaskEventContentDriver.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(130);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Workflows/UserTasks/Drivers/UserTaskEventContentDriver.cs" target="_top">UserTasks\Drivers\UserTaskEventContentDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Workflows" target="_top">src\OrchardCore.Modules\OrchardCore.Workflows\OrchardCore.Workflows.csproj</a> (OrchardCore.Workflows)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Workflows</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">UserTasks</span>.<span class="i n">Activities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">UserTasks</span>.<span class="i n">ViewModels</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">UserTasks</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="927104ab02b098f1" href="../../R/927104ab02b098f1.html" target="n" data-glyph="0,0" class="t t">UserTaskEventContentDriver</a> : <a href="/OrchardCore.ContentManagement.Display/A.html#e2ba4b4a2a5c701e" class="t t">ContentDisplayDriver</a>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#978871ad297330e7" class="t t">IWorkflowStore</a> <a id="9e70e35fac5be036" href="../../R/9e70e35fac5be036.html" target="n" data-glyph="46,1" class="i field">_workflowStore</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a3d5e2be1b2c78bb" class="t t">IActivityLibrary</a> <a id="92adcefa4b9ee836" href="../../R/92adcefa4b9ee836.html" target="n" data-glyph="46,1" class="i field">_activityLibrary</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a> <a id="f10b19376dfea265" href="../../R/f10b19376dfea265.html" target="n" data-glyph="46,1" class="i field">_workflowManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="4f14b0012b372507" href="../../R/4f14b0012b372507.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="ac561f80a3136a1f" href="../../R/ac561f80a3136a1f.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="913cd3fe1f545e7b" href="../../R/913cd3fe1f545e7b.html" target="n" data-glyph="46,1" class="i field">H</a>;
+ 
+        <b>public</b> <a id="058eebd0593bece5" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UserTaskEventContentDriver</a>(
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#978871ad297330e7" class="t t">IWorkflowStore</a> <span id="r0 rd" class="r0 r">workflowStore</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#a3d5e2be1b2c78bb" class="t t">IActivityLibrary</a> <span id="r1 rd" class="r1 r">activityLibrary</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a> <span id="r2 rd" class="r2 r">workflowManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r3 rd" class="r3 r">notifier</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#927104ab02b098f1" class="t t">UserTaskEventContentDriver</a>&gt; <span id="r4 rd" class="r4 r">localizer</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r5 rd" class="r5 r">httpContextAccessor</span>)
+        {
+            <a href="#9e70e35fac5be036" class="i field">_workflowStore</a> = <span class="r0 r">workflowStore</span>;
+            <a href="#92adcefa4b9ee836" class="i field">_activityLibrary</a> = <span class="r1 r">activityLibrary</span>;
+            <a href="#f10b19376dfea265" class="i field">_workflowManager</a> = <span class="r2 r">workflowManager</span>;
+            <a href="#4f14b0012b372507" class="i field">_notifier</a> = <span class="r3 r">notifier</span>;
+            <a href="#ac561f80a3136a1f" class="i field">_httpContextAccessor</a> = <span class="r5 r">httpContextAccessor</span>;
+ 
+            <a href="#913cd3fe1f545e7b" class="i field">H</a> = <span class="r4 r">localizer</span>;
+        }
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="14e9ad5c4d6ff495" href="../../R/14e9ad5c4d6ff495.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r6 rd" class="r6 r">contentItem</span>)
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt;
+            {
+                <a href="/OrchardCore.DisplayManagement/A.html#6c7f38215ee89ff1" class="i method">Initialize</a>&lt;<a href="../ViewModels/UserTaskEventContentViewModel.cs.html#3b027584025d0e57" class="t t">UserTaskEventContentViewModel</a>&gt;(<span class="s">&quot;Content_UserTaskButton&quot;</span>, <b>async</b> <span id="r8 rd" class="r8 r">model</span> =&gt; {
+                    <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r9 rd" class="r9 r">actions</span> = <b>await</b> <a href="#bdec28fce9a58e68" class="i method">GetUserTaskActionsAsync</a>(<span class="r6 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>);
+                    <span class="r8 r">model</span>.<a href="../ViewModels/UserTaskEventContentViewModel.cs.html#1c62a2447f9b0db2" class="i property">Actions</a> = <span class="r9 r">actions</span>;
+                }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Actions:30&quot;</span>),
+            };
+ 
+            <b>return</b> <a href="/OrchardCore.DisplayManagement/A.html#45c40adf0e2cce1e" class="i method">Combine</a>(<span class="r7 r">results</span>.<span class="i method">ToArray</span>());
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="714ce4ad38b9b09f" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r10 rd" class="r10 r">model</span>, <span class="i">IUpdateModel</span> <span id="r11 rd" class="r11 r">updater</span>)
+        {
+            <b>var</b> <span id="r12 rd" class="r12 r">httpContext</span> = <a href="#ac561f80a3136a1f" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">action</span> = (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>)<span class="r12 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">Form</span>[<span class="s">&quot;submit.Save&quot;</span>] ?? <span class="r12 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">Form</span>[<span class="s">&quot;submit.Publish&quot;</span>];
+            <b>if</b> (<span class="r13 r">action</span>?.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;user-task.&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>) == <b>true</b>)
+            {
+                <span class="r13 r">action</span> = <span class="r13 r">action</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="s">&quot;user-task.&quot;</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a>);
+ 
+                <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r14 rd" class="r14 r">availableActions</span> = <b>await</b> <a href="#bdec28fce9a58e68" class="i method">GetUserTaskActionsAsync</a>(<span class="r10 r">model</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>);
+ 
+                <b>if</b> (!<span class="r14 r">availableActions</span>.<a href="@1@System.Runtime/A.html#8f74065d140cfe04" class="i method">Contains</a>(<span class="r13 r">action</span>))
+                {
+                    <a href="#4f14b0012b372507" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#3c769e06a6afdcea" class="i method">Error</a>(<a href="#913cd3fe1f545e7b" class="i field">H</a>[<span class="s">&quot;Not authorized to trigger &#39;{0}&#39;.&quot;</span>, <span class="r13 r">action</span>]);
+                }
+                <b>else</b>
+                {
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0107c766c7acddb2" class="k">var</a> <span id="r15 rd" class="r15 r">contentEvent</span> = <b>new</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#0107c766c7acddb2" class="t constructor">ContentEventContext</a>()
+                    {
+                        <a href="/OrchardCore.ContentManagement.Abstractions/A.html#dc1513c69bebc43b" class="i property">Name</a> = <b>nameof</b>(<a href="../Activities/UserTaskEvent.cs.html#9c351df081bc032d" class="t t">UserTaskEvent</a>),
+                        <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a42d240bb87292bd" class="i property">ContentType</a> = <span class="r10 r">model</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9703ecbea5fc64a" class="i property">ContentType</a>,
+                        <a href="/OrchardCore.ContentManagement.Abstractions/A.html#975e38efafc3f82a" class="i property">ContentItemId</a> = <span class="r10 r">model</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>
+                    };
+ 
+                    <b>var</b> <span id="r16 rd" class="r16 r">input</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt;
+                    {
+                        { <a href="/OrchardCore.ContentManagement.Abstractions/A.html#100e2e71c5abf8da" class="t t">ContentEventConstants</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5826820c89ec9608" class="i field">UserActionInputKey</a>, <span class="r13 r">action</span> },
+                        { <a href="/OrchardCore.ContentManagement.Abstractions/A.html#100e2e71c5abf8da" class="t t">ContentEventConstants</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#35827dde873f449f" class="i field">ContentItemInputKey</a>, <span class="r10 r">model</span> },
+                        { <a href="/OrchardCore.ContentManagement.Abstractions/A.html#100e2e71c5abf8da" class="t t">ContentEventConstants</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5093a5e81815b1d9" class="i field">ContentEventInputKey</a>, <span class="r15 r">contentEvent</span> }
+                    };
+ 
+                    <b>await</b> <a href="#f10b19376dfea265" class="i field">_workflowManager</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#9626a0c9edc23d69" class="i method">TriggerEventAsync</a>(<b>nameof</b>(<a href="../Activities/UserTaskEvent.cs.html#9c351df081bc032d" class="t t">UserTaskEvent</a>), <span class="r16 r">input</span>, <span class="r17 r">correlationId</span>: <span class="r10 r">model</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e28d4e16861a89ba" class="i property">ContentItemId</a>);
+                }
+            }
+ 
+            <b>return</b> <a href="#14e9ad5c4d6ff495" class="i method">Edit</a>(<span class="r10 r">model</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="bdec28fce9a58e68" href="../../R/bdec28fce9a58e68.html" target="n" data-glyph="76,1" class="i method">GetUserTaskActionsAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r18 rd" class="r18 r">contentItemId</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r19 rd" class="r19 r">workflows</span> = <b>await</b> <a href="#9e70e35fac5be036" class="i field">_workflowStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#05f3b13473ba70ba" class="i method">ListByActivityNameAsync</a>(<b>nameof</b>(<a href="../Activities/UserTaskEvent.cs.html#9c351df081bc032d" class="t t">UserTaskEvent</a>), <span class="r18 r">contentItemId</span>);
+            <b>var</b> <span id="r20 rd" class="r20 r">user</span> = <a href="#ac561f80a3136a1f" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">User</span>;
+            <b>var</b> <span id="r21 rd" class="r21 r">userRoles</span> = <span class="r20 r">user</span>.<span class="i property">Claims</span>.<span class="i method">Where</span>(<span id="r22 rd" class="r22 r">x</span> =&gt; <span class="r22 r">x</span>.<span class="i property">Type</span> == <span class="t t">ClaimTypes</span>.<span class="i field">Role</span>).<span class="i method">Select</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span>.<span class="i property">Value</span>).<span class="i method">ToList</span>();
+            <b>var</b> <span id="r24 rd" class="r24 r">actionsQuery</span> =
+                <b>from</b> <span class="i">workflow</span> <b>in</b> <span class="r19 r">workflows</span>
+                <b>let</b> <span class="i">workflowState</span> = <span class="i">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#77912560904fd307" class="i property">State</a>.<span class="i">ToObject</span>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#40b7a494f600af39" class="t t">WorkflowState</a>&gt;()
+                <b>from</b> <span class="i">blockingActivity</span> <b>in</b> <span class="i">workflow</span>.<span class="i">BlockingActivities</span>
+                <b>where</b> <span class="i">blockingActivity</span>.<span class="i">Name</span> == <b>nameof</b>(<a href="../Activities/UserTaskEvent.cs.html#9c351df081bc032d" class="t t">UserTaskEvent</a>)
+                <b>from</b> <span class="i">action</span> <b>in</b> <span class="i">GetUserTaskActions</span>(<span class="i">workflowState</span>, <span class="i">blockingActivity</span>.<span class="i">ActivityId</span>, <span class="r21 r">userRoles</span>)
+                <b>select</b> <span class="i">action</span>;
+ 
+            <b>return</b> <span class="r24 r">actionsQuery</span>.<span class="i">Distinct</span>().<span class="i">ToList</span>();
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="6f9834f1667f4491" href="../../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">GetUserTaskActions</a>(<a href="/OrchardCore.Workflows.Abstractions/A.html#40b7a494f600af39" class="t t">WorkflowState</a> <span id="r25 rd" class="r25 r">workflowState</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">activityId</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r27 rd" class="r27 r">userRoles</span>)
+        {
+            <b>if</b> (<span class="r25 r">workflowState</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#95d6e78b47291b76" class="i property">ActivityStates</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r26 r">activityId</span>, <b>out</b> <b>var</b> <span id="r28 rd" class="r28 r">activityState</span>))
+            {
+                <a href="../Activities/UserTaskEvent.cs.html#9c351df081bc032d" class="k">var</a> <span id="r29 rd" class="r29 r">activity</span> = <a href="#92adcefa4b9ee836" class="i field">_activityLibrary</a>.<span class="i">InstantiateActivity</span>&lt;<a href="../Activities/UserTaskEvent.cs.html#9c351df081bc032d" class="t t">UserTaskEvent</a>&gt;(<b>nameof</b>(<a href="../Activities/UserTaskEvent.cs.html#9c351df081bc032d" class="t t">UserTaskEvent</a>), <span class="r28 r">activityState</span>);
+ 
+                <b>if</b> (<span class="r29 r">activity</span>.<a href="../Activities/UserTaskEvent.cs.html#2c67ccc8ea3e8a04" class="i property">Roles</a>.<span class="i method">Any</span>() &amp;&amp; !<span class="r27 r">userRoles</span>.<span class="i method">Any</span>(<span id="r30 rd" class="r30 r">x</span> =&gt; <span class="r29 r">activity</span>.<a href="../Activities/UserTaskEvent.cs.html#2c67ccc8ea3e8a04" class="i property">Roles</a>.<a href="@1@System.Runtime/A.html#8f74065d140cfe04" class="i method">Contains</a>(<span class="r30 r">x</span>)))
+                    <b>yield</b> <b>break</b>;
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r31 rd" class="r31 r">action</span> <b>in</b> <span class="r29 r">activity</span>.<a href="../Activities/UserTaskEvent.cs.html#85e58fa4c5dc0727" class="i property">Actions</a>)
+                {
+                    <b>yield</b> <b>return</b> <span class="r31 r">action</span>;
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

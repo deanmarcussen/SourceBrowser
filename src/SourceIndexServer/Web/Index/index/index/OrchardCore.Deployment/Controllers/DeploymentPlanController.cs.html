@@ -1,0 +1,342 @@
+﻿<!DOCTYPE html>
+<html><head><title>DeploymentPlanController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(333);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Deployment/Controllers/DeploymentPlanController.cs" target="_top">Controllers\DeploymentPlanController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Deployment" target="_top">src\OrchardCore.Modules\OrchardCore.Deployment\OrchardCore.Deployment.csproj</a> (OrchardCore.Deployment)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Routing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Deployment</span>.<span class="i n">Controllers</span>
+{
+    [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>]
+    <b>public class</b> <a id="34a34ae2ca4162a2" href="../R/34a34ae2ca4162a2.html" target="n" data-glyph="0,0" class="t t">DeploymentPlanController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="c20c158d782c1723" href="../R/c20c158d782c1723.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#3210eac404b61aa1" class="t t">IDisplayManager</a>&lt;<span class="i">DeploymentStep</span>&gt; <a id="4a47698dab3a825d" href="../R/4a47698dab3a825d.html" target="n" data-glyph="46,1" class="i field">_displayManager</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IDeploymentStepFactory</span>&gt; <a id="843d322aed0e515b" href="../R/843d322aed0e515b.html" target="n" data-glyph="46,1" class="i field">_factories</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="da3118476b74ebf4" href="../R/da3118476b74ebf4.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="810d3d9cfd24d6e7" href="../R/810d3d9cfd24d6e7.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="2400af34138bd04e" href="../R/2400af34138bd04e.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="0446f81a68919685" href="../R/0446f81a68919685.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="81ca8a9fd146dab0" href="../R/81ca8a9fd146dab0.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="884748c7395dbefd" href="../R/884748c7395dbefd.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly dynamic</b> <a id="5483df76a2ecf5fd" href="../R/5483df76a2ecf5fd.html" target="n" data-glyph="46,1" class="i field">New</a>;
+ 
+        <b>public</b> <a id="9cbce10d44bbb40d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DeploymentPlanController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#3210eac404b61aa1" class="t t">IDisplayManager</a>&lt;<span class="i">DeploymentStep</span>&gt; <span id="r1 rd" class="r1 r">displayManager</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IDeploymentStepFactory</span>&gt; <span id="r2 rd" class="r2 r">factories</span>,
+            <span class="i">ISession</span> <span id="r3 rd" class="r3 r">session</span>,
+            <span class="i">ISiteService</span> <span id="r4 rd" class="r4 r">siteService</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r5 rd" class="r5 r">shapeFactory</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#34a34ae2ca4162a2" class="t t">DeploymentPlanController</a>&gt; <span id="r6 rd" class="r6 r">stringLocalizer</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#34a34ae2ca4162a2" class="t t">DeploymentPlanController</a>&gt; <span id="r7 rd" class="r7 r">htmlLocalizer</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r8 rd" class="r8 r">notifier</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r9 rd" class="r9 r">updateModelAccessor</span>)
+        {
+            <a href="#4a47698dab3a825d" class="i field">_displayManager</a> = <span class="r1 r">displayManager</span>;
+            <a href="#843d322aed0e515b" class="i field">_factories</a> = <span class="r2 r">factories</span>;
+            <a href="#c20c158d782c1723" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#da3118476b74ebf4" class="i field">_session</a> = <span class="r3 r">session</span>;
+            <a href="#810d3d9cfd24d6e7" class="i field">_siteService</a> = <span class="r4 r">siteService</span>;
+            <a href="#2400af34138bd04e" class="i field">_notifier</a> = <span class="r8 r">notifier</span>;
+            <a href="#0446f81a68919685" class="i field">_updateModelAccessor</a> = <span class="r9 r">updateModelAccessor</span>;
+            <a href="#5483df76a2ecf5fd" class="i field">New</a> = <span class="r5 r">shapeFactory</span>;
+            <a href="#81ca8a9fd146dab0" class="i field">S</a> = <span class="r6 r">stringLocalizer</span>;
+            <a href="#884748c7395dbefd" class="i field">H</a> = <span class="r7 r">htmlLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="70b786ccdb02a8af" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>(<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#d6e987409011878f" class="t t">ContentOptions</a> <span id="r10 rd" class="r10 r">options</span>, <a href="/OrchardCore.Navigation.Core/A.html#51c8763abc99132d" class="t t">PagerParameters</a> <span id="r11 rd" class="r11 r">pagerParameters</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#92dcaa8219c33682" class="i field">Export</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">siteSettings</span> = <b>await</b> <a href="#810d3d9cfd24d6e7" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+            <a href="/OrchardCore.Navigation.Core/A.html#e6e879b28e4fdee2" class="k">var</a> <span id="r13 rd" class="r13 r">pager</span> = <b>new</b> <span class="t">Pager</span>(<span class="r11 r">pagerParameters</span>, <span class="r12 r">siteSettings</span>.<span class="i">PageSize</span>);
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">deploymentPlans</span> = <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">DeploymentPlan</span>, <a href="../Indexes/DeploymentPlanIndex.cs.html#88f186f408db519b" class="t t">DeploymentPlanIndex</a>&gt;();
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r10 r">options</span>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#5c0b1ac55c2513c7" class="i property">Search</a>))
+            {
+                <span class="r14 r">deploymentPlans</span> = <span class="r14 r">deploymentPlans</span>.<span class="i">Where</span>(<span id="r15 rd" class="r15 r">x</span> =&gt; <span class="r15 r">x</span>.<span class="i">Name</span>.<span class="i">Contains</span>(<span class="r10 r">options</span>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#5c0b1ac55c2513c7" class="i property">Search</a>));
+            }
+ 
+            <b>var</b> <span id="r16 rd" class="r16 r">count</span> = <b>await</b> <span class="r14 r">deploymentPlans</span>.<span class="i">CountAsync</span>();
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">results</span> = <b>await</b> <span class="r14 r">deploymentPlans</span>
+                .<span class="i">OrderBy</span>(<span id="r18 rd" class="r18 r">p</span> =&gt; <span class="r18 r">p</span>.<span class="i">Name</span>)
+                .<span class="i">Skip</span>(<span class="r13 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#985e078e8039ce3c" class="i method">GetStartIndex</a>())
+                .<span class="i">Take</span>(<span class="r13 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2ca905c9c05191b1" class="i property">PageSize</a>)
+                .<span class="i">ListAsync</span>();
+ 
+            <span class="c">// Maintain previous route data when generating page links</span>
+            <b>var</b> <span id="r19 rd" class="r19 r">routeData</span> = <b>new</b> <span class="t constructor">RouteData</span>();
+            <span class="r19 r">routeData</span>.<span class="i property">Values</span>.<span class="i method">Add</span>(<span class="s">&quot;Options.Search&quot;</span>, <span class="r10 r">options</span>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#5c0b1ac55c2513c7" class="i property">Search</a>);
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">pagerShape</span> = (<b>await</b> <a href="#5483df76a2ecf5fd" class="i field">New</a>.<span class="i">Pager</span>(<span class="r13 r">pager</span>)).<span class="i">TotalItemCount</span>(<span class="r16 r">count</span>).<span class="i">RouteData</span>(<span class="r19 r">routeData</span>);
+ 
+            <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#c4fdb1c7d5e30573" class="k">var</a> <span id="r21 rd" class="r21 r">model</span> = <b>new</b> <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#c4fdb1c7d5e30573" class="t constructor">DeploymentPlanIndexViewModel</a>
+            {
+                <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#7ccd9968660bc6d4" class="i property">DeploymentPlans</a> = <span class="r17 r">results</span>.<span class="i">Select</span>(<span id="r22 rd" class="r22 r">x</span> =&gt; <b>new</b> <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#e582927e246f89ab" class="t constructor">DeploymentPlanEntry</a> { <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#9e24b175d5694c57" class="i property">DeploymentPlan</a> = <span class="r22 r">x</span> }).<span class="i">ToList</span>(),
+                <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#9478e0e938c7f3f6" class="i property">Options</a> = <span class="r10 r">options</span>,
+                <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#ddba1ec2da553238" class="i property">Pager</a> = <span class="r20 r">pagerShape</span>
+            };
+ 
+            <span class="r21 r">model</span>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#9478e0e938c7f3f6" class="i property">Options</a>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#c560fd69f0f7f567" class="i property">DeploymentPlansBulkAction</a> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="t t">SelectListItem</span>&gt;() {
+                <b>new</b> <span class="t constructor">SelectListItem</span>() { <span class="i property">Text</span> = <a href="#81ca8a9fd146dab0" class="i field">S</a>[<span class="s">&quot;Delete&quot;</span>], <span class="i property">Value</span> = <b>nameof</b>(<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#74b2ba769bdd7851" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#da4f884dd2b98c70" class="i field">Delete</a>) }
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r21 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Index</span>))]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.Filter&quot;</span>)]
+        <b>public</b> <span class="t t">ActionResult</span> <a id="c419cb18a7d5d87d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexFilterPOST</a>(<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#c4fdb1c7d5e30573" class="t t">DeploymentPlanIndexViewModel</a> <span id="r23 rd" class="r23 r">model</span>)
+        {
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>), <b>new</b> <span class="t constructor">RouteValueDictionary</span> {
+                { <span class="s">&quot;Options.Search&quot;</span>, <span class="r23 r">model</span>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#9478e0e938c7f3f6" class="i property">Options</a>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#5c0b1ac55c2513c7" class="i property">Search</a> }
+            });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>, <span class="t constructor">ActionName</span>(<b>nameof</b>(<span class="i">Index</span>))]
+        [<span class="i">FormValueRequired</span>(<span class="s">&quot;submit.BulkAction&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&gt; <a id="12e556fe0da25ef1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IndexBulkActionPOST</a>(<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#d6e987409011878f" class="t t">ContentOptions</a> <span id="r24 rd" class="r24 r">options</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<b>int</b>&gt; <span id="r25 rd" class="r25 r">itemIds</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="r25 r">itemIds</span>?.<span class="i method">Count</span>() &gt; 0)
+            {
+                <b>var</b> <span id="r26 rd" class="r26 r">checkedItems</span> = <b>await</b> <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">DeploymentPlan</span>, <a href="../Indexes/DeploymentPlanIndex.cs.html#88f186f408db519b" class="t t">DeploymentPlanIndex</a>&gt;().<span class="i">Where</span>(<span id="r27 rd" class="r27 r">x</span> =&gt; <span class="r27 r">x</span>.<span class="i">DocumentId</span>.<span class="i">IsIn</span>(<span class="r25 r">itemIds</span>)).<span class="i">ListAsync</span>();
+                <b>switch</b> (<span class="r24 r">options</span>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#e4ef3a171287472a" class="i property">BulkAction</a>)
+                {
+                    <b>case</b> <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#74b2ba769bdd7851" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#dbe6e402c26ebb74" class="i field">None</a>:
+                        <b>break</b>;
+                    <b>case</b> <a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#74b2ba769bdd7851" class="t t">ContentsBulkAction</a>.<a href="../ViewModels/DeploymentPlanIndexViewModel.cs.html#da4f884dd2b98c70" class="i field">Delete</a>:
+                        <b>foreach</b> (<b>var</b> <span id="r28 rd" class="r28 r">item</span> <b>in</b> <span class="r26 r">checkedItems</span>)
+                        {
+                            <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">Delete</span>(<span class="r28 r">item</span>);
+                        }
+                        <a href="#2400af34138bd04e" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#884748c7395dbefd" class="i field">H</a>[<span class="s">&quot;Deployment plans successfully deleted.&quot;</span>]);
+                        <b>break</b>;
+                    <b>default</b>:
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#337b690f0704f510" class="t constructor">ArgumentOutOfRangeException</a>();
+                }
+            }
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="e6e0134bbc0639ef" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Display</a>(<b>int</b> <span id="r29 rd" class="r29 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r30 rd" class="r30 r">deploymentPlan</span> = <b>await</b> <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="i">DeploymentPlan</span>&gt;(<span class="r29 r">id</span>);
+ 
+            <b>if</b> (<span class="r30 r">deploymentPlan</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r31 rd" class="r31 r">items</span> = <b>new</b> <span class="t constructor">List</span>&lt;<b>dynamic</b>&gt;();
+            <b>foreach</b> (<b>var</b> <span id="r32 rd" class="r32 r">step</span> <b>in</b> <span class="r30 r">deploymentPlan</span>.<span class="i">DeploymentSteps</span>)
+            {
+                <b>dynamic</b> <span id="r33 rd" class="r33 r">item</span> = <b>await</b> <a href="#4a47698dab3a825d" class="i field">_displayManager</a>.<span class="i">BuildDisplayAsync</span>(<span class="r32 r">step</span>, <a href="#0446f81a68919685" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="s">&quot;Summary&quot;</span>);
+                <span class="r33 r">item</span>.<span class="i">DeploymentStep</span> = <span class="r32 r">step</span>;
+                <span class="r31 r">items</span>.<span class="i method">Add</span>(<span class="r33 r">item</span>);
+            }
+ 
+            <b>var</b> <span id="r34 rd" class="r34 r">thumbnails</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>dynamic</b>&gt;();
+            <b>foreach</b> (<b>var</b> <span id="r35 rd" class="r35 r">factory</span> <b>in</b> <a href="#843d322aed0e515b" class="i field">_factories</a>)
+            {
+                <b>var</b> <span id="r36 rd" class="r36 r">step</span> = <span class="r35 r">factory</span>.<span class="i">Create</span>();
+                <b>dynamic</b> <span id="r37 rd" class="r37 r">thumbnail</span> = <b>await</b> <a href="#4a47698dab3a825d" class="i field">_displayManager</a>.<span class="i">BuildDisplayAsync</span>(<span class="r36 r">step</span>, <a href="#0446f81a68919685" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="s">&quot;Thumbnail&quot;</span>);
+                <span class="r37 r">thumbnail</span>.<span class="i">DeploymentStep</span> = <span class="r36 r">step</span>;
+                <span class="r34 r">thumbnails</span>.<span class="i">Add</span>(<span class="r35 r">factory</span>.<span class="i">Name</span>, <span class="r37 r">thumbnail</span>);
+            }
+ 
+            <a href="../ViewModels/DisplayDeploymentPlanViewModel.cs.html#5ef5156089bb2d60" class="k">var</a> <span id="r38 rd" class="r38 r">model</span> = <b>new</b> <a href="../ViewModels/DisplayDeploymentPlanViewModel.cs.html#5ef5156089bb2d60" class="t constructor">DisplayDeploymentPlanViewModel</a>
+            {
+                <a href="../ViewModels/DisplayDeploymentPlanViewModel.cs.html#6d8ae573286f001d" class="i property">DeploymentPlan</a> = <span class="r30 r">deploymentPlan</span>,
+                <a href="../ViewModels/DisplayDeploymentPlanViewModel.cs.html#caf5231e3dec1417" class="i property">Items</a> = <span class="r31 r">items</span>,
+                <a href="../ViewModels/DisplayDeploymentPlanViewModel.cs.html#9aba53a848f51e3d" class="i property">Thumbnails</a> = <span class="r34 r">thumbnails</span>,
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r38 r">model</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="48a540b55374c0de" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#042b4f8f0a2f2195" class="k">var</a> <span id="r39 rd" class="r39 r">model</span> = <b>new</b> <a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#042b4f8f0a2f2195" class="t constructor">CreateDeploymentPlanViewModel</a>();
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r39 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="a5bb59959a8eb566" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#042b4f8f0a2f2195" class="t t">CreateDeploymentPlanViewModel</a> <span id="r40 rd" class="r40 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r40 r">model</span>.<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#7c4d398c4538e3af" class="i property">Name</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#042b4f8f0a2f2195" class="t t">CreateDeploymentPlanViewModel</a>.<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#7c4d398c4538e3af" class="i property">Name</a>), <a href="#81ca8a9fd146dab0" class="i field">S</a>[<span class="s">&quot;The name is mandatory.&quot;</span>]);
+                }
+ 
+                <b>var</b> <span id="r41 rd" class="r41 r">count</span> = <b>await</b> <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">QueryIndex</span>&lt;<a href="../Indexes/DeploymentPlanIndex.cs.html#88f186f408db519b" class="t t">DeploymentPlanIndex</a>&gt;(<span id="r42 rd" class="r42 r">x</span> =&gt; <span class="r42 r">x</span>.<span class="i">Name</span> == <span class="r40 r">model</span>.<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#7c4d398c4538e3af" class="i property">Name</a>).<span class="i">CountAsync</span>();
+                <b>if</b> (<span class="r41 r">count</span> &gt; 0)
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#042b4f8f0a2f2195" class="t t">CreateDeploymentPlanViewModel</a>.<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#7c4d398c4538e3af" class="i property">Name</a>), <a href="#81ca8a9fd146dab0" class="i field">S</a>[<span class="s">&quot;A deployment plan with the same name already exists.&quot;</span>]);
+                }
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>var</b> <span id="r43 rd" class="r43 r">deploymentPlan</span> = <b>new</b> <span class="i">DeploymentPlan</span> { <span class="i">Name</span> = <span class="r40 r">model</span>.<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#7c4d398c4538e3af" class="i property">Name</a> };
+ 
+                <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">Save</span>(<span class="r43 r">deploymentPlan</span>);
+ 
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+ 
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r40 r">model</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="f89ee3b21939824a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<b>int</b> <span id="r44 rd" class="r44 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r45 rd" class="r45 r">deploymentPlan</span> = <b>await</b> <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="i">DeploymentPlan</span>&gt;(<span class="r44 r">id</span>);
+ 
+            <b>if</b> (<span class="r45 r">deploymentPlan</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#d95495ced4d6c36e" class="k">var</a> <span id="r46 rd" class="r46 r">model</span> = <b>new</b> <a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#d95495ced4d6c36e" class="t constructor">EditDeploymentPlanViewModel</a>
+            {
+                <a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#5f032cfd41a0bae4" class="i property">Id</a> = <span class="r45 r">deploymentPlan</span>.<span class="i">Id</span>,
+                <a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#aa9a184705ad097b" class="i property">Name</a> = <span class="r45 r">deploymentPlan</span>.<span class="i">Name</span>
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r46 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="75864c8bb9dc5c9e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#d95495ced4d6c36e" class="t t">EditDeploymentPlanViewModel</a> <span id="r47 rd" class="r47 r">model</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r48 rd" class="r48 r">deploymentPlan</span> = <b>await</b> <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="i">DeploymentPlan</span>&gt;(<span class="r47 r">model</span>.<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#5f032cfd41a0bae4" class="i property">Id</a>);
+ 
+            <b>if</b> (<span class="r48 r">deploymentPlan</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r47 r">model</span>.<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#aa9a184705ad097b" class="i property">Name</a>))
+                {
+                    <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#d95495ced4d6c36e" class="t t">EditDeploymentPlanViewModel</a>.<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#aa9a184705ad097b" class="i property">Name</a>), <a href="#81ca8a9fd146dab0" class="i field">S</a>[<span class="s">&quot;The name is mandatory.&quot;</span>]);
+                }
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r47 r">model</span>.<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#aa9a184705ad097b" class="i property">Name</a>, <span class="r48 r">deploymentPlan</span>.<span class="i">Name</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                {
+                    <b>var</b> <span id="r49 rd" class="r49 r">count</span> = <b>await</b> <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">QueryIndex</span>&lt;<a href="../Indexes/DeploymentPlanIndex.cs.html#88f186f408db519b" class="t t">DeploymentPlanIndex</a>&gt;(<span id="r50 rd" class="r50 r">x</span> =&gt; <span class="r50 r">x</span>.<span class="i">Name</span> == <span class="r47 r">model</span>.<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#aa9a184705ad097b" class="i property">Name</a> &amp;&amp; <span class="r50 r">x</span>.<span class="i">DocumentId</span> != <span class="r47 r">model</span>.<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#5f032cfd41a0bae4" class="i property">Id</a>).<span class="i">CountAsync</span>();
+                    <b>if</b> (<span class="r49 r">count</span> &gt; 0)
+                    {
+                        <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<b>nameof</b>(<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#042b4f8f0a2f2195" class="t t">CreateDeploymentPlanViewModel</a>.<a href="../ViewModels/CreateDeploymentPlanViewModel.cs.html#7c4d398c4538e3af" class="i property">Name</a>), <a href="#81ca8a9fd146dab0" class="i field">S</a>[<span class="s">&quot;A deployment plan with the same name already exists.&quot;</span>]);
+                    }
+                }
+            }
+ 
+            <b>if</b> (<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r48 r">deploymentPlan</span>.<span class="i">Name</span> = <span class="r47 r">model</span>.<a href="../ViewModels/EditDeploymentPlanViewModel.cs.html#aa9a184705ad097b" class="i property">Name</a>;
+ 
+                <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">Save</span>(<span class="r48 r">deploymentPlan</span>);
+ 
+                <a href="#2400af34138bd04e" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#884748c7395dbefd" class="i field">H</a>[<span class="s">&quot;Deployment plan updated successfully.&quot;</span>]);
+ 
+                <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+            }
+ 
+            <span class="c">// If we got this far, something failed, redisplay form</span>
+            <b>return</b> <span class="i method">View</span>(<span class="r47 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="bfa349fbd574dd3a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Delete</a>(<b>int</b> <span id="r51 rd" class="r51 r">id</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#c20c158d782c1723" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#6d3b17fe448a5a0d" class="t t">Permissions</a>.<a href="../Permissions.cs.html#29517aa41a51ac98" class="i field">ManageDeploymentPlan</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r52 rd" class="r52 r">deploymentPlan</span> = <b>await</b> <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">GetAsync</span>&lt;<span class="i">DeploymentPlan</span>&gt;(<span class="r51 r">id</span>);
+ 
+            <b>if</b> (<span class="r52 r">deploymentPlan</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="#da3118476b74ebf4" class="i field">_session</a>.<span class="i">Delete</span>(<span class="r52 r">deploymentPlan</span>);
+ 
+            <a href="#2400af34138bd04e" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#884748c7395dbefd" class="i field">H</a>[<span class="s">&quot;Deployment plan deleted successfully.&quot;</span>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Index</span>));
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

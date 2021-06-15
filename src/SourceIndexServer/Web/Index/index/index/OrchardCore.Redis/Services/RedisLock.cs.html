@@ -1,0 +1,218 @@
+﻿<!DOCTYPE html>
+<html><head><title>RedisLock.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(209);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Redis/Services/RedisLock.cs" target="_top">Services\RedisLock.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Redis" target="_top">src\OrchardCore.Modules\OrchardCore.Redis\OrchardCore.Redis.csproj</a> (OrchardCore.Redis)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i">StackExchange</span>.<span class="i">Redis</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Redis</span>.<span class="i n">Services</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This component is a tenant singleton which allows to acquire distributed named locks for a given tenant.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="1d051bc1e080f188" href="../R/1d051bc1e080f188.html" target="n" data-glyph="0,0" class="t t">RedisLock</a> : <span class="i">IDistributedLock</span>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a> <a id="88129e285be54f6a" href="../R/88129e285be54f6a.html" target="n" data-glyph="46,1" class="i field">_redis</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="3b2edb7f8ca86d69" href="../R/3b2edb7f8ca86d69.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private readonly string</b> <a id="9b964fc018e23cd2" href="../R/9b964fc018e23cd2.html" target="n" data-glyph="46,1" class="i field">_hostName</a>;
+        <b>private readonly string</b> <a id="13b2b620dab52826" href="../R/13b2b620dab52826.html" target="n" data-glyph="46,1" class="i field">_prefix</a>;
+ 
+        <b>public</b> <a id="fbb552b1891a2d1e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RedisLock</a>(<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a> <span id="r0 rd" class="r0 r">redis</span>, <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>, <span class="t t">ILogger</span>&lt;<a href="#1d051bc1e080f188" class="t t">RedisLock</a>&gt; <span id="r2 rd" class="r2 r">logger</span>)
+        {
+            <a href="#88129e285be54f6a" class="i field">_redis</a> = <span class="r0 r">redis</span>;
+            <a href="#9b964fc018e23cd2" class="i field">_hostName</a> = <span class="t t">Dns</span>.<span class="i method">GetHostName</span>() + <span class="s">&#39;:&#39;</span> + <span class="t t">Process</span>.<span class="i method">GetCurrentProcess</span>().<span class="i property">Id</span>;
+            <a href="#13b2b620dab52826" class="i field">_prefix</a> = <span class="r0 r">redis</span>.<a href="/OrchardCore.Redis.Abstractions/A.html#3921fb6466ffd85a" class="i property">InstancePrefix</a> + <span class="r1 r">shellSettings</span>.<span class="i">Name</span> + <span class="s">&#39;:&#39;</span>;
+            <a href="#3b2edb7f8ca86d69" class="i field">_logger</a> = <span class="r2 r">logger</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Waits indefinitely until acquiring a named lock with a given expiration for the current tenant.</span>
+        <span class="c">///</span><span class="c"> After &#39;expiration&#39; the lock is auto released, a null value is equivalent to &#39;TimeSpan.MaxValue&#39;.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">ILocker</span>&gt; <a id="a665d5b8494dba2e" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">AcquireLockAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">key</span>, <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>? <span id="r4 rd" class="r4 r">expiration</span> = <b>null</b>)
+        {
+            <b>return</b> (<b>await</b> <a href="#b6fcbd85e23330d1" class="i method">TryAcquireLockAsync</a>(<span class="r3 r">key</span>, <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#49db92dcef47a7a4" class="i field">MaxValue</a>, <span class="r4 r">expiration</span>)).<a href="/System.Runtime/A.html#cff4b6d19473fe14" class="i field">locker</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to acquire a named lock in a given timeout with a given expiration for the current tenant.</span>
+        <span class="c">///</span><span class="c"> After &#39;expiration&#39; the lock is auto released, a null value is equivalent to &#39;TimeSpan.MaxValue&#39;.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<span class="i">ILocker</span> <a id="cff4b6d19473fe14" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">locker</a>, <b>bool</b> <a id="9c07d038adc0e56b" href="../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">locked</a>)&gt; <a id="b6fcbd85e23330d1" href="../R/b6fcbd85e23330d1.html" target="n" data-glyph="72,1" class="i method">TryAcquireLockAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">key</span>, <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <span id="r6 rd" class="r6 r">timeout</span>, <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>? <span id="r7 rd" class="r7 r">expiration</span> = <b>null</b>)
+        {
+            <b>using</b> (<a href="@1@System.Runtime/A.html#130a9536ac96b392" class="k">var</a> <span id="r8 rd" class="r8 r">cts</span> = <b>new</b> <a href="@1@System.Runtime/A.html#2f4ad148fd857d6f" class="t constructor">CancellationTokenSource</a>(<span class="r6 r">timeout</span> != <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#49db92dcef47a7a4" class="i field">MaxValue</a> ? <span class="r6 r">timeout</span> : <a href="@1@System.Runtime/A.html#6b53654d3452a8df" class="t t">Timeout</a>.<a href="@1@System.Runtime/A.html#c679290f50556e4e" class="i field">InfiniteTimeSpan</a>))
+            {
+                <a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="k">var</a> <span id="r9 rd" class="r9 r">retries</span> = 0.0;
+ 
+                <b>while</b> (!<span class="r8 r">cts</span>.<a href="@1@System.Runtime/A.html#716cb764064ecfeb" class="i property">IsCancellationRequested</a>)
+                {
+                    <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r10 rd" class="r10 r">locked</span> = <b>await</b> <a href="#7b89e49d0ac8d57d" class="i method">LockAsync</a>(<span class="r5 r">key</span>, <span class="r7 r">expiration</span> ?? <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#49db92dcef47a7a4" class="i field">MaxValue</a>);
+ 
+                    <b>if</b> (<span class="r10 r">locked</span>)
+                    {
+                        <b>return</b> (<b>new</b> <a href="#3e8fe98d23360e7c" class="t constructor">Locker</a>(<a href="#1d051bc1e080f188" class="k">this</a>, <span class="r5 r">key</span>), <span class="r10 r">locked</span>);
+                    }
+ 
+                    <b>try</b>
+                    {
+                        <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#b070ae859dd3f7b7" class="i method">Delay</a>(<a href="#e57b21efd542a725" class="i method">GetDelay</a>(++<span class="r9 r">retries</span>), <span class="r8 r">cts</span>.<a href="@1@System.Runtime/A.html#9e22b9c8995bf195" class="i property">Token</a>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#30edb7a318d221fa" class="t t">TaskCanceledException</a>)
+                    {
+                        <b>if</b> (<a href="#3b2edb7f8ca86d69" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                        {
+                            <a href="#3b2edb7f8ca86d69" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Timeout elapsed before acquiring the named lock &#39;{LockName}&#39; after the given timeout of &#39;{Timeout}&#39;.&quot;</span>,
+                                <a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r5 r">key</span>, <span class="r6 r">timeout</span>.<a href="@1@System.Runtime/A.html#b8c8f6dc0f808233" class="i method">ToString</a>());
+                        }
+                    }
+                }
+            }
+ 
+            <b>return</b> (<b>null</b>, <b>false</b>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="dd1ec4ec8f036737" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">IsLockAcquiredAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">key</span>)
+        {
+            <b>if</b> (<a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>try</b>
+            {
+                <b>return</b> (<b>await</b> <a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">LockQueryAsync</span>(<a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r11 r">key</span>)).<span class="i">HasValue</span>;
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r12 rd" class="r12 r">e</span>)
+            {
+                <a href="#3b2edb7f8ca86d69" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r12 r">e</span>, <span class="s">&quot;Fails to check whether the named lock &#39;{LockName}&#39; is already acquired.&quot;</span>, <a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r11 r">key</span>);
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="7b89e49d0ac8d57d" href="../R/7b89e49d0ac8d57d.html" target="n" data-glyph="76,1" class="i method">LockAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r13 rd" class="r13 r">key</span>, <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <span id="r14 rd" class="r14 r">expiry</span>)
+        {
+            <b>if</b> (<a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>try</b>
+            {
+                <b>return</b> <b>await</b> <a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">LockTakeAsync</span>(<a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r13 r">key</span>, <a href="#9b964fc018e23cd2" class="i field">_hostName</a>, <span class="r14 r">expiry</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r15 rd" class="r15 r">e</span>)
+            {
+                <a href="#3b2edb7f8ca86d69" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r15 r">e</span>, <span class="s">&quot;Fails to acquire the named lock &#39;{LockName}&#39;.&quot;</span>, <a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r13 r">key</span>);
+            }
+ 
+            <b>return</b> <b>false</b>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="a7eb658a88cc351b" href="../R/a7eb658a88cc351b.html" target="n" data-glyph="76,1" class="i method">ReleaseAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">key</span>)
+        {
+            <b>if</b> (<a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>try</b>
+            {
+                <b>await</b> <a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">LockReleaseAsync</span>(<a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r16 r">key</span>, <a href="#9b964fc018e23cd2" class="i field">_hostName</a>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r17 rd" class="r17 r">e</span>)
+            {
+                <a href="#3b2edb7f8ca86d69" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r17 r">e</span>, <span class="s">&quot;Fails to release the named lock &#39;{LockName}&#39;.&quot;</span>, <a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r16 r">key</span>);
+            }
+        }
+ 
+        <b>private void</b> <a id="04230cbf9affc3a0" href="../R/04230cbf9affc3a0.html" target="n" data-glyph="76,1" class="i method">Release</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r18 rd" class="r18 r">key</span>)
+        {
+            <b>try</b>
+            {
+                <a href="#88129e285be54f6a" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">LockRelease</span>(<a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r18 r">key</span>, <a href="#9b964fc018e23cd2" class="i field">_hostName</a>, <span class="i">CommandFlags</span>.<span class="i">FireAndForget</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r19 rd" class="r19 r">e</span>)
+            {
+                <a href="#3b2edb7f8ca86d69" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r19 r">e</span>, <span class="s">&quot;Fails to release the named lock &#39;{LockName}&#39;.&quot;</span>, <a href="#13b2b620dab52826" class="i field">_prefix</a> + <span class="r18 r">key</span>);
+            }
+        }
+ 
+        <b>private class</b> <a id="01ff7e1ebb2da526" href="../R/01ff7e1ebb2da526.html" target="n" data-glyph="4,1" class="t t">Locker</a> : <span class="i">ILocker</span>
+        {
+            <b>private readonly</b> <a href="#1d051bc1e080f188" class="t t">RedisLock</a> <a id="3d01fb993467b47b" href="../R/3d01fb993467b47b.html" target="n" data-glyph="46,2" class="i field">_lock</a>;
+            <b>private readonly string</b> <a id="1f80b8938c61a415" href="../R/1f80b8938c61a415.html" target="n" data-glyph="46,2" class="i field">_key</a>;
+            <b>private bool</b> <a id="415be8c3b6a7b5d6" href="../R/415be8c3b6a7b5d6.html" target="n" data-glyph="46,2" class="i field">_disposed</a>;
+ 
+            <b>public</b> <a id="3e8fe98d23360e7c" href="../R/3e8fe98d23360e7c.html" target="n" data-glyph="72,2" class="t constructor">Locker</a>(<a href="#1d051bc1e080f188" class="t t">RedisLock</a> <span id="r20 rd" class="r20 r">redislock</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">key</span>)
+            {
+                <a href="#3d01fb993467b47b" class="i field">_lock</a> = <span class="r20 r">redislock</span>;
+                <a href="#1f80b8938c61a415" class="i field">_key</a> = <span class="r21 r">key</span>;
+            }
+ 
+            <b>public</b> <a href="@1@System.Runtime/A.html#001d610aba2df461" class="t t">ValueTask</a> <a id="008f647ab2afd2ea" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">DisposeAsync</a>()
+            {
+                <b>if</b> (<a href="#415be8c3b6a7b5d6" class="i field">_disposed</a>)
+                {
+                    <b>return</b> <b>default</b>;
+                }
+ 
+                <a href="#415be8c3b6a7b5d6" class="i field">_disposed</a> = <b>true</b>;
+ 
+                <b>return</b> <a href="#3d01fb993467b47b" class="i field">_lock</a>.<a href="#a7eb658a88cc351b" class="i method">ReleaseAsync</a>(<a href="#1f80b8938c61a415" class="i field">_key</a>);
+            }
+ 
+            <b>public void</b> <a id="4358877d8e0f69a4" href="../R/../../0000000000.html" target="n" data-glyph="72,2" class="i method">Dispose</a>()
+            {
+                <b>if</b> (<a href="#415be8c3b6a7b5d6" class="i field">_disposed</a>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <a href="#415be8c3b6a7b5d6" class="i field">_disposed</a> = <b>true</b>;
+ 
+                <a href="#3d01fb993467b47b" class="i field">_lock</a>.<a href="#04230cbf9affc3a0" class="i method">Release</a>(<a href="#1f80b8938c61a415" class="i field">_key</a>);
+            }
+        }
+ 
+        <b>private static readonly double</b> <a id="bd2f118e8113e027" href="../R/bd2f118e8113e027.html" target="n" data-glyph="46,1" class="i field">_baseDelay</a> = 100;
+        <b>private static readonly double</b> <a id="d136eb38105c3da1" href="../R/d136eb38105c3da1.html" target="n" data-glyph="46,1" class="i field">_maxDelay</a> = 10000;
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <a id="e57b21efd542a725" href="../R/e57b21efd542a725.html" target="n" data-glyph="76,1" class="i method">GetDelay</a>(<b>double</b> <span id="r22 rd" class="r22 r">retries</span>)
+        {
+            <a href="@1@System.Runtime/A.html#1a65cbdb09544ba1" class="k">var</a> <span id="r23 rd" class="r23 r">delay</span> = <a href="#bd2f118e8113e027" class="i field">_baseDelay</a>
+                * (1.0 + ((<a href="@1@System.Runtime/A.html#a4407e67b9a5afad" class="t t">Math</a>.<a href="@1@System.Runtime/A.html#95354113fadc3083" class="i method">Pow</a>(1.8, <span class="r22 r">retries</span> - 1.0) - 1.0)
+                    * (0.6 + <b>new</b> <a href="@1@System.Runtime/A.html#5d22f8880fc9f8d9" class="t constructor">Random</a>().<a href="@1@System.Runtime/A.html#c467f2953a8d2207" class="i method">NextDouble</a>() * 0.4)));
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(<a href="@1@System.Runtime/A.html#a4407e67b9a5afad" class="t t">Math</a>.<a href="@1@System.Runtime/A.html#e248b38c0156e9dd" class="i method">Min</a>(<span class="r23 r">delay</span>, <a href="#d136eb38105c3da1" class="i field">_maxDelay</a>));
+ 
+            <span class="c">// 2 examples with 10 retries</span>
+            <span class="c">// --------------------------</span>
+            <span class="c">// 100     100 (start from base)</span>
+            <span class="c">// 164     171</span>
+            <span class="c">// 256     312</span>
+            <span class="c">// 401     519</span>
+            <span class="c">// 754     766</span>
+            <span class="c">// 1327    1562</span>
+            <span class="c">// 2950    3257</span>
+            <span class="c">// 4596    4966</span>
+            <span class="c">// 7215    8667</span>
+            <span class="c">// 10000   10000 (max reached)</span>
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

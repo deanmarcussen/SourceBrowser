@@ -1,0 +1,292 @@
+﻿<!DOCTYPE html>
+<html><head><title>HttpWorkflowController.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(283);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Workflows/Http/Controllers/HttpWorkflowController.cs" target="_top">Http\Controllers\HttpWorkflowController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Workflows" target="_top">src\OrchardCore.Modules\OrchardCore.Workflows\OrchardCore.Workflows.csproj</a> (OrchardCore.Workflows)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Antiforgery</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Admin</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Locking</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Helpers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Http</span>.<span class="i n">Activities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Http</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Http</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="32e47cf9c19c4767" href="../../R/32e47cf9c19c4767.html" target="n" data-glyph="0,0" class="t t">HttpWorkflowController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="f83468c816da448e" href="../../R/f83468c816da448e.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a> <a id="6906e3014655fa34" href="../../R/6906e3014655fa34.html" target="n" data-glyph="46,1" class="i field">_workflowManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#5ec1a962d43a4437" class="t t">IWorkflowTypeStore</a> <a id="bd1c32a52ad0fa05" href="../../R/bd1c32a52ad0fa05.html" target="n" data-glyph="46,1" class="i field">_workflowTypeStore</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#978871ad297330e7" class="t t">IWorkflowStore</a> <a id="4b6644bdce6f5dde" href="../../R/4b6644bdce6f5dde.html" target="n" data-glyph="46,1" class="i field">_workflowStore</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a3d5e2be1b2c78bb" class="t t">IActivityLibrary</a> <a id="91778012a8a28b96" href="../../R/91778012a8a28b96.html" target="n" data-glyph="46,1" class="i field">_activityLibrary</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#edb33149d7a0fcf6" class="t t">ISecurityTokenService</a> <a id="2161903415f6e8c2" href="../../R/2161903415f6e8c2.html" target="n" data-glyph="46,1" class="i field">_securityTokenService</a>;
+        <b>private readonly</b> <span class="t t">IAntiforgery</span> <a id="32396cbfd1d4a795" href="../../R/32396cbfd1d4a795.html" target="n" data-glyph="46,1" class="i field">_antiforgery</a>;
+        <b>private readonly</b> <span class="i">IDistributedLock</span> <a id="6893655c5ac86ddc" href="../../R/6893655c5ac86ddc.html" target="n" data-glyph="46,1" class="i field">_distributedLock</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="0cfe71c23dd895ef" href="../../R/0cfe71c23dd895ef.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>public const int</b> <a id="bd667692d8fcf59c" href="../../R/bd667692d8fcf59c.html" target="n" data-glyph="6,1" class="i field">NoExpiryTokenLifespan</a> = 36500;
+ 
+        <b>public</b> <a id="43c0c21306ad3dc4" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">HttpWorkflowController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#ad3985654e688b8a" class="t t">IWorkflowManager</a> <span id="r1 rd" class="r1 r">workflowManager</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#5ec1a962d43a4437" class="t t">IWorkflowTypeStore</a> <span id="r2 rd" class="r2 r">workflowTypeStore</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#978871ad297330e7" class="t t">IWorkflowStore</a> <span id="r3 rd" class="r3 r">workflowStore</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#a3d5e2be1b2c78bb" class="t t">IActivityLibrary</a> <span id="r4 rd" class="r4 r">activityLibrary</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#edb33149d7a0fcf6" class="t t">ISecurityTokenService</a> <span id="r5 rd" class="r5 r">securityTokenService</span>,
+            <span class="t t">IAntiforgery</span> <span id="r6 rd" class="r6 r">antiforgery</span>,
+            <span class="i">IDistributedLock</span> <span id="r7 rd" class="r7 r">distributedLock</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#32e47cf9c19c4767" class="t t">HttpWorkflowController</a>&gt; <span id="r8 rd" class="r8 r">logger</span>
+        )
+        {
+            <a href="#f83468c816da448e" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#6906e3014655fa34" class="i field">_workflowManager</a> = <span class="r1 r">workflowManager</span>;
+            <a href="#bd1c32a52ad0fa05" class="i field">_workflowTypeStore</a> = <span class="r2 r">workflowTypeStore</span>;
+            <a href="#4b6644bdce6f5dde" class="i field">_workflowStore</a> = <span class="r3 r">workflowStore</span>;
+            <a href="#91778012a8a28b96" class="i field">_activityLibrary</a> = <span class="r4 r">activityLibrary</span>;
+            <a href="#2161903415f6e8c2" class="i field">_securityTokenService</a> = <span class="r5 r">securityTokenService</span>;
+            <a href="#32396cbfd1d4a795" class="i field">_antiforgery</a> = <span class="r6 r">antiforgery</span>;
+            <a href="#6893655c5ac86ddc" class="i field">_distributedLock</a> = <span class="r7 r">distributedLock</span>;
+            <a href="#0cfe71c23dd895ef" class="i field">_logger</a> = <span class="r8 r">logger</span>;
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<a href="/OrchardCore.Admin.Abstractions/A.html#e60e925e36fbe57c" class="t constructor">Admin</a>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="2d8084fecbd94175" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GenerateUrl</a>(<b>int</b> <span id="r9 rd" class="r9 r">workflowTypeId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">activityId</span>, <b>int</b> <span id="r11 rd" class="r11 r">tokenLifeSpan</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#f83468c816da448e" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../../Permissions.cs.html#9c58b1240cd2160d" class="t t">Permissions</a>.<a href="../../Permissions.cs.html#e966c2e6560a0134" class="i field">ManageWorkflows</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#0d529cb8d2493970" class="k">var</a> <span id="r12 rd" class="r12 r">workflowType</span> = <b>await</b> <a href="#bd1c32a52ad0fa05" class="i field">_workflowTypeStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#9ba642f6f0257a85" class="i method">GetAsync</a>(<span class="r9 r">workflowTypeId</span>);
+ 
+            <b>if</b> (<span class="r12 r">workflowType</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">token</span> = <a href="#2161903415f6e8c2" class="i field">_securityTokenService</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#e350a8e928f659bd" class="i method">CreateToken</a>(<b>new</b> <a href="../Models/WorkflowPayload.cs.html#f0b394270780c8f6" class="t constructor">WorkflowPayload</a>(<span class="r12 r">workflowType</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#4ffab8ec8cea46bc" class="i property">WorkflowTypeId</a>, <span class="r10 r">activityId</span>), <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#e7c4baa19fa38e8e" class="i method">FromDays</a>(<span class="r11 r">tokenLifeSpan</span> == 0 ? <a href="#bd667692d8fcf59c" class="i field">NoExpiryTokenLifespan</a> : <span class="r11 r">tokenLifeSpan</span>));
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">url</span> = <span class="i property">Url</span>.<span class="i method">Action</span>(<span class="s">&quot;Invoke&quot;</span>, <span class="s">&quot;HttpWorkflow&quot;</span>, <b>new</b> { <a href="#c3920e02ed6c53c7" class="i property">token</a> = <span class="r13 r">token</span> });
+ 
+            <b>return</b> <span class="i method">Ok</span>(<span class="r14 r">url</span>);
+        }
+ 
+        [<span class="t constructor">IgnoreAntiforgeryToken</span>]
+        [<span class="t constructor">HttpGet</span>, <span class="t constructor">HttpPost</span>, <span class="t constructor">HttpPut</span>, <span class="t constructor">HttpPatch</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="09956a203230cdb0" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Invoke</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">token</span>)
+        {
+            <b>if</b> (!<a href="#2161903415f6e8c2" class="i field">_securityTokenService</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#730297a2941062ca" class="i method">TryDecryptToken</a>&lt;<a href="../Models/WorkflowPayload.cs.html#0a39ac56edb58e89" class="t t">WorkflowPayload</a>&gt;(<span class="r15 r">token</span>, <b>out</b> <a href="../Models/WorkflowPayload.cs.html#0a39ac56edb58e89" class="k">var</a> <span id="r16 rd" class="r16 r">payload</span>))
+            {
+                <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Invalid SAS token provided&quot;</span>);
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Get the workflow type.</span>
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#0d529cb8d2493970" class="k">var</a> <span id="r17 rd" class="r17 r">workflowType</span> = <b>await</b> <a href="#bd1c32a52ad0fa05" class="i field">_workflowTypeStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#580afb26b6d975db" class="i method">GetAsync</a>(<span class="r16 r">payload</span>.<a href="../Models/WorkflowPayload.cs.html#971ac0b2ce7f1e0a" class="i property">WorkflowId</a>);
+ 
+            <b>if</b> (<span class="r17 r">workflowType</span> == <b>null</b>)
+            {
+                <b>if</b> (<a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Warning</span>))
+                {
+                    <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The provided workflow with ID &#39;{WorkflowTypeId}&#39; could not be found.&quot;</span>, <span class="r16 r">payload</span>.<a href="../Models/WorkflowPayload.cs.html#971ac0b2ce7f1e0a" class="i property">WorkflowId</a>);
+                }
+ 
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<span class="r17 r">workflowType</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#e29d0131f44732aa" class="i property">IsEnabled</a>)
+            {
+                <b>if</b> (<a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Warning</span>))
+                {
+                    <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The provided workflow with ID &#39;{WorkflowTypeId}&#39; is not enabled.&quot;</span>, <span class="r16 r">payload</span>.<a href="../Models/WorkflowPayload.cs.html#971ac0b2ce7f1e0a" class="i property">WorkflowId</a>);
+                }
+ 
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Get the activity record using the activity ID provided by the token.</span>
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#6b0c59cd6b2160f5" class="k">var</a> <span id="r18 rd" class="r18 r">startActivity</span> = <span class="r17 r">workflowType</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#db712b9ab6b5016c" class="i property">Activities</a>.<span class="i method">FirstOrDefault</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <span class="r19 r">x</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#038a862a28690a6c" class="i property">ActivityId</a> == <span class="r16 r">payload</span>.<a href="../Models/WorkflowPayload.cs.html#163717d37483ef08" class="i property">ActivityId</a>);
+ 
+            <b>if</b> (<span class="r18 r">startActivity</span> == <b>null</b>)
+            {
+                <b>if</b> (<a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Warning</span>))
+                {
+                    <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;The provided activity with ID &#39;{ActivityId}&#39; could not be found.&quot;</span>, <span class="r16 r">payload</span>.<a href="../Models/WorkflowPayload.cs.html#163717d37483ef08" class="i property">ActivityId</a>);
+                }
+ 
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Instantiate and bind an actual HttpRequestEvent object to check its settings.</span>
+            <a href="../Activities/HttpRequestEvent.cs.html#66093e2804cc9d3b" class="k">var</a> <span id="r20 rd" class="r20 r">httpRequestActivity</span> = <a href="#91778012a8a28b96" class="i field">_activityLibrary</a>.<span class="i">InstantiateActivity</span>&lt;<a href="../Activities/HttpRequestEvent.cs.html#66093e2804cc9d3b" class="t t">HttpRequestEvent</a>&gt;(<span class="r18 r">startActivity</span>);
+ 
+            <b>if</b> (<span class="r20 r">httpRequestActivity</span> == <b>null</b>)
+            {
+                <b>if</b> (<a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Warning</span>))
+                {
+                    <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Activity with name &#39;{ActivityName}&#39; could not be found.&quot;</span>, <span class="r18 r">startActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#6d6133c767e1b8eb" class="i property">Name</a>);
+                }
+ 
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Check if the HttpRequestEvent is configured to perform antiforgery token validation. If so, perform the validation.</span>
+            <b>if</b> (<span class="r20 r">httpRequestActivity</span>.<a href="../Activities/HttpRequestEvent.cs.html#0e4475ae3ded0f48" class="i property">ValidateAntiforgeryToken</a> &amp;&amp; (!<b>await</b> <a href="#32396cbfd1d4a795" class="i field">_antiforgery</a>.<span class="i method">IsRequestValidAsync</span>(<span class="i property">HttpContext</span>)))
+            {
+                <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Antiforgery token validation failed.&quot;</span>);
+                <b>return</b> <span class="i method">BadRequest</span>();
+            }
+ 
+            <span class="c">// If the activity is a start activity, start a new workflow.</span>
+            <b>if</b> (<span class="r18 r">startActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#ceb385555aa94ca2" class="i property">IsStart</a>)
+            {
+                <span class="c">// If a singleton, try to acquire a lock per workflow type.</span>
+                (<b>var</b> <span id="r21 rd" class="r21 r">locker</span>, <b>var</b> <span id="r22 rd" class="r22 r">locked</span>) = <b>await</b> <a href="#6893655c5ac86ddc" class="i field">_distributedLock</a>.<span class="i">TryAcquireWorkflowTypeLockAsync</span>(<span class="r17 r">workflowType</span>);
+                <b>if</b> (<span class="r22 r">locked</span>)
+                {
+                    <b>await using</b> <b>var</b> <span id="r23 rd" class="r23 r">acquiredLock</span> = <span class="r21 r">locker</span>;
+ 
+                    <span class="c">// Check if this is not a workflow singleton or there&#39;s not already an halted instance on any activity.</span>
+                    <b>if</b> (!<span class="r17 r">workflowType</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#fbd5c7be4f8b593b" class="i property">IsSingleton</a> || !<b>await</b> <a href="#4b6644bdce6f5dde" class="i field">_workflowStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#e76e145f71acd65c" class="i method">HasHaltedInstanceAsync</a>(<span class="r17 r">workflowType</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#4ffab8ec8cea46bc" class="i property">WorkflowTypeId</a>))
+                    {
+                        <b>if</b> (<a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                        {
+                            <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Invoking new workflow of type &#39;{WorkflowTypeId}&#39; with start activity &#39;{ActivityId}&#39;&quot;</span>, <span class="r17 r">workflowType</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#4ffab8ec8cea46bc" class="i property">WorkflowTypeId</a>, <span class="r18 r">startActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#038a862a28690a6c" class="i property">ActivityId</a>);
+                        }
+ 
+                        <b>await</b> <a href="#6906e3014655fa34" class="i field">_workflowManager</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#9e3138569e7b1a5f" class="i method">StartWorkflowAsync</a>(<span class="r17 r">workflowType</span>, <span class="r18 r">startActivity</span>);
+                    }
+                }
+            }
+            <b>else</b>
+            {
+                <span class="c">// Otherwise, we need to resume all halted workflows on this activity.</span>
+                <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r24 rd" class="r24 r">workflows</span> = <b>await</b> <a href="#4b6644bdce6f5dde" class="i field">_workflowStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#ee787e986f2f7e99" class="i method">ListAsync</a>(<span class="r17 r">workflowType</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#4ffab8ec8cea46bc" class="i property">WorkflowTypeId</a>, <b>new</b>[] { <span class="r18 r">startActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#038a862a28690a6c" class="i property">ActivityId</a> });
+ 
+                <b>if</b> (!<span class="r24 r">workflows</span>.<span class="i method">Any</span>())
+                {
+                    <b>if</b> (<a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Warning</span>))
+                    {
+                        <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;No workflow found that is blocked on activity &#39;{ActivityId}&#39;&quot;</span>, <span class="r18 r">startActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#038a862a28690a6c" class="i property">ActivityId</a>);
+                    }
+ 
+                    <b>return</b> <span class="i method">NotFound</span>();
+                }
+ 
+                <b>foreach</b> (<a href="/OrchardCore.Workflows.Abstractions/A.html#9d11fe1821b79f9c" class="k">var</a> <span id="r25 rd" class="r25 r">workflow</span> <b>in</b> <span class="r24 r">workflows</span>)
+                {
+                    <a href="/OrchardCore.Workflows.Abstractions/A.html#64380ab857143a13" class="k">var</a> <span id="r26 rd" class="r26 r">blockingActivity</span> = <span class="r25 r">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#79d565e1f4c13941" class="i property">BlockingActivities</a>.<span class="i method">FirstOrDefault</span>(<span id="r27 rd" class="r27 r">x</span> =&gt; <span class="r27 r">x</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#0e0b78e0f5dfb667" class="i property">ActivityId</a> == <span class="r18 r">startActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#038a862a28690a6c" class="i property">ActivityId</a>);
+ 
+                    <b>if</b> (<span class="r26 r">blockingActivity</span> != <b>null</b>)
+                    {
+                        <b>if</b> (<a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                        {
+                            <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;Resuming workflow with ID &#39;{WorkflowId}&#39; on activity &#39;{ActivityId}&#39;&quot;</span>, <span class="r25 r">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#508f217c03b9c081" class="i property">WorkflowId</a>, <span class="r26 r">blockingActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#0e0b78e0f5dfb667" class="i property">ActivityId</a>);
+                        }
+ 
+                        <span class="c">// If atomic, try to acquire a lock per workflow instance.</span>
+                        (<b>var</b> <span id="r28 rd" class="r28 r">locker</span>, <b>var</b> <span id="r29 rd" class="r29 r">locked</span>) = <b>await</b> <a href="#6893655c5ac86ddc" class="i field">_distributedLock</a>.<span class="i">TryAcquireWorkflowLockAsync</span>(<span class="r25 r">workflow</span>);
+                        <b>if</b> (!<span class="r29 r">locked</span>)
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <b>await using</b> <b>var</b> <span id="r30 rd" class="r30 r">acquiredLock</span> = <span class="r28 r">locker</span>;
+ 
+                        <span class="c">// If atomic, check if the workflow still exists.</span>
+                        <a href="/OrchardCore.Workflows.Abstractions/A.html#9d11fe1821b79f9c" class="k">var</a> <span id="r31 rd" class="r31 r">haltedWorkflow</span> = <span class="r25 r">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#678545e611b58287" class="i property">IsAtomic</a> ? <b>await</b> <a href="#4b6644bdce6f5dde" class="i field">_workflowStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#e7ca074c62f377c4" class="i method">GetAsync</a>(<span class="r25 r">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#508f217c03b9c081" class="i property">WorkflowId</a>) : <span class="r25 r">workflow</span>;
+                        <b>if</b> (<span class="r31 r">haltedWorkflow</span> == <b>null</b>)
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <span class="c">// And if it is still halted on this activity.</span>
+                        <span class="r26 r">blockingActivity</span> = <span class="r31 r">haltedWorkflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#79d565e1f4c13941" class="i property">BlockingActivities</a>.<span class="i method">FirstOrDefault</span>(<span id="r32 rd" class="r32 r">x</span> =&gt; <span class="r32 r">x</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#0e0b78e0f5dfb667" class="i property">ActivityId</a> == <span class="r18 r">startActivity</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#038a862a28690a6c" class="i property">ActivityId</a>);
+                        <b>if</b> (<span class="r26 r">blockingActivity</span> != <b>null</b>)
+                        {
+                            <b>await</b> <a href="#6906e3014655fa34" class="i field">_workflowManager</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#feea6762e1d79a85" class="i method">ResumeWorkflowAsync</a>(<span class="r31 r">haltedWorkflow</span>, <span class="r26 r">blockingActivity</span>);
+                        }
+                    }
+                }
+            }
+ 
+            <b>return</b> <a href="#0cf90a537cf578c1" class="i method">GetWorkflowActionResult</a>();
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="eb628eb28ba98ff4" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Trigger</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r33 rd" class="r33 r">token</span>)
+        {
+            <b>if</b> (!<a href="#2161903415f6e8c2" class="i field">_securityTokenService</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#730297a2941062ca" class="i method">TryDecryptToken</a>&lt;<a href="../Models/SignalPayload.cs.html#628ff6f11880cccd" class="t t">SignalPayload</a>&gt;(<span class="r33 r">token</span>, <b>out</b> <a href="../Models/SignalPayload.cs.html#628ff6f11880cccd" class="k">var</a> <span id="r34 rd" class="r34 r">payload</span>))
+            {
+                <a href="#0cfe71c23dd895ef" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<span class="s">&quot;Invalid SAS token provided&quot;</span>);
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r35 rd" class="r35 r">input</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; { { <span class="s">&quot;Signal&quot;</span>, <span class="r34 r">payload</span>.<a href="../Models/SignalPayload.cs.html#a1cf9b6b9322a312" class="i property">SignalName</a> } };
+ 
+            <span class="c">// If a specific workflow was provided, then resume that workflow.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r34 r">payload</span>.<a href="../Models/SignalPayload.cs.html#50ecffc6001db0e4" class="i property">WorkflowId</a>))
+            {
+                <a href="/OrchardCore.Workflows.Abstractions/A.html#9d11fe1821b79f9c" class="k">var</a> <span id="r36 rd" class="r36 r">workflow</span> = <b>await</b> <a href="#4b6644bdce6f5dde" class="i field">_workflowStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#e7ca074c62f377c4" class="i method">GetAsync</a>(<span class="r34 r">payload</span>.<a href="../Models/SignalPayload.cs.html#50ecffc6001db0e4" class="i property">WorkflowId</a>);
+                <b>var</b> <span id="r37 rd" class="r37 r">signalActivities</span> = <span class="r36 r">workflow</span>?.<a href="/OrchardCore.Workflows.Abstractions/A.html#79d565e1f4c13941" class="i property">BlockingActivities</a>.<span class="i method">Where</span>(<span id="r38 rd" class="r38 r">x</span> =&gt; <span class="r38 r">x</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#d73adb05655447b5" class="i property">Name</a> == <a href="../Activities/SignalEvent.cs.html#8dfa433b83c96324" class="t t">SignalEvent</a>.<a href="../Activities/SignalEvent.cs.html#e50a8b2253d32f5d" class="i property">EventName</a>).<span class="i method">ToList</span>();
+ 
+                <b>if</b> (<span class="r37 r">signalActivities</span> == <b>null</b>)
+                {
+                    <b>return</b> <span class="i method">NotFound</span>();
+                }
+ 
+                <span class="c">// If atomic, try to acquire a lock per workflow instance.</span>
+                (<b>var</b> <span id="r39 rd" class="r39 r">locker</span>, <b>var</b> <span id="r40 rd" class="r40 r">locked</span>) = <b>await</b> <a href="#6893655c5ac86ddc" class="i field">_distributedLock</a>.<span class="i">TryAcquireWorkflowLockAsync</span>(<span class="r36 r">workflow</span>);
+                <b>if</b> (<span class="r40 r">locked</span>)
+                {
+                    <b>await using</b> <b>var</b> <span id="r41 rd" class="r41 r">acquiredLock</span> = <span class="r39 r">locker</span>;
+ 
+                    <span class="c">// Check if the workflow still exists (without checking if it is correlated).</span>
+                    <span class="r36 r">workflow</span> = <span class="r36 r">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#678545e611b58287" class="i property">IsAtomic</a> ? <b>await</b> <a href="#4b6644bdce6f5dde" class="i field">_workflowStore</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#e7ca074c62f377c4" class="i method">GetAsync</a>(<span class="r36 r">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#508f217c03b9c081" class="i property">WorkflowId</a>) : <span class="r36 r">workflow</span>;
+                    <b>if</b> (<span class="r36 r">workflow</span> != <b>null</b>)
+                    {
+                        <span class="c">// The workflow could be blocking on multiple Signal activities, but only the activity with the provided signal name</span>
+                        <span class="c">// will be executed as SignalEvent checks for the provided &quot;Signal&quot; input.</span>
+                        <span class="r37 r">signalActivities</span> = <span class="r36 r">workflow</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#79d565e1f4c13941" class="i property">BlockingActivities</a>.<span class="i method">Where</span>(<span id="r42 rd" class="r42 r">x</span> =&gt; <span class="r42 r">x</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#d73adb05655447b5" class="i property">Name</a> == <a href="../Activities/SignalEvent.cs.html#8dfa433b83c96324" class="t t">SignalEvent</a>.<a href="../Activities/SignalEvent.cs.html#e50a8b2253d32f5d" class="i property">EventName</a>).<span class="i method">ToList</span>();
+                        <b>foreach</b> (<a href="/OrchardCore.Workflows.Abstractions/A.html#64380ab857143a13" class="k">var</a> <span id="r43 rd" class="r43 r">signalActivity</span> <b>in</b> <span class="r37 r">signalActivities</span>)
+                        {
+                            <b>await</b> <a href="#6906e3014655fa34" class="i field">_workflowManager</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#feea6762e1d79a85" class="i method">ResumeWorkflowAsync</a>(<span class="r36 r">workflow</span>, <span class="r43 r">signalActivity</span>, <span class="r35 r">input</span>);
+                        }
+                    }
+                }
+            }
+            <b>else</b>
+            {
+                <span class="c">// Resume all workflows with the specified correlation ID and start workflows with SignalEvent as their start activity.</span>
+                <b>await</b> <a href="#6906e3014655fa34" class="i field">_workflowManager</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#9626a0c9edc23d69" class="i method">TriggerEventAsync</a>(<a href="../Activities/SignalEvent.cs.html#8dfa433b83c96324" class="t t">SignalEvent</a>.<a href="../Activities/SignalEvent.cs.html#e50a8b2253d32f5d" class="i property">EventName</a>, <span class="r35 r">input</span>, <span class="r34 r">payload</span>.<a href="../Models/SignalPayload.cs.html#94d5a642800362d6" class="i property">CorrelationId</a>);
+            }
+ 
+            <b>return</b> <a href="#0cf90a537cf578c1" class="i method">GetWorkflowActionResult</a>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns the appropriate action result depending on whether the status code has already been set by a workflow.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <span class="t t">IActionResult</span> <a id="0cf90a537cf578c1" href="../../R/0cf90a537cf578c1.html" target="n" data-glyph="76,1" class="i method">GetWorkflowActionResult</a>()
+        {
+            <b>if</b> (<span class="i property">HttpContext</span>.<span class="i property">Items</span>.<a href="@1@System.Runtime/A.html#6105ae1e7c0835eb" class="i method">ContainsKey</a>(<a href="../WorkflowHttpResult.cs.html#e8d24c3c9fa7797e" class="t t">WorkflowHttpResult</a>.<a href="../WorkflowHttpResult.cs.html#1bec5659dce640ee" class="i field">Instance</a>))
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">EmptyResult</span>();
+            }
+ 
+            <b>return</b> <span class="i method">Accepted</span>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

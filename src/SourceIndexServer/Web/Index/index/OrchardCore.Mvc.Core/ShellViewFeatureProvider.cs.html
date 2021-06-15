@@ -1,0 +1,194 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellViewFeatureProvider.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(185);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Mvc.Core/ShellViewFeatureProvider.cs" target="_top">ShellViewFeatureProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Mvc.Core" target="_top">src\OrchardCore\OrchardCore.Mvc.Core\OrchardCore.Mvc.Core.csproj</a> (OrchardCore.Mvc.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ApplicationParts</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>.<span class="i n">Compilation</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Mvc</span>
+{
+    <b>public class</b> <a id="2114ce0773ad12e0" href="R/2114ce0773ad12e0.html" target="n" data-glyph="0,0" class="t t">ShellViewFeatureProvider</a> : <span class="t t">IApplicationFeatureProvider</span>&lt;<span class="t t">ViewsFeature</span>&gt;, <span class="t t">IApplicationFeatureProvider</span>&lt;<a href="DevelopmentViewsFeature.cs.html#b7afba4400bc6697" class="t t">DevelopmentViewsFeature</a>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IHostEnvironment</span> <a id="6f20aca22672deaa" href="R/6f20aca22672deaa.html" target="n" data-glyph="46,1" class="i field">_hostingEnvironment</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <a id="494662b71079c289" href="R/494662b71079c289.html" target="n" data-glyph="46,1" class="i field">_applicationContext</a>;
+ 
+        <b>private</b> <span class="t t">ApplicationPartManager</span> <a id="6aae4ae8c1878171" href="R/6aae4ae8c1878171.html" target="n" data-glyph="46,1" class="i field">_applicationPartManager</a>;
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IApplicationFeatureProvider</span>&lt;<span class="t t">ViewsFeature</span>&gt;&gt; <a id="83340a3fbd019896" href="R/83340a3fbd019896.html" target="n" data-glyph="46,1" class="i field">_featureProviders</a>;
+ 
+        <b>public</b> <a id="a1adab3e97919101" href="R/a1adab3e97919101.html" target="n" data-glyph="72,1" class="t constructor">ShellViewFeatureProvider</a>(<span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">services</span>)
+        {
+            <a href="#6f20aca22672deaa" class="i field">_hostingEnvironment</a> = <span class="r0 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IHostEnvironment</span>&gt;();
+            <a href="#494662b71079c289" class="i field">_applicationContext</a> = <span class="r0 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#545200e60bc52bf1" class="t t">IApplicationContext</a>&gt;();
+        }
+ 
+        <b>public void</b> <a id="105b44df568bce50" href="R/105b44df568bce50.html" target="n" data-glyph="72,1" class="i method">PopulateFeature</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">ApplicationPart</span>&gt; <span id="r1 rd" class="r1 r">parts</span>, <span class="t t">ViewsFeature</span> <span id="r2 rd" class="r2 r">feature</span>)
+        {
+            <a href="#c620b7df5903db39" class="i method">EnsureScopedServices</a>();
+ 
+            <a href="#b2f9b67974da6b35" class="i method">PopulateFeatureInternal</a>(<span class="r1 r">parts</span>, <span class="r2 r">feature</span>);
+ 
+            <span class="c">// Apply views feature providers registered at the tenant level.</span>
+            <b>foreach</b> (<b>var</b> <span id="r3 rd" class="r3 r">provider</span> <b>in</b> <a href="#83340a3fbd019896" class="i field">_featureProviders</a>)
+            {
+                <span class="r3 r">provider</span>.<span class="i method">PopulateFeature</span>(<span class="r1 r">parts</span>, <span class="r2 r">feature</span>);
+            }
+        }
+ 
+        <b>public void</b> <a id="8523a1b45a6430c7" href="R/8523a1b45a6430c7.html" target="n" data-glyph="72,1" class="i method">PopulateFeature</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">ApplicationPart</span>&gt; <span id="r4 rd" class="r4 r">parts</span>, <a href="DevelopmentViewsFeature.cs.html#b7afba4400bc6697" class="t t">DevelopmentViewsFeature</a> <span id="r5 rd" class="r5 r">developmentViewsFeature</span>)
+        {
+            <a href="#c620b7df5903db39" class="i method">EnsureScopedServices</a>();
+ 
+            <span class="c">// Module compiled views are only served if not in dev mode or if the &#39;refs&#39; folder doesn&#39;t exists.</span>
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r6 rd" class="r6 r">refsFolderExists</span> = <span class="t t">Directory</span>.<span class="i method">Exists</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<a href="@1@System.Runtime/A.html#2e9e7922eace2be8" class="t t">AppDomain</a>.<a href="@1@System.Runtime/A.html#0f1cf66beffbb219" class="i property">CurrentDomain</a>.<a href="@1@System.Runtime/A.html#694882fc5fb59a81" class="i property">BaseDirectory</a>, <span class="s">&quot;refs&quot;</span>));
+ 
+            <span class="c">// But in dev mode we still provide all view descriptors.</span>
+            <b>if</b> (<a href="#6f20aca22672deaa" class="i field">_hostingEnvironment</a>.<span class="i method">IsDevelopment</span>() &amp;&amp; <span class="r6 r">refsFolderExists</span>)
+            {
+                <b>var</b> <span id="r7 rd" class="r7 r">viewsFeature</span> = <b>new</b> <span class="t constructor">ViewsFeature</span>();
+                <a href="#b2f9b67974da6b35" class="i method">PopulateFeatureInternal</a>(<span class="r4 r">parts</span>, <span class="r7 r">viewsFeature</span>);
+ 
+                <span class="c">// Apply views feature providers registered at the tenant level.</span>
+                <b>foreach</b> (<b>var</b> <span id="r8 rd" class="r8 r">provider</span> <b>in</b> <a href="#83340a3fbd019896" class="i field">_featureProviders</a>)
+                {
+                    <span class="r8 r">provider</span>.<span class="i method">PopulateFeature</span>(<span class="r4 r">parts</span>, <span class="r7 r">viewsFeature</span>);
+                }
+ 
+                <b>foreach</b> (<b>var</b> <span id="r9 rd" class="r9 r">descriptor</span> <b>in</b> <span class="r7 r">viewsFeature</span>.<span class="i property">ViewDescriptors</span>)
+                {
+                    <span class="r5 r">developmentViewsFeature</span>.<span class="i property">ViewDescriptors</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r9 r">descriptor</span>);
+                }
+            }
+        }
+ 
+        <b>private void</b> <a id="b2f9b67974da6b35" href="R/b2f9b67974da6b35.html" target="n" data-glyph="76,1" class="i method">PopulateFeatureInternal</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">ApplicationPart</span>&gt; <span id="r10 rd" class="r10 r">parts</span>, <span class="t t">ViewsFeature</span> <span id="r11 rd" class="r11 r">feature</span>)
+        {
+            <span class="c">// Retrieve mvc views feature providers but not this one.</span>
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r12 rd" class="r12 r">mvcFeatureProviders</span> = <a href="#6aae4ae8c1878171" class="i field">_applicationPartManager</a>.<span class="i property">FeatureProviders</span>
+                .<span class="i method">OfType</span>&lt;<span class="t t">IApplicationFeatureProvider</span>&lt;<span class="t t">ViewsFeature</span>&gt;&gt;()
+                .<span class="i method">Where</span>(<span id="r13 rd" class="r13 r">p</span> =&gt; <span class="r13 r">p</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>() != <b>typeof</b>(<a href="#2114ce0773ad12e0" class="t t">ShellViewFeatureProvider</a>));
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r14 rd" class="r14 r">modules</span> = <a href="#494662b71079c289" class="i field">_applicationContext</a>.<a href="/OrchardCore.Abstractions/A.html#99a608bfb7e2ccd2" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#a705dc00e756f50a" class="i property">Modules</a>;
+            <b>var</b> <span id="r15 rd" class="r15 r">moduleFeature</span> = <b>new</b> <span class="t constructor">ViewsFeature</span>();
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r16 rd" class="r16 r">refsFolderExists</span> = <span class="t t">Directory</span>.<span class="i method">Exists</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<a href="@1@System.Runtime/A.html#2e9e7922eace2be8" class="t t">AppDomain</a>.<a href="@1@System.Runtime/A.html#0f1cf66beffbb219" class="i property">CurrentDomain</a>.<a href="@1@System.Runtime/A.html#694882fc5fb59a81" class="i property">BaseDirectory</a>, <span class="s">&quot;refs&quot;</span>));
+ 
+            <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#ccbcd233c0339923" class="k">var</a> <span id="r17 rd" class="r17 r">module</span> <b>in</b> <span class="r14 r">modules</span>)
+            {
+                <span class="c">// If the module and the application assemblies are at the same location, the module is referenced as a project not as a package.</span>
+                <b>if</b> (<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r17 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#e190252504a904bf" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#3faa3e0e41d8868b" class="i property">Location</a>) == <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<a href="#494662b71079c289" class="i field">_applicationContext</a>.<a href="/OrchardCore.Abstractions/A.html#99a608bfb7e2ccd2" class="i property">Application</a>.<a href="/OrchardCore.Abstractions/A.html#55a5ff99db7b6056" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#3faa3e0e41d8868b" class="i property">Location</a>))
+                {
+                    <span class="c">// If the module is referenced as a project, view descriptors are not provided if in dev mode and if the &#39;refs&#39; folder exists.</span>
+                    <b>if</b> (<a href="#6f20aca22672deaa" class="i field">_hostingEnvironment</a>.<span class="i method">IsDevelopment</span>() &amp;&amp; <span class="r16 r">refsFolderExists</span>)
+                    {
+                        <b>continue</b>;
+                    }
+                }
+ 
+                <span class="c">// If the module is referenced as a package, view descriptors are always provided.</span>
+ 
+                <b>var</b> <span id="r18 rd" class="r18 r">assembliesWithViews</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#73b5be5e9c2474b2" class="t t">Assembly</a>&gt;();
+ 
+                <b>var</b> <span id="r19 rd" class="r19 r">relatedAssemblyAttribute</span> = <span class="r17 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#e190252504a904bf" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#12054a55bcf8676f" class="i method">GetCustomAttribute</a>&lt;<span class="t t">RelatedAssemblyAttribute</span>&gt;();
+ 
+                <span class="c">// Is there a dedicated Views assembly (&lt; net6.0)</span>
+                <b>if</b> (<span class="r19 r">relatedAssemblyAttribute</span> != <b>null</b>)
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r20 rd" class="r20 r">precompiledAssemblyPath</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r17 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#e190252504a904bf" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#3faa3e0e41d8868b" class="i property">Location</a>), <span class="r19 r">relatedAssemblyAttribute</span>.<span class="i property">AssemblyFileName</span> + <span class="s">&quot;.dll&quot;</span>);
+ 
+                    <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r20 r">precompiledAssemblyPath</span>))
+                    {
+                        <b>try</b>
+                        {
+                            <a href="@1@System.Runtime/A.html#73b5be5e9c2474b2" class="k">var</a> <span id="r21 rd" class="r21 r">assembly</span> = <a href="@1@System.Runtime/A.html#73b5be5e9c2474b2" class="t t">Assembly</a>.<a href="@1@System.Runtime/A.html#543e1b0d5fb43a97" class="i method">LoadFile</a>(<span class="r20 r">precompiledAssemblyPath</span>);
+                            <span class="r18 r">assembliesWithViews</span>.<span class="i method">Add</span>(<span class="r21 r">assembly</span>);
+                        }
+                        <b>catch</b> (<a href="@1@System.Runtime/A.html#3cb77151b9367db5" class="t t">FileLoadException</a>)
+                        {
+                            <span class="c">// Don&#39;t throw if assembly cannot be loaded. This can happen if the file is not a managed assembly.</span>
+                        }
+                    }
+                }
+ 
+                <span class="c">// Look for compiled views in the same assembly as the module</span>
+ 
+                <b>if</b> (<span class="r17 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#e190252504a904bf" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#7d3ef2191d8b2078" class="i method">GetCustomAttributes</a>&lt;<span class="t t">RazorCompiledItemAttribute</span>&gt;().<span class="i method">Any</span>())
+                {
+                    <span class="r18 r">assembliesWithViews</span>.<span class="i method">Add</span>(<span class="r17 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#e190252504a904bf" class="i property">Assembly</a>);
+                }
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#73b5be5e9c2474b2" class="k">var</a> <span id="r22 rd" class="r22 r">assembly</span> <b>in</b> <span class="r18 r">assembliesWithViews</span>)
+                {
+                    <b>var</b> <span id="r23 rd" class="r23 r">applicationPart</span> = <b>new</b> <span class="t t">ApplicationPart</span>[] { <b>new</b> <span class="t constructor">CompiledRazorAssemblyPart</span>(<span class="r22 r">assembly</span>) };
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r24 rd" class="r24 r">provider</span> <b>in</b> <span class="r12 r">mvcFeatureProviders</span>)
+                    {
+                        <span class="r24 r">provider</span>.<span class="i method">PopulateFeature</span>(<span class="r23 r">applicationPart</span>, <span class="r15 r">moduleFeature</span>);
+                    }
+ 
+                    <span class="c">// Razor views are precompiled in the context of their modules, but at runtime</span>
+                    <span class="c">// their paths need to be relative to the virtual &quot;Areas/{ModuleId}&quot; folders.</span>
+                    <span class="c">// Note: For the app&#39;s module this folder is &quot;Areas/{env.ApplicationName}&quot;.</span>
+                    <b>foreach</b> (<b>var</b> <span id="r25 rd" class="r25 r">descriptor</span> <b>in</b> <span class="r15 r">moduleFeature</span>.<span class="i property">ViewDescriptors</span>)
+                    {
+                        <span class="r25 r">descriptor</span>.<span class="i property">RelativePath</span> = <span class="s">&#39;/&#39;</span> + <span class="r17 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#b09fcb1190176a98" class="i property">SubPath</a> + <span class="r25 r">descriptor</span>.<span class="i property">RelativePath</span>;
+                        <span class="r11 r">feature</span>.<span class="i property">ViewDescriptors</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r25 r">descriptor</span>);
+                    }
+ 
+                    <span class="c">// For the app&#39;s module we still allow to explicitly specify view paths relative to the app content root.</span>
+                    <span class="c">// So for the application&#39;s module we re-apply the feature providers without updating the relative paths.</span>
+                    <span class="c">// Note: This is only needed in prod mode if app&#39;s views are precompiled and views files no longer exist.</span>
+                    <b>if</b> (<span class="r17 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#147ef2ed9f2da85c" class="i property">Name</a> == <a href="#6f20aca22672deaa" class="i field">_hostingEnvironment</a>.<span class="i property">ApplicationName</span>)
+                    {
+                        <b>foreach</b> (<b>var</b> <span id="r26 rd" class="r26 r">provider</span> <b>in</b> <span class="r12 r">mvcFeatureProviders</span>)
+                        {
+                            <span class="r26 r">provider</span>.<span class="i method">PopulateFeature</span>(<span class="r23 r">applicationPart</span>, <span class="r15 r">moduleFeature</span>);
+                        }
+ 
+                        <b>foreach</b> (<b>var</b> <span id="r27 rd" class="r27 r">descriptor</span> <b>in</b> <span class="r15 r">moduleFeature</span>.<span class="i property">ViewDescriptors</span>)
+                        {
+                            <span class="r11 r">feature</span>.<span class="i property">ViewDescriptors</span>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r27 r">descriptor</span>);
+                        }
+                    }
+ 
+                    <span class="r15 r">moduleFeature</span>.<span class="i property">ViewDescriptors</span>.<a href="@1@System.Runtime/A.html#6144bc2a22ce28c4" class="i method">Clear</a>();
+                }
+            }
+        }
+ 
+        <b>private void</b> <a id="c620b7df5903db39" href="R/c620b7df5903db39.html" target="n" data-glyph="76,1" class="i method">EnsureScopedServices</a>()
+        {
+            <b>var</b> <span id="r28 rd" class="r28 r">services</span> = <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="t t">ShellScope</a>.<a href="/OrchardCore.Abstractions/A.html#996415403af48612" class="i property">Services</a>;
+ 
+            <span class="c">// The scope is null when this code is called through a &#39;ChangeToken&#39; callback, e.g to recompile razor pages.</span>
+            <span class="c">// So, here we resolve and cache tenant level singletons, application singletons can be resolved in the ctor.</span>
+ 
+            <b>if</b> (<span class="r28 r">services</span> != <b>null</b> &amp;&amp; <a href="#83340a3fbd019896" class="i field">_featureProviders</a> == <b>null</b>)
+            {
+                <b>lock</b> (<a href="#2114ce0773ad12e0" class="k">this</a>)
+                {
+                    <b>if</b> (<a href="#83340a3fbd019896" class="i field">_featureProviders</a> == <b>null</b>)
+                    {
+                        <a href="#6aae4ae8c1878171" class="i field">_applicationPartManager</a> = <span class="r28 r">services</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">ApplicationPartManager</span>&gt;();
+                        <a href="#83340a3fbd019896" class="i field">_featureProviders</a> = <span class="r28 r">services</span>.<span class="i method">GetServices</span>&lt;<span class="t t">IApplicationFeatureProvider</span>&lt;<span class="t t">ViewsFeature</span>&gt;&gt;();
+                    }
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

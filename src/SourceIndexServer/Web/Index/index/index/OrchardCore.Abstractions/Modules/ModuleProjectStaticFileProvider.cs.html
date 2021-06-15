@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModuleProjectStaticFileProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(142);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Modules/ModuleProjectStaticFileProvider.cs" target="_top">Modules\ModuleProjectStaticFileProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Physical</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Primitives</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This custom </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IFileProvider</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> implementation provides the file contents of files</span>
+    <span class="c">///</span><span class="c"> whose path is under a Module Project &#39;wwwroot&#39; folder, and while in a development environment.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="abf992a3f7dda1cf" href="../R/abf992a3f7dda1cf.html" target="n" data-glyph="0,0" class="t t">ModuleProjectStaticFileProvider</a> : <a href="IModuleStaticFileProvider.cs.html#0448af9b2bae05a5" class="t t">IModuleStaticFileProvider</a>
+    {
+        <b>private static</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="646b5f4ca0f66eae" href="../R/646b5f4ca0f66eae.html" target="n" data-glyph="46,1" class="i field">_roots</a>;
+        <b>private static readonly object</b> <a id="aab66050dd09bd44" href="../R/aab66050dd09bd44.html" target="n" data-glyph="46,1" class="i field">_synLock</a> = <b>new</b> <b>object</b>();
+ 
+        <b>public</b> <a id="f1c3913e41b8946d" href="../R/f1c3913e41b8946d.html" target="n" data-glyph="72,1" class="t constructor">ModuleProjectStaticFileProvider</a>(<a href="ModularApplicationContext.cs.html#545200e60bc52bf1" class="t t">IApplicationContext</a> <span id="r0 rd" class="r0 r">applicationContext</span>)
+        {
+            <b>if</b> (<a href="#646b5f4ca0f66eae" class="i field">_roots</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>lock</b> (<a href="#aab66050dd09bd44" class="i field">_synLock</a>)
+            {
+                <b>if</b> (<a href="#646b5f4ca0f66eae" class="i field">_roots</a> == <b>null</b>)
+                {
+                    <a href="Application.cs.html#5240e78be66d0c6a" class="k">var</a> <span id="r1 rd" class="r1 r">application</span> = <span class="r0 r">applicationContext</span>.<a href="ModularApplicationContext.cs.html#99a608bfb7e2ccd2" class="i property">Application</a>;
+ 
+                    <b>var</b> <span id="r2 rd" class="r2 r">roots</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+                    <span class="c">// Resolve all module projects &quot;wwwroot&quot;.</span>
+                    <b>foreach</b> (<a href="Module.cs.html#ccbcd233c0339923" class="k">var</a> <span id="r3 rd" class="r3 r">module</span> <b>in</b> <span class="r1 r">application</span>.<a href="Application.cs.html#a705dc00e756f50a" class="i property">Modules</a>)
+                    {
+                        <span class="c">// If the module and the application assemblies are not at the same location,</span>
+                        <span class="c">// this means that the module is referenced as a package, not as a project in dev.</span>
+                        <b>if</b> (<span class="r3 r">module</span>.<a href="Module.cs.html#e190252504a904bf" class="i property">Assembly</a> == <b>null</b> || <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r3 r">module</span>.<a href="Module.cs.html#e190252504a904bf" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#3faa3e0e41d8868b" class="i property">Location</a>)
+                            != <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f9128b02ffd0d3ea" class="i method">GetDirectoryName</a>(<span class="r1 r">application</span>.<a href="Application.cs.html#55a5ff99db7b6056" class="i property">Assembly</a>.<a href="@1@System.Runtime/A.html#3faa3e0e41d8868b" class="i property">Location</a>))
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <span class="c">// Get the 1st module asset under &quot;Areas/{ModuleId}/wwwroot/&quot;.</span>
+                        <a href="Asset.cs.html#c8fc99f70feecf69" class="k">var</a> <span id="r4 rd" class="r4 r">asset</span> = <span class="r3 r">module</span>.<a href="Module.cs.html#f3f15bb31938a5d0" class="i property">Assets</a>.<span class="i method">FirstOrDefault</span>(<span id="r5 rd" class="r5 r">a</span> =&gt; <span class="r5 r">a</span>.<a href="Asset.cs.html#13a76641d2c7cd44" class="i property">ModuleAssetPath</a>
+                            .<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="r3 r">module</span>.<a href="Module.cs.html#763ce8468613ae83" class="i property">Root</a> + <a href="Module.cs.html#ccbcd233c0339923" class="t t">Module</a>.<a href="Module.cs.html#54585ce3729b642e" class="i field">WebRoot</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>));
+ 
+                        <b>if</b> (<span class="r4 r">asset</span> != <b>null</b>)
+                        {
+                            <span class="c">// Resolve &quot;{ModuleProjectDirectory}wwwroot/&quot; from the project asset.</span>
+                            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r6 rd" class="r6 r">index</span> = <span class="r4 r">asset</span>.<a href="Asset.cs.html#9d2bac2557fc6f23" class="i property">ProjectAssetPath</a>.<a href="@1@System.Runtime/A.html#7d6aed52d875ec59" class="i method">IndexOf</a>(<span class="s">&#39;/&#39;</span> + <a href="Module.cs.html#ccbcd233c0339923" class="t t">Module</a>.<a href="Module.cs.html#54585ce3729b642e" class="i field">WebRoot</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>);
+ 
+                            <span class="c">// Add the module project &quot;wwwroot&quot; folder.</span>
+                            <span class="r2 r">roots</span>[<span class="r3 r">module</span>.<a href="Module.cs.html#147ef2ed9f2da85c" class="i property">Name</a>] = <span class="r4 r">asset</span>.<a href="Asset.cs.html#9d2bac2557fc6f23" class="i property">ProjectAssetPath</a>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r6 r">index</span> + <a href="Module.cs.html#ccbcd233c0339923" class="t t">Module</a>.<a href="Module.cs.html#54585ce3729b642e" class="i field">WebRoot</a>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> + 1);
+                        }
+                    }
+ 
+                    <a href="#646b5f4ca0f66eae" class="i field">_roots</a> = <span class="r2 r">roots</span>;
+                }
+            }
+        }
+ 
+        <b>public</b> <span class="t t">IDirectoryContents</span> <a id="9532e8167cc1e20e" href="../R/9532e8167cc1e20e.html" target="n" data-glyph="72,1" class="i method">GetDirectoryContents</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">subpath</span>)
+        {
+            <b>return</b> <span class="t t">NotFoundDirectoryContents</span>.<span class="i property">Singleton</span>;
+        }
+ 
+        <b>public</b> <span class="t t">IFileInfo</span> <a id="2ce474791710ccfb" href="../R/2ce474791710ccfb.html" target="n" data-glyph="72,1" class="i method">GetFileInfo</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">subpath</span>)
+        {
+            <b>if</b> (<span class="r8 r">subpath</span> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r8 r">subpath</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">path</span> = <a href="#78f99b67382a6730" class="i method">NormalizePath</a>(<span class="r8 r">subpath</span>);
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r10 rd" class="r10 r">index</span> = <span class="r9 r">path</span>.<a href="@1@System.Runtime/A.html#eb06d6d166f6a3d9" class="i method">IndexOf</a>(<span class="s">&#39;/&#39;</span>);
+ 
+            <span class="c">// &quot;{ModuleId}/**/*.*&quot;.</span>
+            <b>if</b> (<span class="r10 r">index</span> != -1)
+            {
+                <span class="c">// Resolve the module id.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">module</span> = <span class="r9 r">path</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r10 r">index</span>);
+ 
+                <span class="c">// Get the module project &quot;wwwroot&quot; folder.</span>
+                <b>if</b> (<a href="#646b5f4ca0f66eae" class="i field">_roots</a>.<span class="i method">TryGetValue</span>(<span class="r11 r">module</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">root</span>))
+                {
+                    <span class="c">// Resolve &quot;{ModuleProjectDirectory}wwwroot/**/*.*&quot;</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r13 rd" class="r13 r">filePath</span> = <span class="r12 r">root</span> + <span class="r9 r">path</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r11 r">module</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> + 1);
+ 
+                    <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r13 r">filePath</span>))
+                    {
+                        <span class="c">// Serve the file from the physical file system.</span>
+                        <b>return</b> <b>new</b> <span class="t constructor">PhysicalFileInfo</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<span class="r13 r">filePath</span>));
+                    }
+                }
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">NotFoundFileInfo</span>(<span class="r8 r">subpath</span>);
+        }
+ 
+        <b>public</b> <span class="t t">IChangeToken</span> <a id="8e5f369d1b492fb8" href="../R/8e5f369d1b492fb8.html" target="n" data-glyph="72,1" class="i method">Watch</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">filter</span>)
+        {
+            <b>if</b> (<span class="r14 r">filter</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">path</span> = <a href="#78f99b67382a6730" class="i method">NormalizePath</a>(<span class="r14 r">filter</span>);
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r16 rd" class="r16 r">index</span> = <span class="r15 r">path</span>.<a href="@1@System.Runtime/A.html#eb06d6d166f6a3d9" class="i method">IndexOf</a>(<span class="s">&#39;/&#39;</span>);
+ 
+            <span class="c">// &quot;{ModuleId}/**/*.*&quot;.</span>
+            <b>if</b> (<span class="r16 r">index</span> != -1)
+            {
+                <span class="c">// Resolve the module id.</span>
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">module</span> = <span class="r15 r">path</span>.<a href="@1@System.Runtime/A.html#8124961f027d9ac9" class="i method">Substring</a>(0, <span class="r16 r">index</span>);
+ 
+                <span class="c">// Get the module project &quot;wwwroot&quot; folder.</span>
+                <b>if</b> (<a href="#646b5f4ca0f66eae" class="i field">_roots</a>.<span class="i method">TryGetValue</span>(<span class="r17 r">module</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">root</span>))
+                {
+                    <span class="c">// Resolve &quot;{ModuleProjectDirectory}wwwroot/**/*.*&quot;</span>
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">filePath</span> = <span class="r18 r">root</span> + <span class="r15 r">path</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(<span class="r17 r">module</span>.<a href="@1@System.Runtime/A.html#e13f5829ef28aa07" class="i property">Length</a> + 1);
+ 
+                    <b>if</b> (<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r19 r">filePath</span>))
+                    {
+                        <span class="c">// Watch the file from the physical file system.</span>
+                        <b>return</b> <b>new</b> <span class="t constructor">PollingFileChangeToken</span>(<b>new</b> <span class="t constructor">FileInfo</span>(<span class="r19 r">filePath</span>));
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="t t">NullChangeToken</span>.<span class="i property">Singleton</span>;
+        }
+ 
+        <b>private string</b> <a id="78f99b67382a6730" href="../R/78f99b67382a6730.html" target="n" data-glyph="76,1" class="i method">NormalizePath</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">path</span>)
+        {
+            <b>return</b> <span class="r20 r">path</span>.<a href="@1@System.Runtime/A.html#987da5dfb39f1927" class="i method">Replace</a>(<span class="s">&#39;\\&#39;</span>, <span class="s">&#39;/&#39;</span>).<a href="@1@System.Runtime/A.html#55034da7979888e4" class="i method">Trim</a>(<span class="s">&#39;/&#39;</span>).<a href="@1@System.Runtime/A.html#69fc1d0aa6df8a90" class="i method">Replace</a>(<span class="s">&quot;//&quot;</span>, <span class="s">&quot;/&quot;</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

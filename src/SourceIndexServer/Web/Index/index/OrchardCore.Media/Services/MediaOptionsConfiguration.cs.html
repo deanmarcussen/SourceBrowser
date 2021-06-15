@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html><head><title>MediaOptionsConfiguration.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(108);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Services/MediaOptionsConfiguration.cs" target="_top">Services\MediaOptionsConfiguration.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Builder</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Net</span>.<span class="i n">Http</span>.<span class="i n">Headers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Configuration</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="25155187ae95df44" href="../R/25155187ae95df44.html" target="n" data-glyph="0,0" class="t t">MediaOptionsConfiguration</a> : <span class="t t">IConfigureOptions</span>&lt;<span class="i">MediaOptions</span>&gt;
+    {
+        <b>private static readonly int</b>[] <a id="31488df6cda49fa3" href="../R/31488df6cda49fa3.html" target="n" data-glyph="46,1" class="i field">DefaultSupportedSizes</a> = <b>new</b>[] { 16, 32, 50, 100, 160, 240, 480, 600, 1024, 2048 };
+ 
+        <b>private static readonly string</b>[] <a id="b0b7089f643060c0" href="../R/b0b7089f643060c0.html" target="n" data-glyph="46,1" class="i field">DefaultAllowedFileExtensions</a> = <b>new</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] {
+            <span class="c">// Images</span>
+            <span class="s">&quot;.jpg&quot;</span>,
+            <span class="s">&quot;.jpeg&quot;</span>,
+            <span class="s">&quot;.png&quot;</span>,
+            <span class="s">&quot;.gif&quot;</span>,
+            <span class="s">&quot;.ico&quot;</span>,
+            <span class="s">&quot;.svg&quot;</span>,
+ 
+            <span class="c">// Documents</span>
+            <span class="s">&quot;.pdf&quot;</span>, <span class="c">// (Portable Document Format; Adobe Acrobat)</span>
+            <span class="s">&quot;.doc&quot;</span>, <span class="s">&quot;.docx&quot;</span>, <span class="c">// (Microsoft Word Document)</span>
+            <span class="s">&quot;.ppt&quot;</span>, <span class="s">&quot;.pptx&quot;</span>, <span class="s">&quot;.pps&quot;</span>, <span class="s">&quot;.ppsx&quot;</span>, <span class="c">// (Microsoft PowerPoint Presentation)</span>
+            <span class="s">&quot;.odt&quot;</span>, <span class="c">// (OpenDocument Text Document)</span>
+            <span class="s">&quot;.xls&quot;</span>, <span class="s">&quot;.xlsx&quot;</span>, <span class="c">// (Microsoft Excel Document)</span>
+            <span class="s">&quot;.psd&quot;</span>, <span class="c">// (Adobe Photoshop Document)</span>
+ 
+            <span class="c">// Audio</span>
+            <span class="s">&quot;.mp3&quot;</span>,
+            <span class="s">&quot;.m4a&quot;</span>,
+            <span class="s">&quot;.ogg&quot;</span>,
+            <span class="s">&quot;.wav&quot;</span>,
+ 
+            <span class="c">// Video</span>
+            <span class="s">&quot;.mp4&quot;</span>, <span class="s">&quot;.m4v&quot;</span>, <span class="c">// (MPEG-4)</span>
+            <span class="s">&quot;.mov&quot;</span>, <span class="c">// (QuickTime)</span>
+            <span class="s">&quot;.wmv&quot;</span>, <span class="c">// (Windows Media Video)</span>
+            <span class="s">&quot;.avi&quot;</span>,
+            <span class="s">&quot;.mpg&quot;</span>,
+            <span class="s">&quot;.ogv&quot;</span>, <span class="c">// (Ogg)</span>
+            <span class="s">&quot;.3gp&quot;</span>, <span class="c">// (3GPP)</span>
+        };
+ 
+        <b>private const int</b> <a id="78681880a29f9ba0" href="../R/78681880a29f9ba0.html" target="n" data-glyph="10,1" class="i field">DefaultMaxBrowserCacheDays</a> = 30;
+        <b>private const int</b> <a id="7852a080dc8df291" href="../R/7852a080dc8df291.html" target="n" data-glyph="10,1" class="i field">DefaultMaxCacheDays</a> = 365;
+        <b>private const int</b> <a id="991fea836412f9ae" href="../R/991fea836412f9ae.html" target="n" data-glyph="10,1" class="i field">DefaultMaxFileSize</a> = 30_000_000;
+ 
+        <b>private const string</b> <a id="4d98a04cd64af225" href="../R/4d98a04cd64af225.html" target="n" data-glyph="10,1" class="i field">DefaultAssetsPath</a> = <span class="s">&quot;Media&quot;</span>;
+        <b>private const string</b> <a id="1a23d09c83f33ef0" href="../R/1a23d09c83f33ef0.html" target="n" data-glyph="10,1" class="i field">DefaultAssetsRequestPath</a> = <span class="s">&quot;/media&quot;</span>;
+ 
+        <b>private const bool</b> <a id="ad40ed9780c17e0b" href="../R/ad40ed9780c17e0b.html" target="n" data-glyph="10,1" class="i field">DefaultUseTokenizedQueryString</a> = <b>true</b>;
+ 
+        <span class="c">// default-src self applied to prevent possible svg xss injection.</span>
+        <span class="c">// style-src applied to allow browser behaviour of wrapping raw images in a styled img element.</span>
+        <b>private const string</b> <a id="388e66f4fca2de1c" href="../R/388e66f4fca2de1c.html" target="n" data-glyph="10,1" class="i field">DefaultContentSecurityPolicy</a> = <span class="s">&quot;default-src &#39;self&#39;; style-src &#39;unsafe-inline&#39;&quot;</span>;
+ 
+        <b>private readonly</b> <span class="i">IShellConfiguration</span> <a id="e5130c9f1726c88f" href="../R/e5130c9f1726c88f.html" target="n" data-glyph="46,1" class="i field">_shellConfiguration</a>;
+ 
+        <b>public</b> <a id="5deddb77b7c60e19" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">MediaOptionsConfiguration</a>(<span class="i">IShellConfiguration</span> <span id="r0 rd" class="r0 r">shellConfiguration</span>)
+        {
+            <a href="#e5130c9f1726c88f" class="i field">_shellConfiguration</a> = <span class="r0 r">shellConfiguration</span>;
+        }
+ 
+        <b>public void</b> <a id="5795a3d5159c9cfa" href="../R/5795a3d5159c9cfa.html" target="n" data-glyph="72,1" class="i method">Configure</a>(<span class="i">MediaOptions</span> <span id="r1 rd" class="r1 r">options</span>)
+        {
+            <b>var</b> <span id="r2 rd" class="r2 r">section</span> = <a href="#e5130c9f1726c88f" class="i field">_shellConfiguration</a>.<span class="i">GetSection</span>(<span class="s">&quot;OrchardCore_Media&quot;</span>);
+ 
+            <span class="c">// Because IShellConfiguration treats arrays as key value pairs, we replace the array value,</span>
+            <span class="c">// rather than letting Configure merge the default array with the appsettings value.</span>
+            <span class="r1 r">options</span>.<span class="i">SupportedSizes</span> = <span class="r2 r">section</span>.<span class="i">GetSection</span>(<span class="s">&quot;SupportedSizes&quot;</span>)
+                .<span class="i">Get</span>&lt;<b>int</b>[]&gt;()?.<span class="i method">OrderBy</span>(<span id="r3 rd" class="r3 r">s</span> =&gt; <span class="r3 r">s</span>).<span class="i method">ToArray</span>() ?? <a href="#31488df6cda49fa3" class="i field">DefaultSupportedSizes</a>;
+ 
+            <span class="r1 r">options</span>.<span class="i">AllowedFileExtensions</span> = <b>new</b> <span class="t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(
+                <span class="r2 r">section</span>.<span class="i">GetSection</span>(<span class="s">&quot;AllowedFileExtensions&quot;</span>).<span class="i">Get</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[]&gt;() ?? <a href="#b0b7089f643060c0" class="i field">DefaultAllowedFileExtensions</a>,
+                <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>);
+ 
+            <span class="r1 r">options</span>.<span class="i">MaxBrowserCacheDays</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;MaxBrowserCacheDays&quot;</span>, <a href="#78681880a29f9ba0" class="i field">DefaultMaxBrowserCacheDays</a>);
+            <span class="r1 r">options</span>.<span class="i">MaxCacheDays</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;MaxCacheDays&quot;</span>, <a href="#7852a080dc8df291" class="i field">DefaultMaxCacheDays</a>);
+            <span class="r1 r">options</span>.<span class="i">MaxFileSize</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;MaxFileSize&quot;</span>, <a href="#991fea836412f9ae" class="i field">DefaultMaxFileSize</a>);
+            <span class="r1 r">options</span>.<span class="i">CdnBaseUrl</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;CdnBaseUrl&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>).<span class="i">TrimEnd</span>(<span class="s">&#39;/&#39;</span>).<span class="i">ToLower</span>();
+            <span class="r1 r">options</span>.<span class="i">AssetsRequestPath</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;AssetsRequestPath&quot;</span>, <a href="#1a23d09c83f33ef0" class="i field">DefaultAssetsRequestPath</a>);
+            <span class="r1 r">options</span>.<span class="i">AssetsPath</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;AssetsPath&quot;</span>, <a href="#4d98a04cd64af225" class="i field">DefaultAssetsPath</a>);
+            <span class="r1 r">options</span>.<span class="i">UseTokenizedQueryString</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;UseTokenizedQueryString&quot;</span>, <a href="#ad40ed9780c17e0b" class="i field">DefaultUseTokenizedQueryString</a>);
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">contentSecurityPolicy</span> = <span class="r2 r">section</span>.<span class="i">GetValue</span>(<span class="s">&quot;ContentSecurityPolicy&quot;</span>, <a href="#388e66f4fca2de1c" class="i field">DefaultContentSecurityPolicy</a>);
+ 
+            <span class="c">// Use the same cache control header as ImageSharp does for resized images.</span>
+            <b>var</b> <span id="r5 rd" class="r5 r">cacheControl</span> = <span class="s">&quot;public, must-revalidate, max-age=&quot;</span> + <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<span class="i">FromDays</span>(<span class="r1 r">options</span>.<span class="i">MaxBrowserCacheDays</span>).<a href="@1@System.Runtime/A.html#061d7498e3227cfb" class="i property">TotalSeconds</a>.<a href="@1@System.Runtime/A.html#de581d5a1a6b2a1a" class="i method">ToString</a>();
+ 
+            <span class="r1 r">options</span>.<span class="i">StaticFileOptions</span> = <b>new</b> <span class="t constructor">StaticFileOptions</span>
+            {
+                <span class="i property">RequestPath</span> = <span class="r1 r">options</span>.<span class="i">AssetsRequestPath</span>,
+                <span class="i property">ServeUnknownFileTypes</span> = <b>true</b>,
+                <span class="i property">OnPrepareResponse</span> = <span id="r6 rd" class="r6 r">ctx</span> =&gt;
+                {
+                    <span class="r6 r">ctx</span>.<span class="i property">Context</span>.<span class="i property">Response</span>.<span class="i property">Headers</span>[<span class="t t">HeaderNames</span>.<span class="i field">CacheControl</span>] = <span class="r5 r">cacheControl</span>;
+                    <span class="r6 r">ctx</span>.<span class="i property">Context</span>.<span class="i property">Response</span>.<span class="i property">Headers</span>[<span class="t t">HeaderNames</span>.<span class="i field">ContentSecurityPolicy</span>] = <span class="r4 r">contentSecurityPolicy</span>;
+                }
+            };
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

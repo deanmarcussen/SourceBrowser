@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellDescriptorManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(135);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Infrastructure/Shell/ShellDescriptorManager.cs" target="_top">Shell\ShellDescriptorManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Infrastructure" target="_top">src\OrchardCore\OrchardCore.Infrastructure\OrchardCore.Infrastructure.csproj</a> (OrchardCore.Infrastructure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Dapper</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Descriptor</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Descriptor</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Data</span>.<span class="i n">Descriptors</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Implements </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IShellDescriptorManager</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> by providing the list of features store in the database.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="341f23a1efca81ef" href="../R/341f23a1efca81ef.html" target="n" data-glyph="0,0" class="t t">ShellDescriptorManager</a> : <span class="i">IShellDescriptorManager</span>
+    {
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="87477462ed922bb4" href="../R/87477462ed922bb4.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="i">IShellConfiguration</span> <a id="450ac50db00ebb58" href="../R/450ac50db00ebb58.html" target="n" data-glyph="46,1" class="i field">_shellConfiguration</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ShellFeature</span>&gt; <a id="05e404837275f0c6" href="../R/05e404837275f0c6.html" target="n" data-glyph="46,1" class="i field">_alwaysEnabledFeatures</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IShellDescriptorManagerEventHandler</span>&gt; <a id="c80b402a5a7a0a77" href="../R/c80b402a5a7a0a77.html" target="n" data-glyph="46,1" class="i field">_shellDescriptorManagerEventHandlers</a>;
+        <b>private readonly</b> <span class="i">IExtensionManager</span> <a id="153475c7265331f3" href="../R/153475c7265331f3.html" target="n" data-glyph="46,1" class="i field">_extensionManager</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="a52fb6d051b8dfe6" href="../R/a52fb6d051b8dfe6.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="c50149c4e6bb2a48" href="../R/c50149c4e6bb2a48.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private</b> <span class="i">ShellDescriptor</span> <a id="da053a4d900c4c90" href="../R/da053a4d900c4c90.html" target="n" data-glyph="46,1" class="i field">_shellDescriptor</a>;
+ 
+        <b>public</b> <a id="96fade00f61559e1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShellDescriptorManager</a>(
+            <span class="i">ShellSettings</span> <span id="r0 rd" class="r0 r">shellSettings</span>,
+            <span class="i">IShellConfiguration</span> <span id="r1 rd" class="r1 r">shellConfiguration</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ShellFeature</span>&gt; <span id="r2 rd" class="r2 r">shellFeatures</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IShellDescriptorManagerEventHandler</span>&gt; <span id="r3 rd" class="r3 r">shellDescriptorManagerEventHandlers</span>,
+            <span class="i">IExtensionManager</span> <span id="r4 rd" class="r4 r">extensionManager</span>,
+            <span class="i">ISession</span> <span id="r5 rd" class="r5 r">session</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#341f23a1efca81ef" class="t t">ShellDescriptorManager</a>&gt; <span id="r6 rd" class="r6 r">logger</span>)
+        {
+            <a href="#87477462ed922bb4" class="i field">_shellSettings</a> = <span class="r0 r">shellSettings</span>;
+            <a href="#450ac50db00ebb58" class="i field">_shellConfiguration</a> = <span class="r1 r">shellConfiguration</span>;
+            <a href="#05e404837275f0c6" class="i field">_alwaysEnabledFeatures</a> = <span class="r2 r">shellFeatures</span>.<span class="i method">Where</span>(<span id="r7 rd" class="r7 r">f</span> =&gt; <span class="r7 r">f</span>.<span class="i">AlwaysEnabled</span>).<span class="i method">ToArray</span>();
+            <a href="#c80b402a5a7a0a77" class="i field">_shellDescriptorManagerEventHandlers</a> = <span class="r3 r">shellDescriptorManagerEventHandlers</span>;
+            <a href="#153475c7265331f3" class="i field">_extensionManager</a> = <span class="r4 r">extensionManager</span>;
+            <a href="#a52fb6d051b8dfe6" class="i field">_session</a> = <span class="r5 r">session</span>;
+            <a href="#c50149c4e6bb2a48" class="i field">_logger</a> = <span class="r6 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">ShellDescriptor</span>&gt; <a id="4f0a7184f430af4f" href="../R/4f0a7184f430af4f.html" target="n" data-glyph="72,1" class="i method">GetShellDescriptorAsync</a>()
+        {
+            <span class="c">// Prevent multiple queries during the same request</span>
+            <b>if</b> (<a href="#da053a4d900c4c90" class="i field">_shellDescriptor</a> == <b>null</b>)
+            {
+                <a href="#da053a4d900c4c90" class="i field">_shellDescriptor</a> = <b>await</b> <a href="#a52fb6d051b8dfe6" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ShellDescriptor</span>&gt;().<span class="i">FirstOrDefaultAsync</span>();
+ 
+                <b>if</b> (<a href="#da053a4d900c4c90" class="i field">_shellDescriptor</a> != <b>null</b>)
+                {
+                    <a href="#45d1e03a8dc844bf" class="k">var</a> <span id="r8 rd" class="r8 r">configuredFeatures</span> = <b>new</b> <a href="#45d1e03a8dc844bf" class="t constructor">ConfiguredFeatures</a>();
+                    <a href="#450ac50db00ebb58" class="i field">_shellConfiguration</a>.<span class="i">Bind</span>(<span class="r8 r">configuredFeatures</span>);
+ 
+                    <b>var</b> <span id="r9 rd" class="r9 r">features</span> = <a href="#05e404837275f0c6" class="i field">_alwaysEnabledFeatures</a>
+                        .<span class="i">Concat</span>(<span class="r8 r">configuredFeatures</span>.<a href="#50d1967fdf372c66" class="i property">Features</a>.<span class="i">Select</span>(<span id="r10 rd" class="r10 r">id</span> =&gt; <b>new</b> <span class="i">ShellFeature</span>(<span class="r10 r">id</span>) { <span class="i">AlwaysEnabled</span> = <b>true</b> }))
+                        .<span class="i">Concat</span>(<a href="#da053a4d900c4c90" class="i field">_shellDescriptor</a>.<span class="i">Features</span>)
+                        .<span class="i">Distinct</span>();
+ 
+                    <b>var</b> <span id="r11 rd" class="r11 r">featureIds</span> = <span class="r9 r">features</span>.<span class="i">Select</span>(<span id="r12 rd" class="r12 r">sf</span> =&gt; <span class="r12 r">sf</span>.<span class="i">Id</span>).<span class="i">ToArray</span>();
+ 
+                    <b>var</b> <span id="r13 rd" class="r13 r">missingDependencies</span> = (<b>await</b> <a href="#153475c7265331f3" class="i field">_extensionManager</a>.<span class="i">LoadFeaturesAsync</span>(<span class="r11 r">featureIds</span>))
+                        .<span class="i">Select</span>(<span id="r14 rd" class="r14 r">entry</span> =&gt; <span class="r14 r">entry</span>.<span class="i">FeatureInfo</span>.<span class="i">Id</span>)
+                        .<span class="i">Except</span>(<span class="r11 r">featureIds</span>)
+                        .<span class="i">Select</span>(<span id="r15 rd" class="r15 r">id</span> =&gt; <b>new</b> <span class="i">ShellFeature</span>(<span class="r15 r">id</span>));
+ 
+                    <a href="#da053a4d900c4c90" class="i field">_shellDescriptor</a>.<span class="i">Features</span> = <span class="r9 r">features</span>
+                        .<span class="i">Concat</span>(<span class="r13 r">missingDependencies</span>)
+                        .<span class="i">ToList</span>();
+                }
+            }
+ 
+            <b>return</b> <a href="#da053a4d900c4c90" class="i field">_shellDescriptor</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="67472d5741d918b4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateShellDescriptorAsync</a>(<b>int</b> <span id="r16 rd" class="r16 r">priorSerialNumber</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ShellFeature</span>&gt; <span id="r17 rd" class="r17 r">enabledFeatures</span>)
+        {
+            <b>var</b> <span id="r18 rd" class="r18 r">shellDescriptorRecord</span> = <b>await</b> <a href="#4f0a7184f430af4f" class="i method">GetShellDescriptorAsync</a>();
+            <b>var</b> <span id="r19 rd" class="r19 r">serialNumber</span> = <span class="r18 r">shellDescriptorRecord</span> == <b>null</b>
+                ? 0
+                : <span class="r18 r">shellDescriptorRecord</span>.<span class="i">SerialNumber</span>;
+ 
+            <b>if</b> (<span class="r16 r">priorSerialNumber</span> != <span class="r19 r">serialNumber</span>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Invalid serial number for shell descriptor&quot;</span>);
+            }
+ 
+            <b>if</b> (<a href="#c50149c4e6bb2a48" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#c50149c4e6bb2a48" class="i field">_logger</a>.<span class="i">LogInformation</span>(<span class="s">&quot;Updating shell descriptor for tenant &#39;{TenantName}&#39; ...&quot;</span>, <a href="#87477462ed922bb4" class="i field">_shellSettings</a>.<span class="i">Name</span>);
+            }
+ 
+            <b>if</b> (<span class="r18 r">shellDescriptorRecord</span> == <b>null</b>)
+            {
+                <span class="r18 r">shellDescriptorRecord</span> = <b>new</b> <span class="i">ShellDescriptor</span> { <span class="i">SerialNumber</span> = 1 };
+            }
+            <b>else</b>
+            {
+                <span class="r18 r">shellDescriptorRecord</span>.<span class="i">SerialNumber</span>++;
+            }
+ 
+            <span class="r18 r">shellDescriptorRecord</span>.<span class="i">Features</span> = <a href="#05e404837275f0c6" class="i field">_alwaysEnabledFeatures</a>.<span class="i method">Union</span>(<span class="r17 r">enabledFeatures</span>).<span class="i method">ToList</span>();
+            <span class="r18 r">shellDescriptorRecord</span>.<span class="i">Installed</span> = <span class="r18 r">shellDescriptorRecord</span>.<span class="i">Installed</span>.<span class="i">Union</span>(<span class="r18 r">shellDescriptorRecord</span>.<span class="i">Features</span>).<span class="i">ToList</span>();
+ 
+            <b>if</b> (<a href="#c50149c4e6bb2a48" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+            {
+                <a href="#c50149c4e6bb2a48" class="i field">_logger</a>.<span class="i">LogInformation</span>(<span class="s">&quot;Shell descriptor updated for tenant &#39;{TenantName}&#39;.&quot;</span>, <a href="#87477462ed922bb4" class="i field">_shellSettings</a>.<span class="i">Name</span>);
+            }
+ 
+            <a href="#a52fb6d051b8dfe6" class="i field">_session</a>.<span class="i">Save</span>(<span class="r18 r">shellDescriptorRecord</span>);
+ 
+            <span class="c">// In the &#39;ChangedAsync()&#39; event the shell will be released so that, on request, a new one will be built.</span>
+            <span class="c">// So, we commit the session earlier to prevent a new shell from being built from an outdated descriptor.</span>
+ 
+            <b>await</b> <a href="#a52fb6d051b8dfe6" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+ 
+            <b>await</b> <a href="#c80b402a5a7a0a77" class="i field">_shellDescriptorManagerEventHandlers</a>.<span class="i">InvokeAsync</span>((<span id="r20 rd" class="r20 r">handler</span>, <span id="r21 rd" class="r21 r">shellDescriptorRecord</span>, <span id="r22 rd" class="r22 r">_shellSettings</span>) =&gt;
+                <span class="r20 r">handler</span>.<span class="i">ChangedAsync</span>(<span class="r21 r">shellDescriptorRecord</span>, <span class="r22 r">_shellSettings</span>), <span class="r18 r">shellDescriptorRecord</span>, <a href="#87477462ed922bb4" class="i field">_shellSettings</a>, <a href="#c50149c4e6bb2a48" class="i field">_logger</a>);
+        }
+ 
+        <b>private class</b> <a id="45d1e03a8dc844bf" href="../R/45d1e03a8dc844bf.html" target="n" data-glyph="4,1" class="t t"><span id="5899802ee235c8d6">ConfiguredFeatures</span></a>
+        {
+            <b>public string</b>[] <a id="50d1967fdf372c66" href="../R/50d1967fdf372c66.html" target="n" data-glyph="102,2" class="i property">Features</a> { <b>get</b>; <b>set</b>; } = <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

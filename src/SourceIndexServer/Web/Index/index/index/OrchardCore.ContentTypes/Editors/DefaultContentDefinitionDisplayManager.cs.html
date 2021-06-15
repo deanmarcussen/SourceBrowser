@@ -1,0 +1,296 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultContentDefinitionDisplayManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(287);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentTypes/Editors/DefaultContentDefinitionDisplayManager.cs" target="_top">Editors\DefaultContentDefinitionDisplayManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentTypes" target="_top">src\OrchardCore.Modules\OrchardCore.ContentTypes\OrchardCore.ContentTypes.csproj</a> (OrchardCore.ContentTypes)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Descriptors</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">Layout</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">DisplayManagement</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentTypes</span>.<span class="i n">Editors</span>
+{
+    <b>public class</b> <a id="6a18d9280020d936" href="../R/6a18d9280020d936.html" target="n" data-glyph="0,0" class="t t">DefaultContentDefinitionDisplayManager</a> : <span class="i">BaseDisplayManager</span>, <a href="/OrchardCore.ContentTypes.Abstractions/A.html#82fa029f59ec2ec6" class="t t">IContentDefinitionDisplayManager</a>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentTypes.Abstractions/A.html#a1632b3a1aaee9d6" class="t t">IContentDefinitionDisplayHandler</a>&gt; <a id="f0e1def012a515e6" href="../R/f0e1def012a515e6.html" target="n" data-glyph="46,1" class="i field">_handlers</a>;
+        <b>private readonly</b> <span class="i">IShapeTableManager</span> <a id="cdf2f0c74a518aed" href="../R/cdf2f0c74a518aed.html" target="n" data-glyph="46,1" class="i field">_shapeTableManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="0626e83a92a81808" href="../R/0626e83a92a81808.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="i">IShapeFactory</span> <a id="dea1a3f6f4c144e6" href="../R/dea1a3f6f4c144e6.html" target="n" data-glyph="46,1" class="i field">_shapeFactory</a>;
+        <b>private readonly</b> <span class="i">ILayoutAccessor</span> <a id="32b9d07d24222053" href="../R/32b9d07d24222053.html" target="n" data-glyph="46,1" class="i field">_layoutAccessor</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="4549a783d68dd1c1" href="../R/4549a783d68dd1c1.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="8ab0c3ab578c3d6b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultContentDefinitionDisplayManager</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentTypes.Abstractions/A.html#a1632b3a1aaee9d6" class="t t">IContentDefinitionDisplayHandler</a>&gt; <span id="r0 rd" class="r0 r">handlers</span>,
+            <span class="i">IShapeTableManager</span> <span id="r1 rd" class="r1 r">shapeTableManager</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r2 rd" class="r2 r">contentDefinitionManager</span>,
+            <span class="i">IShapeFactory</span> <span id="r3 rd" class="r3 r">shapeFactory</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IShapePlacementProvider</span>&gt; <span id="r4 rd" class="r4 r">placementProviders</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#6a18d9280020d936" class="t t">DefaultContentDefinitionDisplayManager</a>&gt; <span id="r5 rd" class="r5 r">logger</span>,
+            <span class="i">ILayoutAccessor</span> <span id="r6 rd" class="r6 r">layoutAccessor</span>
+            ) : <b>base</b>(<span class="r3 r">shapeFactory</span>, <span class="r4 r">placementProviders</span>)
+        {
+            <a href="#f0e1def012a515e6" class="i field">_handlers</a> = <span class="r0 r">handlers</span>;
+            <a href="#cdf2f0c74a518aed" class="i field">_shapeTableManager</a> = <span class="r1 r">shapeTableManager</span>;
+            <a href="#0626e83a92a81808" class="i field">_contentDefinitionManager</a> = <span class="r2 r">contentDefinitionManager</span>;
+            <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a> = <span class="r3 r">shapeFactory</span>;
+            <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a> = <span class="r6 r">layoutAccessor</span>;
+            <a href="#4549a783d68dd1c1" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="0a00c663655877bb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">BuildTypeEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r7 rd" class="r7 r">contentTypeDefinition</span>, <span class="i">IUpdateModel</span> <span id="r8 rd" class="r8 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">groupId</span>)
+        {
+            <b>if</b> (<span class="r7 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r7 r">contentTypeDefinition</span>));
+            }
+ 
+            <b>dynamic</b> <span id="r10 rd" class="r10 r">contentTypeDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentTypeDefinition_Edit&quot;</span>);
+            <span class="r10 r">contentTypeDefinitionShape</span>.<span class="i">ContentTypeDefinition</span> = <span class="r7 r">contentTypeDefinition</span>;
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">typeContext</span> = <b>new</b> <span class="i">BuildEditorContext</span>(
+                <span class="r10 r">contentTypeDefinitionShape</span>,
+                <span class="r9 r">groupId</span>,
+                <b>false</b>,
+                <span class="s">&quot;&quot;</span>,
+                <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>(),
+                <span class="r8 r">updater</span>
+            );
+ 
+            <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r11 r">typeContext</span>);
+ 
+            <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r12 rd" class="r12 r">handler</span>, <span id="r13 rd" class="r13 r">contentTypeDefinition</span>, <span id="r14 rd" class="r14 r">typeContext</span>) =&gt; <span class="r12 r">handler</span>.<span class="i">BuildTypeEditorAsync</span>(<span class="r13 r">contentTypeDefinition</span>, <span class="r14 r">typeContext</span>), <span class="r7 r">contentTypeDefinition</span>, <span class="r11 r">typeContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r10 r">contentTypeDefinitionShape</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="f6b17d37cd2267b6" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateTypeEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="t t">ContentTypeDefinition</a> <span id="r15 rd" class="r15 r">contentTypeDefinition</span>, <span class="i">IUpdateModel</span> <span id="r16 rd" class="r16 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">groupId</span>)
+        {
+            <b>if</b> (<span class="r15 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r15 r">contentTypeDefinition</span>));
+            }
+ 
+            <b>dynamic</b> <span id="r18 rd" class="r18 r">contentTypeDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentTypeDefinition_Edit&quot;</span>);
+            <span class="r18 r">contentTypeDefinitionShape</span>.<span class="i">ContentTypeDefinition</span> = <span class="r15 r">contentTypeDefinition</span>;
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">layout</span> = <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>();
+ 
+            <b>await</b> <a href="#0626e83a92a81808" class="i field">_contentDefinitionManager</a>.<span class="i">AlterTypeDefinitionAsync</span>(<span class="r15 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <b>async</b> <span id="r20 rd" class="r20 r">typeBuilder</span> =&gt;
+            {
+                <a href="/OrchardCore.ContentTypes.Abstractions/A.html#061d370f611b4970" class="k">var</a> <span id="r21 rd" class="r21 r">typeContext</span> = <b>new</b> <span class="t">UpdateTypeEditorContext</span>(
+                    <span class="r20 r">typeBuilder</span>,
+                    <span class="r18 r">contentTypeDefinitionShape</span>,
+                    <span class="r17 r">groupId</span>,
+                    <b>false</b>,
+                    <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                    <span class="r19 r">layout</span>,
+                    <span class="r16 r">updater</span>
+                );
+ 
+                <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r21 r">typeContext</span>);
+ 
+                <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r22 rd" class="r22 r">handler</span>, <span id="r23 rd" class="r23 r">contentTypeDefinition</span>, <span id="r24 rd" class="r24 r">typeContext</span>) =&gt; <span class="r22 r">handler</span>.<span class="i">UpdateTypeEditorAsync</span>(<span class="r23 r">contentTypeDefinition</span>, <span class="r24 r">typeContext</span>), <span class="r15 r">contentTypeDefinition</span>, <span class="r21 r">typeContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+            });
+ 
+            <b>return</b> <span class="r18 r">contentTypeDefinitionShape</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="dbf6a27e65f1b75b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">BuildPartEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#45e44da5547d9781" class="t t">ContentPartDefinition</a> <span id="r25 rd" class="r25 r">contentPartDefinition</span>, <span class="i">IUpdateModel</span> <span id="r26 rd" class="r26 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">groupId</span>)
+        {
+            <b>if</b> (<span class="r25 r">contentPartDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r25 r">contentPartDefinition</span>));
+            }
+ 
+            <b>var</b> <span id="r28 rd" class="r28 r">contentPartDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentPartDefinition_Edit&quot;</span>);
+ 
+            <b>var</b> <span id="r29 rd" class="r29 r">partContext</span> = <b>new</b> <span class="i">BuildEditorContext</span>(
+                <span class="r28 r">contentPartDefinitionShape</span>,
+                <span class="r27 r">groupId</span>,
+                <b>false</b>,
+                <span class="s">&quot;&quot;</span>,
+                <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>(),
+                <span class="r26 r">updater</span>
+            );
+ 
+            <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r29 r">partContext</span>);
+ 
+            <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r30 rd" class="r30 r">handler</span>, <span id="r31 rd" class="r31 r">contentPartDefinition</span>, <span id="r32 rd" class="r32 r">partContext</span>) =&gt; <span class="r30 r">handler</span>.<span class="i">BuildPartEditorAsync</span>(<span class="r31 r">contentPartDefinition</span>, <span class="r32 r">partContext</span>), <span class="r25 r">contentPartDefinition</span>, <span class="r29 r">partContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r28 r">contentPartDefinitionShape</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="f027d8aa29d581ff" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdatePartEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#45e44da5547d9781" class="t t">ContentPartDefinition</a> <span id="r33 rd" class="r33 r">contentPartDefinition</span>, <span class="i">IUpdateModel</span> <span id="r34 rd" class="r34 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">groupId</span>)
+        {
+            <b>if</b> (<span class="r33 r">contentPartDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r33 r">contentPartDefinition</span>));
+            }
+ 
+            <b>var</b> <span id="r36 rd" class="r36 r">contentPartDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentPartDefinition_Edit&quot;</span>);
+ 
+            <a href="/OrchardCore.ContentTypes.Abstractions/A.html#69cb3b1ccdcdd5eb" class="t t">UpdatePartEditorContext</a> <span id="r37 rd" class="r37 r">partContext</span> = <b>null</b>;
+            <b>var</b> <span id="r38 rd" class="r38 r">layout</span> = <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>();
+ 
+            <b>await</b> <a href="#0626e83a92a81808" class="i field">_contentDefinitionManager</a>.<span class="i">AlterPartDefinitionAsync</span>(<span class="r33 r">contentPartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <b>async</b> <span id="r39 rd" class="r39 r">partBuilder</span> =&gt;
+            {
+                <span class="r37 r">partContext</span> = <b>new</b> <span class="t">UpdatePartEditorContext</span>(
+                    <span class="r39 r">partBuilder</span>,
+                    <span class="r36 r">contentPartDefinitionShape</span>,
+                    <span class="r35 r">groupId</span>,
+                    <b>false</b>,
+                    <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                    <span class="r38 r">layout</span>,
+                    <span class="r34 r">updater</span>
+                );
+ 
+                <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r37 r">partContext</span>);
+ 
+                <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r40 rd" class="r40 r">handler</span>, <span id="r41 rd" class="r41 r">contentPartDefinition</span>, <span id="r42 rd" class="r42 r">partContext</span>) =&gt; <span class="r40 r">handler</span>.<span class="i">UpdatePartEditorAsync</span>(<span class="r41 r">contentPartDefinition</span>, <span class="r42 r">partContext</span>), <span class="r33 r">contentPartDefinition</span>, <span class="r37 r">partContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+            });
+ 
+            <b>return</b> <span class="r36 r">contentPartDefinitionShape</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="5b5271a1798ce3e1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">BuildTypePartEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="t t">ContentTypePartDefinition</a> <span id="r43 rd" class="r43 r">contentTypePartDefinition</span>, <span class="i">IUpdateModel</span> <span id="r44 rd" class="r44 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">groupId</span> = <span class="s">&quot;&quot;</span>)
+        {
+            <b>if</b> (<span class="r43 r">contentTypePartDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r43 r">contentTypePartDefinition</span>));
+            }
+ 
+            <b>dynamic</b> <span id="r46 rd" class="r46 r">typePartDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentTypePartDefinition_Edit&quot;</span>);
+            <span class="r46 r">typePartDefinitionShape</span>.<span class="i">ContentPart</span> = <span class="r43 r">contentTypePartDefinition</span>;
+ 
+            <b>var</b> <span id="r47 rd" class="r47 r">partContext</span> = <b>new</b> <span class="i">BuildEditorContext</span>(
+                <span class="r46 r">typePartDefinitionShape</span>,
+                <span class="r45 r">groupId</span>,
+                <b>false</b>,
+                <span class="s">&quot;&quot;</span>,
+                <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>(),
+                <span class="r44 r">updater</span>
+            );
+ 
+            <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r47 r">partContext</span>);
+ 
+            <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r48 rd" class="r48 r">handler</span>, <span id="r49 rd" class="r49 r">contentTypePartDefinition</span>, <span id="r50 rd" class="r50 r">partContext</span>) =&gt; <span class="r48 r">handler</span>.<span class="i">BuildTypePartEditorAsync</span>(<span class="r49 r">contentTypePartDefinition</span>, <span class="r50 r">partContext</span>), <span class="r43 r">contentTypePartDefinition</span>, <span class="r47 r">partContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r46 r">typePartDefinitionShape</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="0a4e3ad77fde5629" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateTypePartEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#393fef64e2d406bd" class="t t">ContentTypePartDefinition</a> <span id="r51 rd" class="r51 r">contentTypePartDefinition</span>, <span class="i">IUpdateModel</span> <span id="r52 rd" class="r52 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r53 rd" class="r53 r">groupId</span> = <span class="s">&quot;&quot;</span>)
+        {
+            <b>if</b> (<span class="r51 r">contentTypePartDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r51 r">contentTypePartDefinition</span>));
+            }
+ 
+            <b>dynamic</b> <span id="r54 rd" class="r54 r">typePartDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentTypePartDefinition_Edit&quot;</span>);
+            <b>var</b> <span id="r55 rd" class="r55 r">layout</span> = <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>();
+ 
+            <b>await</b> <a href="#0626e83a92a81808" class="i field">_contentDefinitionManager</a>.<span class="i">AlterTypeDefinitionAsync</span>(<span class="r51 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#2ee287faca788aba" class="i property">ContentTypeDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <span id="r56 rd" class="r56 r">typeBuilder</span> =&gt;
+            {
+                <b>return</b> <span class="r56 r">typeBuilder</span>.<span class="i">WithPartAsync</span>(<span class="r51 r">contentTypePartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <b>async</b> <span id="r57 rd" class="r57 r">typePartBuilder</span> =&gt;
+                {
+                    <span class="r54 r">typePartDefinitionShape</span>.<span class="i">ContentPart</span> = <span class="r51 r">contentTypePartDefinition</span>;
+ 
+                    <a href="/OrchardCore.ContentTypes.Abstractions/A.html#072eaad8162a69d4" class="k">var</a> <span id="r58 rd" class="r58 r">partContext</span> = <b>new</b> <span class="t">UpdateTypePartEditorContext</span>(
+                        <span class="r57 r">typePartBuilder</span>,
+                        <span class="r54 r">typePartDefinitionShape</span>,
+                        <span class="r53 r">groupId</span>,
+                        <b>false</b>,
+                        <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                        <span class="r55 r">layout</span>,
+                        <span class="r52 r">updater</span>
+                    );
+ 
+                    <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r58 r">partContext</span>);
+ 
+                    <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r59 rd" class="r59 r">handler</span>, <span id="r60 rd" class="r60 r">contentTypePartDefinition</span>, <span id="r61 rd" class="r61 r">partContext</span>) =&gt; <span class="r59 r">handler</span>.<span class="i">UpdateTypePartEditorAsync</span>(<span class="r60 r">contentTypePartDefinition</span>, <span class="r61 r">partContext</span>), <span class="r51 r">contentTypePartDefinition</span>, <span class="r58 r">partContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+                });
+            });
+ 
+            <b>return</b> <span class="r54 r">typePartDefinitionShape</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="5edb68a8d45a7380" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">BuildPartFieldEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r62 rd" class="r62 r">contentPartFieldDefinition</span>, <span class="i">IUpdateModel</span> <span id="r63 rd" class="r63 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r64 rd" class="r64 r">groupId</span> = <span class="s">&quot;&quot;</span>)
+        {
+            <b>if</b> (<span class="r62 r">contentPartFieldDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r62 r">contentPartFieldDefinition</span>));
+            }
+ 
+            <b>dynamic</b> <span id="r65 rd" class="r65 r">partFieldDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentPartFieldDefinition_Edit&quot;</span>);
+            <span class="r65 r">partFieldDefinitionShape</span>.<span class="i">ContentField</span> = <span class="r62 r">contentPartFieldDefinition</span>;
+ 
+            <b>var</b> <span id="r66 rd" class="r66 r">fieldContext</span> = <b>new</b> <span class="i">BuildEditorContext</span>(
+                <span class="r65 r">partFieldDefinitionShape</span>,
+                <span class="r64 r">groupId</span>,
+                <b>false</b>,
+                <span class="s">&quot;&quot;</span>,
+                <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>(),
+                <span class="r63 r">updater</span>
+            );
+ 
+            <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r66 r">fieldContext</span>);
+ 
+            <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r67 rd" class="r67 r">handler</span>, <span id="r68 rd" class="r68 r">contentPartFieldDefinition</span>, <span id="r69 rd" class="r69 r">fieldContext</span>) =&gt; <span class="r67 r">handler</span>.<span class="i">BuildPartFieldEditorAsync</span>(<span class="r68 r">contentPartFieldDefinition</span>, <span class="r69 r">fieldContext</span>), <span class="r62 r">contentPartFieldDefinition</span>, <span class="r66 r">fieldContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+ 
+            <b>return</b> <span class="r65 r">partFieldDefinitionShape</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>dynamic</b>&gt; <a id="1060036f5b11dd0b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdatePartFieldEditorAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="t t">ContentPartFieldDefinition</a> <span id="r70 rd" class="r70 r">contentPartFieldDefinition</span>, <span class="i">IUpdateModel</span> <span id="r71 rd" class="r71 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r72 rd" class="r72 r">groupId</span> = <span class="s">&quot;&quot;</span>)
+        {
+            <b>if</b> (<span class="r70 r">contentPartFieldDefinition</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r70 r">contentPartFieldDefinition</span>));
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#45e44da5547d9781" class="k">var</a> <span id="r73 rd" class="r73 r">contentPartDefinition</span> = <span class="r70 r">contentPartFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38f32a81414eb933" class="i property">PartDefinition</a>;
+            <b>dynamic</b> <span id="r74 rd" class="r74 r">partFieldDefinitionShape</span> = <b>await</b> <span class="i">CreateContentShapeAsync</span>(<span class="s">&quot;ContentPartFieldDefinition_Edit&quot;</span>);
+ 
+            <b>var</b> <span id="r75 rd" class="r75 r">layout</span> = <b>await</b> <a href="#32b9d07d24222053" class="i field">_layoutAccessor</a>.<span class="i">GetLayoutAsync</span>();
+ 
+            <b>await</b> <a href="#0626e83a92a81808" class="i field">_contentDefinitionManager</a>.<span class="i">AlterPartDefinitionAsync</span>(<span class="r73 r">contentPartDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <span id="r76 rd" class="r76 r">partBuilder</span> =&gt;
+            {
+                <b>return</b> <span class="r76 r">partBuilder</span>.<span class="i">WithFieldAsync</span>(<span class="r70 r">contentPartFieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>, <b>async</b> <span id="r77 rd" class="r77 r">partFieldBuilder</span> =&gt;
+                {
+                    <span class="r74 r">partFieldDefinitionShape</span>.<span class="i">ContentField</span> = <span class="r70 r">contentPartFieldDefinition</span>;
+ 
+                    <a href="/OrchardCore.ContentTypes.Abstractions/A.html#dd3554abb2fb8ca5" class="k">var</a> <span id="r78 rd" class="r78 r">fieldContext</span> = <b>new</b> <span class="t">UpdatePartFieldEditorContext</span>(
+                        <span class="r77 r">partFieldBuilder</span>,
+                        <span class="r74 r">partFieldDefinitionShape</span>,
+                        <span class="r72 r">groupId</span>,
+                        <b>false</b>,
+                        <a href="#dea1a3f6f4c144e6" class="i field">_shapeFactory</a>,
+                        <span class="r75 r">layout</span>,
+                        <span class="r71 r">updater</span>
+                    );
+ 
+                    <b>await</b> <span class="i">BindPlacementAsync</span>(<span class="r78 r">fieldContext</span>);
+ 
+                    <b>await</b> <a href="#f0e1def012a515e6" class="i field">_handlers</a>.<span class="i">InvokeAsync</span>((<span id="r79 rd" class="r79 r">handler</span>, <span id="r80 rd" class="r80 r">contentPartFieldDefinition</span>, <span id="r81 rd" class="r81 r">fieldContext</span>) =&gt; <span class="r79 r">handler</span>.<span class="i">UpdatePartFieldEditorAsync</span>(<span class="r80 r">contentPartFieldDefinition</span>, <span class="r81 r">fieldContext</span>), <span class="r70 r">contentPartFieldDefinition</span>, <span class="r78 r">fieldContext</span>, <a href="#4549a783d68dd1c1" class="i field">_logger</a>);
+                });
+            });
+ 
+            <b>return</b> <span class="r74 r">partFieldDefinitionShape</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

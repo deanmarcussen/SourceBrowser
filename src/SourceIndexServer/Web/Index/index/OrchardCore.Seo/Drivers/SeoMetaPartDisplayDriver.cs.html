@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html><head><title>SeoMetaPartDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(162);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Seo/Drivers/SeoMetaPartDisplayDriver.cs" target="_top">Drivers\SeoMetaPartDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Seo" target="_top">src\OrchardCore.Modules\OrchardCore.Seo\OrchardCore.Seo.csproj</a> (OrchardCore.Seo)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Seo</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Seo</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Serialization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ResourceManagement</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Seo</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="1d4bbdc20aa479bd" href="../R/1d4bbdc20aa479bd.html" target="n" data-glyph="0,0" class="t t">SeoMetaPartDisplayDriver</a> : <a href="/OrchardCore.ContentManagement.Display/A.html#2593392739768a38" class="t t">ContentPartDisplayDriver</a>&lt;<a href="../Models/SeoMetaPart.cs.html#0116db8ab9091100" class="t t">SeoMetaPart</a>&gt;
+    {
+        <b>private static readonly</b> <span class="i">JsonSerializerSettings</span> <a id="e87536f3bb93b0fc" href="../R/e87536f3bb93b0fc.html" target="n" data-glyph="46,1" class="i field">SerializerSettings</a> = <b>new</b> <span class="i">JsonSerializerSettings</span>
+        {
+            <span class="i">ContractResolver</span> = <b>new</b> <span class="i">CamelCasePropertyNamesContractResolver</span>(),
+            <span class="i">Formatting</span> = <span class="i">Formatting</span>.<span class="i">Indented</span>
+        };
+ 
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <a id="0ba6a8b28f4b0934" href="../R/0ba6a8b28f4b0934.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="c0beb98a79948245" href="../R/c0beb98a79948245.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <span class="i">ILiquidTemplateManager</span> <a id="49cc05bc5465f51a" href="../R/49cc05bc5465f51a.html" target="n" data-glyph="46,1" class="i field">_liquidTemplatemanager</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="1a80fa90e49cbb32" href="../R/1a80fa90e49cbb32.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="1108b19f499725ab" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SeoMetaPartDisplayDriver</a>(
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <span id="r0 rd" class="r0 r">contentManager</span>,
+            <span class="t t">IServiceProvider</span> <span id="r1 rd" class="r1 r">serviceProvider</span>,
+            <span class="i">ILiquidTemplateManager</span> <span id="r2 rd" class="r2 r">liquidTemplateManager</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#1d4bbdc20aa479bd" class="t t">SeoMetaPartDisplayDriver</a>&gt; <span id="r3 rd" class="r3 r">stringLocalizer</span>
+            )
+        {
+            <a href="#0ba6a8b28f4b0934" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+            <a href="#c0beb98a79948245" class="i field">_serviceProvider</a> = <span class="r1 r">serviceProvider</span>;
+            <a href="#49cc05bc5465f51a" class="i field">_liquidTemplatemanager</a> = <span class="r2 r">liquidTemplateManager</span>;
+            <a href="#1a80fa90e49cbb32" class="i field">S</a> = <span class="r3 r">stringLocalizer</span>;
+        }
+ 
+        <b>public override</b> <a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="4768fd73ffb615da" href="../R/4768fd73ffb615da.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="../Models/SeoMetaPart.cs.html#0116db8ab9091100" class="t t">SeoMetaPart</a> <span id="r4 rd" class="r4 r">part</span>, <a href="/OrchardCore.ContentManagement.Display/A.html#851b7bb87d297020" class="t t">BuildPartEditorContext</a> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <a href="../Models/SeoMetaPartSettings.cs.html#4cf670ff831e31db" class="k">var</a> <span id="r6 rd" class="r6 r">settings</span> = <span class="r5 r">context</span>.<a href="/OrchardCore.ContentManagement.Display/A.html#7590920de5df5bc4" class="i property">TypePartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="../Models/SeoMetaPartSettings.cs.html#4cf670ff831e31db" class="t t">SeoMetaPartSettings</a>&gt;();
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt;();
+ 
+            <span class="r7 r">results</span>.<span class="i method">Add</span>(<span class="i">Initialize</span>&lt;<a href="../ViewModels/SeoMetaPartViewModel.cs.html#b4987599fbbed129" class="t t">SeoMetaPartViewModel</a>&gt;(<span class="s">&quot;SeoMetaPart_Edit&quot;</span>, <span id="r8 rd" class="r8 r">model</span> =&gt;
+                {
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#c5ccf7dcfe1b583b" class="i property">PageTitle</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#7a2ad592cd1707a6" class="i property">PageTitle</a>;
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#d906b3aa9554681d" class="i property">Render</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#b3447d2987b796bc" class="i property">Render</a>;
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#143533428b4eb539" class="i property">MetaDescription</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#33a9b62c91ee5e5d" class="i property">MetaDescription</a>;
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#012ee3d96979d55a" class="i property">MetaKeywords</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#6782a1609a34296b" class="i property">MetaKeywords</a>;
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#44177de5c26b7ebf" class="i property">Canonical</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#308f50b506356033" class="i property">Canonical</a>;
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#0cf37fa9165216fb" class="i property">MetaRobots</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#4b497be7f9d5c364" class="i property">MetaRobots</a>;
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#9d46e154547503aa" class="i property">CustomMetaTags</a> = <span class="i">JsonConvert</span>.<span class="i">SerializeObject</span>(<span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#ed1c5e1aaa89ccc9" class="i property">CustomMetaTags</a>, <a href="#e87536f3bb93b0fc" class="i field">SerializerSettings</a>);
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#ad471fdb5e8b9b89" class="i property">SeoMetaPart</a> = <span class="r4 r">part</span>;
+                    <span class="r8 r">model</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#367a8bc517e3c058" class="i property">Settings</a> = <span class="r6 r">settings</span>;
+                }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Parts#SEO;50&quot;</span>));
+ 
+            <b>if</b> (<span class="r6 r">settings</span>.<a href="../Models/SeoMetaPartSettings.cs.html#7f4010fd83970159" class="i property">DisplayOpenGraph</a>)
+            {
+                <span class="r7 r">results</span>.<span class="i method">Add</span>(<a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#6f4684f7a7ffc3ab" class="t t">SeoMetaPartOpenGraphViewModel</a>&gt;(<span class="s">&quot;SeoMetaPartOpenGraph_Edit&quot;</span>, <span id="r9 rd" class="r9 r">model</span> =&gt;
+                {
+                    <span class="r9 r">model</span>.<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#b434b3ba5875be90" class="i property">OpenGraphType</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#f5e31aebd6aa6aa2" class="i property">OpenGraphType</a>;
+                    <span class="r9 r">model</span>.<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#c3b7c8da64a545a3" class="i property">OpenGraphTitle</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#d73201d85b33658d" class="i property">OpenGraphTitle</a>;
+                    <span class="r9 r">model</span>.<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#cdc21b43c8efb843" class="i property">OpenGraphDescription</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#b840a251771a492a" class="i property">OpenGraphDescription</a>;
+                    <span class="r9 r">model</span>.<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#59d948a82a393503" class="i property">SeoMetaPart</a> = <span class="r4 r">part</span>;
+                }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Parts#SEO;50%Open Graph;20&quot;</span>));
+            }
+ 
+            <b>if</b> (<span class="r6 r">settings</span>.<a href="../Models/SeoMetaPartSettings.cs.html#bca774c5ddd3b3b8" class="i property">DisplayTwitter</a>)
+            {
+                <span class="r7 r">results</span>.<span class="i method">Add</span>(<a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#04952fbcb94270e6" class="t t">SeoMetaPartTwitterViewModel</a>&gt;(<span class="s">&quot;SeoMetaPartTwitter_Edit&quot;</span>, <span id="r10 rd" class="r10 r">model</span> =&gt;
+                {
+                    <span class="r10 r">model</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#15b8135463314c14" class="i property">TwitterTitle</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#c6eb5190ec98325c" class="i property">TwitterTitle</a>;
+                    <span class="r10 r">model</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#898add5e4fd71f99" class="i property">TwitterDescription</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#94cbd4b14eba3121" class="i property">TwitterDescription</a>;
+                    <span class="r10 r">model</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#7a74246b6ea1e559" class="i property">TwitterCard</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#92c7896476ec80d0" class="i property">TwitterCard</a>;
+                    <span class="r10 r">model</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#fb40d9e3325631cc" class="i property">TwitterCreator</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#bbfe03d3c22b82f7" class="i property">TwitterCreator</a>;
+                    <span class="r10 r">model</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#a5d7ee4d941080a1" class="i property">TwitterSite</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#cd23062c3d978078" class="i property">TwitterSite</a>;
+                    <span class="r10 r">model</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#0b1147092e229454" class="i property">SeoMetaPart</a> = <span class="r4 r">part</span>;
+                }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Parts#SEO;50%Twitter;30&quot;</span>));
+            }
+ 
+            <b>if</b> (<span class="r6 r">settings</span>.<a href="../Models/SeoMetaPartSettings.cs.html#a318624916f25b57" class="i property">DisplayGoogleSchema</a>)
+            {
+                <span class="r7 r">results</span>.<span class="i method">Add</span>(<a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#a5928a51a8ebc4c0" class="t t">SeoMetaPartGoogleSchemaViewModel</a>&gt;(<span class="s">&quot;SeoMetaPartGoogleSchema_Edit&quot;</span>, <span id="r11 rd" class="r11 r">model</span> =&gt;
+                    {
+                        <span class="r11 r">model</span>.<a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#8244dd93060fbb6c" class="i property">GoogleSchema</a> = <span class="r4 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#d052741f721a4fa6" class="i property">GoogleSchema</a>;
+                        <span class="r11 r">model</span>.<a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#294c562e87802bf6" class="i property">SeoMetaPart</a> = <span class="r4 r">part</span>;
+                    }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Parts#SEO;50%Google Schema;40&quot;</span>));
+            }
+ 
+            <b>return</b> <a href="/OrchardCore.DisplayManagement/A.html#fa00e975aeaf39e0" class="i method">Combine</a>(<span class="r7 r">results</span>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="c58362ce8481b1d4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="../Models/SeoMetaPart.cs.html#0116db8ab9091100" class="t t">SeoMetaPart</a> <span id="r12 rd" class="r12 r">part</span>, <span class="i">IUpdateModel</span> <span id="r13 rd" class="r13 r">updater</span>)
+        {
+            <a href="../ViewModels/SeoMetaPartViewModel.cs.html#b4987599fbbed129" class="k">var</a> <span id="r14 rd" class="r14 r">partViewModel</span> = <b>new</b> <a href="../ViewModels/SeoMetaPartViewModel.cs.html#b4987599fbbed129" class="t constructor">SeoMetaPartViewModel</a>();
+            <b>if</b> (<b>await</b> <span class="r13 r">updater</span>.<span class="i">TryUpdateModelAsync</span>(<span class="r14 r">partViewModel</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>))
+            {
+                <b>try</b>
+                {
+                    <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#b3447d2987b796bc" class="i property">Render</a> = <span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#d906b3aa9554681d" class="i property">Render</a>;
+                    <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#7a2ad592cd1707a6" class="i property">PageTitle</a> = <span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#c5ccf7dcfe1b583b" class="i property">PageTitle</a>;
+                    <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#33a9b62c91ee5e5d" class="i property">MetaDescription</a> = <span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#143533428b4eb539" class="i property">MetaDescription</a>;
+                    <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#6782a1609a34296b" class="i property">MetaKeywords</a> = <span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#012ee3d96979d55a" class="i property">MetaKeywords</a>;
+                    <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#308f50b506356033" class="i property">Canonical</a> = <span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#44177de5c26b7ebf" class="i property">Canonical</a>;
+                    <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#4b497be7f9d5c364" class="i property">MetaRobots</a> = <span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#0cf37fa9165216fb" class="i property">MetaRobots</a>;
+ 
+                    <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#ed1c5e1aaa89ccc9" class="i property">CustomMetaTags</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#9d46e154547503aa" class="i property">CustomMetaTags</a>)
+                        ? <a href="@1@System.Runtime/A.html#156e066ecc4ccedf" class="t t">Array</a>.<a href="@1@System.Runtime/A.html#bc9fd1be0e4f4e70" class="i method">Empty</a>&lt;<span class="i">MetaEntry</span>&gt;()
+                        : <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<span class="i">MetaEntry</span>[]&gt;(<span class="r14 r">partViewModel</span>.<a href="../ViewModels/SeoMetaPartViewModel.cs.html#9d46e154547503aa" class="i property">CustomMetaTags</a>);
+ 
+                    <b>if</b> (<span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#308f50b506356033" class="i property">Canonical</a>?.<a href="@1@System.Runtime/A.html#299d36326434ba20" class="i method">IndexOfAny</a>(<a href="../Models/SeoMetaPart.cs.html#0116db8ab9091100" class="t t">SeoMetaPart</a>.<a href="../Models/SeoMetaPart.cs.html#5aec1a3ac5134168" class="i field">InvalidCharactersForCanoncial</a>) &gt; -1 || <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#308f50b506356033" class="i property">Canonical</a>?.<a href="@1@System.Runtime/A.html#eb06d6d166f6a3d9" class="i method">IndexOf</a>(<span class="s">&#39; &#39;</span>) &gt; -1)
+                    {
+                        <span class="r13 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>, <a href="#1a80fa90e49cbb32" class="i field">S</a>[<span class="s">&quot;The canonical entry contains invalid characters.&quot;</span>]);
+                    }
+                }
+                <b>catch</b>
+                {
+                    <span class="r13 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>, <a href="#1a80fa90e49cbb32" class="i field">S</a>[<span class="s">&quot;The meta entries are written in an incorrect format.&quot;</span>]);
+                }
+            }
+ 
+            <a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#6f4684f7a7ffc3ab" class="k">var</a> <span id="r15 rd" class="r15 r">openGraphModel</span> = <b>new</b> <a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#6f4684f7a7ffc3ab" class="t constructor">SeoMetaPartOpenGraphViewModel</a>();
+            <b>if</b> (<b>await</b> <span class="r13 r">updater</span>.<span class="i">TryUpdateModelAsync</span>(<span class="r15 r">openGraphModel</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>))
+            {
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#f5e31aebd6aa6aa2" class="i property">OpenGraphType</a> = <span class="r15 r">openGraphModel</span>.<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#b434b3ba5875be90" class="i property">OpenGraphType</a>;
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#d73201d85b33658d" class="i property">OpenGraphTitle</a> = <span class="r15 r">openGraphModel</span>.<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#c3b7c8da64a545a3" class="i property">OpenGraphTitle</a>;
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#b840a251771a492a" class="i property">OpenGraphDescription</a> = <span class="r15 r">openGraphModel</span>.<a href="../ViewModels/SeoMetaPartOpenGraphViewModel.cs.html#cdc21b43c8efb843" class="i property">OpenGraphDescription</a>;
+            }
+ 
+            <a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#04952fbcb94270e6" class="k">var</a> <span id="r16 rd" class="r16 r">twitterModel</span> = <b>new</b> <a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#04952fbcb94270e6" class="t constructor">SeoMetaPartTwitterViewModel</a>();
+            <b>if</b> (<b>await</b> <span class="r13 r">updater</span>.<span class="i">TryUpdateModelAsync</span>(<span class="r16 r">twitterModel</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>))
+            {
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#c6eb5190ec98325c" class="i property">TwitterTitle</a> = <span class="r16 r">twitterModel</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#15b8135463314c14" class="i property">TwitterTitle</a>;
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#94cbd4b14eba3121" class="i property">TwitterDescription</a> = <span class="r16 r">twitterModel</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#898add5e4fd71f99" class="i property">TwitterDescription</a>;
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#92c7896476ec80d0" class="i property">TwitterCard</a> = <span class="r16 r">twitterModel</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#7a74246b6ea1e559" class="i property">TwitterCard</a>;
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#bbfe03d3c22b82f7" class="i property">TwitterCreator</a> = <span class="r16 r">twitterModel</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#fb40d9e3325631cc" class="i property">TwitterCreator</a>;
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#cd23062c3d978078" class="i property">TwitterSite</a> = <span class="r16 r">twitterModel</span>.<a href="../ViewModels/SeoMetaPartTwitterViewModel.cs.html#a5d7ee4d941080a1" class="i property">TwitterSite</a>;
+            }
+ 
+            <a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#a5928a51a8ebc4c0" class="k">var</a> <span id="r17 rd" class="r17 r">googleSchemaModel</span> = <b>new</b> <a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#a5928a51a8ebc4c0" class="t constructor">SeoMetaPartGoogleSchemaViewModel</a>();
+            <b>if</b> (<b>await</b> <span class="r13 r">updater</span>.<span class="i">TryUpdateModelAsync</span>(<span class="r17 r">googleSchemaModel</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>))
+            {
+                <span class="r12 r">part</span>.<a href="../Models/SeoMetaPart.cs.html#d052741f721a4fa6" class="i property">GoogleSchema</a> = <span class="r17 r">googleSchemaModel</span>.<a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#8244dd93060fbb6c" class="i property">GoogleSchema</a>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r17 r">googleSchemaModel</span>.<a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#8244dd93060fbb6c" class="i property">GoogleSchema</a>) &amp;&amp; !<span class="r17 r">googleSchemaModel</span>.<a href="../ViewModels/SeoMetaPartGoogleSchemaViewModel.cs.html#8244dd93060fbb6c" class="i property">GoogleSchema</a>.<span class="i">IsJson</span>())
+                {
+                    <span class="r13 r">updater</span>.<span class="i">ModelState</span>.<span class="i">AddModelError</span>(<a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>, <a href="#1a80fa90e49cbb32" class="i field">S</a>[<span class="s">&quot;The google schema is written in an incorrect format.&quot;</span>]);
+                }
+            }
+ 
+            <b>return</b> <a href="/OrchardCore.ContentManagement.Display/A.html#3c0ae8698570db03" class="i method">Edit</a>(<span class="r12 r">part</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

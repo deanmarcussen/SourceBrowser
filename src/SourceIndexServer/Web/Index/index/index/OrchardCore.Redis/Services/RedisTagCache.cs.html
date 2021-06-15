@@ -1,0 +1,91 @@
+﻿<!DOCTYPE html>
+<html><head><title>RedisTagCache.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(82);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Redis/Services/RedisTagCache.cs" target="_top">Services\RedisTagCache.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Redis" target="_top">src\OrchardCore.Modules\OrchardCore.Redis\OrchardCore.Redis.csproj</a> (OrchardCore.Redis)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Cache</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Redis</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="8c4e439776a8911a" href="../R/8c4e439776a8911a.html" target="n" data-glyph="0,0" class="t t">RedisTagCache</a> : <a href="/OrchardCore.Infrastructure.Abstractions/A.html#f325fdd7b10a2e85" class="t t">ITagCache</a>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a> <a id="dceacbe2c6e82eea" href="../R/dceacbe2c6e82eea.html" target="n" data-glyph="46,1" class="i field">_redis</a>;
+        <b>private readonly string</b> <a id="bc0fad5a3cc9a5ea" href="../R/bc0fad5a3cc9a5ea.html" target="n" data-glyph="46,1" class="i field">_prefix</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#58bb71d0e12d692c" class="t t">ITagRemovedEventHandler</a>&gt; <a id="7cefc59663a3b47a" href="../R/7cefc59663a3b47a.html" target="n" data-glyph="46,1" class="i field">_tagRemovedEventHandlers</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="b7a4d3bae4b11275" href="../R/b7a4d3bae4b11275.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="7a1d51c2c5a1716f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RedisTagCache</a>(
+            <a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a> <span id="r0 rd" class="r0 r">redis</span>,
+            <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#58bb71d0e12d692c" class="t t">ITagRemovedEventHandler</a>&gt; <span id="r2 rd" class="r2 r">tagRemovedEventHandlers</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#8c4e439776a8911a" class="t t">RedisTagCache</a>&gt; <span id="r3 rd" class="r3 r">logger</span>)
+        {
+            <a href="#dceacbe2c6e82eea" class="i field">_redis</a> = <span class="r0 r">redis</span>;
+            <a href="#bc0fad5a3cc9a5ea" class="i field">_prefix</a> = <span class="r0 r">redis</span>.<a href="/OrchardCore.Redis.Abstractions/A.html#3921fb6466ffd85a" class="i property">InstancePrefix</a> + <span class="r1 r">shellSettings</span>.<span class="i">Name</span> + <span class="s">&quot;:Tag:&quot;</span>;
+            <a href="#7cefc59663a3b47a" class="i field">_tagRemovedEventHandlers</a> = <span class="r2 r">tagRemovedEventHandlers</span>;
+            <a href="#b7a4d3bae4b11275" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b52f724819bd5c6b" href="../R/b52f724819bd5c6b.html" target="n" data-glyph="72,1" class="i method">TagAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">key</span>, <b>params string</b>[] <span id="r5 rd" class="r5 r">tags</span>)
+        {
+            <b>if</b> (<a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">tag</span> <b>in</b> <span class="r5 r">tags</span>)
+            {
+                <b>await</b> <a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">SetAddAsync</span>(<a href="#bc0fad5a3cc9a5ea" class="i field">_prefix</a> + <span class="r6 r">tag</span>, <span class="r4 r">key</span>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="4cd0c76b85fd047f" href="../R/4cd0c76b85fd047f.html" target="n" data-glyph="72,1" class="i method">GetTaggedItemsAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">tag</span>)
+        {
+            <b>if</b> (<a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">values</span> = <b>await</b> <a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">SetMembersAsync</span>(<a href="#bc0fad5a3cc9a5ea" class="i field">_prefix</a> + <span class="r7 r">tag</span>);
+ 
+            <b>if</b> (<span class="r8 r">values</span> == <b>null</b> || <span class="r8 r">values</span>.<span class="i">Length</span> == 0)
+            {
+                <b>return</b> <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            }
+ 
+            <b>return</b> <span class="r8 r">values</span>.<span class="i">Select</span>(<span id="r9 rd" class="r9 r">v</span> =&gt; (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>)<span class="r9 r">v</span>).<span class="i">ToArray</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="2999ba98216ed0c2" href="../R/2999ba98216ed0c2.html" target="n" data-glyph="72,1" class="i method">RemoveTagAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">tag</span>)
+        {
+            <b>if</b> (<a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">values</span> = <b>await</b> <a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">SetMembersAsync</span>(<a href="#bc0fad5a3cc9a5ea" class="i field">_prefix</a> + <span class="r10 r">tag</span>);
+ 
+            <b>if</b> (<span class="r11 r">values</span> == <b>null</b> || <span class="r11 r">values</span>.<span class="i">Length</span> == 0)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">set</span> = <span class="r11 r">values</span>.<span class="i">Select</span>(<span id="r13 rd" class="r13 r">v</span> =&gt; (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>)<span class="r13 r">v</span>).<span class="i">ToArray</span>();
+ 
+            <b>await</b> <a href="#dceacbe2c6e82eea" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#93a872327f7edd64" class="i property">Database</a>.<span class="i">KeyDeleteAsync</span>(<a href="#bc0fad5a3cc9a5ea" class="i field">_prefix</a> + <span class="r10 r">tag</span>);
+ 
+            <b>await</b> <a href="#7cefc59663a3b47a" class="i field">_tagRemovedEventHandlers</a>.<span class="i">InvokeAsync</span>(<span id="r14 rd" class="r14 r">x</span> =&gt; <span class="r14 r">x</span>.<span class="i">TagRemovedAsync</span>(<span class="r10 r">tag</span>, <span class="r12 r">set</span>), <a href="#b7a4d3bae4b11275" class="i field">_logger</a>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

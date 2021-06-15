@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModularApplicationContext.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(69);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Modules/ModularApplicationContext.cs" target="_top">Modules\ModularApplicationContext.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>
+{
+    <b>public interface</b> <a id="545200e60bc52bf1" href="../R/545200e60bc52bf1.html" target="n" data-glyph="48,0" class="t t">IApplicationContext</a>
+    {
+        <a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a> <a id="99a608bfb7e2ccd2" href="../R/99a608bfb7e2ccd2.html" target="n" data-glyph="102,1" class="i property">Application</a> { <b>get</b>; }
+    }
+ 
+    <b>public class</b> <a id="57a5ccd4a544dcc1" href="../R/57a5ccd4a544dcc1.html" target="n" data-glyph="0,0" class="t t">ModularApplicationContext</a> : <a href="#545200e60bc52bf1" class="t t">IApplicationContext</a>
+    {
+        <b>private readonly</b> <span class="t t">IHostEnvironment</span> <a id="e6060dfecc9e321b" href="../R/e6060dfecc9e321b.html" target="n" data-glyph="46,1" class="i field">_environment</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IModuleNamesProvider.cs.html#e4fad658d8bd7f29" class="t t">IModuleNamesProvider</a>&gt; <a id="197f7b5d8638b52b" href="../R/197f7b5d8638b52b.html" target="n" data-glyph="46,1" class="i field">_moduleNamesProviders</a>;
+        <b>private</b> <a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a> <a id="3dca213699191f11" href="../R/3dca213699191f11.html" target="n" data-glyph="46,1" class="i field">_application</a>;
+        <b>private static readonly object</b> <a id="6631cd4cceb37915" href="../R/6631cd4cceb37915.html" target="n" data-glyph="46,1" class="i field">_initLock</a> = <b>new</b> <b>object</b>();
+ 
+        <b>public</b> <a id="5fbc8baf1f5f908a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ModularApplicationContext</a>(<span class="t t">IHostEnvironment</span> <span id="r0 rd" class="r0 r">environment</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="IModuleNamesProvider.cs.html#e4fad658d8bd7f29" class="t t">IModuleNamesProvider</a>&gt; <span id="r1 rd" class="r1 r">moduleNamesProviders</span>)
+        {
+            <a href="#e6060dfecc9e321b" class="i field">_environment</a> = <span class="r0 r">environment</span>;
+            <a href="#197f7b5d8638b52b" class="i field">_moduleNamesProviders</a> = <span class="r1 r">moduleNamesProviders</span>;
+        }
+ 
+        <b>public</b> <a href="Application.cs.html#5240e78be66d0c6a" class="t t">Application</a> <a id="06fe0ebb4551344e" href="../R/06fe0ebb4551344e.html" target="n" data-glyph="102,1" class="i property">Application</a>
+        {
+            <b>get</b>
+            {
+                <a href="#4da555a268735899" class="i method">EnsureInitialized</a>();
+                <b>return</b> <a href="#3dca213699191f11" class="i field">_application</a>;
+            }
+        }
+ 
+        <b>private void</b> <a id="4da555a268735899" href="../R/4da555a268735899.html" target="n" data-glyph="76,1" class="i method">EnsureInitialized</a>()
+        {
+            <b>if</b> (<a href="#3dca213699191f11" class="i field">_application</a> == <b>null</b>)
+            {
+                <b>lock</b> (<a href="#6631cd4cceb37915" class="i field">_initLock</a>)
+                {
+                    <b>if</b> (<a href="#3dca213699191f11" class="i field">_application</a> == <b>null</b>)
+                    {
+                        <a href="#3dca213699191f11" class="i field">_application</a> = <b>new</b> <a href="Application.cs.html#05a56726bb62205f" class="t constructor">Application</a>(<a href="#e6060dfecc9e321b" class="i field">_environment</a>, <a href="#de217fc2a7e4620f" class="i method">GetModules</a>());
+                    }
+                }
+            }
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="Module.cs.html#ccbcd233c0339923" class="t t">Module</a>&gt; <a id="de217fc2a7e4620f" href="../R/de217fc2a7e4620f.html" target="n" data-glyph="76,1" class="i method">GetModules</a>()
+        {
+            <b>var</b> <span id="r2 rd" class="r2 r">modules</span> = <b>new</b> <span class="t constructor">ConcurrentBag</span>&lt;<a href="Module.cs.html#ccbcd233c0339923" class="t t">Module</a>&gt;();
+            <span class="r2 r">modules</span>.<span class="i method">Add</span>(<b>new</b> <a href="Module.cs.html#2d95776a79e9d8ad" class="t constructor">Module</a>(<a href="#e6060dfecc9e321b" class="i field">_environment</a>.<span class="i property">ApplicationName</span>, <b>true</b>));
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r3 rd" class="r3 r">names</span> = <a href="#197f7b5d8638b52b" class="i field">_moduleNamesProviders</a>
+                .<span class="i method">SelectMany</span>(<span id="r4 rd" class="r4 r">p</span> =&gt; <span class="r4 r">p</span>.<a href="IModuleNamesProvider.cs.html#82222e7332769f9f" class="i method">GetModuleNames</a>())
+                .<span class="i method">Where</span>(<span id="r5 rd" class="r5 r">n</span> =&gt; <span class="r5 r">n</span> != <a href="#e6060dfecc9e321b" class="i field">_environment</a>.<span class="i property">ApplicationName</span>)
+                .<span class="i method">Distinct</span>();
+ 
+            <span class="t t">Parallel</span>.<span class="i method">ForEach</span>(<span class="r3 r">names</span>, <b>new</b> <span class="t constructor">ParallelOptions</span> { <span class="i property">MaxDegreeOfParallelism</span> = 8 }, (<span id="r6 rd" class="r6 r">name</span>) =&gt;
+            {
+                <span class="r2 r">modules</span>.<span class="i method">Add</span>(<b>new</b> <a href="Module.cs.html#2d95776a79e9d8ad" class="t constructor">Module</a>(<span class="r6 r">name</span>, <b>false</b>));
+            });
+ 
+            <b>return</b> <span class="r2 r">modules</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

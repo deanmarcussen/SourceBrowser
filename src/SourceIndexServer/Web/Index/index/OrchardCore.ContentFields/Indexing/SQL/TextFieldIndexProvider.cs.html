@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html><head><title>TextFieldIndexProvider.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(115);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentFields/Indexing/SQL/TextFieldIndexProvider.cs" target="_top">Indexing\SQL\TextFieldIndexProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentFields" target="_top">src\OrchardCore.Modules\OrchardCore.ContentFields\OrchardCore.ContentFields.csproj</a> (OrchardCore.ContentFields)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentFields</span>.<span class="i n">Fields</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Indexes</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentFields</span>.<span class="i n">Indexing</span>.<span class="i n">SQL</span>
+{
+    <b>public class</b> <a id="d1748884ad7a56c5" href="../../R/d1748884ad7a56c5.html" target="n" data-glyph="0,0" class="t t"><span id="31b29fc45722a822">TextFieldIndex</span></a> : <a href="ContentFieldIndexProvider.cs.html#6035a559bfcba2fb" class="t t">ContentFieldIndex</a>
+    {
+        <span class="c">// Maximum length that MySql can support in an index under utf8 collation is 768,</span>
+        <span class="c">// minus 1 for the `DocumentId` integer (character size = integer size = 4 bytes).</span>
+        <span class="c">// minus 1 (freeing 4 bytes) for the additional &#39;Published&#39; and &#39;Latest&#39; booleans.</span>
+        <b>public const int</b> <a id="16ff328bcce6d55b" href="../../R/16ff328bcce6d55b.html" target="n" data-glyph="6,1" class="i field">MaxTextSize</a> = 766;
+ 
+        <b>public string</b> <a id="8e267f96514d858b" href="../../R/8e267f96514d858b.html" target="n" data-glyph="102,1" class="i property">Text</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="4c3277dcea5b40ba" href="../../R/4c3277dcea5b40ba.html" target="n" data-glyph="102,1" class="i property">BigText</a> { <b>get</b>; <b>set</b>; }
+    }
+ 
+    <b>public class</b> <a id="45adcf911ce237cd" href="../../R/45adcf911ce237cd.html" target="n" data-glyph="0,0" class="t t">TextFieldIndexProvider</a> : <a href="ContentFieldIndexProvider.cs.html#d1113d32e33527d9" class="t t">ContentFieldIndexProvider</a>
+    {
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="8364e826ef5686d7" href="../../R/8364e826ef5686d7.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="cbe7456d0526ae18" href="../../R/cbe7456d0526ae18.html" target="n" data-glyph="46,1" class="i field">_ignoredTypes</a> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+        <b>private</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="8200c7dfee01a028" href="../../R/8200c7dfee01a028.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+ 
+        <b>public</b> <a id="310c5f76f0736063" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">TextFieldIndexProvider</a>(<span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">serviceProvider</span>)
+        {
+            <a href="#8364e826ef5686d7" class="i field">_serviceProvider</a> = <span class="r0 r">serviceProvider</span>;
+        }
+ 
+        <b>public override void</b> <a id="b6faf0ba3c16ff01" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Describe</a>(<span class="i">DescribeContext</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt; <span id="r1 rd" class="r1 r">context</span>)
+        {
+            <span class="r1 r">context</span>.<span class="i">For</span>&lt;<a href="#d1748884ad7a56c5" class="t t">TextFieldIndex</a>&gt;()
+                .<span class="i">Map</span>(<span id="r2 rd" class="r2 r">contentItem</span> =&gt;
+                {
+                    <span class="c">// Remove index records of soft deleted items.</span>
+                    <b>if</b> (!<span class="r2 r">contentItem</span>.<span class="i">Published</span> &amp;&amp; !<span class="r2 r">contentItem</span>.<span class="i">Latest</span>)
+                    {
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <span class="c">// Can we safely ignore this content item?</span>
+                    <b>if</b> (<a href="#cbe7456d0526ae18" class="i field">_ignoredTypes</a>.<span class="i">Contains</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>))
+                    {
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <span class="c">// Lazy initialization because of ISession cyclic dependency</span>
+                    <a href="#8200c7dfee01a028" class="i field">_contentDefinitionManager</a> ??= <a href="#8364e826ef5686d7" class="i field">_serviceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a>&gt;();
+ 
+                    <span class="c">// Search for TextField</span>
+                    <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r3 rd" class="r3 r">contentTypeDefinition</span> = <a href="#8200c7dfee01a028" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>);
+ 
+                    <span class="c">// This can occur when content items become orphaned, particularly layer widgets when a layer is removed, before its widgets have been unpublished.</span>
+                    <b>if</b> (<span class="r3 r">contentTypeDefinition</span> == <b>null</b>)
+                    {
+                        <a href="#cbe7456d0526ae18" class="i field">_ignoredTypes</a>.<span class="i">Add</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>);
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <b>var</b> <span id="r4 rd" class="r4 r">fieldDefinitions</span> = <span class="r3 r">contentTypeDefinition</span>
+                        .<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f1142b2825bb808" class="i property">Parts</a>.<span class="i method">SelectMany</span>(<span id="r5 rd" class="r5 r">x</span> =&gt; <span class="r5 r">x</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0bf03322a01d45a6" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#57dd77d03c294f98" class="i property">Fields</a>.<span class="i method">Where</span>(<span id="r6 rd" class="r6 r">f</span> =&gt; <span class="r6 r">f</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#428b197312461481" class="i property">FieldDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#5157dc89acf81a0b" class="i property">Name</a> == <b>nameof</b>(<a href="../../Fields/TextField.cs.html#1c0acbba1a798dd3" class="t t">TextField</a>)))
+                        .<span class="i method">ToArray</span>();
+ 
+                    <span class="c">// This type doesn&#39;t have any TextField, ignore it</span>
+                    <b>if</b> (<span class="r4 r">fieldDefinitions</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 0)
+                    {
+                        <a href="#cbe7456d0526ae18" class="i field">_ignoredTypes</a>.<span class="i">Add</span>(<span class="r2 r">contentItem</span>.<span class="i">ContentType</span>);
+                        <b>return</b> <b>null</b>;
+                    }
+ 
+                    <b>var</b> <span id="r7 rd" class="r7 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="#d1748884ad7a56c5" class="t t">TextFieldIndex</a>&gt;();
+ 
+                    <b>foreach</b> (<a href="/OrchardCore.ContentManagement.Abstractions/A.html#0d4522c9b1b57f88" class="k">var</a> <span id="r8 rd" class="r8 r">fieldDefinition</span> <b>in</b> <span class="r4 r">fieldDefinitions</span>)
+                    {
+                        <b>var</b> <span id="r9 rd" class="r9 r">jPart</span> = (<span class="i">JObject</span>)<span class="r2 r">contentItem</span>.<span class="i">Content</span>[<span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38f32a81414eb933" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>];
+ 
+                        <b>if</b> (<span class="r9 r">jPart</span> == <b>null</b>)
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <b>var</b> <span id="r10 rd" class="r10 r">jField</span> = (<span class="i">JObject</span>)<span class="r9 r">jPart</span>[<span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>];
+ 
+                        <b>if</b> (<span class="r10 r">jField</span> == <b>null</b>)
+                        {
+                            <b>continue</b>;
+                        }
+ 
+                        <b>var</b> <span id="r11 rd" class="r11 r">field</span> = <span class="r10 r">jField</span>.<span class="i">ToObject</span>&lt;<a href="../../Fields/TextField.cs.html#1c0acbba1a798dd3" class="t t">TextField</a>&gt;();
+ 
+                        <span class="r7 r">results</span>.<span class="i method">Add</span>(<b>new</b> <a href="#d1748884ad7a56c5" class="t constructor">TextFieldIndex</a>
+                        {
+                            <a href="ContentFieldIndexProvider.cs.html#1e8c8d49bf1a6836" class="i property">Latest</a> = <span class="r2 r">contentItem</span>.<span class="i">Latest</span>,
+                            <a href="ContentFieldIndexProvider.cs.html#beeb5c7f974b53f3" class="i property">Published</a> = <span class="r2 r">contentItem</span>.<span class="i">Published</span>,
+                            <a href="ContentFieldIndexProvider.cs.html#36a16790061c706c" class="i property">ContentItemId</a> = <span class="r2 r">contentItem</span>.<span class="i">ContentItemId</span>,
+                            <a href="ContentFieldIndexProvider.cs.html#d5ee7e043b9e8648" class="i property">ContentItemVersionId</a> = <span class="r2 r">contentItem</span>.<span class="i">ContentItemVersionId</span>,
+                            <a href="ContentFieldIndexProvider.cs.html#a6707b468b3cbb94" class="i property">ContentType</a> = <span class="r2 r">contentItem</span>.<span class="i">ContentType</span>,
+                            <a href="ContentFieldIndexProvider.cs.html#bf47e30a7c41fd1c" class="i property">ContentPart</a> = <span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#38f32a81414eb933" class="i property">PartDefinition</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>,
+                            <a href="ContentFieldIndexProvider.cs.html#6584d8cdfff9fa2f" class="i property">ContentField</a> = <span class="r8 r">fieldDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#4ba68ae6a1800f30" class="i property">Name</a>,
+                            <a href="#8e267f96514d858b" class="i property">Text</a> = <span class="r11 r">field</span>.<span class="i">Text</span>?.<span class="i">Substring</span>(0, <a href="@1@System.Runtime/A.html#a4407e67b9a5afad" class="t t">Math</a>.<span class="i">Min</span>(<span class="r11 r">field</span>.<span class="i">Text</span>.<span class="i">Length</span>, <a href="#d1748884ad7a56c5" class="t t">TextFieldIndex</a>.<a href="#16ff328bcce6d55b" class="i field">MaxTextSize</a>)),
+                            <a href="#4c3277dcea5b40ba" class="i property">BigText</a> = <span class="r11 r">field</span>.<span class="i">Text</span>
+                        });
+                    }
+ 
+                    <b>return</b> <span class="r7 r">results</span>;
+                });
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

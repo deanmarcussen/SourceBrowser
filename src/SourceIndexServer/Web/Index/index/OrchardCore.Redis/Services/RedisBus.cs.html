@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html><head><title>RedisBus.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(76);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Redis/Services/RedisBus.cs" target="_top">Services\RedisBus.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Redis" target="_top">src\OrchardCore.Modules\OrchardCore.Redis\OrchardCore.Redis.csproj</a> (OrchardCore.Redis)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Caching</span>.<span class="i">Distributed</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Redis</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="393cf3b56a88995e" href="../R/393cf3b56a88995e.html" target="n" data-glyph="0,0" class="t t">RedisBus</a> : <span class="i">IMessageBus</span>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a> <a id="f1951d4c343134d8" href="../R/f1951d4c343134d8.html" target="n" data-glyph="46,1" class="i field">_redis</a>;
+        <b>private readonly string</b> <a id="5cf508ea0e373212" href="../R/5cf508ea0e373212.html" target="n" data-glyph="46,1" class="i field">_hostName</a>;
+        <b>private readonly string</b> <a id="155391f73d24e438" href="../R/155391f73d24e438.html" target="n" data-glyph="46,1" class="i field">_channelPrefix</a>;
+        <b>private readonly string</b> <a id="b2b890be2ad1f7eb" href="../R/b2b890be2ad1f7eb.html" target="n" data-glyph="46,1" class="i field">_messagePrefix</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="7a3898eb16c20d48" href="../R/7a3898eb16c20d48.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="b0d75859058bbd27" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RedisBus</a>(<a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a> <span id="r0 rd" class="r0 r">redis</span>, <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>, <span class="t t">ILogger</span>&lt;<a href="#393cf3b56a88995e" class="t t">RedisBus</a>&gt; <span id="r2 rd" class="r2 r">logger</span>)
+        {
+            <a href="#f1951d4c343134d8" class="i field">_redis</a> = <span class="r0 r">redis</span>;
+            <a href="#5cf508ea0e373212" class="i field">_hostName</a> = <span class="t t">Dns</span>.<span class="i method">GetHostName</span>() + <span class="s">&#39;:&#39;</span> + <span class="t t">Process</span>.<span class="i method">GetCurrentProcess</span>().<span class="i property">Id</span>;
+            <a href="#155391f73d24e438" class="i field">_channelPrefix</a> = <span class="r0 r">redis</span>.<a href="/OrchardCore.Redis.Abstractions/A.html#3921fb6466ffd85a" class="i property">InstancePrefix</a> + <span class="r1 r">shellSettings</span>.<span class="i">Name</span> + <span class="s">&#39;:&#39;</span>;
+            <a href="#b2b890be2ad1f7eb" class="i field">_messagePrefix</a> = <a href="#5cf508ea0e373212" class="i field">_hostName</a> + <span class="s">&#39;/&#39;</span>;
+            <a href="#7a3898eb16c20d48" class="i field">_logger</a> = <span class="r2 r">logger</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ca52511fef5f27bc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SubscribeAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">channel</span>, <a href="@1@System.Runtime/A.html#27863de72c2c9b49" class="t t">Action</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r4 rd" class="r4 r">handler</span>)
+        {
+            <b>if</b> (<a href="#f1951d4c343134d8" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#21982fb522d9e0f2" class="i property">Connection</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#f1951d4c343134d8" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>try</b>
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">subscriber</span> = <a href="#f1951d4c343134d8" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#21982fb522d9e0f2" class="i property">Connection</a>.<span class="i">GetSubscriber</span>();
+ 
+                <b>await</b> <span class="r5 r">subscriber</span>.<span class="i">SubscribeAsync</span>(<a href="#155391f73d24e438" class="i field">_channelPrefix</a> + <span class="r3 r">channel</span>, (<span id="r6 rd" class="r6 r">redisChannel</span>, <span id="r7 rd" class="r7 r">redisValue</span>) =&gt;
+                {
+                    <b>var</b> <span id="r8 rd" class="r8 r">tokens</span> = <span class="r7 r">redisValue</span>.<span class="i">ToString</span>().<span class="i">Split</span>(<span class="s">&#39;/&#39;</span>).<span class="i">ToArray</span>();
+ 
+                    <b>if</b> (<span class="r8 r">tokens</span>.<span class="i">Length</span> != 2 || <span class="r8 r">tokens</span>[0].<span class="i">Length</span> == 0 || <span class="r8 r">tokens</span>[0].<span class="i">Equals</span>(<a href="#5cf508ea0e373212" class="i field">_hostName</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                    {
+                        <b>return</b>;
+                    }
+ 
+                    <span class="r4 r">handler</span>(<span class="r3 r">channel</span>, <span class="r8 r">tokens</span>[1]);
+                });
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r9 rd" class="r9 r">e</span>)
+            {
+                <a href="#7a3898eb16c20d48" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r9 r">e</span>, <span class="s">&quot;&#39;Unable to subscribe to the channel {ChannelName}&#39;.&quot;</span>, <a href="#155391f73d24e438" class="i field">_channelPrefix</a> + <span class="r3 r">channel</span>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="fde819ab8e6e01a9" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">PublishAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">channel</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">message</span>)
+        {
+            <b>if</b> (<a href="#f1951d4c343134d8" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#21982fb522d9e0f2" class="i property">Connection</a> == <b>null</b>)
+            {
+                <b>await</b> <a href="#f1951d4c343134d8" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#e79031710bc64fe2" class="i method">ConnectAsync</a>();
+            }
+ 
+            <b>try</b>
+            {
+                <b>await</b> <a href="#f1951d4c343134d8" class="i field">_redis</a>.<a href="/OrchardCore.Redis.Abstractions/A.html#21982fb522d9e0f2" class="i property">Connection</a>.<span class="i">GetSubscriber</span>().<span class="i">PublishAsync</span>(<a href="#155391f73d24e438" class="i field">_channelPrefix</a> + <span class="r10 r">channel</span>, <a href="#b2b890be2ad1f7eb" class="i field">_messagePrefix</a> + <span class="r11 r">message</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r12 rd" class="r12 r">e</span>)
+            {
+                <a href="#7a3898eb16c20d48" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r12 r">e</span>, <span class="s">&quot;&#39;Unable to publish to the channel {ChannelName}&#39;.&quot;</span>, <a href="#155391f73d24e438" class="i field">_channelPrefix</a> + <span class="r10 r">channel</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

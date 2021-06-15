@@ -1,0 +1,226 @@
+﻿<!DOCTYPE html>
+<html><head><title>RuleTests.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(217);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Modules/OrchardCore.Rules/RuleTests.cs" target="_top">Modules\OrchardCore.Rules\RuleTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Moq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Layers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Layers</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Rules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Rules</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Rules</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>.<span class="i">JavaScript</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Modules</span>.<span class="i n">OrchardCore</span>.<span class="i n">Rules</span>
+{
+    <b>public class</b> <a id="d4684e3d180092bf" href="../../R/d4684e3d180092bf.html" target="n" data-glyph="0,0" class="t t"><span id="29522440ee4007fe">RuleTests</span></a>
+    {
+        [<span class="i">Fact</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="dcc8329fd2b68449" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldEvaluateRuleFalseWhenNoConditions</a>()
+        {
+            <b>var</b> <span id="r0 rd" class="r0 r">rule</span> = <b>new</b> <span class="i">Rule</span>();
+ 
+            <b>var</b> <span id="r1 rd" class="r1 r">services</span> = <a href="#a99dec27ca183b50" class="i method">CreateRuleServiceCollection</a>();
+ 
+            <b>var</b> <span id="r2 rd" class="r2 r">serviceProvider</span> = <span class="r1 r">services</span>.<span class="i method">BuildServiceProvider</span>();
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">ruleService</span> = <span class="r2 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IRuleService</span>&gt;();
+ 
+            <span class="i">Assert</span>.<span class="i">False</span>(<b>await</b> <span class="r3 r">ruleService</span>.<span class="i">EvaluateAsync</span>(<span class="r0 r">rule</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/&quot;</span>, <b>true</b>, <b>true</b>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/notthehomepage&quot;</span>, <b>true</b>, <b>false</b>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/&quot;</span>, <b>false</b>, <b>false</b>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/notthehomepage&quot;</span>, <b>false</b>, <b>true</b>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="eb2320a0ab1afb01" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldEvaluateHomepage</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">path</span>, <b>bool</b> <span id="r5 rd" class="r5 r">isHomepage</span>, <b>bool</b> <span id="r6 rd" class="r6 r">expected</span>)
+        {
+            <b>var</b> <span id="r7 rd" class="r7 r">rule</span> = <b>new</b> <span class="i">Rule</span>
+            {
+                <span class="i">Conditions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Condition</span>&gt;
+                {
+                    <b>new</b> <span class="i">HomepageCondition</span> 
+                    { 
+                        <span class="i">Value</span> = <span class="r5 r">isHomepage</span> 
+                    }
+                }
+            };
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">services</span> = <a href="#a99dec27ca183b50" class="i method">CreateRuleServiceCollection</a>()
+                .<span class="i">AddCondition</span>&lt;<span class="i">HomepageCondition</span>, <span class="i">HomepageConditionEvaluator</span>, <span class="i">ConditionFactory</span>&lt;<span class="i">HomepageCondition</span>&gt;&gt;();
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">mockHttpContextAccessor</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;();
+            <b>var</b> <span id="r10 rd" class="r10 r">context</span> = <b>new</b> <span class="t constructor">DefaultHttpContext</span>();
+            <span class="r10 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span> = <b>new</b> <span class="t constructor">PathString</span>(<span class="r4 r">path</span>);
+            <span class="r9 r">mockHttpContextAccessor</span>.<span class="i">Setup</span>(<span id="r11 rd" class="r11 r">_</span> =&gt; <span class="r11 r">_</span>.<span class="i">HttpContext</span>).<span class="i">Returns</span>(<span class="r10 r">context</span>);
+ 
+            <span class="r8 r">services</span>.<span class="i">AddSingleton</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;(<span class="r9 r">mockHttpContextAccessor</span>.<span class="i">Object</span>);
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">serviceProvider</span> = <span class="r8 r">services</span>.<span class="i">BuildServiceProvider</span>();
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">ruleService</span> = <span class="r12 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IRuleService</span>&gt;();
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r6 r">expected</span>, <b>await</b> <span class="r13 r">ruleService</span>.<span class="i">EvaluateAsync</span>(<span class="r7 r">rule</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<b>true</b>, <b>true</b>)]
+        [<span class="i">InlineData</span>(<b>false</b>, <b>false</b>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="dfafa11ef98321d8" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldEvaluateBoolean</a>(<b>bool</b> <span id="r14 rd" class="r14 r">boolean</span>, <b>bool</b> <span id="r15 rd" class="r15 r">expected</span>)
+        {
+            <b>var</b> <span id="r16 rd" class="r16 r">rule</span> = <b>new</b> <span class="i">Rule</span>
+            {
+                <span class="i">Conditions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Condition</span>&gt;
+                {
+                    <b>new</b> <span class="i">BooleanCondition</span> { <span class="i">Value</span> = <span class="r14 r">boolean</span> }
+                }
+            };
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">services</span> = <a href="#a99dec27ca183b50" class="i method">CreateRuleServiceCollection</a>()
+                .<span class="i">AddCondition</span>&lt;<span class="i">BooleanCondition</span>, <span class="i">BooleanConditionEvaluator</span>, <span class="i">ConditionFactory</span>&lt;<span class="i">BooleanCondition</span>&gt;&gt;();
+ 
+            <b>var</b> <span id="r18 rd" class="r18 r">serviceProvider</span> = <span class="r17 r">services</span>.<span class="i">BuildServiceProvider</span>();
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">ruleService</span> = <span class="r18 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IRuleService</span>&gt;();
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r15 r">expected</span>, <b>await</b> <span class="r19 r">ruleService</span>.<span class="i">EvaluateAsync</span>(<span class="r16 r">rule</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<b>false</b>, <b>true</b>, <b>true</b>)]
+        [<span class="i">InlineData</span>(<b>true</b>, <b>true</b>, <b>true</b>)]
+        [<span class="i">InlineData</span>(<b>false</b>, <b>false</b>, <b>false</b>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="8e78c85f80dba199" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldEvaluateAny</a>(<b>bool</b> <span id="r20 rd" class="r20 r">first</span>, <b>bool</b> <span id="r21 rd" class="r21 r">second</span>, <b>bool</b> <span id="r22 rd" class="r22 r">expected</span>)
+        {
+            <b>var</b> <span id="r23 rd" class="r23 r">rule</span> = <b>new</b> <span class="i">Rule</span>
+            {
+                <span class="i">Conditions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Condition</span>&gt;
+                {
+                    <b>new</b> <span class="i">AnyConditionGroup</span>
+                    {
+                        <span class="i">Conditions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Condition</span>&gt;
+                        {
+                            <b>new</b> <span class="i">BooleanCondition</span> { <span class="i">Value</span> = <span class="r20 r">first</span> },
+                            <b>new</b> <span class="i">BooleanCondition</span> { <span class="i">Value</span> = <span class="r21 r">second</span> }
+                        }
+                    }
+                }
+            };
+ 
+            <b>var</b> <span id="r24 rd" class="r24 r">services</span> = <a href="#a99dec27ca183b50" class="i method">CreateRuleServiceCollection</a>()
+                .<span class="i">AddCondition</span>&lt;<span class="i">AnyConditionGroup</span>, <span class="i">AnyConditionEvaluator</span>, <span class="i">ConditionFactory</span>&lt;<span class="i">AnyConditionGroup</span>&gt;&gt;()
+                .<span class="i">AddCondition</span>&lt;<span class="i">BooleanCondition</span>, <span class="i">BooleanConditionEvaluator</span>, <span class="i">ConditionFactory</span>&lt;<span class="i">BooleanCondition</span>&gt;&gt;();
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">serviceProvider</span> = <span class="r24 r">services</span>.<span class="i">BuildServiceProvider</span>();
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">ruleService</span> = <span class="r25 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IRuleService</span>&gt;();
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r22 r">expected</span>, <b>await</b> <span class="r26 r">ruleService</span>.<span class="i">EvaluateAsync</span>(<span class="r23 r">rule</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/foo&quot;</span>, <span class="s">&quot;/foo&quot;</span>, <b>true</b>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;/bar&quot;</span>, <span class="s">&quot;/foo&quot;</span>, <b>false</b>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="758891c7b73e4e99" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldEvaluateUrlEquals</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">path</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">requestPath</span>, <b>bool</b> <span id="r29 rd" class="r29 r">expected</span>)
+        {
+            <b>var</b> <span id="r30 rd" class="r30 r">rule</span> = <b>new</b> <span class="i">Rule</span>
+            {
+                <span class="i">Conditions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Condition</span>&gt;
+                {
+                    <b>new</b> <span class="i">UrlCondition</span>
+                    {
+                        <span class="i">Value</span> = <span class="r27 r">path</span>,
+                        <span class="i">Operation</span> = <b>new</b> <span class="i">StringEqualsOperator</span>()
+                    }
+                }
+            };
+ 
+            <b>var</b> <span id="r31 rd" class="r31 r">services</span> = <a href="#a99dec27ca183b50" class="i method">CreateRuleServiceCollection</a>()
+                .<span class="i">AddCondition</span>&lt;<span class="i">UrlCondition</span>, <span class="i">UrlConditionEvaluator</span>, <span class="i">ConditionFactory</span>&lt;<span class="i">UrlCondition</span>&gt;&gt;();
+ 
+            <b>var</b> <span id="r32 rd" class="r32 r">mockHttpContextAccessor</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;();
+            <b>var</b> <span id="r33 rd" class="r33 r">context</span> = <b>new</b> <span class="t constructor">DefaultHttpContext</span>();
+            <span class="r33 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span> = <b>new</b> <span class="t constructor">PathString</span>(<span class="r28 r">requestPath</span>);
+            <span class="r32 r">mockHttpContextAccessor</span>.<span class="i">Setup</span>(<span id="r34 rd" class="r34 r">_</span> =&gt; <span class="r34 r">_</span>.<span class="i">HttpContext</span>).<span class="i">Returns</span>(<span class="r33 r">context</span>);
+ 
+            <span class="r31 r">services</span>.<span class="i">AddSingleton</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;(<span class="r32 r">mockHttpContextAccessor</span>.<span class="i">Object</span>);
+ 
+            <b>var</b> <span id="r35 rd" class="r35 r">serviceProvider</span> = <span class="r31 r">services</span>.<span class="i">BuildServiceProvider</span>();
+ 
+            <b>var</b> <span id="r36 rd" class="r36 r">ruleService</span> = <span class="r35 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IRuleService</span>&gt;();
+ 
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r29 r">expected</span>, <b>await</b> <span class="r36 r">ruleService</span>.<span class="i">EvaluateAsync</span>(<span class="r30 r">rule</span>));
+        }
+ 
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;isHomepage()&quot;</span>, <span class="s">&quot;/&quot;</span>, <b>true</b>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;isHomepage()&quot;</span>, <span class="s">&quot;/foo&quot;</span>, <b>false</b>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="081bd18065a069c3" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldEvaluateJavascriptCondition</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r37 rd" class="r37 r">script</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r38 rd" class="r38 r">requestPath</span>, <b>bool</b> <span id="r39 rd" class="r39 r">expected</span>)
+        {
+            <b>var</b> <span id="r40 rd" class="r40 r">rule</span> = <b>new</b> <span class="i">Rule</span>
+            {
+                <span class="i">Conditions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Condition</span>&gt;
+                {
+                    <b>new</b> <span class="i">JavascriptCondition</span>
+                    {
+                        <span class="i">Script</span> = <span class="r37 r">script</span>
+                    }
+                }
+            };
+ 
+            <b>var</b> <span id="r41 rd" class="r41 r">services</span> = <a href="#a99dec27ca183b50" class="i method">CreateRuleServiceCollection</a>()
+                .<span class="i">AddCondition</span>&lt;<span class="i">JavascriptCondition</span>, <span class="i">JavascriptConditionEvaluator</span>, <span class="i">ConditionFactory</span>&lt;<span class="i">JavascriptCondition</span>&gt;&gt;()
+                .<span class="i">AddSingleton</span>&lt;<span class="i">IGlobalMethodProvider</span>, <span class="i">DefaultLayersMethodProvider</span>&gt;()
+                .<span class="i method">AddMemoryCache</span>()
+                .<span class="i">AddScripting</span>()
+                .<span class="i">AddJavaScriptEngine</span>();
+ 
+            <b>var</b> <span id="r42 rd" class="r42 r">mockHttpContextAccessor</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;();
+            <b>var</b> <span id="r43 rd" class="r43 r">context</span> = <b>new</b> <span class="t constructor">DefaultHttpContext</span>();
+            <span class="r43 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span> = <b>new</b> <span class="t constructor">PathString</span>(<span class="r38 r">requestPath</span>);
+            <span class="r42 r">mockHttpContextAccessor</span>.<span class="i">Setup</span>(<span id="r44 rd" class="r44 r">_</span> =&gt; <span class="r44 r">_</span>.<span class="i">HttpContext</span>).<span class="i">Returns</span>(<span class="r43 r">context</span>);
+ 
+            <span class="r41 r">services</span>.<span class="i">AddSingleton</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;(<span class="r42 r">mockHttpContextAccessor</span>.<span class="i">Object</span>);
+ 
+            <b>var</b> <span id="r45 rd" class="r45 r">serviceProvider</span> = <span class="r41 r">services</span>.<span class="i">BuildServiceProvider</span>();
+ 
+            <b>var</b> <span id="r46 rd" class="r46 r">ruleService</span> = <span class="r45 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IRuleService</span>&gt;();
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r39 r">expected</span>, <b>await</b> <span class="r46 r">ruleService</span>.<span class="i">EvaluateAsync</span>(<span class="r40 r">rule</span>));
+        }
+ 
+        <b>public static</b> <span class="t t">ServiceCollection</span> <a id="a99dec27ca183b50" href="../../R/a99dec27ca183b50.html" target="n" data-glyph="72,1" class="i method">CreateRuleServiceCollection</a>()
+        {
+            <b>var</b> <span id="r47 rd" class="r47 r">services</span> = <b>new</b> <span class="t constructor">ServiceCollection</span>();
+            <span class="r47 r">services</span>.<span class="i method">AddOptions</span>&lt;<span class="i">ConditionOptions</span>&gt;();
+ 
+            <span class="r47 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="i">IConditionResolver</span>, <span class="i">ConditionResolver</span>&gt;();
+            <span class="r47 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="i">IConditionOperatorResolver</span>, <span class="i">ConditionOperatorResolver</span>&gt;();
+ 
+            <span class="r47 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="i">IRuleService</span>, <span class="i">RuleService</span>&gt;();
+ 
+            <span class="r47 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="i">AllConditionEvaluator</span>&gt;();
+ 
+            <span class="r47 r">services</span>.<span class="i method">AddLocalization</span>();
+            <span class="r47 r">services</span>.<span class="i method">AddSingleton</span>&lt;<span class="t t">IStringLocalizerFactory</span>, <span class="i">NullStringLocalizerFactory</span>&gt;();
+            <span class="r47 r">services</span>.<span class="i method">AddTransient</span>&lt;<span class="t t">IConfigureOptions</span>&lt;<span class="i">ConditionOperatorOptions</span>&gt;, <span class="i">ConditionOperatorConfigureOptions</span>&gt;();
+ 
+            <b>return</b> <span class="r47 r">services</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

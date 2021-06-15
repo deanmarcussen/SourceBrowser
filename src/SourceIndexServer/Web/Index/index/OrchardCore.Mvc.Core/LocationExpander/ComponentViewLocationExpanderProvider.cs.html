@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+<html><head><title>ComponentViewLocationExpanderProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(133);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Mvc.Core/LocationExpander/ComponentViewLocationExpanderProvider.cs" target="_top">LocationExpander\ComponentViewLocationExpanderProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Mvc.Core" target="_top">src\OrchardCore\OrchardCore.Mvc.Core\OrchardCore.Mvc.Core.csproj</a> (OrchardCore.Mvc.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Razor</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Descriptor</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Mvc</span>.<span class="i n">FileProviders</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Mvc</span>.<span class="i n">LocationExpander</span>
+{
+    <b>public class</b> <a id="4f6474de15c84483" href="../R/4f6474de15c84483.html" target="n" data-glyph="0,0" class="t t">ComponentViewLocationExpanderProvider</a> : <a href="IViewLocationExpanderProvider.cs.html#b13c00f1ee9a8a59" class="t t">IViewLocationExpanderProvider</a>
+    {
+        <b>private static readonly string</b> <a id="e5176099b537d13f" href="../R/e5176099b537d13f.html" target="n" data-glyph="46,1" class="i field">SharedViewsPath</a> = <span class="s">&quot;/Views/Shared/{0}&quot;</span> + <span class="t t">RazorViewEngine</span>.<span class="i field">ViewExtension</span>;
+        <b>private static readonly string</b> <a id="8431c6fced90e502" href="../R/8431c6fced90e502.html" target="n" data-glyph="46,1" class="i field">SharedPagesPath</a> = <span class="s">&quot;/Pages/Shared/{0}&quot;</span> + <span class="t t">RazorViewEngine</span>.<span class="i field">ViewExtension</span>;
+        <b>private static readonly string</b>[] <a id="b3ddb511c7265f7a" href="../R/b3ddb511c7265f7a.html" target="n" data-glyph="46,1" class="i field">RazorExtensions</a> = <b>new</b>[] { <span class="t t">RazorViewEngine</span>.<span class="i field">ViewExtension</span> };
+        <b>private const string</b> <a id="88d500d5d21e3384" href="../R/88d500d5d21e3384.html" target="n" data-glyph="10,1" class="i field">CacheKey</a> = <span class="s">&quot;ModuleComponentViewLocations&quot;</span>;
+        <b>private static</b> <span class="t t">List</span>&lt;<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a>&gt; <a id="2a689cfdd63351f5" href="../R/2a689cfdd63351f5.html" target="n" data-glyph="46,1" class="i field">_modulesWithComponentViews</a>;
+        <b>private static</b> <span class="t t">List</span>&lt;<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a>&gt; <a id="58ff21c123f7e7e0" href="../R/58ff21c123f7e7e0.html" target="n" data-glyph="46,1" class="i field">_modulesWithPagesComponentViews</a>;
+        <b>private static object</b> <a id="be552a72ea3e9f9c" href="../R/be552a72ea3e9f9c.html" target="n" data-glyph="46,1" class="i field">_synLock</a> = <b>new</b> <b>object</b>();
+        <b>private static bool</b> <a id="1cc3bcbf9d49ffd7" href="../R/1cc3bcbf9d49ffd7.html" target="n" data-glyph="46,1" class="i field">_initialized</a>;
+ 
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <a id="91db5d66a92ee2af" href="../R/91db5d66a92ee2af.html" target="n" data-glyph="46,1" class="i field">_extensionManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#0d18542e8e03ab41" class="t t">ShellDescriptor</a> <a id="3f9ea06cda1659dc" href="../R/3f9ea06cda1659dc.html" target="n" data-glyph="46,1" class="i field">_shellDescriptor</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="cfa47a4629f9b3be" href="../R/cfa47a4629f9b3be.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+ 
+        <b>public</b> <a id="74fa99f005aec57b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ComponentViewLocationExpanderProvider</a>(
+            <a href="../RazorCompilationFileProviderAccessor.cs.html#f4cb58f505b3bb37" class="t t">RazorCompilationFileProviderAccessor</a> <span id="r0 rd" class="r0 r">fileProviderAccessor</span>,
+            <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <span id="r1 rd" class="r1 r">extensionManager</span>,
+            <a href="/OrchardCore.Abstractions/A.html#0d18542e8e03ab41" class="t t">ShellDescriptor</a> <span id="r2 rd" class="r2 r">shellDescriptor</span>,
+            <span class="t t">IMemoryCache</span> <span id="r3 rd" class="r3 r">memoryCache</span>)
+        {
+            <a href="#91db5d66a92ee2af" class="i field">_extensionManager</a> = <span class="r1 r">extensionManager</span>;
+            <a href="#3f9ea06cda1659dc" class="i field">_shellDescriptor</a> = <span class="r2 r">shellDescriptor</span>;
+            <a href="#cfa47a4629f9b3be" class="i field">_memoryCache</a> = <span class="r3 r">memoryCache</span>;
+ 
+            <b>if</b> (<a href="#1cc3bcbf9d49ffd7" class="i field">_initialized</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>lock</b> (<a href="#be552a72ea3e9f9c" class="i field">_synLock</a>)
+            {
+                <b>if</b> (!<a href="#1cc3bcbf9d49ffd7" class="i field">_initialized</a>)
+                {
+                    <b>var</b> <span id="r4 rd" class="r4 r">modulesWithComponentViews</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a>&gt;();
+                    <b>var</b> <span id="r5 rd" class="r5 r">modulesWithPagesComponentViews</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="t t">IExtensionInfo</a>&gt;();
+ 
+                    <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r6 rd" class="r6 r">orderedModules</span> = <a href="#91db5d66a92ee2af" class="i field">_extensionManager</a>.<a href="/OrchardCore.Abstractions/A.html#c9da12dd7e92cf6a" class="i method">GetExtensions</a>()
+                        .<span class="i method">Where</span>(<span id="r7 rd" class="r7 r">e</span> =&gt; <span class="r7 r">e</span>.<a href="/OrchardCore.Abstractions/A.html#6759d9114e0c978d" class="i property">Manifest</a>.<a href="/OrchardCore.Abstractions/A.html#18b93be4129e94cb" class="i property">Type</a>.<a href="@1@System.Runtime/A.html#b98069ccbe2d3960" class="i method">Equals</a>(<span class="s">&quot;module&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                        .<span class="i method">Reverse</span>();
+ 
+                    <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#eab159c1e82a5751" class="k">var</a> <span id="r8 rd" class="r8 r">module</span> <b>in</b> <span class="r6 r">orderedModules</span>)
+                    {
+                        <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r9 rd" class="r9 r">moduleComponentsViewFilePaths</span> = <span class="r0 r">fileProviderAccessor</span>.<a href="../RazorCompilationFileProviderAccessor.cs.html#f253d0a4801fc2ab" class="i property">FileProvider</a>.<a href="../FileProviders/FileProviderExtensions.cs.html#818898e9c71ffdcb" class="i method">GetViewFilePaths</a>(
+                            <span class="r8 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#843f5a8f9d6d78c3" class="i property">SubPath</a> + <span class="s">&quot;/Views/Shared/Components&quot;</span>, <a href="#b3ddb511c7265f7a" class="i field">RazorExtensions</a>,
+                            <span class="r10 r">viewsFolder</span>: <b>null</b>, <span class="r11 r">inViewsFolder</span>: <b>true</b>, <span class="r12 r">inDepth</span>: <b>true</b>);
+ 
+                        <b>if</b> (<span class="r9 r">moduleComponentsViewFilePaths</span>.<span class="i method">Any</span>())
+                        {
+                            <span class="r4 r">modulesWithComponentViews</span>.<span class="i method">Add</span>(<span class="r8 r">module</span>);
+                        }
+ 
+                        <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r13 rd" class="r13 r">modulePagesComponentsViewFilePaths</span> = <span class="r0 r">fileProviderAccessor</span>.<a href="../RazorCompilationFileProviderAccessor.cs.html#f253d0a4801fc2ab" class="i property">FileProvider</a>.<a href="../FileProviders/FileProviderExtensions.cs.html#818898e9c71ffdcb" class="i method">GetViewFilePaths</a>(
+                            <span class="r8 r">module</span>.<a href="/OrchardCore.Abstractions/A.html#843f5a8f9d6d78c3" class="i property">SubPath</a> + <span class="s">&quot;/Pages/Shared/Components&quot;</span>, <a href="#b3ddb511c7265f7a" class="i field">RazorExtensions</a>,
+                            <span class="r10 r">viewsFolder</span>: <b>null</b>, <span class="r11 r">inViewsFolder</span>: <b>true</b>, <span class="r12 r">inDepth</span>: <b>true</b>);
+ 
+                        <b>if</b> (<span class="r13 r">modulePagesComponentsViewFilePaths</span>.<span class="i method">Any</span>())
+                        {
+                            <span class="r5 r">modulesWithPagesComponentViews</span>.<span class="i method">Add</span>(<span class="r8 r">module</span>);
+                        }
+                    }
+ 
+                    <a href="#2a689cfdd63351f5" class="i field">_modulesWithComponentViews</a> = <span class="r4 r">modulesWithComponentViews</span>;
+                    <a href="#58ff21c123f7e7e0" class="i field">_modulesWithPagesComponentViews</a> = <span class="r5 r">modulesWithPagesComponentViews</span>;
+ 
+                    <a href="#1cc3bcbf9d49ffd7" class="i field">_initialized</a> = <b>true</b>;
+                }
+            }
+        }
+ 
+        <b>public int</b> <a id="5cffbcedb73ae80f" href="../R/5cffbcedb73ae80f.html" target="n" data-glyph="102,1" class="i property">Priority</a> =&gt; 5;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public void</b> <a id="9da27f17d219db29" href="../R/9da27f17d219db29.html" target="n" data-glyph="72,1" class="i method">PopulateValues</a>(<span class="t t">ViewLocationExpanderContext</span> <span id="r14 rd" class="r14 r">context</span>)
+        {
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="84776acb889b1267" href="../R/84776acb889b1267.html" target="n" data-glyph="72,1" class="i method">ExpandViewLocations</a>(<span class="t t">ViewLocationExpanderContext</span> <span id="r15 rd" class="r15 r">context</span>,
+                                                               <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r16 rd" class="r16 r">viewLocations</span>)
+        {
+            <b>if</b> (<span class="r15 r">context</span>.<span class="i property">AreaName</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="r16 r">viewLocations</span>;
+            }
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">result</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <b>if</b> (<span class="r15 r">context</span>.<span class="i property">ViewName</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;Components/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <b>if</b> (!<a href="#cfa47a4629f9b3be" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>(<a href="#88d500d5d21e3384" class="i field">CacheKey</a>, <b>out string</b>[] <span id="r18 rd" class="r18 r">moduleComponentViewLocations</span>))
+                {
+                    <b>var</b> <span id="r19 rd" class="r19 r">enabledIds</span> = <a href="#91db5d66a92ee2af" class="i field">_extensionManager</a>.<a href="/OrchardCore.Abstractions/A.html#8e77536f90629787" class="i method">GetFeatures</a>().<span class="i method">Where</span>(<span id="r20 rd" class="r20 r">f</span> =&gt; <a href="#3f9ea06cda1659dc" class="i field">_shellDescriptor</a>
+                        .<a href="/OrchardCore.Abstractions/A.html#91bfa6f604ba2afb" class="i property">Features</a>.<span class="i method">Any</span>(<span id="r21 rd" class="r21 r">sf</span> =&gt; <span class="r21 r">sf</span>.<a href="/OrchardCore.Abstractions/A.html#c82012a63aed4fd8" class="i property">Id</a> == <span class="r20 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>)).<span class="i method">Select</span>(<span id="r22 rd" class="r22 r">f</span> =&gt; <span class="r22 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#76f75a213f3562d3" class="i property">Extension</a>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>).<span class="i method">ToHashSet</span>();
+ 
+                    <b>var</b> <span id="r23 rd" class="r23 r">enabledExtensionIds</span> = <a href="#91db5d66a92ee2af" class="i field">_extensionManager</a>
+                        .<a href="/OrchardCore.Abstractions/A.html#c9da12dd7e92cf6a" class="i method">GetExtensions</a>()
+                        .<span class="i method">Where</span>(<span id="r24 rd" class="r24 r">e</span> =&gt; <span class="r19 r">enabledIds</span>.<span class="i method">Contains</span>(<span class="r24 r">e</span>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>))
+                        .<span class="i method">Select</span>(<span id="r25 rd" class="r25 r">x</span> =&gt; <span class="r25 r">x</span>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>)
+                        .<span class="i method">ToHashSet</span>();
+ 
+                    <span class="r18 r">moduleComponentViewLocations</span> = <a href="#2a689cfdd63351f5" class="i field">_modulesWithComponentViews</a>
+                        .<span class="i method">Where</span>(<span id="r26 rd" class="r26 r">m</span> =&gt; <span class="r23 r">enabledExtensionIds</span>.<span class="i method">Contains</span>(<span class="r26 r">m</span>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>))
+                        .<span class="i method">Select</span>(<span id="r27 rd" class="r27 r">m</span> =&gt; <span class="s">&#39;/&#39;</span> + <span class="r27 r">m</span>.<a href="/OrchardCore.Abstractions/A.html#843f5a8f9d6d78c3" class="i property">SubPath</a> + <a href="#e5176099b537d13f" class="i field">SharedViewsPath</a>)
+                        .<span class="i method">Concat</span>(<a href="#58ff21c123f7e7e0" class="i field">_modulesWithPagesComponentViews</a>
+                        .<span class="i method">Where</span>(<span id="r28 rd" class="r28 r">m</span> =&gt; <span class="r23 r">enabledExtensionIds</span>.<span class="i method">Contains</span>(<span class="r28 r">m</span>.<a href="/OrchardCore.Abstractions/A.html#f628ce5f6bae1b9b" class="i property">Id</a>))
+                        .<span class="i method">Select</span>(<span id="r29 rd" class="r29 r">m</span> =&gt; <span class="s">&#39;/&#39;</span> + <span class="r29 r">m</span>.<a href="/OrchardCore.Abstractions/A.html#843f5a8f9d6d78c3" class="i property">SubPath</a> + <a href="#8431c6fced90e502" class="i field">SharedPagesPath</a>))
+                        .<span class="i method">ToArray</span>();
+ 
+                    <a href="#cfa47a4629f9b3be" class="i field">_memoryCache</a>.<span class="i method">Set</span>(<a href="#88d500d5d21e3384" class="i field">CacheKey</a>, <span class="r18 r">moduleComponentViewLocations</span>);
+                }
+ 
+                <span class="r17 r">result</span>.<span class="i method">AddRange</span>(<span class="r18 r">moduleComponentViewLocations</span>);
+            }
+ 
+            <span class="r17 r">result</span>.<span class="i method">AddRange</span>(<span class="r16 r">viewLocations</span>);
+ 
+            <b>return</b> <span class="r17 r">result</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

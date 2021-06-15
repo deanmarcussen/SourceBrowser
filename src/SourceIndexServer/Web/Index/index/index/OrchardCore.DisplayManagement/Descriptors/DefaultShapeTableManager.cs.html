@@ -1,0 +1,196 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultShapeTableManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(187);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/Descriptors/DefaultShapeTableManager.cs" target="_top">Descriptors\DefaultShapeTableManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Concurrent</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Extensions</span>.<span class="i">Features</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Descriptors</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This class needs to use a cache which is a singleton per tenant as it can contain different shapes</span>
+    <span class="c">///</span><span class="c"> for each tenant, even if they share the same theme.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="210f06bcde0d997a" href="../R/210f06bcde0d997a.html" target="n" data-glyph="0,0" class="t t">DefaultShapeTableManager</a> : <a href="Interfaces.cs.html#f66024a4d4149e8d" class="t t">IShapeTableManager</a>
+    {
+        <b>private static</b> <span class="t t">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="ShapeDescriptor.cs.html#134be17996b15f88" class="t t">FeatureShapeDescriptor</a>&gt; <a id="8b497b3e59499223" href="../R/8b497b3e59499223.html" target="n" data-glyph="46,1" class="i field">_shapeDescriptors</a> = <b>new</b> <span class="t constructor">ConcurrentDictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="ShapeDescriptor.cs.html#134be17996b15f88" class="t t">FeatureShapeDescriptor</a>&gt;();
+        <b>private static readonly object</b> <a id="123f18f589aff3c9" href="../R/123f18f589aff3c9.html" target="n" data-glyph="46,1" class="i field">_syncLock</a> = <b>new</b> <b>object</b>();
+ 
+        <b>private readonly</b> <span class="t t">IHostEnvironment</span> <a id="aa2eba538759ad7c" href="../R/aa2eba538759ad7c.html" target="n" data-glyph="46,1" class="i field">_hostingEnvironment</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="Interfaces.cs.html#e6c9b4ce50036bee" class="t t">IShapeTableProvider</a>&gt; <a id="9386e07758223da6" href="../R/9386e07758223da6.html" target="n" data-glyph="46,1" class="i field">_bindingStrategies</a>;
+        <b>private readonly</b> <span class="i">IShellFeaturesManager</span> <a id="d20f58464f36adc7" href="../R/d20f58464f36adc7.html" target="n" data-glyph="46,1" class="i field">_shellFeaturesManager</a>;
+        <b>private readonly</b> <span class="i">IExtensionManager</span> <a id="868dc8d2298c55e9" href="../R/868dc8d2298c55e9.html" target="n" data-glyph="46,1" class="i field">_extensionManager</a>;
+        <b>private readonly</b> <span class="i">ITypeFeatureProvider</span> <a id="d25f9402185ce665" href="../R/d25f9402185ce665.html" target="n" data-glyph="46,1" class="i field">_typeFeatureProvider</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="52b643554b81c55f" href="../R/52b643554b81c55f.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="05af73f0164b04c5" href="../R/05af73f0164b04c5.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="f4e01199cd09c93b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultShapeTableManager</a>(
+            <span class="t t">IHostEnvironment</span> <span id="r0 rd" class="r0 r">hostingEnvironment</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="Interfaces.cs.html#e6c9b4ce50036bee" class="t t">IShapeTableProvider</a>&gt; <span id="r1 rd" class="r1 r">bindingStrategies</span>,
+            <span class="i">IShellFeaturesManager</span> <span id="r2 rd" class="r2 r">shellFeaturesManager</span>,
+            <span class="i">IExtensionManager</span> <span id="r3 rd" class="r3 r">extensionManager</span>,
+            <span class="i">ITypeFeatureProvider</span> <span id="r4 rd" class="r4 r">typeFeatureProvider</span>,
+            <span class="t t">IMemoryCache</span> <span id="r5 rd" class="r5 r">memoryCache</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#210f06bcde0d997a" class="t t">DefaultShapeTableManager</a>&gt; <span id="r6 rd" class="r6 r">logger</span>)
+        {
+            <a href="#aa2eba538759ad7c" class="i field">_hostingEnvironment</a> = <span class="r0 r">hostingEnvironment</span>;
+            <a href="#9386e07758223da6" class="i field">_bindingStrategies</a> = <span class="r1 r">bindingStrategies</span>;
+            <a href="#d20f58464f36adc7" class="i field">_shellFeaturesManager</a> = <span class="r2 r">shellFeaturesManager</span>;
+            <a href="#868dc8d2298c55e9" class="i field">_extensionManager</a> = <span class="r3 r">extensionManager</span>;
+            <a href="#d25f9402185ce665" class="i field">_typeFeatureProvider</a> = <span class="r4 r">typeFeatureProvider</span>;
+            <a href="#52b643554b81c55f" class="i field">_memoryCache</a> = <span class="r5 r">memoryCache</span>;
+            <a href="#05af73f0164b04c5" class="i field">_logger</a> = <span class="r6 r">logger</span>;
+        }
+ 
+        <b>public</b> <a href="ShapeTable.cs.html#648363323db1f473" class="t t">ShapeTable</a> <a id="3de183521fbcd254" href="../R/3de183521fbcd254.html" target="n" data-glyph="72,1" class="i method">GetShapeTable</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">themeId</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">cacheKey</span> = <span class="s">$&quot;</span><span class="s">ShapeTable:</span>{<span class="r7 r">themeId</span>}<span class="s">&quot;</span>;
+ 
+            <b>if</b> (!<a href="#52b643554b81c55f" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>(<span class="r8 r">cacheKey</span>, <b>out</b> <a href="ShapeTable.cs.html#648363323db1f473" class="t t">ShapeTable</a> <span id="r9 rd" class="r9 r">shapeTable</span>))
+            {
+                <b>if</b> (<a href="#05af73f0164b04c5" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+                {
+                    <a href="#05af73f0164b04c5" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Start building shape table&quot;</span>);
+                }
+ 
+                <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r10 rd" class="r10 r">excludedFeatures</span>;
+ 
+                <span class="c">// Here we don&#39;t use a lock for thread safety but for atomicity.</span>
+                <b>lock</b> (<a href="#123f18f589aff3c9" class="i field">_syncLock</a>)
+                {
+                    <span class="r10 r">excludedFeatures</span> = <b>new</b> <span class="t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<a href="#8b497b3e59499223" class="i field">_shapeDescriptors</a>.<span class="i method">Select</span>(<span id="r11 rd" class="r11 r">kv</span> =&gt; <span class="r11 r">kv</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="ShapeDescriptor.cs.html#bd99726f90aa0528" class="i property">Feature</a>.<span class="i">Id</span>));
+                }
+ 
+                <b>var</b> <span id="r12 rd" class="r12 r">shapeDescriptors</span> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="ShapeDescriptor.cs.html#134be17996b15f88" class="t t">FeatureShapeDescriptor</a>&gt;();
+ 
+                <b>foreach</b> (<a href="Interfaces.cs.html#e6c9b4ce50036bee" class="k">var</a> <span id="r13 rd" class="r13 r">bindingStrategy</span> <b>in</b> <a href="#9386e07758223da6" class="i field">_bindingStrategies</a>)
+                {
+                    <b>var</b> <span id="r14 rd" class="r14 r">strategyFeature</span> = <a href="#d25f9402185ce665" class="i field">_typeFeatureProvider</a>.<span class="i">GetFeatureForDependency</span>(<span class="r13 r">bindingStrategy</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>());
+ 
+                    <a href="ShapeTableBuilder.cs.html#2dceb447d3fdae18" class="k">var</a> <span id="r15 rd" class="r15 r">builder</span> = <b>new</b> <span class="t">ShapeTableBuilder</span>(<span class="r14 r">strategyFeature</span>, <span class="r10 r">excludedFeatures</span>);
+                    <span class="r13 r">bindingStrategy</span>.<a href="Interfaces.cs.html#eaf52334ba0de1fa" class="i method">Discover</a>(<span class="r15 r">builder</span>);
+                    <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r16 rd" class="r16 r">builtAlterations</span> = <span class="r15 r">builder</span>.<a href="ShapeTableBuilder.cs.html#3669ca9889d3edea" class="i method">BuildAlterations</a>();
+ 
+                    <a href="#d0fef94b2b9c6f87" class="i method">BuildDescriptors</a>(<span class="r13 r">bindingStrategy</span>, <span class="r16 r">builtAlterations</span>, <span class="r12 r">shapeDescriptors</span>);
+                }
+ 
+                <span class="c">// Here we don&#39;t use a lock for thread safety but for atomicity.</span>
+                <b>lock</b> (<a href="#123f18f589aff3c9" class="i field">_syncLock</a>)
+                {
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r17 rd" class="r17 r">kv</span> <b>in</b> <span class="r12 r">shapeDescriptors</span>)
+                    {
+                        <a href="#8b497b3e59499223" class="i field">_shapeDescriptors</a>[<span class="r17 r">kv</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>] = <span class="r17 r">kv</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>;
+                    }
+                }
+ 
+                <b>var</b> <span id="r18 rd" class="r18 r">enabledAndOrderedFeatureIds</span> = <a href="#d20f58464f36adc7" class="i field">_shellFeaturesManager</a>
+                    .<span class="i">GetEnabledFeaturesAsync</span>()
+                    .<span class="i">GetAwaiter</span>()
+                    .<span class="i">GetResult</span>()
+                    .<span class="i">Select</span>(<span id="r19 rd" class="r19 r">f</span> =&gt; <span class="r19 r">f</span>.<span class="i">Id</span>)
+                    .<span class="i">ToList</span>();
+ 
+                <span class="c">// let the application acting as a super theme for shapes rendering.</span>
+                <b>if</b> (<span class="r18 r">enabledAndOrderedFeatureIds</span>.<span class="i">Remove</span>(<a href="#aa2eba538759ad7c" class="i field">_hostingEnvironment</a>.<span class="i property">ApplicationName</span>))
+                {
+                    <span class="r18 r">enabledAndOrderedFeatureIds</span>.<span class="i">Add</span>(<a href="#aa2eba538759ad7c" class="i field">_hostingEnvironment</a>.<span class="i property">ApplicationName</span>);
+                }
+ 
+                <b>var</b> <span id="r20 rd" class="r20 r">descriptors</span> = <a href="#8b497b3e59499223" class="i field">_shapeDescriptors</a>
+                    .<span class="i method">Where</span>(<span id="r21 rd" class="r21 r">sd</span> =&gt; <span class="r18 r">enabledAndOrderedFeatureIds</span>.<span class="i">Contains</span>(<span class="r21 r">sd</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="ShapeDescriptor.cs.html#bd99726f90aa0528" class="i property">Feature</a>.<span class="i">Id</span>))
+                    .<span class="i method">Where</span>(<span id="r22 rd" class="r22 r">sd</span> =&gt; <a href="#d78a941ceba3e4cb" class="i method">IsModuleOrRequestedTheme</a>(<span class="r22 r">sd</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="ShapeDescriptor.cs.html#bd99726f90aa0528" class="i property">Feature</a>, <span class="r7 r">themeId</span>))
+                    .<span class="i method">OrderBy</span>(<span id="r23 rd" class="r23 r">sd</span> =&gt; <span class="r18 r">enabledAndOrderedFeatureIds</span>.<span class="i">IndexOf</span>(<span class="r23 r">sd</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="ShapeDescriptor.cs.html#bd99726f90aa0528" class="i property">Feature</a>.<span class="i">Id</span>))
+                    .<span class="i method">GroupBy</span>(<span id="r24 rd" class="r24 r">sd</span> =&gt; <span class="r24 r">sd</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>.<a href="ShapeDescriptor.cs.html#836cd4141efe40b2" class="i property">ShapeType</a>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>)
+                    .<span class="i method">Select</span>(<span id="r25 rd" class="r25 r">group</span> =&gt; <b>new</b> <a href="ShapeDescriptor.cs.html#96f69dcfc3ed8ed9" class="t constructor">ShapeDescriptorIndex</a>
+                    (
+                        <span class="r26 r">shapeType</span>: <span class="r25 r">group</span>.<span class="i property">Key</span>,
+                        <span class="r27 r">alterationKeys</span>: <span class="r25 r">group</span>.<span class="i method">Select</span>(<span id="r28 rd" class="r28 r">kv</span> =&gt; <span class="r28 r">kv</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>),
+                        <span class="r29 r">descriptors</span>: <a href="#8b497b3e59499223" class="i field">_shapeDescriptors</a>
+                    ))
+                    .<span class="i method">ToList</span>();
+ 
+                <span class="r9 r">shapeTable</span> = <b>new</b> <a href="ShapeTable.cs.html#4a128a4f1d5bf990" class="t constructor">ShapeTable</a>
+                (
+                    <span class="r30 r">descriptors</span>: <span class="r20 r">descriptors</span>.<span class="i method">ToDictionary</span>(<span id="r31 rd" class="r31 r">sd</span> =&gt; <span class="r31 r">sd</span>.<a href="ShapeDescriptor.cs.html#836cd4141efe40b2" class="i property">ShapeType</a>, <span id="r32 rd" class="r32 r">x</span> =&gt; (<a href="ShapeDescriptor.cs.html#46b3589c7e85dda7" class="t t">ShapeDescriptor</a>)<span class="r32 r">x</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>),
+                    <span class="r33 r">bindings</span>: <span class="r20 r">descriptors</span>.<span class="i method">SelectMany</span>(<span id="r34 rd" class="r34 r">sd</span> =&gt; <span class="r34 r">sd</span>.<a href="ShapeDescriptor.cs.html#6ac7ad1c64684623" class="i property">Bindings</a>).<span class="i method">ToDictionary</span>(<span id="r35 rd" class="r35 r">kv</span> =&gt; <span class="r35 r">kv</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span id="r36 rd" class="r36 r">kv</span> =&gt; <span class="r36 r">kv</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>)
+                );
+ 
+                <b>if</b> (<a href="#05af73f0164b04c5" class="i field">_logger</a>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Information</span>))
+                {
+                    <a href="#05af73f0164b04c5" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Done building shape table&quot;</span>);
+                }
+ 
+                <a href="#52b643554b81c55f" class="i field">_memoryCache</a>.<span class="i method">Set</span>(<span class="r8 r">cacheKey</span>, <span class="r9 r">shapeTable</span>, <b>new</b> <span class="t constructor">MemoryCacheEntryOptions</span> { <span class="i property">Priority</span> = <span class="t t">CacheItemPriority</span>.<span class="i field">NeverRemove</span> });
+            }
+ 
+            <b>return</b> <span class="r9 r">shapeTable</span>;
+        }
+ 
+        <b>private void</b> <a id="d0fef94b2b9c6f87" href="../R/d0fef94b2b9c6f87.html" target="n" data-glyph="76,1" class="i method">BuildDescriptors</a>(<a href="Interfaces.cs.html#e6c9b4ce50036bee" class="t t">IShapeTableProvider</a> <span id="r37 rd" class="r37 r">bindingStrategy</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="ShapeAlteration.cs.html#3003662ca188719c" class="t t">ShapeAlteration</a>&gt; <span id="r38 rd" class="r38 r">builtAlterations</span>, <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="ShapeDescriptor.cs.html#134be17996b15f88" class="t t">FeatureShapeDescriptor</a>&gt; <span id="r39 rd" class="r39 r">shapeDescriptors</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r40 rd" class="r40 r">alterationSets</span> = <span class="r38 r">builtAlterations</span>.<span class="i method">GroupBy</span>(<span id="r41 rd" class="r41 r">a</span> =&gt; <span class="r41 r">a</span>.<a href="ShapeAlteration.cs.html#499737141fc4f8ef" class="i property">Feature</a>.<span class="i">Id</span> + <span class="r41 r">a</span>.<a href="ShapeAlteration.cs.html#7efb78500d3df9f6" class="i property">ShapeType</a>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r42 rd" class="r42 r">alterations</span> <b>in</b> <span class="r40 r">alterationSets</span>)
+            {
+                <a href="ShapeAlteration.cs.html#3003662ca188719c" class="k">var</a> <span id="r43 rd" class="r43 r">firstAlteration</span> = <span class="r42 r">alterations</span>.<span class="i method">First</span>();
+ 
+                <b>var</b> <span id="r44 rd" class="r44 r">key</span> = <span class="r37 r">bindingStrategy</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>().<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>
+                    + <span class="r43 r">firstAlteration</span>.<a href="ShapeAlteration.cs.html#499737141fc4f8ef" class="i property">Feature</a>.<span class="i">Id</span>
+                    + <span class="r43 r">firstAlteration</span>.<a href="ShapeAlteration.cs.html#7efb78500d3df9f6" class="i property">ShapeType</a>.<a href="@1@System.Runtime/A.html#0b5a1ee33618e0b3" class="i method">ToLower</a>();
+ 
+                <b>if</b> (!<a href="#8b497b3e59499223" class="i field">_shapeDescriptors</a>.<span class="i">ContainsKey</span>(<span class="r44 r">key</span>))
+                {
+                    <a href="ShapeDescriptor.cs.html#134be17996b15f88" class="k">var</a> <span id="r45 rd" class="r45 r">descriptor</span> = <b>new</b> <a href="ShapeDescriptor.cs.html#c4293979f4466c98" class="t constructor">FeatureShapeDescriptor</a>
+                    (
+                        <span class="r43 r">firstAlteration</span>.<a href="ShapeAlteration.cs.html#499737141fc4f8ef" class="i property">Feature</a>,
+                        <span class="r43 r">firstAlteration</span>.<a href="ShapeAlteration.cs.html#7efb78500d3df9f6" class="i property">ShapeType</a>
+                    );
+ 
+                    <b>foreach</b> (<a href="ShapeAlteration.cs.html#3003662ca188719c" class="k">var</a> <span id="r46 rd" class="r46 r">alteration</span> <b>in</b> <span class="r42 r">alterations</span>)
+                    {
+                        <span class="r46 r">alteration</span>.<a href="ShapeAlteration.cs.html#ae3651fbee77f0ba" class="i method">Alter</a>(<span class="r45 r">descriptor</span>);
+                    }
+ 
+                    <span class="r39 r">shapeDescriptors</span>[<span class="r44 r">key</span>] = <span class="r45 r">descriptor</span>;
+                }
+            }
+        }
+ 
+        <b>private bool</b> <a id="d78a941ceba3e4cb" href="../R/d78a941ceba3e4cb.html" target="n" data-glyph="76,1" class="i method">IsModuleOrRequestedTheme</a>(<span class="i">IFeatureInfo</span> <span id="r47 rd" class="r47 r">feature</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r48 rd" class="r48 r">themeId</span>)
+        {
+            <b>if</b> (!<span class="r47 r">feature</span>.<span class="i">Extension</span>.<span class="i">IsTheme</span>())
+            {
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r48 r">themeId</span>))
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>return</b> <span class="r47 r">feature</span>.<span class="i">Id</span> == <span class="r48 r">themeId</span> || <span class="i">IsBaseTheme</span>(<span class="r47 r">feature</span>.<span class="i">Id</span>, <span class="r48 r">themeId</span>);
+        }
+ 
+        <b>private bool</b> <a id="1cfe8241c3001dc1" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">IsBaseTheme</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r49 rd" class="r49 r">themeFeatureId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r50 rd" class="r50 r">themeId</span>)
+        {
+            <b>return</b> <a href="#868dc8d2298c55e9" class="i field">_extensionManager</a>
+                .<span class="i">GetFeatureDependencies</span>(<span class="r50 r">themeId</span>)
+                .<span class="i">Any</span>(<span id="r51 rd" class="r51 r">f</span> =&gt; <span class="r51 r">f</span>.<span class="i">Id</span> == <span class="r49 r">themeFeatureId</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

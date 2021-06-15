@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentsDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(130);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Drivers/ContentsDriver.cs" target="_top">Drivers\ContentsDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i">Views</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="5d583fa7c50dfe1b" href="../R/5d583fa7c50dfe1b.html" target="n" data-glyph="0,0" class="t t">ContentsDriver</a> : <a href="/OrchardCore.ContentManagement.Display/A.html#e2ba4b4a2a5c701e" class="t t">ContentDisplayDriver</a>
+    {
+        <b>private readonly</b> <span class="i">IContentDefinitionManager</span> <a id="83f3adf60b256b8a" href="../R/83f3adf60b256b8a.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="b570a0483a5ee7e1" href="../R/b570a0483a5ee7e1.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="e7312fc84c7a0297" href="../R/e7312fc84c7a0297.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+ 
+        <b>public</b> <a id="97e3031bbc746f0d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentsDriver</a>(
+            <span class="i">IContentDefinitionManager</span> <span id="r0 rd" class="r0 r">contentDefinitionManager</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r1 rd" class="r1 r">httpContextAccessor</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r2 rd" class="r2 r">authorizationService</span>)
+        {
+            <a href="#83f3adf60b256b8a" class="i field">_contentDefinitionManager</a> = <span class="r0 r">contentDefinitionManager</span>;
+            <a href="#b570a0483a5ee7e1" class="i field">_httpContextAccessor</a> = <span class="r1 r">httpContextAccessor</span>;
+            <a href="#e7312fc84c7a0297" class="i field">_authorizationService</a> = <span class="r2 r">authorizationService</span>;
+        }
+ 
+        <b>public override</b> <span class="i">IDisplayResult</span> <a id="5b9b173ff1430819" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Display</a>(<span class="i">ContentItem</span> <span id="r3 rd" class="r3 r">contentItem</span>, <span class="i">IUpdateModel</span> <span id="r4 rd" class="r4 r">updater</span>)
+        {
+            <span class="c">// We add custom alternates. This could be done generically to all shapes coming from ContentDisplayDriver but right now it&#39;s</span>
+            <span class="c">// only necessary on this shape. Otherwise c.f. ContentPartDisplayDriver</span>
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">context</span> = <a href="#b570a0483a5ee7e1" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>;
+            <b>var</b> <span id="r6 rd" class="r6 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">IDisplayResult</span>&gt;();
+            <b>var</b> <span id="r7 rd" class="r7 r">contentTypeDefinition</span> = <a href="#83f3adf60b256b8a" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r3 r">contentItem</span>.<span class="i">ContentType</span>);
+            <b>var</b> <span id="r8 rd" class="r8 r">contentsMetadataShape</span> = <span class="i">Shape</span>(<span class="s">&quot;ContentsMetadata&quot;</span>,
+                <b>new</b> <span class="t">ContentItemViewModel</span>(<span class="r3 r">contentItem</span>))
+                .<span class="i">Location</span>(<span class="s">&quot;Detail&quot;</span>, <span class="s">&quot;Content:before&quot;</span>);
+ 
+            <b>if</b> (<span class="r7 r">contentTypeDefinition</span> != <b>null</b>)
+            {
+                <span class="r8 r">contentsMetadataShape</span>.<span class="i">Displaying</span>(<span id="r9 rd" class="r9 r">ctx</span> =&gt;
+                {
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">stereotype</span> = <span class="s">&quot;&quot;</span>;
+                    <b>var</b> <span id="r11 rd" class="r11 r">settings</span> = <span class="r7 r">contentTypeDefinition</span>?.<span class="i">GetSettings</span>&lt;<span class="i">ContentTypeSettings</span>&gt;();
+                    <b>if</b> (<span class="r11 r">settings</span> != <b>null</b>)
+                    {
+                        <span class="r10 r">stereotype</span> = <span class="r11 r">settings</span>.<span class="i">Stereotype</span>;
+                    }
+ 
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">stereotype</span>) &amp;&amp; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="s">&quot;Content&quot;</span>, <span class="r10 r">stereotype</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                    {
+                        <span class="r9 r">ctx</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">$&quot;</span>{<span class="r10 r">stereotype</span>}<span class="s">__ContentsMetadata</span><span class="s">&quot;</span>);
+                    }
+ 
+                    <b>var</b> <span id="r12 rd" class="r12 r">displayType</span> = <span class="r9 r">ctx</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">DisplayType</span>;
+ 
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r12 r">displayType</span>) &amp;&amp; <span class="r12 r">displayType</span> != <span class="s">&quot;Detail&quot;</span>)
+                    {                        
+                        <span class="r9 r">ctx</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">$&quot;</span><span class="s">ContentsMetadata_</span>{<span class="r9 r">ctx</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">DisplayType</span>}<span class="s">&quot;</span>);
+ 
+                        <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">stereotype</span>) &amp;&amp; !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="s">&quot;Content&quot;</span>, <span class="r10 r">stereotype</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                        {
+                            <span class="r9 r">ctx</span>.<span class="i">Shape</span>.<span class="i">Metadata</span>.<span class="i">Alternates</span>.<span class="i">Add</span>(<span class="s">$&quot;</span>{<span class="r10 r">stereotype</span>}<span class="s">_</span>{<span class="r12 r">displayType</span>}<span class="s">__ContentsMetadata</span><span class="s">&quot;</span>);
+                        }
+                    }
+ 
+                });
+ 
+                <span class="r6 r">results</span>.<span class="i">Add</span>(<span class="r8 r">contentsMetadataShape</span>);
+                <span class="r6 r">results</span>.<span class="i">Add</span>(<span class="i">Shape</span>(<span class="s">&quot;ContentsButtonEdit_SummaryAdmin&quot;</span>, <b>new</b> <span class="t">ContentItemViewModel</span>(<span class="r3 r">contentItem</span>)).<span class="i">Location</span>(<span class="s">&quot;SummaryAdmin&quot;</span>, <span class="s">&quot;Actions:10&quot;</span>));
+                <span class="r6 r">results</span>.<span class="i">Add</span>(<span class="i">Shape</span>(<span class="s">&quot;ContentsButtonActions_SummaryAdmin&quot;</span>, <b>new</b> <span class="t">ContentItemViewModel</span>(<span class="r3 r">contentItem</span>)).<span class="i">Location</span>(<span class="s">&quot;SummaryAdmin&quot;</span>, <span class="s">&quot;ActionsMenu:10&quot;</span>)
+                    .<span class="i">RenderWhen</span>(<b>async</b> () =&gt;
+                    {
+                        <b>var</b> <span id="r13 rd" class="r13 r">hasPublishPermission</span> = <b>await</b> <a href="#e7312fc84c7a0297" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r5 r">context</span>.<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#679e487af6b975d4" class="i field">PublishContent</a>, <span class="r3 r">contentItem</span>);
+                        <b>var</b> <span id="r14 rd" class="r14 r">hasDeletePermission</span> = <b>await</b> <a href="#e7312fc84c7a0297" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r5 r">context</span>.<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#642d1b81f0edc575" class="i field">DeleteContent</a>, <span class="r3 r">contentItem</span>);
+                        <b>var</b> <span id="r15 rd" class="r15 r">hasPreviewPermission</span> = <b>await</b> <a href="#e7312fc84c7a0297" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r5 r">context</span>.<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#5cd8ee0bf7087fc2" class="i field">PreviewContent</a>, <span class="r3 r">contentItem</span>);
+                        <b>var</b> <span id="r16 rd" class="r16 r">hasClonePermission</span> = <b>await</b> <a href="#e7312fc84c7a0297" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r5 r">context</span>.<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#afb2014e0b24ef15" class="i field">CloneContent</a>, <span class="r3 r">contentItem</span>);
+ 
+                        <b>if</b> (<span class="r13 r">hasPublishPermission</span> || <span class="r14 r">hasDeletePermission</span> || <span class="r15 r">hasPreviewPermission</span> || <span class="r16 r">hasClonePermission</span>)
+                        {
+                            <b>return</b> <b>true</b>;
+                        }
+ 
+                        <b>return</b> <b>false</b>;
+                    })
+                );
+            }
+ 
+            <span class="r6 r">results</span>.<span class="i">Add</span>(<span class="i">Shape</span>(<span class="s">&quot;ContentsTags_SummaryAdmin&quot;</span>, <b>new</b> <span class="t">ContentItemViewModel</span>(<span class="r3 r">contentItem</span>)).<span class="i">Location</span>(<span class="s">&quot;SummaryAdmin&quot;</span>, <span class="s">&quot;Tags:10&quot;</span>));
+            <span class="r6 r">results</span>.<span class="i">Add</span>(<span class="i">Shape</span>(<span class="s">&quot;ContentsMeta_SummaryAdmin&quot;</span>, <b>new</b> <span class="t">ContentItemViewModel</span>(<span class="r3 r">contentItem</span>)).<span class="i">Location</span>(<span class="s">&quot;SummaryAdmin&quot;</span>, <span class="s">&quot;Meta:20&quot;</span>));
+ 
+            <b>return</b> <span class="i">Combine</span>(<span class="r6 r">results</span>.<span class="i method">ToArray</span>());
+        }
+ 
+        <b>public override</b> <span class="i">IDisplayResult</span> <a id="98611a29ba0e7542" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<span class="i">ContentItem</span> <span id="r17 rd" class="r17 r">contentItem</span>, <span class="i">IUpdateModel</span> <span id="r18 rd" class="r18 r">updater</span>)
+        {
+            <b>var</b> <span id="r19 rd" class="r19 r">context</span> = <a href="#b570a0483a5ee7e1" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>;
+            <b>var</b> <span id="r20 rd" class="r20 r">contentTypeDefinition</span> = <a href="#83f3adf60b256b8a" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r17 r">contentItem</span>.<span class="i">ContentType</span>);
+            <b>var</b> <span id="r21 rd" class="r21 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">IDisplayResult</span>&gt;();
+ 
+            <b>if</b> (<span class="r20 r">contentTypeDefinition</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <span class="r21 r">results</span>.<span class="i">Add</span>(<span class="i">Dynamic</span>(<span class="s">&quot;Content_PublishButton&quot;</span>).<span class="i">Location</span>(<span class="s">&quot;Actions:10&quot;</span>)
+                .<span class="i">RenderWhen</span>(() =&gt; <a href="#e7312fc84c7a0297" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r19 r">context</span>.<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#679e487af6b975d4" class="i field">PublishContent</a>, <span class="r17 r">contentItem</span>)));
+ 
+            <span class="r21 r">results</span>.<span class="i">Add</span>(<span class="i">Dynamic</span>(<span class="s">&quot;Content_SaveDraftButton&quot;</span>).<span class="i">Location</span>(<span class="s">&quot;Actions:20&quot;</span>)
+                .<span class="i">RenderWhen</span>(<b>async</b> () =&gt;
+                {
+                    <b>if</b> (<span class="r20 r">contentTypeDefinition</span>.<span class="i">GetSettings</span>&lt;<span class="i">ContentTypeSettings</span>&gt;().<span class="i">Draftable</span> &amp;&amp;
+                        <b>await</b> <a href="#e7312fc84c7a0297" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r19 r">context</span>.<span class="i property">User</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r17 r">contentItem</span>))
+                    {
+                        <b>return</b> <b>true</b>;
+                    }
+ 
+                    <b>return</b> <b>false</b>;
+                })
+            );
+ 
+            <b>return</b> <span class="i">Combine</span>(<span class="r21 r">results</span>.<span class="i method">ToArray</span>());
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

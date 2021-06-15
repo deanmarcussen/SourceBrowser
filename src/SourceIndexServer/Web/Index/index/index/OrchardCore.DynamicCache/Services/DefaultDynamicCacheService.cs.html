@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultDynamicCacheService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(159);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DynamicCache/Services/DefaultDynamicCacheService.cs" target="_top">Services\DefaultDynamicCacheService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DynamicCache" target="_top">src\OrchardCore.Modules\OrchardCore.DynamicCache\OrchardCore.DynamicCache.csproj</a> (OrchardCore.DynamicCache)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Buffers</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Abstractions</span>.<span class="i">Pooling</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DynamicCache</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Cache</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DynamicCache</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="586c4d4fc07ed18a" href="../R/586c4d4fc07ed18a.html" target="n" data-glyph="0,0" class="t t">DefaultDynamicCacheService</a> : <a href="/OrchardCore.DynamicCache.Abstractions/A.html#f82176f9ff404030" class="t t">IDynamicCacheService</a>
+    {
+        <b>private readonly</b> <span class="i">PoolingJsonSerializer</span> <a id="23ddc3fc310b3a7a" href="../R/23ddc3fc310b3a7a.html" target="n" data-glyph="46,1" class="i field">_serializer</a>;
+        <b>private readonly</b> <span class="i">ICacheContextManager</span> <a id="789a006bdadbab7e" href="../R/789a006bdadbab7e.html" target="n" data-glyph="46,1" class="i field">_cacheContextManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DynamicCache.Abstractions/A.html#5d3dd545352890f8" class="t t">IDynamicCache</a> <a id="83390dd5bfa408a2" href="../R/83390dd5bfa408a2.html" target="n" data-glyph="46,1" class="i field">_dynamicCache</a>;
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="f4827e223e479490" href="../R/f4827e223e479490.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <span class="i">CacheOptions</span> <a id="7c31c5c14d732374" href="../R/7c31c5c14d732374.html" target="n" data-glyph="46,1" class="i field">_cacheOptions</a>;
+ 
+        <b>private readonly</b> <span class="t t">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="b2881955b5a7c169" href="../R/b2881955b5a7c169.html" target="n" data-glyph="46,1" class="i field">_localCache</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+        <b>private</b> <span class="i">ITagCache</span> <a id="b0b5358fe6c375ec" href="../R/b0b5358fe6c375ec.html" target="n" data-glyph="46,1" class="i field">_tagcache</a>;
+ 
+        <b>public</b> <a id="56b1de7170ef16a5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">DefaultDynamicCacheService</a>(
+            <a href="@1@System.Runtime/A.html#87992df74cbf00ad" class="t t">ArrayPool</a>&lt;<b>char</b>&gt; <span id="r0 rd" class="r0 r">_arrayPool</span>,
+            <span class="i">ICacheContextManager</span> <span id="r1 rd" class="r1 r">cacheContextManager</span>,
+            <a href="/OrchardCore.DynamicCache.Abstractions/A.html#5d3dd545352890f8" class="t t">IDynamicCache</a> <span id="r2 rd" class="r2 r">dynamicCache</span>,
+            <span class="t t">IServiceProvider</span> <span id="r3 rd" class="r3 r">serviceProvider</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">CacheOptions</span>&gt; <span id="r4 rd" class="r4 r">options</span>)
+        {
+            <a href="#23ddc3fc310b3a7a" class="i field">_serializer</a> = <b>new</b> <span class="i">PoolingJsonSerializer</span>(<span class="r0 r">_arrayPool</span>);
+            <a href="#789a006bdadbab7e" class="i field">_cacheContextManager</a> = <span class="r1 r">cacheContextManager</span>;
+            <a href="#83390dd5bfa408a2" class="i field">_dynamicCache</a> = <span class="r2 r">dynamicCache</span>;
+            <a href="#f4827e223e479490" class="i field">_serviceProvider</a> = <span class="r3 r">serviceProvider</span>;
+            <a href="#7c31c5c14d732374" class="i field">_cacheOptions</a> = <span class="r4 r">options</span>.<span class="i property">Value</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="66f72bff65ef67d1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetCachedValueAsync</a>(<span class="i">CacheContext</span> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <b>if</b> (!<a href="#7c31c5c14d732374" class="i field">_cacheOptions</a>.<span class="i">Enabled</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">cacheKey</span> = <b>await</b> <a href="#b7b684c404e7e9f9" class="i method">GetCacheKey</a>(<span class="r5 r">context</span>);
+ 
+            <span class="r5 r">context</span> = <b>await</b> <a href="#c7e235c2829c75ea" class="i method">GetCachedContextAsync</a>(<span class="r6 r">cacheKey</span>);
+            <b>if</b> (<span class="r5 r">context</span> == <b>null</b>)
+            {
+                <span class="c">// We don&#39;t know the context, so we must treat this as a cache miss</span>
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r7 rd" class="r7 r">content</span> = <b>await</b> <a href="#2ba3a2b4509bbc0e" class="i method">GetCachedStringAsync</a>(<span class="r6 r">cacheKey</span>);
+ 
+            <b>return</b> <span class="r7 r">content</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f05c8ed5e2f6e3aa" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetCachedValueAsync</a>(<span class="i">CacheContext</span> <span id="r8 rd" class="r8 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">value</span>)
+        {
+            <b>if</b> (!<a href="#7c31c5c14d732374" class="i field">_cacheOptions</a>.<span class="i">Enabled</span>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r10 rd" class="r10 r">cacheKey</span> = <b>await</b> <a href="#b7b684c404e7e9f9" class="i method">GetCacheKey</a>(<span class="r8 r">context</span>);
+ 
+            <a href="#b2881955b5a7c169" class="i field">_localCache</a>[<span class="r10 r">cacheKey</span>] = <span class="r9 r">value</span>;
+            <b>var</b> <span id="r11 rd" class="r11 r">esi</span> = <a href="#23ddc3fc310b3a7a" class="i field">_serializer</a>.<span class="i">Serialize</span>(<a href="../Models/CacheContextModel.cs.html#9a273b5b782d6e0c" class="t t">CacheContextModel</a>.<a href="../Models/CacheContextModel.cs.html#c998423c1473e00d" class="i method">FromCacheContext</a>(<span class="r8 r">context</span>));
+ 
+            <b>await</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#929d1a3d98d89901" class="i method">WhenAll</a>(
+                <a href="#9ed231a08a60fd1f" class="i method">SetCachedValueAsync</a>(<span class="r10 r">cacheKey</span>, <span class="r9 r">value</span>, <span class="r8 r">context</span>),
+                <span class="i">SetCachedValueAsync</span>(<a href="#2bc72823131e02a4" class="i method">GetCacheContextCacheKey</a>(<span class="r10 r">cacheKey</span>), <span class="r11 r">esi</span>, <span class="r8 r">context</span>)
+            );
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="887f35279b382533" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">TagRemovedAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">tag</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r13 rd" class="r13 r">keys</span>)
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#69351c6da968e5d1" class="i method">WhenAll</a>(<span class="r13 r">keys</span>.<span class="i method">Select</span>(<span id="r14 rd" class="r14 r">key</span> =&gt; <a href="#83390dd5bfa408a2" class="i field">_dynamicCache</a>.<a href="/OrchardCore.DynamicCache.Abstractions/A.html#48c131ed3366a0c8" class="i method">RemoveAsync</a>(<span class="r14 r">key</span>)));
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9ed231a08a60fd1f" href="../R/9ed231a08a60fd1f.html" target="n" data-glyph="76,1" class="i method">SetCachedValueAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">cacheKey</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">value</span>, <span class="i">CacheContext</span> <span id="r17 rd" class="r17 r">context</span>)
+        {
+            <b>var</b> <span id="r18 rd" class="r18 r">bytes</span> = <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<a href="@1@System.Runtime/A.html#83f2d2c6f22db1a9" class="i method">GetBytes</a>(<span class="r16 r">value</span>);
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">options</span> = <b>new</b> <span class="t constructor">DistributedCacheEntryOptions</span>
+            {
+                <span class="i property">AbsoluteExpiration</span> = <span class="r17 r">context</span>.<span class="i">ExpiresOn</span>,
+                <span class="i property">SlidingExpiration</span> = <span class="r17 r">context</span>.<span class="i">ExpiresSliding</span>,
+                <span class="i property">AbsoluteExpirationRelativeToNow</span> = <span class="r17 r">context</span>.<span class="i">ExpiresAfter</span>
+            };
+ 
+            <span class="c">// Default duration is sliding expiration (permanent as long as it&#39;s used)</span>
+            <b>if</b> (!<span class="r19 r">options</span>.<span class="i property">AbsoluteExpiration</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> &amp;&amp; !<span class="r19 r">options</span>.<span class="i property">SlidingExpiration</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> &amp;&amp; !<span class="r19 r">options</span>.<span class="i property">AbsoluteExpirationRelativeToNow</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a>)
+            {
+                <span class="r19 r">options</span>.<span class="i property">SlidingExpiration</span> = <b>new</b> <a href="@1@System.Runtime/A.html#22fd9aa3d49cf498" class="t constructor">TimeSpan</a>(0, 1, 0);
+            }
+ 
+            <b>await</b> <a href="#83390dd5bfa408a2" class="i field">_dynamicCache</a>.<a href="/OrchardCore.DynamicCache.Abstractions/A.html#c152cb715d1ef946" class="i method">SetAsync</a>(<span class="r15 r">cacheKey</span>, <span class="r18 r">bytes</span>, <span class="r19 r">options</span>);
+ 
+            <span class="c">// Lazy load to prevent cyclic dependency</span>
+            <a href="#b0b5358fe6c375ec" class="i field">_tagcache</a> ??= <a href="#f4827e223e479490" class="i field">_serviceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<span class="i">ITagCache</span>&gt;();
+            <b>await</b> <a href="#b0b5358fe6c375ec" class="i field">_tagcache</a>.<span class="i">TagAsync</span>(<span class="r15 r">cacheKey</span>, <span class="r17 r">context</span>.<span class="i">Tags</span>.<span class="i">ToArray</span>());
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="b7b684c404e7e9f9" href="../R/b7b684c404e7e9f9.html" target="n" data-glyph="76,1" class="i method">GetCacheKey</a>(<span class="i">CacheContext</span> <span id="r20 rd" class="r20 r">context</span>)
+        {
+            <b>var</b> <span id="r21 rd" class="r21 r">cacheEntries</span> = <span class="r20 r">context</span>.<span class="i">Contexts</span>.<span class="i">Count</span> &gt; 0
+                ? <b>await</b> <a href="#789a006bdadbab7e" class="i field">_cacheContextManager</a>.<span class="i">GetDiscriminatorsAsync</span>(<span class="r20 r">context</span>.<span class="i">Contexts</span>)
+                : <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<span class="i">CacheContextEntry</span>&gt;();
+ 
+            <b>if</b> (!<span class="r21 r">cacheEntries</span>.<span class="i">Any</span>())
+            {
+                <b>return</b> <span class="r20 r">context</span>.<span class="i">CacheId</span>;
+            }
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">key</span> = <span class="r20 r">context</span>.<span class="i">CacheId</span> + <span class="s">&quot;/&quot;</span> + <span class="r21 r">cacheEntries</span>.<span class="i">GetContextHash</span>();
+            <b>return</b> <span class="r22 r">key</span>;
+        }
+ 
+        <b>private static string</b> <a id="2bc72823131e02a4" href="../R/2bc72823131e02a4.html" target="n" data-glyph="76,1" class="i method">GetCacheContextCacheKey</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r23 rd" class="r23 r">cacheKey</span>)
+        {
+            <b>return</b> <span class="s">&quot;cachecontext-&quot;</span> + <span class="r23 r">cacheKey</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="2ba3a2b4509bbc0e" href="../R/2ba3a2b4509bbc0e.html" target="n" data-glyph="76,1" class="i method">GetCachedStringAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r24 rd" class="r24 r">cacheKey</span>)
+        {
+            <b>if</b> (<a href="#b2881955b5a7c169" class="i field">_localCache</a>.<span class="i method">TryGetValue</span>(<span class="r24 r">cacheKey</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r25 rd" class="r25 r">content</span>))
+            {
+                <b>return</b> <span class="r25 r">content</span>;
+            }
+ 
+            <b>var</b> <span id="r26 rd" class="r26 r">bytes</span> = <b>await</b> <a href="#83390dd5bfa408a2" class="i field">_dynamicCache</a>.<a href="/OrchardCore.DynamicCache.Abstractions/A.html#5345b95b4942f3ec" class="i method">GetAsync</a>(<span class="r24 r">cacheKey</span>);
+            <b>if</b> (<span class="r26 r">bytes</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<a href="@1@System.Runtime/A.html#7310c9cccfaecd17" class="i method">GetString</a>(<span class="r26 r">bytes</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">CacheContext</span>&gt; <a id="c7e235c2829c75ea" href="../R/c7e235c2829c75ea.html" target="n" data-glyph="76,1" class="i method">GetCachedContextAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">cacheKey</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r28 rd" class="r28 r">cachedValue</span> = <b>await</b> <a href="#2ba3a2b4509bbc0e" class="i method">GetCachedStringAsync</a>(<a href="#2bc72823131e02a4" class="i method">GetCacheContextCacheKey</a>(<span class="r27 r">cacheKey</span>));
+ 
+            <b>if</b> (<span class="r28 r">cachedValue</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r29 rd" class="r29 r">esiModel</span> = <a href="#23ddc3fc310b3a7a" class="i field">_serializer</a>.<span class="i">Deserialize</span>&lt;<a href="../Models/CacheContextModel.cs.html#9a273b5b782d6e0c" class="t t">CacheContextModel</a>&gt;(<span class="r28 r">cachedValue</span>);
+            <b>return</b> <span class="r29 r">esiModel</span>.<span class="i">ToCacheContext</span>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

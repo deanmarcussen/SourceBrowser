@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html><head><title>RangeQueryProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(96);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene.Core/QueryProviders/RangeQueryProvider.cs" target="_top">QueryProviders\RangeQueryProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene.Core" target="_top">src\OrchardCore\OrchardCore.Lucene.Core\OrchardCore.Lucene.Core.csproj</a> (OrchardCore.Lucene.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">QueryProviders</span>
+{
+    <b>public class</b> <a id="56c300bf904dc08a" href="../R/56c300bf904dc08a.html" target="n" data-glyph="0,0" class="t t"><span id="44b6fba5edf14f3c">RangeQueryProvider</span></a> : <a href="/OrchardCore.Lucene.Abstractions/A.html#fe150d221b555d91" class="t t">ILuceneQueryProvider</a>
+    {
+        <b>public</b> <span class="i">Query</span> <a id="21e98f935b9c5cdb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreateQuery</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a> <span id="r0 rd" class="r0 r">builder</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r1 rd" class="r1 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">type</span>, <span class="i">JObject</span> <span id="r3 rd" class="r3 r">query</span>)
+        {
+            <b>if</b> (<span class="r2 r">type</span> != <span class="s">&quot;range&quot;</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">range</span> = <span class="r3 r">query</span>.<span class="i">Properties</span>().<span class="i">First</span>();
+            <span class="i">Query</span> <span id="r5 rd" class="r5 r">rangeQuery</span>;
+ 
+            <b>switch</b> (<span class="r4 r">range</span>.<span class="i">Value</span>.<span class="i">Type</span>)
+            {
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Object</span>:
+                    <b>var</b> <span id="r6 rd" class="r6 r">field</span> = <span class="r4 r">range</span>.<span class="i">Name</span>;
+ 
+                    <span class="i">JToken</span> <span id="r7 rd" class="r7 r">gt</span> = <b>null</b>;
+                    <span class="i">JToken</span> <span id="r8 rd" class="r8 r">lt</span> = <b>null</b>;
+                    <b>var</b> <span id="r9 rd" class="r9 r">tokenType</span> = <span class="i">JTokenType</span>.<span class="i">None</span>;
+                    <b>float</b>? <span id="r10 rd" class="r10 r">boost</span> = <b>null</b>;
+ 
+                    <b>bool</b> <span id="r11 rd" class="r11 r">includeLower</span> = <b>false</b>, <span id="r12 rd" class="r12 r">includeUpper</span> = <b>false</b>;
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r13 rd" class="r13 r">element</span> <b>in</b> ((<span class="i">JObject</span>)<span class="r4 r">range</span>.<span class="i">Value</span>).<span class="i">Properties</span>())
+                    {
+                        <b>switch</b> (<span class="r13 r">element</span>.<span class="i">Name</span>.<span class="i">ToLowerInvariant</span>())
+                        {
+                            <b>case</b> <span class="s">&quot;gt&quot;</span>:
+                                <span class="r7 r">gt</span> = <span class="r13 r">element</span>.<span class="i">Value</span>;
+                                <span class="r9 r">tokenType</span> = <span class="r7 r">gt</span>.<span class="i">Type</span>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;gte&quot;</span>:
+                                <span class="r7 r">gt</span> = <span class="r13 r">element</span>.<span class="i">Value</span>;
+                                <span class="r9 r">tokenType</span> = <span class="r7 r">gt</span>.<span class="i">Type</span>;
+                                <span class="r11 r">includeLower</span> = <b>true</b>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;lt&quot;</span>:
+                                <span class="r8 r">lt</span> = <span class="r13 r">element</span>.<span class="i">Value</span>;
+                                <span class="r9 r">tokenType</span> = <span class="r8 r">lt</span>.<span class="i">Type</span>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;lte&quot;</span>:
+                                <span class="r8 r">lt</span> = <span class="r13 r">element</span>.<span class="i">Value</span>;
+                                <span class="r9 r">tokenType</span> = <span class="r8 r">lt</span>.<span class="i">Type</span>;
+                                <span class="r12 r">includeUpper</span> = <b>true</b>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;boost&quot;</span>:
+                                <span class="r10 r">boost</span> = <span class="r13 r">element</span>.<span class="i">Value</span>.<span class="i">Value</span>&lt;<b>float</b>&gt;();
+                                <b>break</b>;
+                        }
+                    }
+ 
+                    <b>if</b> (<span class="r7 r">gt</span> != <b>null</b> &amp;&amp; <span class="r8 r">lt</span> != <b>null</b> &amp;&amp; <span class="r7 r">gt</span>.<span class="i">Type</span> != <span class="r8 r">lt</span>.<span class="i">Type</span>)
+                    {
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Lower and upper bound range types don&#39;t match&quot;</span>);
+                    }
+ 
+                    <b>switch</b> (<span class="r9 r">tokenType</span>)
+                    {
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">Integer</span>:
+                            <b>var</b> <span id="r14 rd" class="r14 r">minInt</span> = <span class="r7 r">gt</span>?.<span class="i">Value</span>&lt;<b>long</b>&gt;();
+                            <b>var</b> <span id="r15 rd" class="r15 r">maxInt</span> = <span class="r8 r">lt</span>?.<span class="i">Value</span>&lt;<b>long</b>&gt;();
+                            <span class="r5 r">rangeQuery</span> = <span class="i">NumericRangeQuery</span>.<span class="i">NewInt64Range</span>(<span class="r6 r">field</span>, <span class="r14 r">minInt</span>, <span class="r15 r">maxInt</span>, <span class="r11 r">includeLower</span>, <span class="r12 r">includeUpper</span>);
+                            <b>break</b>;
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">Float</span>:
+                            <b>var</b> <span id="r16 rd" class="r16 r">minFloat</span> = <span class="r7 r">gt</span>?.<span class="i">Value</span>&lt;<b>double</b>&gt;();
+                            <b>var</b> <span id="r17 rd" class="r17 r">maxFloat</span> = <span class="r8 r">lt</span>?.<span class="i">Value</span>&lt;<b>double</b>&gt;();
+                            <span class="r5 r">rangeQuery</span> = <span class="i">NumericRangeQuery</span>.<span class="i">NewDoubleRange</span>(<span class="r6 r">field</span>, <span class="r16 r">minFloat</span>, <span class="r17 r">maxFloat</span>, <span class="r11 r">includeLower</span>, <span class="r12 r">includeUpper</span>);
+                            <b>break</b>;
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">String</span>:
+                            <b>var</b> <span id="r18 rd" class="r18 r">minString</span> = <span class="r7 r">gt</span>?.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                            <b>var</b> <span id="r19 rd" class="r19 r">maxString</span> = <span class="r8 r">lt</span>?.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                            <span class="r5 r">rangeQuery</span> = <span class="i">TermRangeQuery</span>.<span class="i">NewStringRange</span>(<span class="r6 r">field</span>, <span class="r18 r">minString</span>, <span class="r19 r">maxString</span>, <span class="r11 r">includeLower</span>, <span class="r12 r">includeUpper</span>);
+                            <b>break</b>;
+                        <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">$&quot;</span><span class="s">Unsupported range value type: </span>{<span class="r2 r">type</span>}<span class="s">&quot;</span>);
+                    }
+ 
+                    <b>if</b> (<span class="r10 r">boost</span> != <b>null</b>)
+                    {
+                        <span class="r5 r">rangeQuery</span>.<span class="i">Boost</span> = <span class="r10 r">boost</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>;
+                    }
+ 
+                    <b>return</b> <span class="r5 r">rangeQuery</span>;
+                <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Invalid range query&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

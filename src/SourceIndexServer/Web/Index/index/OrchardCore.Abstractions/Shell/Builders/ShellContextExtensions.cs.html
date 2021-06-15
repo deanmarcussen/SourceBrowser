@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellContextExtensions.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(41);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Shell/Builders/ShellContextExtensions.cs" target="_top">Shell\Builders\ShellContextExtensions.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Locking</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Locking</span>.<span class="i n">Distributed</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>
+{
+    <b>public static class</b> <a id="3efef11bb7bb84dc" href="../../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t">ShellContextExtensions</a>
+    {
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Tries to acquire a lock for shell activation, a local lock if it is initializing, otherwise a distributed lock.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>public static</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<a href="../../Locking/ILocker.cs.html#4bdf65719aba2e7d" class="t t">ILocker</a> <a id="237a1b1ef3342dc8" href="../../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">locker</a>, <b>bool</b> <a id="54726aa72a43b929" href="../../R/../../0000000000.html" target="n" data-glyph="42,1" class="i field">locked</a>)&gt; <a id="09a7cbb6ccf20e5a" href="../../R/09a7cbb6ccf20e5a.html" target="n" data-glyph="220,1" class="i method">TryAcquireShellActivateLockAsync</a>(<b>this</b> <a href="ShellContext.cs.html#0220d010e7ac04ce" class="t t">ShellContext</a> <span id="r0 rd" class="r0 r">shellContext</span>)
+        {
+            <span class="c">// If the shell is initializing, force the usage of a local lock.</span>
+            <a href="../../Locking/ILock.cs.html#e59cfaf69521b51f" class="k">var</a> <span id="r1 rd" class="r1 r">lockService</span> = <span class="r0 r">shellContext</span>.<a href="ShellContext.cs.html#9460b7caf2e38f54" class="i property">Settings</a>.<a href="../ShellSettings.cs.html#42a6610d7f01c165" class="i property">State</a> == <a href="../Models/TenantState.cs.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="../Models/TenantState.cs.html#46968226c94abdb9" class="i field">Initializing</a>
+                ? (<a href="../../Locking/ILock.cs.html#e59cfaf69521b51f" class="t t">ILock</a>)<span class="r0 r">shellContext</span>.<a href="ShellContext.cs.html#14806dab63c4713f" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="../../Locking/ILocalLock.cs.html#cfc5479cb3cf9fa9" class="t t">ILocalLock</a>&gt;()
+                : <span class="r0 r">shellContext</span>.<a href="ShellContext.cs.html#14806dab63c4713f" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="../../Locking/Distributed/IDistributedLock.cs.html#1b7f22cb91eb12e6" class="t t">IDistributedLock</a>&gt;();
+ 
+            <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a> <span id="r2 rd" class="r2 r">timeout</span>, <span id="r3 rd" class="r3 r">expiration</span>;
+            <b>if</b> (<span class="r1 r">lockService</span> <b>is</b> <a href="../../Locking/ILocalLock.cs.html#cfc5479cb3cf9fa9" class="t t">ILocalLock</a>)
+            {
+                <span class="c">// If it is a local lock, don&#39;t use any timeout and expiration.</span>
+                <span class="r2 r">timeout</span> = <span class="r3 r">expiration</span> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#49db92dcef47a7a4" class="i field">MaxValue</a>;
+            }
+            <b>else</b>
+            {
+                <span class="c">// If it is a distributed lock, use the configured timeout and expiration.</span>
+                <b>var</b> <span id="r4 rd" class="r4 r">options</span> = <span class="r0 r">shellContext</span>.<a href="ShellContext.cs.html#14806dab63c4713f" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IOptions</span>&lt;<a href="ShellContextOptions.cs.html#d82680da8d55e9d5" class="t t">ShellContextOptions</a>&gt;&gt;();
+                <span class="r2 r">timeout</span> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(<span class="r4 r">options</span>.<span class="i property">Value</span>.<a href="ShellContextOptions.cs.html#b5baca09791fda8c" class="i property">ShellActivateLockTimeout</a>);
+                <span class="r3 r">expiration</span> = <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(<span class="r4 r">options</span>.<span class="i property">Value</span>.<a href="ShellContextOptions.cs.html#e6b77da82f67cf09" class="i property">ShellActivateLockExpiration</a>);
+            }
+ 
+            <b>return</b> <span class="r1 r">lockService</span>.<a href="../../Locking/ILock.cs.html#2609405354194551" class="i method">TryAcquireLockAsync</a>(<span class="s">&quot;SHELL_ACTIVATE_LOCK&quot;</span>, <span class="r2 r">timeout</span>, <span class="r3 r">expiration</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

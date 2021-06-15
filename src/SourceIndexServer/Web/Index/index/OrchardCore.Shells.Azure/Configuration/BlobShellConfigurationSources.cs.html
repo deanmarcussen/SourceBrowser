@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html><head><title>BlobShellConfigurationSources.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(126);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Shells.Azure/Configuration/BlobShellConfigurationSources.cs" target="_top">Configuration\BlobShellConfigurationSources.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Shells.Azure" target="_top">src\OrchardCore\OrchardCore.Shells.Azure\OrchardCore.Shells.Azure.csproj</a> (OrchardCore.Shells.Azure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shells</span>.<span class="i n">Azure</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Shells</span>.<span class="i n">Azure</span>.<span class="i n">Configuration</span>
+{
+    <b>public class</b> <a id="8b2d574be7cf6e6b" href="../R/8b2d574be7cf6e6b.html" target="n" data-glyph="0,0" class="t t">BlobShellConfigurationSources</a> : <a href="/OrchardCore.Abstractions/A.html#36b104ea9b06e52f" class="t t">IShellConfigurationSources</a>
+    {
+        <b>private readonly</b> <a href="../Services/IShellsFileStore.cs.html#856bfe44e7ef5b7b" class="t t">IShellsFileStore</a> <a id="06e15ddb46ac4f62" href="../R/06e15ddb46ac4f62.html" target="n" data-glyph="46,1" class="i field">_shellsFileStore</a>;
+        <b>private readonly</b> <a href="BlobShellStorageOptions.cs.html#1cc8b2cf6313b5b3" class="t t">BlobShellStorageOptions</a> <a id="7dbd43a9e02a0d08" href="../R/7dbd43a9e02a0d08.html" target="n" data-glyph="46,1" class="i field">_blobOptions</a>;
+        <b>private readonly string</b> <a id="bd35457925e30cf7" href="../R/bd35457925e30cf7.html" target="n" data-glyph="46,1" class="i field">_container</a>;
+        <b>private readonly string</b> <a id="407de2b0cb872a42" href="../R/407de2b0cb872a42.html" target="n" data-glyph="46,1" class="i field">_fileStoreContainer</a>;
+ 
+        <b>public</b> <a id="e73eaca0b0bb706d" href="../R/e73eaca0b0bb706d.html" target="n" data-glyph="72,1" class="t constructor">BlobShellConfigurationSources</a>(
+            <a href="../Services/IShellsFileStore.cs.html#856bfe44e7ef5b7b" class="t t">IShellsFileStore</a> <span id="r0 rd" class="r0 r">shellsFileStore</span>,
+            <a href="BlobShellStorageOptions.cs.html#1cc8b2cf6313b5b3" class="t t">BlobShellStorageOptions</a> <span id="r1 rd" class="r1 r">blobOptions</span>,
+            <span class="t t">IOptions</span>&lt;<a href="/OrchardCore.Abstractions/A.html#ebc95ddc7c81801d" class="t t">ShellOptions</a>&gt; <span id="r2 rd" class="r2 r">shellOptions</span>)
+        {
+            <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a> = <span class="r0 r">shellsFileStore</span>;
+            <a href="#7dbd43a9e02a0d08" class="i field">_blobOptions</a> = <span class="r1 r">blobOptions</span>;
+ 
+            <span class="c">// e.g., Sites.</span>
+            <a href="#bd35457925e30cf7" class="i field">_container</a> = <span class="r2 r">shellOptions</span>.<span class="i property">Value</span>.<a href="/OrchardCore.Abstractions/A.html#eb0db96807f58227" class="i property">ShellsContainerName</a>;
+ 
+            <span class="c">// e.g., App_Data/Sites</span>
+            <a href="#407de2b0cb872a42" class="i field">_fileStoreContainer</a> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#2d7263f86a526264" class="i method">Combine</a>(<span class="r2 r">shellOptions</span>.<span class="i property">Value</span>.<a href="/OrchardCore.Abstractions/A.html#0bcef61aa83475f1" class="i property">ShellsApplicationDataPath</a>, <span class="r2 r">shellOptions</span>.<span class="i property">Value</span>.<a href="/OrchardCore.Abstractions/A.html#eb0db96807f58227" class="i property">ShellsContainerName</a>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="010eb1c8dec3d025" href="../R/010eb1c8dec3d025.html" target="n" data-glyph="72,1" class="i method">AddSourcesAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">tenant</span>, <span class="t t">IConfigurationBuilder</span> <span id="r4 rd" class="r4 r">builder</span>)
+        {
+            <b>var</b> <span id="r5 rd" class="r5 r">appSettings</span> = <span class="i">IFileStoreExtensions</span>.<span class="i">Combine</span>(<b>null</b>, <a href="#bd35457925e30cf7" class="i field">_container</a>, <span class="r3 r">tenant</span>, <span class="s">&quot;appsettings.json&quot;</span>);
+            <b>var</b> <span id="r6 rd" class="r6 r">fileInfo</span> = <b>await</b> <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r5 r">appSettings</span>);
+ 
+            <b>if</b> (<span class="r6 r">fileInfo</span> == <b>null</b> &amp;&amp; <a href="#7dbd43a9e02a0d08" class="i field">_blobOptions</a>.<a href="BlobShellStorageOptions.cs.html#7e868f9132710d3c" class="i property">MigrateFromFiles</a>)
+            {
+                <b>if</b> (<b>await</b> <span class="i">TryMigrateFromFileAsync</span>(<span class="r3 r">tenant</span>, <span class="r5 r">appSettings</span>))
+                {
+                    <span class="r6 r">fileInfo</span> = <b>await</b> <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r5 r">appSettings</span>);
+                }
+            }
+            <b>if</b> (<span class="r6 r">fileInfo</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r7 rd" class="r7 r">stream</span> = <b>await</b> <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a>.<span class="i">GetFileStreamAsync</span>(<span class="r5 r">appSettings</span>);
+                <span class="r4 r">builder</span>.<span class="i">AddJsonStream</span>(<span class="r7 r">stream</span>);
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="7005410c9b1167f9" href="../R/7005410c9b1167f9.html" target="n" data-glyph="72,1" class="i method">SaveAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">tenant</span>, <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r9 rd" class="r9 r">data</span>)
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">appsettings</span> = <span class="i">IFileStoreExtensions</span>.<span class="i">Combine</span>(<b>null</b>, <a href="#bd35457925e30cf7" class="i field">_container</a>, <span class="r8 r">tenant</span>, <span class="s">&quot;appsettings.json&quot;</span>);
+ 
+            <span class="i">JObject</span> <span id="r11 rd" class="r11 r">config</span>;
+            <b>var</b> <span id="r12 rd" class="r12 r">fileInfo</span> = <b>await</b> <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r10 r">appsettings</span>);
+ 
+            <b>if</b> (<span class="r12 r">fileInfo</span> != <b>null</b>)
+            {
+                <b>using</b> (<b>var</b> <span id="r13 rd" class="r13 r">stream</span> = <b>await</b> <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a>.<span class="i">GetFileStreamAsync</span>(<span class="r10 r">appsettings</span>))
+                {
+                    <b>using</b> (<a href="@1@System.Runtime/A.html#b5fe1efcec14de32" class="k">var</a> <span id="r14 rd" class="r14 r">streamReader</span> = <b>new</b> <span class="t">StreamReader</span>(<span class="r13 r">stream</span>))
+                    {
+                        <b>using</b> (<b>var</b> <span id="r15 rd" class="r15 r">reader</span> = <b>new</b> <span class="i">JsonTextReader</span>(<span class="r14 r">streamReader</span>))
+                        {
+                            <span class="r11 r">config</span> = <b>await</b> <span class="i">JObject</span>.<span class="i">LoadAsync</span>(<span class="r15 r">reader</span>);
+                        }
+                    }
+                }
+            }
+            <b>else</b>
+            {
+                <span class="r11 r">config</span> = <b>new</b> <span class="i">JObject</span>();
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r16 rd" class="r16 r">key</span> <b>in</b> <span class="r9 r">data</span>.<a href="@1@System.Runtime/A.html#6141d2484c7e5c1a" class="i property">Keys</a>)
+            {
+                <b>if</b> (<span class="r9 r">data</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r16 r">key</span>] != <b>null</b>)
+                {
+                    <span class="r11 r">config</span>[<span class="r16 r">key</span>] = <span class="r9 r">data</span><a href="@1@System.Runtime/A.html#86884956b17e491a">[</a><span class="r16 r">key</span>];
+                }
+                <b>else</b>
+                {
+                    <span class="r11 r">config</span>.<span class="i">Remove</span>(<span class="r16 r">key</span>);
+                }
+            }
+ 
+            <b>using</b> (<a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r17 rd" class="r17 r">memoryStream</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>())
+            {
+                <b>using</b> (<a href="@1@System.Runtime/A.html#9e38cb1c84769eba" class="k">var</a> <span id="r18 rd" class="r18 r">streamWriter</span> = <b>new</b> <a href="@1@System.Runtime/A.html#c73af21c3340883d" class="t constructor">StreamWriter</a>(<span class="r17 r">memoryStream</span>))
+                {
+                    <b>using</b> (<b>var</b> <span id="r19 rd" class="r19 r">jsonWriter</span> = <b>new</b> <span class="i">JsonTextWriter</span>(<span class="r18 r">streamWriter</span>) { <span class="i">Formatting</span> = <span class="i">Formatting</span>.<span class="i">Indented</span> })
+                    {
+                        <b>await</b> <span class="r11 r">config</span>.<span class="i">WriteToAsync</span>(<span class="r19 r">jsonWriter</span>);
+                        <b>await</b> <span class="r19 r">jsonWriter</span>.<span class="i">FlushAsync</span>();
+                        <span class="r17 r">memoryStream</span>.<a href="@1@System.Runtime/A.html#ad08f8ca81a5a763" class="i property">Position</a> = 0;
+                        <b>await</b> <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a>.<span class="i">CreateFileFromStreamAsync</span>(<span class="r10 r">appsettings</span>, <span class="r17 r">memoryStream</span>);
+                    }
+                }
+            }
+ 
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="787132012cecfe48" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">TryMigrateFromFileAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">tenant</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">destFile</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r22 rd" class="r22 r">tenantFile</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#b24651eb14e8aa68" class="i method">Combine</a>(<a href="#407de2b0cb872a42" class="i field">_fileStoreContainer</a>, <span class="r20 r">tenant</span>, <span class="s">&quot;appsettings.json&quot;</span>);
+            <b>if</b> (!<span class="t t">File</span>.<span class="i method">Exists</span>(<span class="r22 r">tenantFile</span>))
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>using</b> (<a href="@1@System.Runtime/A.html#e23a38af5d11ddd3" class="k">var</a> <span id="r23 rd" class="r23 r">file</span> = <span class="t t">File</span>.<span class="i method">OpenRead</span>(<span class="r22 r">tenantFile</span>))
+            {
+                <b>await</b> <a href="#06e15ddb46ac4f62" class="i field">_shellsFileStore</a>.<a href="../Services/IShellsFileStore.cs.html#50b1604d8d88f681" class="i method">CreateFileFromStreamAsync</a>(<span class="r21 r">destFile</span>, <span class="r23 r">file</span>);
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

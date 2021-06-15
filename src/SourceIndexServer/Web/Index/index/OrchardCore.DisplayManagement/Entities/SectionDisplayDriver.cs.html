@@ -1,0 +1,140 @@
+﻿<!DOCTYPE html>
+<html><head><title>SectionDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(131);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/Entities/SectionDisplayDriver.cs" target="_top">Entities\SectionDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Entities</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Entities</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> A concrete implementation of this class will be able to take part in the rendering of an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Infrastructure.Abstractions/A.html#db4e5c244ecb1f8d" class="t t">IEntity</a><span class="c">&quot;</span><span class="c">/&gt;</span>
+    <span class="c">///</span><span class="c"> shape instance for a specific section of the object. A section represents a property of an entity instance</span>
+    <span class="c">///</span><span class="c"> where the name of the property is the type of the section.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">typeparam</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r0 r t">TModel</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The type of model this driver handles.</span><span class="c">&lt;/</span><span class="c">typeparam</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">typeparam</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r t">TSection</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The type of the section this driver handles.</span><span class="c">&lt;/</span><span class="c">typeparam</span><span class="c">&gt;</span>
+    <b>public abstract class</b> <a id="24bbc1028255b02b" href="../R/24bbc1028255b02b.html" target="n" data-glyph="0,0" class="t t"><span id="9fc8ed6e5f9aa4d3">SectionDisplayDriver</span></a>&lt;<span id="r0 rd t" class="r0 r t">TModel</span>, <span id="r1 rd t" class="r1 r t">TSection</span>&gt; : <a href="../Handlers/DisplayDriver.cs.html#65ff4d3d4e853e70" class="t t">DisplayDriver</a>&lt;<span class="r0 r t">TModel</span>&gt;
+        <b>where</b> <span class="r1 r t">TSection</span> : <b>new</b>()
+        <b>where</b> <span class="r0 r t">TModel</span> : <b>class</b>, <a href="/OrchardCore.Infrastructure.Abstractions/A.html#db4e5c244ecb1f8d" class="t t">IEntity</a>
+    {
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets the property name that the </span><span class="c">&lt;</span><span class="c">typeparamref</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r t">TSection</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> is stored on the </span><span class="c">&lt;</span><span class="c">typeparamref</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r0 r t">TModel</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Overriding this property allows changing the name of the property that the section is stored in from the</span>
+        <span class="c">///</span><span class="c"> default, which is </span><span class="c">&lt;</span><span class="c">c</span><span class="c">&gt;</span><span class="c">typeof(TSection).Name</span><span class="c">&lt;/</span><span class="c">c</span><span class="c">&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <b>protected virtual string</b> <a id="f81ca10f00f98e5a" href="../R/f81ca10f00f98e5a.html" target="n" data-glyph="105,1" class="i property">PropertyName</a> =&gt; <b>typeof</b>(<span class="r1 r t">TSection</span>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>;
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="4ebdb599543aa76a" href="../R/4ebdb599543aa76a.html" target="n" data-glyph="72,1" class="i method">DisplayAsync</a>(<span class="r0 r t">TModel</span> <span id="r2 rd" class="r2 r">model</span>, <a href="../Handlers/BuildDisplayContext.cs.html#c7443c2b211ac7e2" class="t t">BuildDisplayContext</a> <span id="r3 rd" class="r3 r">context</span>)
+        {
+            <span class="r1 r t">var</span> <span id="r4 rd" class="r4 r">section</span> = <a href="#03de46a588e4cea8" class="i method">GetSection</a>(<span class="r2 r">model</span>);
+ 
+            <b>return</b> <a href="#5b4abe2ed123b04c" class="i method">DisplayAsync</a>(<span class="r2 r">model</span>, <span class="r4 r">section</span>, <span class="r3 r">context</span>);
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="d64da9e81ee9225e" href="../R/d64da9e81ee9225e.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<span class="r0 r t">TModel</span> <span id="r5 rd" class="r5 r">model</span>, <a href="../Handlers/BuildEditorContext.cs.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r6 rd" class="r6 r">context</span>)
+        {
+            <span class="r1 r t">var</span> <span id="r7 rd" class="r7 r">section</span> = <a href="#03de46a588e4cea8" class="i method">GetSection</a>(<span class="r5 r">model</span>);
+ 
+            <b>return</b> <a href="#060d07c7b6838a62" class="i method">EditAsync</a>(<span class="r5 r">model</span>, <span class="r7 r">section</span>, <span class="r6 r">context</span>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="d5d8f94b2b8d582f" href="../R/d5d8f94b2b8d582f.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r0 r t">TModel</span> <span id="r8 rd" class="r8 r">model</span>, <a href="../Handlers/UpdateEditorContext.cs.html#688c28d1f0b44917" class="t t">UpdateEditorContext</a> <span id="r9 rd" class="r9 r">context</span>)
+        {
+            <span class="r1 r t">var</span> <span id="r10 rd" class="r10 r">section</span> = <a href="#03de46a588e4cea8" class="i method">GetSection</a>(<span class="r8 r">model</span>);
+ 
+            <a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="k">var</a> <span id="r11 rd" class="r11 r">result</span> = <b>await</b> <a href="#5699299dcec2aba7" class="i method">UpdateAsync</a>(<span class="r8 r">model</span>, <span class="r10 r">section</span>, <span class="r9 r">context</span>.<a href="../Handlers/BuildShapeContext.cs.html#94678db6f260785f" class="i property">Updater</a>, <span class="r9 r">context</span>);
+ 
+            <b>if</b> (<span class="r11 r">result</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (<span class="r9 r">context</span>.<a href="../Handlers/BuildShapeContext.cs.html#94678db6f260785f" class="i property">Updater</a>.<a href="/OrchardCore.DisplayManagement.Abstractions/A.html#011384a83df1a447" class="i property">ModelState</a>.<span class="i property">IsValid</span>)
+            {
+                <span class="r8 r">model</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#316982e24f850afa" class="i property">Properties</a>[<a href="#f81ca10f00f98e5a" class="i property">PropertyName</a>] = <span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r10 r">section</span>);
+            }
+ 
+            <b>return</b> <span class="r11 r">result</span>;
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="5b4abe2ed123b04c" href="../R/5b4abe2ed123b04c.html" target="n" data-glyph="72,1" class="i method">DisplayAsync</a>(<span class="r0 r t">TModel</span> <span id="r12 rd" class="r12 r">model</span>, <span class="r1 r t">TSection</span> <span id="r13 rd" class="r13 r">section</span>, <a href="../Handlers/BuildDisplayContext.cs.html#c7443c2b211ac7e2" class="t t">BuildDisplayContext</a> <span id="r14 rd" class="r14 r">context</span>)
+        {
+            <b>return</b> <a href="#ce33ddd0444ec6e0" class="i method">DisplayAsync</a>(<span class="r13 r">section</span>, <span class="r14 r">context</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="ce33ddd0444ec6e0" href="../R/ce33ddd0444ec6e0.html" target="n" data-glyph="72,1" class="i method">DisplayAsync</a>(<span class="r1 r t">TSection</span> <span id="r15 rd" class="r15 r">section</span>, <a href="../Handlers/BuildDisplayContext.cs.html#c7443c2b211ac7e2" class="t t">BuildDisplayContext</a> <span id="r16 rd" class="r16 r">context</span>)
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<a href="#ac4c292725a9f5ef" class="i method">Display</a>(<span class="r15 r">section</span>, <span class="r16 r">context</span>));
+        }
+ 
+        <b>public virtual</b> <a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="ac4c292725a9f5ef" href="../R/ac4c292725a9f5ef.html" target="n" data-glyph="72,1" class="i method">Display</a>(<span class="r1 r t">TSection</span> <span id="r17 rd" class="r17 r">section</span>, <a href="../Handlers/BuildDisplayContext.cs.html#c7443c2b211ac7e2" class="t t">BuildDisplayContext</a> <span id="r18 rd" class="r18 r">context</span>)
+        {
+            <b>return</b> <a href="#675bfdc74828b981" class="i method">Display</a>(<span class="r17 r">section</span>);
+        }
+ 
+        <b>public virtual</b> <a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="675bfdc74828b981" href="../R/675bfdc74828b981.html" target="n" data-glyph="72,1" class="i method">Display</a>(<span class="r1 r t">TSection</span> <span id="r19 rd" class="r19 r">section</span>)
+        {
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="060d07c7b6838a62" href="../R/060d07c7b6838a62.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<span class="r0 r t">TModel</span> <span id="r20 rd" class="r20 r">model</span>, <span class="r1 r t">TSection</span> <span id="r21 rd" class="r21 r">section</span>, <a href="../Handlers/BuildEditorContext.cs.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r22 rd" class="r22 r">context</span>)
+        {
+            <b>return</b> <a href="#34542178605ffbc3" class="i method">EditAsync</a>(<span class="r21 r">section</span>, <span class="r22 r">context</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="34542178605ffbc3" href="../R/34542178605ffbc3.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<span class="r1 r t">TSection</span> <span id="r23 rd" class="r23 r">section</span>, <a href="../Handlers/BuildEditorContext.cs.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r24 rd" class="r24 r">context</span>)
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<a href="#9dbf9464aceb2f76" class="i method">Edit</a>(<span class="r23 r">section</span>, <span class="r24 r">context</span>));
+        }
+ 
+        <b>public virtual</b> <a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="9dbf9464aceb2f76" href="../R/9dbf9464aceb2f76.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<span class="r1 r t">TSection</span> <span id="r25 rd" class="r25 r">section</span>, <a href="../Handlers/BuildEditorContext.cs.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r26 rd" class="r26 r">context</span>)
+        {
+            <b>return</b> <a href="#d1ad25a65b3dbc8d" class="i method">Edit</a>(<span class="r25 r">section</span>);
+        }
+ 
+        <b>public virtual</b> <a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a> <a id="d1ad25a65b3dbc8d" href="../R/d1ad25a65b3dbc8d.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<span class="r1 r t">TSection</span> <span id="r27 rd" class="r27 r">section</span>)
+        {
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="5699299dcec2aba7" href="../R/5699299dcec2aba7.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r0 r t">TModel</span> <span id="r28 rd" class="r28 r">model</span>, <span class="r1 r t">TSection</span> <span id="r29 rd" class="r29 r">section</span>, <a href="/OrchardCore.DisplayManagement.Abstractions/A.html#5d4fcc1201fd3629" class="t t">IUpdateModel</a> <span id="r30 rd" class="r30 r">updater</span>, <a href="../Handlers/BuildEditorContext.cs.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r31 rd" class="r31 r">context</span>)
+        {
+            <b>return</b> <a href="#899dc1e4a5d3a438" class="i method">UpdateAsync</a>(<span class="r29 r">section</span>, <span class="r30 r">updater</span>, <span class="r31 r">context</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="899dc1e4a5d3a438" href="../R/899dc1e4a5d3a438.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r1 r t">TSection</span> <span id="r32 rd" class="r32 r">section</span>, <a href="/OrchardCore.DisplayManagement.Abstractions/A.html#5d4fcc1201fd3629" class="t t">IUpdateModel</a> <span id="r33 rd" class="r33 r">updater</span>, <a href="../Handlers/BuildEditorContext.cs.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r34 rd" class="r34 r">context</span>)
+        {
+            <b>return</b> <a href="#4c6dfe64bd8569f0" class="i method">UpdateAsync</a>(<span class="r32 r">section</span>, <span class="r34 r">context</span>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="4c6dfe64bd8569f0" href="../R/4c6dfe64bd8569f0.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r1 r t">TSection</span> <span id="r35 rd" class="r35 r">section</span>, <a href="../Handlers/BuildEditorContext.cs.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r36 rd" class="r36 r">context</span>)
+        {
+            <b>return</b> <a href="#d22d879159e6ddfe" class="i method">UpdateAsync</a>(<span class="r35 r">section</span>, <span class="r36 r">context</span>.<a href="../Handlers/BuildShapeContext.cs.html#94678db6f260785f" class="i property">Updater</a>, <span class="r36 r">context</span>.<a href="../Handlers/BuildShapeContext.cs.html#4089a2311ccff5cd" class="i property">GroupId</a>);
+        }
+ 
+        <b>public virtual</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="d22d879159e6ddfe" href="../R/d22d879159e6ddfe.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r1 r t">TSection</span> <span id="r37 rd" class="r37 r">section</span>, <a href="/OrchardCore.DisplayManagement.Abstractions/A.html#5d4fcc1201fd3629" class="t t">IUpdateModel</a> <span id="r38 rd" class="r38 r">updater</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r39 rd" class="r39 r">groupId</span>)
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="../Views/IDisplayResult.cs.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt;(<b>null</b>);
+        }
+ 
+        <b>private</b> <span class="r1 r t">TSection</span> <a id="03de46a588e4cea8" href="../R/03de46a588e4cea8.html" target="n" data-glyph="76,1" class="i method">GetSection</a>(<span class="r0 r t">TModel</span> <span id="r40 rd" class="r40 r">model</span>)
+        {
+            <b>return</b> <span class="r40 r">model</span>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#316982e24f850afa" class="i property">Properties</a>.<span class="i">TryGetValue</span>(<a href="#f81ca10f00f98e5a" class="i property">PropertyName</a>, <b>out</b> <b>var</b> <span id="r41 rd" class="r41 r">property</span>)
+                ? <span class="r41 r">property</span>.<span class="i">ToObject</span>&lt;<span class="r1 r t">TSection</span>&gt;()
+                : <b>new</b> <span class="t">TSection</span>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

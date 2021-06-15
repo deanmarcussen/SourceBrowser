@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html><head><title>LocalizationManager.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(67);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Localization.Core/LocalizationManager.cs" target="_top">LocalizationManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Localization.Core" target="_top">src\OrchardCore\OrchardCore.Localization.Core\OrchardCore.Localization.Core.csproj</a> (OrchardCore.Localization.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Localization</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Represents a manager that manage the localization resources.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="1e24c66d4a3405aa" href="R/1e24c66d4a3405aa.html" target="n" data-glyph="0,0" class="t t">LocalizationManager</a> : <a href="/OrchardCore.Localization.Abstractions/A.html#4e9e1586eb265ec1" class="t t">ILocalizationManager</a>
+    {
+        <b>private const string</b> <a id="773eeda75b59c7d6" href="R/773eeda75b59c7d6.html" target="n" data-glyph="10,1" class="i field">CacheKeyPrefix</a> = <span class="s">&quot;CultureDictionary-&quot;</span>;
+ 
+        <b>private static</b> <a href="/OrchardCore.Localization.Abstractions/A.html#c63b51fefb67d06f" class="t t">PluralizationRuleDelegate</a> <a id="40206004241fde6d" href="R/40206004241fde6d.html" target="n" data-glyph="46,1" class="i field">DefaultPluralRule</a> = <span id="r0 rd" class="r0 r">n</span> =&gt; (<span class="r0 r">n</span> != 1 ? 1 : 0);
+ 
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="/OrchardCore.Localization.Abstractions/A.html#93d0a629ca65489d" class="t t">IPluralRuleProvider</a>&gt; <a id="8c17ee110eeb950f" href="R/8c17ee110eeb950f.html" target="n" data-glyph="46,1" class="i field">_pluralRuleProviders</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Localization.Abstractions/A.html#c951fb592e1aabee" class="t t">ITranslationProvider</a>&gt; <a id="04f6c4ce1b084594" href="R/04f6c4ce1b084594.html" target="n" data-glyph="46,1" class="i field">_translationProviders</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="985c9eca5d76963b" href="R/985c9eca5d76963b.html" target="n" data-glyph="46,1" class="i field">_cache</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a new instance of </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#1e24c66d4a3405aa" class="t t">LocalizationManager</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r">pluralRuleProviders</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">A list of </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Localization.Abstractions/A.html#93d0a629ca65489d" class="t t">IPluralRuleProvider</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">s.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r2 r">translationProviders</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The list of available </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="/OrchardCore.Localization.Abstractions/A.html#c951fb592e1aabee" class="t t">ITranslationProvider</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r3 r">cache</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IMemoryCache</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a id="8472a4b8e2ec821c" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LocalizationManager</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Localization.Abstractions/A.html#93d0a629ca65489d" class="t t">IPluralRuleProvider</a>&gt; <span id="r1 rd" class="r1 r">pluralRuleProviders</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Localization.Abstractions/A.html#c951fb592e1aabee" class="t t">ITranslationProvider</a>&gt; <span id="r2 rd" class="r2 r">translationProviders</span>,
+            <span class="t t">IMemoryCache</span> <span id="r3 rd" class="r3 r">cache</span>)
+        {
+            <a href="#8c17ee110eeb950f" class="i field">_pluralRuleProviders</a> = <span class="r1 r">pluralRuleProviders</span>.<span class="i method">OrderBy</span>(<span id="r4 rd" class="r4 r">o</span> =&gt; <span class="r4 r">o</span>.<a href="/OrchardCore.Localization.Abstractions/A.html#8404868a0aa8d1c5" class="i property">Order</a>).<span class="i method">ToArray</span>();
+            <a href="#04f6c4ce1b084594" class="i field">_translationProviders</a> = <span class="r2 r">translationProviders</span>;
+            <a href="#985c9eca5d76963b" class="i field">_cache</a> = <span class="r3 r">cache</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdoc</span> <span class="c">/&gt;</span>
+        <b>public</b> <a href="/OrchardCore.Localization.Abstractions/A.html#a44ff2428b418638" class="t t">CultureDictionary</a> <a id="95f70f1296a6b309" href="R/95f70f1296a6b309.html" target="n" data-glyph="72,1" class="i method">GetDictionary</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a> <span id="r5 rd" class="r5 r">culture</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8b99c1f377873554" class="k">var</a> <span id="r6 rd" class="r6 r">cachedDictionary</span> = <a href="#985c9eca5d76963b" class="i field">_cache</a>.<span class="i method">GetOrCreate</span>(<a href="#773eeda75b59c7d6" class="i field">CacheKeyPrefix</a> + <span class="r5 r">culture</span>.<a href="@1@System.Runtime/A.html#a99dfd86b8014a4a" class="i property">Name</a>, <span id="r7 rd" class="r7 r">k</span> =&gt; <b>new</b> <a href="@1@System.Runtime/A.html#00bfaf5130ba4f04" class="t constructor">Lazy</a>&lt;<a href="/OrchardCore.Localization.Abstractions/A.html#a44ff2428b418638" class="t t">CultureDictionary</a>&gt;(() =&gt;
+            {
+                <a href="/OrchardCore.Localization.Abstractions/A.html#c63b51fefb67d06f" class="k">var</a> <span id="r8 rd" class="r8 r">rule</span> = <a href="#40206004241fde6d" class="i field">DefaultPluralRule</a>;
+ 
+                <b>foreach</b> (<a href="/OrchardCore.Localization.Abstractions/A.html#93d0a629ca65489d" class="k">var</a> <span id="r9 rd" class="r9 r">provider</span> <b>in</b> <a href="#8c17ee110eeb950f" class="i field">_pluralRuleProviders</a>)
+                {
+                    <b>if</b> (<span class="r9 r">provider</span>.<a href="/OrchardCore.Localization.Abstractions/A.html#0f9676655902d692" class="i method">TryGetRule</a>(<span class="r5 r">culture</span>, <b>out</b> <span class="r8 r">rule</span>))
+                    {
+                        <b>break</b>;
+                    }
+                }
+ 
+                <a href="/OrchardCore.Localization.Abstractions/A.html#a44ff2428b418638" class="k">var</a> <span id="r10 rd" class="r10 r">dictionary</span> = <b>new</b> <a href="/OrchardCore.Localization.Abstractions/A.html#a7baa87e3867efdb" class="t constructor">CultureDictionary</a>(<span class="r5 r">culture</span>.<a href="@1@System.Runtime/A.html#a99dfd86b8014a4a" class="i property">Name</a>, <span class="r8 r">rule</span> ?? <a href="#40206004241fde6d" class="i field">DefaultPluralRule</a>);
+                <b>foreach</b> (<a href="/OrchardCore.Localization.Abstractions/A.html#c951fb592e1aabee" class="k">var</a> <span id="r11 rd" class="r11 r">translationProvider</span> <b>in</b> <a href="#04f6c4ce1b084594" class="i field">_translationProviders</a>)
+                {
+                    <span class="r11 r">translationProvider</span>.<a href="/OrchardCore.Localization.Abstractions/A.html#be4258cc208c0562" class="i method">LoadTranslations</a>(<span class="r5 r">culture</span>.<a href="@1@System.Runtime/A.html#a99dfd86b8014a4a" class="i property">Name</a>, <span class="r10 r">dictionary</span>);
+                }
+ 
+                <b>return</b> <span class="r10 r">dictionary</span>;
+            }, <a href="@1@System.Runtime/A.html#9d99e1ca53509514" class="t t">LazyThreadSafetyMode</a>.<a href="@1@System.Runtime/A.html#a0f06cbca5bbe6e6" class="i field">ExecutionAndPublication</a>));
+ 
+            <b>return</b> <span class="r6 r">cachedDictionary</span>.<a href="@1@System.Runtime/A.html#606a17645b0dc0ff" class="i property">Value</a>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

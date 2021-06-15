@@ -1,0 +1,118 @@
+﻿<!DOCTYPE html>
+<html><head><title>RuleBenchmark.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(109);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Benchmarks/RuleBenchmark.cs" target="_top">RuleBenchmark.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Benchmarks" target="_top">test\OrchardCore.Benchmarks\OrchardCore.Benchmarks.csproj</a> (OrchardCore.Benchmarks)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">BenchmarkDotNet</span>.<span class="i">Attributes</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i">Moq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Layers</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Rules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Rules</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Rules</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Scripting</span>.<span class="i">JavaScript</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Modules</span>.<span class="i n">OrchardCore</span>.<span class="i n">Rules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Benchmark</span>
+{
+    [<span class="i">MemoryDiagnoser</span>]
+    <b>public class</b> <a id="093cb85f8e452108" href="R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="8838d70248b0d6e8">RuleBenchmark</span></a>
+    {
+        <b>private static readonly</b> <span class="i">IScriptingEngine</span> <a id="760c64f20c813390" href="R/760c64f20c813390.html" target="n" data-glyph="46,1" class="i field">_engine</a>;
+        <b>private static readonly</b> <span class="i">IScriptingScope</span> <a id="498672e0e47d1495" href="R/498672e0e47d1495.html" target="n" data-glyph="46,1" class="i field">_scope</a>;
+        <b>private static readonly</b> <span class="i">IRuleService</span> <a id="243d1e398656e19f" href="R/243d1e398656e19f.html" target="n" data-glyph="46,1" class="i field">_ruleService</a>;
+        <b>private static readonly</b> <span class="i">Rule</span> <a id="34c929880de6b3fb" href="R/34c929880de6b3fb.html" target="n" data-glyph="46,1" class="i field">_rule</a>;
+ 
+        <b>static</b> <a id="3998ea5920b516ea" href="R/../../0000000000.html" target="n" data-glyph="76,1" class="t method">RuleBenchmark</a>()
+        {
+            <b>var</b> <span id="r0 rd" class="r0 r">services</span> = <a href="/OrchardCore.Tests/A.html#d4684e3d180092bf" class="t t">RuleTests</a>.<a href="/OrchardCore.Tests/A.html#a99dec27ca183b50" class="i method">CreateRuleServiceCollection</a>()                
+                .<span class="i">AddCondition</span>&lt;<span class="i">HomepageCondition</span>, <span class="i">HomepageConditionEvaluator</span>, <span class="i">ConditionFactory</span>&lt;<span class="i">HomepageCondition</span>&gt;&gt;()
+                .<span class="i">AddSingleton</span>&lt;<span class="i">IGlobalMethodProvider</span>, <span class="i">DefaultLayersMethodProvider</span>&gt;()
+                .<span class="i method">AddMemoryCache</span>()
+                .<span class="i">AddScripting</span>()
+                .<span class="i">AddJavaScriptEngine</span>();
+ 
+            <b>var</b> <span id="r1 rd" class="r1 r">mockHttpContextAccessor</span> = <b>new</b> <span class="i">Mock</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;();
+            <b>var</b> <span id="r2 rd" class="r2 r">context</span> = <b>new</b> <span class="t constructor">DefaultHttpContext</span>();
+            <span class="r2 r">context</span>.<span class="i property">Request</span>.<span class="i property">Path</span> = <b>new</b> <span class="t constructor">PathString</span>(<span class="s">&quot;/&quot;</span>);
+            <span class="r1 r">mockHttpContextAccessor</span>.<span class="i">Setup</span>(<span id="r3 rd" class="r3 r">_</span> =&gt; <span class="r3 r">_</span>.<span class="i">HttpContext</span>).<span class="i">Returns</span>(<span class="r2 r">context</span>);
+ 
+            <span class="r0 r">services</span>.<span class="i">AddSingleton</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;(<span class="r1 r">mockHttpContextAccessor</span>.<span class="i">Object</span>);
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">serviceProvider</span> = <span class="r0 r">services</span>.<span class="i">BuildServiceProvider</span>();
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">scriptingManager</span> = <span class="r4 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IScriptingManager</span>&gt;();
+ 
+            <a href="#760c64f20c813390" class="i field">_engine</a> = <span class="r5 r">scriptingManager</span>.<span class="i">GetScriptingEngine</span>(<span class="s">&quot;js&quot;</span>);
+            <a href="#498672e0e47d1495" class="i field">_scope</a> = <a href="#760c64f20c813390" class="i field">_engine</a>.<span class="i">CreateScope</span>(<span class="r5 r">scriptingManager</span>.<span class="i">GlobalMethodProviders</span>.<span class="i">SelectMany</span>(<span id="r6 rd" class="r6 r">x</span> =&gt; <span class="r6 r">x</span>.<span class="i">GetMethods</span>()), <span class="r4 r">serviceProvider</span>, <b>null</b>, <b>null</b>);
+ 
+            <a href="#243d1e398656e19f" class="i field">_ruleService</a> = <span class="r4 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IRuleService</span>&gt;();
+            <a href="#34c929880de6b3fb" class="i field">_rule</a> = <b>new</b> <span class="i">Rule</span>
+            {
+                <span class="i">Conditions</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">Condition</span>&gt;
+                {
+                    <b>new</b> <span class="i">HomepageCondition</span> 
+                    { 
+                        <span class="i">Value</span> = <b>true</b> 
+                    }
+                }
+            };
+        }
+ 
+        <span class="c">// Summary 19th May 2021: dotnet run -c Release --filter *RuleBenchmark* --framework netcoreapp3.1 --job short</span>
+ 
+        <span class="c">//BenchmarkDotNet=v0.13.0, OS=Windows 10.0.19043.985 (21H1/May2021Update)</span>
+        <span class="c">//Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores</span>
+        <span class="c">//.NET SDK= 6.0.100-preview.3.21202.5</span>
+        <span class="c">//  [Host]   : .NET Core 3.1.15 (CoreCLR 4.700.21.21202, CoreFX 4.700.21.21402), X64 RyuJIT</span>
+        <span class="c">//  ShortRun : .NET Core 3.1.15 (CoreCLR 4.700.21.21202, CoreFX 4.700.21.21402), X64 RyuJIT</span>
+ 
+        <span class="c">//Job=ShortRun IterationCount = 3  LaunchCount=1</span>
+        <span class="c">//WarmupCount=3</span>
+ 
+        <span class="c">//|                           Method |     Mean |    Error |    StdDev | Ratio | RatioSD |  Gen 0 |  Gen 1 | Gen 2 | Allocated |</span>
+        <span class="c">//|--------------------------------- |---------:|---------:|----------:|------:|--------:|-------:|-------:|------:|----------:|</span>
+        <span class="c">//| EvaluateIsHomepageWithJavascript | 5.393 us | 3.540 us | 0.1940 us |  1.00 |    0.00 | 0.1373 | 0.0381 |     - |   1,168 B |</span>
+        <span class="c">//|       EvaluateIsHomepageWithRule | 1.133 us | 4.381 us | 0.2401 us |  0.21 |    0.04 | 0.0267 | 0.0134 |     - |     224 B |</span>
+ 
+ 
+        <span class="c">// Summary 19th May 2021: dotnet run -c Release --filter *RuleBenchmark* --framework net5.0 --job short</span>
+ 
+        <span class="c">//BenchmarkDotNet=v0.13.0, OS=Windows 10.0.19043.985 (21H1/May2021Update)</span>
+        <span class="c">//Intel Core i9-9980HK CPU 2.40GHz, 1 CPU, 16 logical and 8 physical cores</span>
+        <span class="c">//.NET SDK= 6.0.100-preview.3.21202.5</span>
+        <span class="c">//  [Host]   : .NET 5.0.6 (5.0.621.22011), X64 RyuJIT</span>
+        <span class="c">//  ShortRun : .NET 5.0.6 (5.0.621.22011), X64 RyuJIT</span>
+ 
+        <span class="c">//Job=ShortRun IterationCount = 3  LaunchCount=1</span>
+        <span class="c">//WarmupCount=3</span>
+ 
+        <span class="c">//|                           Method |       Mean |       Error |    StdDev | Ratio | RatioSD |  Gen 0 |  Gen 1 | Gen 2 | Allocated |</span>
+        <span class="c">//|--------------------------------- |-----------:|------------:|----------:|------:|--------:|-------:|-------:|------:|----------:|</span>
+        <span class="c">//| EvaluateIsHomepageWithJavascript | 4,134.1 ns | 14,354.4 ns | 786.81 ns |  1.00 |    0.00 | 0.1221 | 0.0381 |     - |   1,040 B |</span>
+        <span class="c">//|       EvaluateIsHomepageWithRule |   662.3 ns |  1,243.9 ns |  68.18 ns |  0.17 |    0.05 | 0.0219 | 0.0086 |     - |     184 B |</span>
+ 
+        [<span class="i">Benchmark</span>(<span class="i">Baseline</span> = <b>true</b>)]
+        <b>public void</b> <a id="f0e0dd0a0eb6436a" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EvaluateIsHomepageWithJavascript</a>()
+        {
+            <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToBoolean</span>(<a href="#760c64f20c813390" class="i field">_engine</a>.<span class="i">Evaluate</span>(<a href="#498672e0e47d1495" class="i field">_scope</a>, <span class="s">&quot;isHomepage()&quot;</span>));            
+        }
+ 
+        [<span class="i">Benchmark</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5617427bd13d44b6" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EvaluateIsHomepageWithRule</a>()
+        {
+            <b>await</b> <a href="#243d1e398656e19f" class="i field">_ruleService</a>.<span class="i">EvaluateAsync</span>(<a href="#34c929880de6b3fb" class="i field">_rule</a>);       
+        }        
+    }
+}
+</pre></td></tr></table></div></body></html>

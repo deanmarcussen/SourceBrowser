@@ -1,0 +1,521 @@
+﻿<!DOCTYPE html>
+<html><head><title>MetaWeblogHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(512);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lists/RemotePublishing/MetaWeblogHandler.cs" target="_top">RemotePublishing\MetaWeblogHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lists" target="_top">src\OrchardCore.Modules\OrchardCore.Lists\OrchardCore.Lists.csproj</a> (OrchardCore.Lists)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Xml</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">FileStorage</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">MetaWeblog</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>.<span class="i">Permissions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">XmlRpc</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">XmlRpc</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">RemotePublishing</span>
+{
+    [<span class="i">RequireFeatures</span>(<span class="s">&quot;OrchardCore.RemotePublishing&quot;</span>)]
+    <b>public class</b> <a id="8b768370070cf4d8" href="../R/8b768370070cf4d8.html" target="n" data-glyph="0,0" class="t t">MetaWeblogHandler</a> : <span class="i">IXmlRpcHandler</span>
+    {
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="d338637376df268b" href="../R/d338637376df268b.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="i">IContentDefinitionManager</span> <a id="490251c443a485ea" href="../R/490251c443a485ea.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="7b3ce3b8f69bee7e" href="../R/7b3ce3b8f69bee7e.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Media.Abstractions/A.html#56ab3245068be82d" class="t t">IMediaFileStore</a> <a id="bd71b13795864435" href="../R/bd71b13795864435.html" target="n" data-glyph="46,1" class="i field">_mediaFileStore</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Users.Abstractions/A.html#0ed707863349c0ec" class="t t">IMembershipService</a> <a id="8c64b286f0400c02" href="../R/8c64b286f0400c02.html" target="n" data-glyph="46,1" class="i field">_membershipService</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#fea40e371c34e08a" class="t t">IMetaWeblogDriver</a>&gt; <a id="9a9eff24effd11f4" href="../R/9a9eff24effd11f4.html" target="n" data-glyph="46,1" class="i field">_metaWeblogDrivers</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="6ba30da5864b5430" href="../R/6ba30da5864b5430.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="adc14f22a540cb02" href="../R/adc14f22a540cb02.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="dd9fb795819e9cdb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">MetaWeblogHandler</a>(
+            <span class="i">IContentManager</span> <span id="r0 rd" class="r0 r">contentManager</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r1 rd" class="r1 r">authorizationService</span>,
+            <a href="/OrchardCore.Users.Abstractions/A.html#0ed707863349c0ec" class="t t">IMembershipService</a> <span id="r2 rd" class="r2 r">membershipService</span>,
+            <span class="i">ISession</span> <span id="r3 rd" class="r3 r">session</span>,
+            <span class="i">IContentDefinitionManager</span> <span id="r4 rd" class="r4 r">contentDefinitionManager</span>,
+            <a href="/OrchardCore.Media.Abstractions/A.html#56ab3245068be82d" class="t t">IMediaFileStore</a> <span id="r5 rd" class="r5 r">mediaFileStore</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#fea40e371c34e08a" class="t t">IMetaWeblogDriver</a>&gt; <span id="r6 rd" class="r6 r">metaWeblogDrivers</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#8b768370070cf4d8" class="t t">MetaWeblogHandler</a>&gt; <span id="r7 rd" class="r7 r">localizer</span>)
+        {
+            <a href="#d338637376df268b" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+            <a href="#490251c443a485ea" class="i field">_contentDefinitionManager</a> = <span class="r4 r">contentDefinitionManager</span>;
+            <a href="#7b3ce3b8f69bee7e" class="i field">_authorizationService</a> = <span class="r1 r">authorizationService</span>;
+            <a href="#9a9eff24effd11f4" class="i field">_metaWeblogDrivers</a> = <span class="r6 r">metaWeblogDrivers</span>;
+            <a href="#6ba30da5864b5430" class="i field">_session</a> = <span class="r3 r">session</span>;
+            <a href="#bd71b13795864435" class="i field">_mediaFileStore</a> = <span class="r5 r">mediaFileStore</span>;
+            <a href="#8c64b286f0400c02" class="i field">_membershipService</a> = <span class="r2 r">membershipService</span>;
+            <a href="#adc14f22a540cb02" class="i field">S</a> = <span class="r7 r">localizer</span>;
+        }
+ 
+        <b>public void</b> <a id="6c5125daec4672b8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">SetCapabilities</a>(<span class="t t">XElement</span> <span id="r8 rd" class="r8 r">options</span>)
+        {
+            <b>const string</b> <span id="r9 rd" class="r9 r">manifestUri</span> = <span class="s">&quot;http://schemas.microsoft.com/wlw/manifest/weblog&quot;</span>;
+ 
+            <b>foreach</b> (<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#fea40e371c34e08a" class="k">var</a> <span id="r10 rd" class="r10 r">driver</span> <b>in</b> <a href="#9a9eff24effd11f4" class="i field">_metaWeblogDrivers</a>)
+            {
+                <span class="r10 r">driver</span>.<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#bcbf49256ad21a53" class="i method">SetCapabilities</a>((<span id="r11 rd" class="r11 r">name</span>, <span id="r12 rd" class="r12 r">value</span>) =&gt; { <span class="r8 r">options</span>.<span class="i method">SetElementValue</span>(<span class="t t">XName</span>.<span class="i method">Get</span>(<span class="r11 r">name</span>, <span class="r9 r">manifestUri</span>), <span class="r12 r">value</span>); });
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="24a068a23c85dc3f" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="i">XmlRpcContext</span> <span id="r13 rd" class="r13 r">context</span>)
+        {
+            <b>if</b> (<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">MethodName</span> == <span class="s">&quot;blogger.getUsersBlogs&quot;</span>)
+            {
+                <b>var</b> <span id="r14 rd" class="r14 r">result</span> = <b>await</b> <a href="#127f5bc776326164" class="i method">MetaWeblogGetUserBlogsAsync</a>(<span class="r13 r">context</span>,
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[1].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[2].<span class="i">Value</span>));
+ 
+                <span class="r13 r">context</span>.<span class="i">RpcMethodResponse</span> = <b>new</b> <span class="i">XRpcMethodResponse</span>().<span class="i">Add</span>(<span class="r14 r">result</span>);
+            }
+ 
+            <b>if</b> (<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">MethodName</span> == <span class="s">&quot;metaWeblog.getRecentPosts&quot;</span>)
+            {
+                <b>var</b> <span id="r15 rd" class="r15 r">result</span> = <b>await</b> <span class="i">MetaWeblogGetRecentPosts</span>(
+                    <span class="r13 r">context</span>,
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[0].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[1].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[2].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToInt32</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[3].<span class="i">Value</span>),
+                    <span class="r13 r">context</span>.<span class="i">Drivers</span>);
+ 
+                <span class="r13 r">context</span>.<span class="i">RpcMethodResponse</span> = <b>new</b> <span class="i">XRpcMethodResponse</span>().<span class="i">Add</span>(<span class="r15 r">result</span>);
+            }
+ 
+            <b>if</b> (<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">MethodName</span> == <span class="s">&quot;metaWeblog.newPost&quot;</span>)
+            {
+                <b>var</b> <span id="r16 rd" class="r16 r">result</span> = <b>await</b> <span class="i">MetaWeblogNewPostAsync</span>(
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[0].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[1].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[2].<span class="i">Value</span>),
+                    (<span class="i">XRpcStruct</span>)<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[3].<span class="i">Value</span>,
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToBoolean</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[4].<span class="i">Value</span>),
+                    <span class="r13 r">context</span>.<span class="i">Drivers</span>);
+ 
+                <span class="r13 r">context</span>.<span class="i">RpcMethodResponse</span> = <b>new</b> <span class="i">XRpcMethodResponse</span>().<span class="i">Add</span>(<span class="r16 r">result</span>);
+            }
+ 
+            <b>if</b> (<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">MethodName</span> == <span class="s">&quot;metaWeblog.getPost&quot;</span>)
+            {
+                <b>var</b> <span id="r17 rd" class="r17 r">result</span> = <b>await</b> <span class="i">MetaWeblogGetPostAsync</span>(
+                    <span class="r13 r">context</span>,
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[0].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[1].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[2].<span class="i">Value</span>),
+                    <span class="r13 r">context</span>.<span class="i">Drivers</span>);
+                <span class="r13 r">context</span>.<span class="i">RpcMethodResponse</span> = <b>new</b> <span class="i">XRpcMethodResponse</span>().<span class="i">Add</span>(<span class="r17 r">result</span>);
+            }
+ 
+            <b>if</b> (<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">MethodName</span> == <span class="s">&quot;metaWeblog.editPost&quot;</span>)
+            {
+                <b>var</b> <span id="r18 rd" class="r18 r">result</span> = <b>await</b> <span class="i">MetaWeblogEditPostAsync</span>(
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[0].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[1].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[2].<span class="i">Value</span>),
+                    (<span class="i">XRpcStruct</span>)<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[3].<span class="i">Value</span>,
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToBoolean</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[4].<span class="i">Value</span>),
+                    <span class="r13 r">context</span>.<span class="i">Drivers</span>);
+                <span class="r13 r">context</span>.<span class="i">RpcMethodResponse</span> = <b>new</b> <span class="i">XRpcMethodResponse</span>().<span class="i">Add</span>(<span class="r18 r">result</span>);
+            }
+ 
+            <b>if</b> (<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">MethodName</span> == <span class="s">&quot;blogger.deletePost&quot;</span>)
+            {
+                <b>var</b> <span id="r19 rd" class="r19 r">result</span> = <b>await</b> <span class="i">MetaWeblogDeletePostAsync</span>(
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[1].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[2].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[3].<span class="i">Value</span>),
+                    <span class="r13 r">context</span>.<span class="i">Drivers</span>);
+                <span class="r13 r">context</span>.<span class="i">RpcMethodResponse</span> = <b>new</b> <span class="i">XRpcMethodResponse</span>().<span class="i">Add</span>(<span class="r19 r">result</span>);
+            }
+ 
+            <b>if</b> (<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">MethodName</span> == <span class="s">&quot;metaWeblog.newMediaObject&quot;</span>)
+            {
+                <b>var</b> <span id="r20 rd" class="r20 r">result</span> = <b>await</b> <a href="#6ffee8e3a2fb74b2" class="i method">MetaWeblogNewMediaObjectAsync</a>(
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[1].<span class="i">Value</span>),
+                    <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToString</span>(<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[2].<span class="i">Value</span>),
+                    (<span class="i">XRpcStruct</span>)<span class="r13 r">context</span>.<span class="i">RpcMethodCall</span>.<span class="i">Params</span>[3].<span class="i">Value</span>);
+                <span class="r13 r">context</span>.<span class="i">RpcMethodResponse</span> = <b>new</b> <span class="i">XRpcMethodResponse</span>().<span class="i">Add</span>(<span class="r20 r">result</span>);
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">XRpcStruct</span>&gt; <a id="6ffee8e3a2fb74b2" href="../R/6ffee8e3a2fb74b2.html" target="n" data-glyph="76,1" class="i method">MetaWeblogNewMediaObjectAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">userName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r22 rd" class="r22 r">password</span>, <span class="i">XRpcStruct</span> <span id="r23 rd" class="r23 r">file</span>)
+        {
+            <b>var</b> <span id="r24 rd" class="r24 r">user</span> = <b>await</b> <a href="#814e3adeafbaacfd" class="i method">ValidateUserAsync</a>(<span class="r21 r">userName</span>, <span class="r22 r">password</span>);
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">name</span> = <span class="r23 r">file</span>.<span class="i">Optional</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;name&quot;</span>);
+            <b>var</b> <span id="r26 rd" class="r26 r">bits</span> = <span class="r23 r">file</span>.<span class="i">Optional</span>&lt;<b>byte</b>[]&gt;(<span class="s">&quot;bits&quot;</span>);
+ 
+            <b>var</b> <span id="r27 rd" class="r27 r">directoryName</span> = <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">GetDirectoryName</span>(<span class="r25 r">name</span>);
+            <b>var</b> <span id="r28 rd" class="r28 r">filePath</span> = <a href="#bd71b13795864435" class="i field">_mediaFileStore</a>.<span class="i">Combine</span>(<span class="r27 r">directoryName</span>, <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<span class="i">GetFileName</span>(<span class="r25 r">name</span>));
+            <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r29 rd" class="r29 r">stream</span> = <b>null</b>;
+            <b>try</b>
+            {
+                <span class="r29 r">stream</span> = <b>new</b> <span class="t">MemoryStream</span>(<span class="r26 r">bits</span>);
+                <span class="r28 r">filePath</span> = <b>await</b> <a href="#bd71b13795864435" class="i field">_mediaFileStore</a>.<span class="i">CreateFileFromStreamAsync</span>(<span class="r28 r">filePath</span>, <span class="r29 r">stream</span>);
+            }
+            <b>finally</b>
+            {
+                <span class="r29 r">stream</span>?.<a href="@1@System.Runtime/A.html#f1b4285950a82354" class="i method">Dispose</a>();
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r30 rd" class="r30 r">publicUrl</span> = <a href="#bd71b13795864435" class="i field">_mediaFileStore</a>.<span class="i">MapPathToPublicUrl</span>(<span class="r28 r">filePath</span>);
+ 
+            <b>return</b> <b>new</b> <span class="i">XRpcStruct</span>() <span class="c">// Some clients require all optional attributes to be declared Wordpress responds in this way as well.</span>
+                .<span class="i">Set</span>(<span class="s">&quot;file&quot;</span>, <span class="r30 r">publicUrl</span>)
+                .<span class="i">Set</span>(<span class="s">&quot;url&quot;</span>, <span class="r30 r">publicUrl</span>)
+                .<span class="i">Set</span>(<span class="s">&quot;type&quot;</span>, <span class="r23 r">file</span>.<span class="i">Optional</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;type&quot;</span>));
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">XRpcArray</span>&gt; <a id="127f5bc776326164" href="../R/127f5bc776326164.html" target="n" data-glyph="76,1" class="i method">MetaWeblogGetUserBlogsAsync</a>(<span class="i">XmlRpcContext</span> <span id="r31 rd" class="r31 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r32 rd" class="r32 r">userName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r33 rd" class="r33 r">password</span>)
+        {
+            <b>var</b> <span id="r34 rd" class="r34 r">user</span> = <b>await</b> <a href="#814e3adeafbaacfd" class="i method">ValidateUserAsync</a>(<span class="r32 r">userName</span>, <span class="r33 r">password</span>);
+ 
+            <span class="i">XRpcArray</span> <span id="r35 rd" class="r35 r">array</span> = <b>new</b> <span class="i">XRpcArray</span>();
+ 
+            <span class="c">// Look for all types using ListPart</span>
+            <b>foreach</b> (<b>var</b> <span id="r36 rd" class="r36 r">type</span> <b>in</b> <a href="#490251c443a485ea" class="i field">_contentDefinitionManager</a>.<span class="i">ListTypeDefinitions</span>())
+            {
+                <b>if</b> (!<span class="r36 r">type</span>.<span class="i">Parts</span>.<span class="i">Any</span>(<span id="r37 rd" class="r37 r">x</span> =&gt; <span class="r37 r">x</span>.<span class="i">Name</span> == <b>nameof</b>(<a href="../Models/ListPart.cs.html#9805ddfadd8d801c" class="t t">ListPart</a>)))
+                {
+                    <b>continue</b>;
+                }
+ 
+                <b>foreach</b> (<b>var</b> <span id="r38 rd" class="r38 r">list</span> <b>in</b> <b>await</b> <a href="#6ba30da5864b5430" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>, <a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r39 rd" class="r39 r">x</span> =&gt; <span class="r39 r">x</span>.<span class="i">ContentType</span> == <span class="r36 r">type</span>.<span class="i">Name</span>).<span class="i">ListAsync</span>())
+                {
+                    <span class="c">// User needs to at least have permission to edit its own blog posts to access the service</span>
+                    <b>if</b> (<b>await</b> <a href="#7b3ce3b8f69bee7e" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r34 r">user</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r38 r">list</span>))
+                    {
+                        <b>var</b> <span id="r40 rd" class="r40 r">metadata</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">ContentItemMetadata</span>&gt;(<span class="r38 r">list</span>);
+                        <b>var</b> <span id="r41 rd" class="r41 r">displayRouteValues</span> = <span class="r40 r">metadata</span>.<span class="i">DisplayRouteValues</span>;
+ 
+                        <span class="r35 r">array</span>.<span class="i">Add</span>(<b>new</b> <span class="i">XRpcStruct</span>()
+                                      .<span class="i">Set</span>(<span class="s">&quot;url&quot;</span>, <span class="r31 r">context</span>.<span class="i">Url</span>.<span class="i">Action</span>(<span class="r41 r">displayRouteValues</span>[<span class="s">&quot;action&quot;</span>].<span class="i">ToString</span>(), <span class="r41 r">displayRouteValues</span>[<span class="s">&quot;controller&quot;</span>].<span class="i">ToString</span>(), <span class="r41 r">displayRouteValues</span>, <span class="r31 r">context</span>.<span class="i">HttpContext</span>.<span class="i">Request</span>.<span class="i">Scheme</span>))
+                                      .<span class="i">Set</span>(<span class="s">&quot;blogid&quot;</span>, <span class="r38 r">list</span>.<span class="i">ContentItemId</span>)
+                                      .<span class="i">Set</span>(<span class="s">&quot;blogName&quot;</span>, <span class="r38 r">list</span>.<span class="i">DisplayText</span>));
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="r35 r">array</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">XRpcArray</span>&gt; <a id="4ea0fc1b3f48c924" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">MetaWeblogGetRecentPosts</a>(
+            <span class="i">XmlRpcContext</span> <span id="r42 rd" class="r42 r">context</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r43 rd" class="r43 r">contentItemId</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r44 rd" class="r44 r">userName</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r45 rd" class="r45 r">password</span>,
+            <b>int</b> <span id="r46 rd" class="r46 r">numberOfPosts</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IXmlRpcDriver</span>&gt; <span id="r47 rd" class="r47 r">drivers</span>)
+        {
+            <b>var</b> <span id="r48 rd" class="r48 r">user</span> = <b>await</b> <a href="#814e3adeafbaacfd" class="i method">ValidateUserAsync</a>(<span class="r44 r">userName</span>, <span class="r45 r">password</span>);
+ 
+            <span class="c">// User needs to at least have permission to edit its own blog posts to access the service</span>
+            <b>await</b> <span class="i">CheckAccessAsync</span>(<a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r48 r">user</span>, <b>null</b>);
+ 
+            <b>var</b> <span id="r49 rd" class="r49 r">list</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r43 r">contentItemId</span>);
+ 
+            <b>if</b> (<span class="r49 r">list</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Could not find content item &quot;</span> + <span class="r43 r">contentItemId</span>);
+            }
+ 
+            <b>var</b> <span id="r50 rd" class="r50 r">array</span> = <b>new</b> <span class="i">XRpcArray</span>();
+ 
+            <b>var</b> <span id="r51 rd" class="r51 r">contentItems</span> = <b>await</b> <a href="#6ba30da5864b5430" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                .<span class="i">With</span>&lt;<a href="../Indexes/ContainedPartIndex.cs.html#130543d941dba153" class="t t">ContainedPartIndex</a>&gt;(<span id="r52 rd" class="r52 r">x</span> =&gt; <span class="r52 r">x</span>.<span class="i">ListContentItemId</span> == <span class="r43 r">contentItemId</span>)
+                .<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r53 rd" class="r53 r">x</span> =&gt; <span class="r53 r">x</span>.<span class="i">Latest</span>)
+                .<span class="i">OrderByDescending</span>(<span id="r54 rd" class="r54 r">x</span> =&gt; <span class="r54 r">x</span>.<span class="i">CreatedUtc</span>)
+                .<span class="i">Take</span>(<span class="r46 r">numberOfPosts</span>)
+                .<span class="i">ListAsync</span>();
+ 
+            <b>foreach</b> (<b>var</b> <span id="r55 rd" class="r55 r">contentItem</span> <b>in</b> <span class="r51 r">contentItems</span>)
+            {
+                <b>var</b> <span id="r56 rd" class="r56 r">postStruct</span> = <b>await</b> <span class="i">CreateBlogStructAsync</span>(<span class="r42 r">context</span>, <span class="r55 r">contentItem</span>);
+ 
+                <b>foreach</b> (<b>var</b> <span id="r57 rd" class="r57 r">driver</span> <b>in</b> <span class="r47 r">drivers</span>)
+                {
+                    <span class="r57 r">driver</span>.<span class="i">Process</span>(<span class="r56 r">postStruct</span>);
+                }
+ 
+                <span class="r50 r">array</span>.<span class="i">Add</span>(<span class="r56 r">postStruct</span>);
+            }
+ 
+            <b>return</b> <span class="r50 r">array</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="0d84fd3c19ad8607" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">MetaWeblogNewPostAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r58 rd" class="r58 r">contentItemId</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r59 rd" class="r59 r">userName</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r60 rd" class="r60 r">password</span>,
+            <span class="i">XRpcStruct</span> <span id="r61 rd" class="r61 r">content</span>,
+            <b>bool</b> <span id="r62 rd" class="r62 r">publish</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IXmlRpcDriver</span>&gt; <span id="r63 rd" class="r63 r">drivers</span>)
+        {
+            <b>var</b> <span id="r64 rd" class="r64 r">user</span> = <b>await</b> <a href="#814e3adeafbaacfd" class="i method">ValidateUserAsync</a>(<span class="r59 r">userName</span>, <span class="r60 r">password</span>);
+ 
+            <span class="c">// User needs permission to edit or publish its own blog posts</span>
+            <b>await</b> <span class="i">CheckAccessAsync</span>(<span class="r62 r">publish</span> ? <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#679e487af6b975d4" class="i field">PublishContent</a> : <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r64 r">user</span>, <b>null</b>);
+ 
+            <b>var</b> <span id="r65 rd" class="r65 r">list</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r58 r">contentItemId</span>);
+ 
+            <b>if</b> (<span class="r65 r">list</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Could not find content item &quot;</span> + <span class="r58 r">contentItemId</span>);
+            }
+ 
+            <b>var</b> <span id="r66 rd" class="r66 r">postType</span> = <span class="i">GetContainedContentTypes</span>(<span class="r65 r">list</span>).<span class="i method">FirstOrDefault</span>();
+            <b>var</b> <span id="r67 rd" class="r67 r">contentItem</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">NewAsync</span>(<span class="r66 r">postType</span>.<span class="i">Name</span>);
+ 
+            <span class="r67 r">contentItem</span>.<span class="i">Owner</span> = <span class="r64 r">user</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>);
+            <span class="r67 r">contentItem</span>.<span class="i">Alter</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;(<span id="r68 rd" class="r68 r">x</span> =&gt; <span class="r68 r">x</span>.<span class="i">ListContentItemId</span> = <span class="r65 r">list</span>.<span class="i">ContentItemId</span>);
+ 
+            <b>foreach</b> (<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#fea40e371c34e08a" class="k">var</a> <span id="r69 rd" class="r69 r">driver</span> <b>in</b> <a href="#9a9eff24effd11f4" class="i field">_metaWeblogDrivers</a>)
+            {
+                <span class="r69 r">driver</span>.<span class="i">EditPost</span>(<span class="r61 r">content</span>, <span class="r67 r">contentItem</span>);
+            }
+ 
+            <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">CreateAsync</span>(<span class="r67 r">contentItem</span>, <span class="i">VersionOptions</span>.<span class="i">Draft</span>);
+ 
+            <span class="c">// try to get the UTC time zone by default</span>
+            <b>var</b> <span id="r70 rd" class="r70 r">publishedUtc</span> = <span class="r61 r">content</span>.<span class="i">Optional</span>&lt;<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>?&gt;(<span class="s">&quot;date_created_gmt&quot;</span>);
+            <b>if</b> (<span class="r70 r">publishedUtc</span> == <b>null</b>)
+            {
+                <span class="c">// take the local one</span>
+                <span class="r70 r">publishedUtc</span> = <span class="r61 r">content</span>.<span class="i">Optional</span>&lt;<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>?&gt;(<span class="s">&quot;dateCreated&quot;</span>);
+            }
+            <b>else</b>
+            {
+                <span class="c">// ensure it&#39;s read as a UTC time</span>
+                <span class="r70 r">publishedUtc</span> = <b>new</b> <span class="t">DateTime</span>(<span class="r70 r">publishedUtc</span>.<span class="i">Value</span>.<span class="i">Ticks</span>, <a href="@1@System.Runtime/A.html#0fc5fd70e6154b43" class="t t">DateTimeKind</a>.<a href="@1@System.Runtime/A.html#58a49ca04b18b1f2" class="i field">Utc</a>);
+            }
+ 
+            <b>if</b> (<span class="r62 r">publish</span> &amp;&amp; (<span class="r70 r">publishedUtc</span> == <b>null</b> || <span class="r70 r">publishedUtc</span> &lt;= <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a>))
+            {
+                <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">PublishAsync</span>(<span class="r67 r">contentItem</span>);
+            }
+            <b>else</b>
+            {
+                <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">SaveDraftAsync</span>(<span class="r67 r">contentItem</span>);
+            }
+ 
+            <b>if</b> (<span class="r70 r">publishedUtc</span> != <b>null</b>)
+            {
+                <span class="r67 r">contentItem</span>.<span class="i">CreatedUtc</span> = <span class="r70 r">publishedUtc</span>;
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r71 rd" class="r71 r">driver</span> <b>in</b> <span class="r63 r">drivers</span>)
+            {
+                <span class="r71 r">driver</span>.<span class="i">Process</span>(<span class="r67 r">contentItem</span>.<span class="i">ContentItemId</span>);
+            }
+ 
+            <b>return</b> <span class="r67 r">contentItem</span>.<span class="i">ContentItemId</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">XRpcStruct</span>&gt; <a id="82ea6a87adec36df" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">MetaWeblogGetPostAsync</a>(
+            <span class="i">XmlRpcContext</span> <span id="r72 rd" class="r72 r">context</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r73 rd" class="r73 r">contentItemId</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r74 rd" class="r74 r">userName</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r75 rd" class="r75 r">password</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IXmlRpcDriver</span>&gt; <span id="r76 rd" class="r76 r">drivers</span>)
+        {
+            <b>var</b> <span id="r77 rd" class="r77 r">user</span> = <b>await</b> <a href="#814e3adeafbaacfd" class="i method">ValidateUserAsync</a>(<span class="r74 r">userName</span>, <span class="r75 r">password</span>);
+            <b>var</b> <span id="r78 rd" class="r78 r">contentItem</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r73 r">contentItemId</span>, <span class="i">VersionOptions</span>.<span class="i">Latest</span>);
+ 
+            <b>if</b> (<span class="r78 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#71d200dcf0047f8b" class="t constructor">ArgumentException</a>();
+            }
+ 
+            <b>await</b> <span class="i">CheckAccessAsync</span>(<a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r77 r">user</span>, <span class="r78 r">contentItem</span>);
+ 
+            <b>var</b> <span id="r79 rd" class="r79 r">postStruct</span> = <b>await</b> <span class="i">CreateBlogStructAsync</span>(<span class="r72 r">context</span>, <span class="r78 r">contentItem</span>);
+ 
+            <b>foreach</b> (<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#fea40e371c34e08a" class="k">var</a> <span id="r80 rd" class="r80 r">driver</span> <b>in</b> <a href="#9a9eff24effd11f4" class="i field">_metaWeblogDrivers</a>)
+            {
+                <span class="r80 r">driver</span>.<span class="i">BuildPost</span>(<span class="r79 r">postStruct</span>, <span class="r72 r">context</span>, <span class="r78 r">contentItem</span>);
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r81 rd" class="r81 r">driver</span> <b>in</b> <span class="r76 r">drivers</span>)
+            {
+                <span class="r81 r">driver</span>.<span class="i">Process</span>(<span class="r79 r">postStruct</span>);
+            }
+ 
+            <b>return</b> <span class="r79 r">postStruct</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="567825b8beb21153" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">MetaWeblogEditPostAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r82 rd" class="r82 r">contentItemId</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r83 rd" class="r83 r">userName</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r84 rd" class="r84 r">password</span>,
+            <span class="i">XRpcStruct</span> <span id="r85 rd" class="r85 r">content</span>,
+            <b>bool</b> <span id="r86 rd" class="r86 r">publish</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IXmlRpcDriver</span>&gt; <span id="r87 rd" class="r87 r">drivers</span>)
+        {
+            <b>var</b> <span id="r88 rd" class="r88 r">user</span> = <b>await</b> <a href="#814e3adeafbaacfd" class="i method">ValidateUserAsync</a>(<span class="r83 r">userName</span>, <span class="r84 r">password</span>);
+ 
+            <b>var</b> <span id="r89 rd" class="r89 r">contentItem</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r82 r">contentItemId</span>, <span class="i">VersionOptions</span>.<span class="i">DraftRequired</span>);
+ 
+            <b>if</b> (<span class="r89 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#df2d82d91ca29e40" class="t constructor">Exception</a>(<a href="#adc14f22a540cb02" class="i field">S</a>[<span class="s">&quot;The specified Blog Post doesn&#39;t exist anymore. Please create a new Blog Post.&quot;</span>]);
+            }
+ 
+            <b>await</b> <span class="i">CheckAccessAsync</span>(<span class="r86 r">publish</span> ? <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#679e487af6b975d4" class="i field">PublishContent</a> : <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>, <span class="r88 r">user</span>, <span class="r89 r">contentItem</span>);
+ 
+            <b>foreach</b> (<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#fea40e371c34e08a" class="k">var</a> <span id="r90 rd" class="r90 r">driver</span> <b>in</b> <a href="#9a9eff24effd11f4" class="i field">_metaWeblogDrivers</a>)
+            {
+                <span class="r90 r">driver</span>.<span class="i">EditPost</span>(<span class="r85 r">content</span>, <span class="r89 r">contentItem</span>);
+            }
+ 
+            <span class="c">// try to get the UTC time zone by default</span>
+            <b>var</b> <span id="r91 rd" class="r91 r">publishedUtc</span> = <span class="r85 r">content</span>.<span class="i">Optional</span>&lt;<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>?&gt;(<span class="s">&quot;date_created_gmt&quot;</span>);
+            <b>if</b> (<span class="r91 r">publishedUtc</span> == <b>null</b>)
+            {
+                <span class="c">// take the local one</span>
+                <span class="r91 r">publishedUtc</span> = <span class="r85 r">content</span>.<span class="i">Optional</span>&lt;<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>?&gt;(<span class="s">&quot;dateCreated&quot;</span>);
+            }
+            <b>else</b>
+            {
+                <span class="c">// ensure it&#39;s read as a UTC time</span>
+                <span class="r91 r">publishedUtc</span> = <b>new</b> <span class="t">DateTime</span>(<span class="r91 r">publishedUtc</span>.<span class="i">Value</span>.<span class="i">Ticks</span>, <a href="@1@System.Runtime/A.html#0fc5fd70e6154b43" class="t t">DateTimeKind</a>.<a href="@1@System.Runtime/A.html#58a49ca04b18b1f2" class="i field">Utc</a>);
+            }
+ 
+            <b>if</b> (<span class="r86 r">publish</span> &amp;&amp; (<span class="r91 r">publishedUtc</span> == <b>null</b> || <span class="r91 r">publishedUtc</span> &lt;= <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#b0d5e4c9a8d4ddac" class="i property">UtcNow</a>))
+            {
+                <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">PublishAsync</span>(<span class="r89 r">contentItem</span>);
+            }
+            <b>else</b>
+            {
+                <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">SaveDraftAsync</span>(<span class="r89 r">contentItem</span>);
+            }
+ 
+            <b>if</b> (<span class="r91 r">publishedUtc</span> != <b>null</b>)
+            {
+                <span class="r89 r">contentItem</span>.<span class="i">CreatedUtc</span> = <span class="r91 r">publishedUtc</span>;
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r92 rd" class="r92 r">driver</span> <b>in</b> <span class="r87 r">drivers</span>)
+            {
+                <span class="r92 r">driver</span>.<span class="i">Process</span>(<span class="r89 r">contentItem</span>.<span class="i">Id</span>);
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="6b97882c1cbd2cf7" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">MetaWeblogDeletePostAsync</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r93 rd" class="r93 r">contentItemId</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r94 rd" class="r94 r">userName</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r95 rd" class="r95 r">password</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IXmlRpcDriver</span>&gt; <span id="r96 rd" class="r96 r">drivers</span>)
+        {
+            <b>var</b> <span id="r97 rd" class="r97 r">user</span> = <b>await</b> <a href="#814e3adeafbaacfd" class="i method">ValidateUserAsync</a>(<span class="r94 r">userName</span>, <span class="r95 r">password</span>);
+            <b>var</b> <span id="r98 rd" class="r98 r">contentItem</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">GetAsync</span>(<span class="r93 r">contentItemId</span>, <span class="i">VersionOptions</span>.<span class="i">Latest</span>);
+            <b>if</b> (<span class="r98 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#71d200dcf0047f8b" class="t constructor">ArgumentException</a>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#7b3ce3b8f69bee7e" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r97 r">user</span>, <a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#642d1b81f0edc575" class="i field">DeleteContent</a>, <span class="r98 r">contentItem</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<a href="#adc14f22a540cb02" class="i field">S</a>[<span class="s">&quot;Not authorized to delete this content&quot;</span>].<span class="i property">Value</span>);
+            }
+ 
+            <b>foreach</b> (<b>var</b> <span id="r99 rd" class="r99 r">driver</span> <b>in</b> <span class="r96 r">drivers</span>)
+            {
+                <span class="r99 r">driver</span>.<span class="i">Process</span>(<span class="r98 r">contentItem</span>.<span class="i">ContentItemId</span>);
+            }
+ 
+            <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">RemoveAsync</span>(<span class="r98 r">contentItem</span>);
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ClaimsPrincipal</span>&gt; <a id="814e3adeafbaacfd" href="../R/814e3adeafbaacfd.html" target="n" data-glyph="76,1" class="i method">ValidateUserAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r100 rd" class="r100 r">userName</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r101 rd" class="r101 r">password</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#8c64b286f0400c02" class="i field">_membershipService</a>.<a href="/OrchardCore.Users.Abstractions/A.html#2b094b50cad7a709" class="i method">CheckPasswordAsync</a>(<span class="r100 r">userName</span>, <span class="r101 r">password</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<a href="#adc14f22a540cb02" class="i field">S</a>[<span class="s">&quot;The username or e-mail or password provided is incorrect.&quot;</span>].<span class="i property">Value</span>);
+            }
+ 
+            <a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="k">var</a> <span id="r102 rd" class="r102 r">storeUser</span> = <b>await</b> <a href="#8c64b286f0400c02" class="i field">_membershipService</a>.<a href="/OrchardCore.Users.Abstractions/A.html#50fe87866f0722ab" class="i method">GetUserAsync</a>(<span class="r100 r">userName</span>);
+ 
+            <b>if</b> (<span class="r102 r">storeUser</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <b>await</b> <a href="#8c64b286f0400c02" class="i field">_membershipService</a>.<a href="/OrchardCore.Users.Abstractions/A.html#d0ddf527db3f5b04" class="i method">CreateClaimsPrincipal</a>(<span class="r102 r">storeUser</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">XRpcStruct</span>&gt; <a id="4bb10dde2246f912" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">CreateBlogStructAsync</a>(<span class="i">XmlRpcContext</span> <span id="r103 rd" class="r103 r">context</span>, <span class="i">ContentItem</span> <span id="r104 rd" class="r104 r">contentItem</span>)
+        {
+            <b>var</b> <span id="r105 rd" class="r105 r">metadata</span> = <b>await</b> <a href="#d338637376df268b" class="i field">_contentManager</a>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">ContentItemMetadata</span>&gt;(<span class="r104 r">contentItem</span>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r106 rd" class="r106 r">url</span> = <span class="r103 r">context</span>.<span class="i">Url</span>.<span class="i">Action</span>(
+                <span class="r105 r">metadata</span>.<span class="i">DisplayRouteValues</span>[<span class="s">&quot;action&quot;</span>].<span class="i">ToString</span>(),
+                <span class="r105 r">metadata</span>.<span class="i">DisplayRouteValues</span>[<span class="s">&quot;controller&quot;</span>].<span class="i">ToString</span>(),
+                <span class="r105 r">metadata</span>.<span class="i">DisplayRouteValues</span>,
+                <span class="r103 r">context</span>.<span class="i">HttpContext</span>.<span class="i">Request</span>.<span class="i">Scheme</span>);
+ 
+            <b>if</b> (<span class="r104 r">contentItem</span>.<span class="i">HasDraft</span>())
+            {
+                <span class="r106 r">url</span> = <span class="r103 r">context</span>.<span class="i">Url</span>.<span class="i">Action</span>(<span class="s">&quot;Preview&quot;</span>, <span class="s">&quot;Item&quot;</span>, <b>new</b> { <a href="#372d2bea7feada7f" class="i property">area</a> = <span class="s">&quot;OrchardCore.Contents&quot;</span>, <a href="#f2f4652402d034bf" class="i property">contentItemId</a> = <span class="r104 r">contentItem</span>.<span class="i">ContentItemId</span> });
+            }
+ 
+            <b>var</b> <span id="r107 rd" class="r107 r">blogStruct</span> = <b>new</b> <span class="i">XRpcStruct</span>()
+                .<span class="i">Set</span>(<span class="s">&quot;postid&quot;</span>, <span class="r104 r">contentItem</span>.<span class="i">ContentItemId</span>)
+                .<span class="i">Set</span>(<span class="s">&quot;link&quot;</span>, <span class="r106 r">url</span>)
+                .<span class="i">Set</span>(<span class="s">&quot;permaLink&quot;</span>, <span class="r106 r">url</span>);
+ 
+            <b>if</b> (<span class="r104 r">contentItem</span>.<span class="i">PublishedUtc</span> != <b>null</b>)
+            {
+                <span class="r107 r">blogStruct</span>.<span class="i">Set</span>(<span class="s">&quot;dateCreated&quot;</span>, <span class="r104 r">contentItem</span>.<span class="i">PublishedUtc</span>);
+                <span class="r107 r">blogStruct</span>.<span class="i">Set</span>(<span class="s">&quot;date_created_gmt&quot;</span>, <span class="r104 r">contentItem</span>.<span class="i">PublishedUtc</span>);
+            }
+ 
+            <b>foreach</b> (<a href="/OrchardCore.MetaWeblog.Abstractions/A.html#fea40e371c34e08a" class="k">var</a> <span id="r108 rd" class="r108 r">driver</span> <b>in</b> <a href="#9a9eff24effd11f4" class="i field">_metaWeblogDrivers</a>)
+            {
+                <span class="r108 r">driver</span>.<span class="i">BuildPost</span>(<span class="r107 r">blogStruct</span>, <span class="r103 r">context</span>, <span class="r104 r">contentItem</span>);
+            }
+ 
+            <b>return</b> <span class="r107 r">blogStruct</span>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="80aa7437ea731562" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">CheckAccessAsync</a>(<span class="i">Permission</span> <span id="r109 rd" class="r109 r">permission</span>, <span class="t t">ClaimsPrincipal</span> <span id="r110 rd" class="r110 r">user</span>, <span class="i">ContentItem</span> <span id="r111 rd" class="r111 r">contentItem</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#7b3ce3b8f69bee7e" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r110 r">user</span>, <span class="r109 r">permission</span>, <span class="r111 r">contentItem</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<a href="#adc14f22a540cb02" class="i field">S</a>[<span class="s">&quot;Not authorized to delete this content&quot;</span>].<span class="i property">Value</span>);
+            }
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ContentTypeDefinition</span>&gt; <a id="25b255903e171df1" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">GetContainedContentTypes</a>(<span class="i">ContentItem</span> <span id="r112 rd" class="r112 r">contentItem</span>)
+        {
+            <b>var</b> <span id="r113 rd" class="r113 r">contentTypeDefinition</span> = <a href="#490251c443a485ea" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r112 r">contentItem</span>.<span class="i">ContentType</span>);
+            <b>var</b> <span id="r114 rd" class="r114 r">contentTypePartDefinition</span> = <span class="r113 r">contentTypeDefinition</span>.<span class="i">Parts</span>.<span class="i">FirstOrDefault</span>(<span id="r115 rd" class="r115 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r115 r">x</span>.<span class="i">PartDefinition</span>.<span class="i">Name</span>, <span class="s">&quot;ListPart&quot;</span>));
+            <b>var</b> <span id="r116 rd" class="r116 r">settings</span> = <span class="r114 r">contentTypePartDefinition</span>.<span class="i">GetSettings</span>&lt;<a href="../Models/ListPartSettings.cs.html#789ce80fb5f5e53a" class="t t">ListPartSettings</a>&gt;();
+            <b>var</b> <span id="r117 rd" class="r117 r">contentTypes</span> = <span class="r116 r">settings</span>.<span class="i">ContainedContentTypes</span> ?? <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            <b>return</b> <span class="r117 r">contentTypes</span>.<span class="i">Select</span>(<span id="r118 rd" class="r118 r">contentType</span> =&gt; <a href="#490251c443a485ea" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<span class="r118 r">contentType</span>));
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

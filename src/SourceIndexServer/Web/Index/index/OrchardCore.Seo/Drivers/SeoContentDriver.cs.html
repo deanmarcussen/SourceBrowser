@@ -1,0 +1,295 @@
+﻿<!DOCTYPE html>
+<html><head><title>SeoContentDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(286);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Seo/Drivers/SeoContentDriver.cs" target="_top">Drivers\SeoContentDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Seo" target="_top">src\OrchardCore.Modules\OrchardCore.Seo\OrchardCore.Seo.csproj</a> (OrchardCore.Seo)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>.<span class="i n">ContentDisplay</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Title</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ResourceManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Seo</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Shortcodes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i">Shortcodes</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Seo</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="2245746c989e59b2" href="../R/2245746c989e59b2.html" target="n" data-glyph="0,0" class="t t">SeoContentDriver</a> : <a href="/OrchardCore.ContentManagement.Display/A.html#e2ba4b4a2a5c701e" class="t t">ContentDisplayDriver</a>
+    {       
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <a id="f3d88e1a048c6ee1" href="../R/f3d88e1a048c6ee1.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#52e8e3f97c75779b" class="t t">IPageTitleBuilder</a> <a id="9c61a66ecf5275a9" href="../R/9c61a66ecf5275a9.html" target="n" data-glyph="46,1" class="i field">_pageTitleBuilder</a>;
+        <b>private readonly</b> <span class="i">IResourceManager</span> <a id="6a3b364f46fd7834" href="../R/6a3b364f46fd7834.html" target="n" data-glyph="46,1" class="i field">_resourceManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Shortcodes.Abstractions/A.html#64b53c8dd4d3feab" class="t t">IShortcodeService</a> <a id="4003b6c4c4411275" href="../R/4003b6c4c4411275.html" target="n" data-glyph="46,1" class="i field">_shortcodeService</a>;
+ 
+        <b>private bool</b> <a id="c774cbe9cf746756" href="../R/c774cbe9cf746756.html" target="n" data-glyph="106,1" class="i property">_primaryContentRendered</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public</b> <a id="e046aa45d4f31bf7" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SeoContentDriver</a>(
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <span id="r0 rd" class="r0 r">contentManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#52e8e3f97c75779b" class="t t">IPageTitleBuilder</a> <span id="r1 rd" class="r1 r">pageTitleBuilder</span>,
+            <span class="i">IResourceManager</span> <span id="r2 rd" class="r2 r">resourceManager</span>,
+            <a href="/OrchardCore.Shortcodes.Abstractions/A.html#64b53c8dd4d3feab" class="t t">IShortcodeService</a> <span id="r3 rd" class="r3 r">shortcodeService</span>
+            )
+        {
+            <a href="#f3d88e1a048c6ee1" class="i field">_contentManager</a> = <span class="r0 r">contentManager</span>;
+            <a href="#9c61a66ecf5275a9" class="i field">_pageTitleBuilder</a> = <span class="r1 r">pageTitleBuilder</span>;
+            <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a> = <span class="r2 r">resourceManager</span>;
+            <a href="#4003b6c4c4411275" class="i field">_shortcodeService</a> = <span class="r3 r">shortcodeService</span>;
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="9b82ad3f71d196b7" href="../R/9b82ad3f71d196b7.html" target="n" data-glyph="72,1" class="i method">DisplayAsync</a>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r4 rd" class="r4 r">contentItem</span>, <a href="/OrchardCore.DisplayManagement/A.html#c7443c2b211ac7e2" class="t t">BuildDisplayContext</a> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <span class="c">// We only apply this on the primary content item, which is considered the first call to BuildDisplay.</span>
+            <b>if</b> (<a href="#c774cbe9cf746756" class="i property">_primaryContentRendered</a>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="#c774cbe9cf746756" class="i property">_primaryContentRendered</a> = <b>true</b>;
+ 
+            <span class="c">// Do not include Widgets or any display type other than detail.</span>
+            <b>if</b> (<span class="r5 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#14aa652f160b554a" class="i property">DisplayType</a> != <span class="s">&quot;Detail&quot;</span> || <span class="r5 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#e8980395d144a462" class="i property">Shape</a>.<a href="/OrchardCore.DisplayManagement/A.html#24b84d8bffd45e5e" class="i method">TryGetProperty</a>(<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#51306a656d4fca2d" class="i property">Stereotype</a>), <b>out string _</b>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="../Models/SeoAspect.cs.html#d427628dd3cc07fd" class="k">var</a> <span id="r6 rd" class="r6 r">aspect</span> = <b>await</b> <a href="#f3d88e1a048c6ee1" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#ff8845cbef2aa3a9" class="i method">PopulateAspectAsync</a>&lt;<a href="../Models/SeoAspect.cs.html#d427628dd3cc07fd" class="t t">SeoAspect</a>&gt;(<span class="r4 r">contentItem</span>);
+            
+            <b>if</b> (!<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#f7029ae2750704fe" class="i property">Render</a>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#31be53610ec2b6b6" class="i property">PageTitle</a>))
+            {
+                <a href="#9c61a66ecf5275a9" class="i field">_pageTitleBuilder</a>.<a href="/OrchardCore.DisplayManagement/A.html#75c702ec221e23c0" class="i method">SetFixedTitle</a>(<b>new</b> <span class="t constructor">HtmlString</span>(<b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#31be53610ec2b6b6" class="i property">PageTitle</a>, <span class="r4 r">contentItem</span>)));
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7d2532f3984e5b19" class="i property">MetaDescription</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;description&quot;</span>,
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7d2532f3984e5b19" class="i property">MetaDescription</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#dc196ee814351755" class="i property">MetaKeywords</a>))
+            {                   
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;keywords&quot;</span>,
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#dc196ee814351755" class="i property">MetaKeywords</a>, <span class="r4 r">contentItem</span>)
+                });
+            }    
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#27ad633098285080" class="i property">Canonical</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterLink</span>(<b>new</b> <span class="i">LinkEntry</span>
+                {
+                    <span class="i">Href</span> = <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#27ad633098285080" class="i property">Canonical</a>,
+                    <span class="i">Rel</span> = <span class="s">&quot;canonical&quot;</span>
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#feb7810550ea1b6d" class="i property">MetaRobots</a>))
+            {                   
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;robots&quot;</span>,
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#feb7810550ea1b6d" class="i property">MetaRobots</a>, <span class="r4 r">contentItem</span>)
+                });
+            }                        
+ 
+            <b>foreach</b>(<b>var</b> <span id="r7 rd" class="r7 r">customMetaTag</span> <b>in</b> <span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#9a5db0d92196406a" class="i property">CustomMetaTags</a>)
+            {
+                <span class="c">// Generate a new meta entry as the builder is preopulated.</span>
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>(
+                    <b>await</b> <span class="i">RenderAsync</span>(<span class="r7 r">customMetaTag</span>.<span class="i">Name</span>, <span class="r4 r">contentItem</span>), 
+                    <b>await</b> <span class="i">RenderAsync</span>(<span class="r7 r">customMetaTag</span>.<span class="i">Property</span>, <span class="r4 r">contentItem</span>), 
+                    <b>await</b> <span class="i">RenderAsync</span>(<span class="r7 r">customMetaTag</span>.<span class="i">Content</span>, <span class="r4 r">contentItem</span>), 
+                    <b>await</b> <span class="i">RenderAsync</span>(<span class="r7 r">customMetaTag</span>.<span class="i">HttpEquiv</span>, <span class="r4 r">contentItem</span>),
+                    <b>await</b> <span class="i">RenderAsync</span>(<span class="r7 r">customMetaTag</span>.<span class="i">Charset</span>, <span class="r4 r">contentItem</span>)));
+            }
+ 
+            <span class="c">// OpenGraph.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c7d9a5f8bf2d6c8" class="i property">OpenGraphType</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:type&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c7d9a5f8bf2d6c8" class="i property">OpenGraphType</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#682068d8cd7d1cf3" class="i property">OpenGraphTitle</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:title&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#682068d8cd7d1cf3" class="i property">OpenGraphTitle</a>, <span class="r4 r">contentItem</span>)
+                });
+            }  
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#5271a8a95a31928d" class="i property">OpenGraphDescription</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:description&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#5271a8a95a31928d" class="i property">OpenGraphDescription</a>, <span class="r4 r">contentItem</span>)
+                });
+            }  
+            
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#aa8acb40a52f442b" class="i property">OpenGraphImage</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:image&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#aa8acb40a52f442b" class="i property">OpenGraphImage</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#69aed5407635b02d" class="i property">OpenGraphImageAlt</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:image:alt&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#69aed5407635b02d" class="i property">OpenGraphImageAlt</a>, <span class="r4 r">contentItem</span>)
+                });
+            }  
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#827b5571c6e2779f" class="i property">OpenGraphUrl</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:url&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#827b5571c6e2779f" class="i property">OpenGraphUrl</a>, <span class="r4 r">contentItem</span>)
+                });
+            }   
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#16ea1291162a98c8" class="i property">OpenGraphSiteName</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:site_name&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#16ea1291162a98c8" class="i property">OpenGraphSiteName</a>, <span class="r4 r">contentItem</span>)
+                });
+            }       
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c2d2d4c01cb0e76" class="i property">OpenGraphAppId</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;fb:app_id&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#2c2d2d4c01cb0e76" class="i property">OpenGraphAppId</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#a4313be08cb389a0" class="i property">OpenGraphLocale</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;og:locale&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#a4313be08cb389a0" class="i property">OpenGraphLocale</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <span class="c">// Twitter.</span>
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#01040893a19a0d6b" class="i property">TwitterCard</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;twitter:card&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#01040893a19a0d6b" class="i property">TwitterCard</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#4d14b746edf4a675" class="i property">TwitterSite</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Property</span> = <span class="s">&quot;twitter:site&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#4d14b746edf4a675" class="i property">TwitterSite</a>, <span class="r4 r">contentItem</span>)
+                });
+            } 
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#002f66d53ad9e237" class="i property">TwitterTitle</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;twitter:title&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#002f66d53ad9e237" class="i property">TwitterTitle</a>, <span class="r4 r">contentItem</span>)
+                });
+            }     
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#cea05bdca838dd82" class="i property">TwitterDescription</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;twitter:description&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#cea05bdca838dd82" class="i property">TwitterDescription</a>, <span class="r4 r">contentItem</span>)
+                });
+            }                                    
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#6738ac3b4f794b53" class="i property">TwitterImage</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;twitter:image&quot;</span>,
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#6738ac3b4f794b53" class="i property">TwitterImage</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#04aa19cbba5847d0" class="i property">TwitterImageAlt</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;twitter:image:alt&quot;</span>,
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#04aa19cbba5847d0" class="i property">TwitterImageAlt</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7aab877a395f9372" class="i property">TwitterCreator</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;twitter:creator&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#7aab877a395f9372" class="i property">TwitterCreator</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#23258f4f10bec201" class="i property">TwitterUrl</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterMeta</span>(<b>new</b> <span class="i">MetaEntry</span>
+                {
+                    <span class="i">Name</span> = <span class="s">&quot;twitter:url&quot;</span>, 
+                    <span class="i">Content</span> = <b>await</b> <a href="#b3d339de4087ce5d" class="i method">RenderAsync</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#23258f4f10bec201" class="i property">TwitterUrl</a>, <span class="r4 r">contentItem</span>)
+                });
+            }
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#d54dfe3acdd348c4" class="i property">GoogleSchema</a>))
+            {
+                <a href="#6a3b364f46fd7834" class="i field">_resourceManager</a>.<span class="i">RegisterHeadScript</span>(<b>new</b> <span class="t constructor">HtmlString</span>(<span class="s">$&quot;</span><span class="s">&lt;script type=\&quot;application/ld+json\&quot;&gt;\n</span>{<span class="r6 r">aspect</span>.<a href="../Models/SeoAspect.cs.html#d54dfe3acdd348c4" class="i property">GoogleSchema</a>}<span class="s">\n&lt;/script&gt;</span><span class="s">&quot;</span>));
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="b3d339de4087ce5d" href="../R/b3d339de4087ce5d.html" target="n" data-glyph="76,1" class="i method">RenderAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">template</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r9 rd" class="r9 r">contentItem</span>)
+            =&gt; <a href="#4003b6c4c4411275" class="i field">_shortcodeService</a>.<span class="i">ProcessAsync</span>(<span class="r8 r">template</span>,
+                    <b>new</b> <span class="i">Context</span>
+                    {
+                        [<span class="s">&quot;ContentItem&quot;</span>] = <span class="r9 r">contentItem</span>
+                    });
+    }
+}
+</pre></td></tr></table></div></body></html>

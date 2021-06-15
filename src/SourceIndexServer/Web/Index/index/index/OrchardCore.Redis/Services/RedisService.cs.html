@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html><head><title>RedisService.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(68);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Redis/Services/RedisService.cs" target="_top">Services\RedisService.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Redis" target="_top">src\OrchardCore.Modules\OrchardCore.Redis\OrchardCore.Redis.csproj</a> (OrchardCore.Redis)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i">StackExchange</span>.<span class="i">Redis</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Redis</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="bb7f2c629bc83615" href="../R/bb7f2c629bc83615.html" target="n" data-glyph="0,0" class="t t">RedisService</a> : <span class="i">ModularTenantEvents</span>, <a href="/OrchardCore.Redis.Abstractions/A.html#77643835788c5f9b" class="t t">IRedisService</a>, <a href="@1@System.Runtime/A.html#1f55292c3174123d" class="t t">IDisposable</a>
+    {
+        <b>private readonly</b> <span class="t t">IOptions</span>&lt;<a href="/OrchardCore.Redis.Abstractions/A.html#10655a2564a40c5f" class="t t">RedisOptions</a>&gt; <a id="2197fe7dabbf6900" href="../R/2197fe7dabbf6900.html" target="n" data-glyph="46,1" class="i field">_options</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="672f2c248700de94" href="../R/672f2c248700de94.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="304538812389f0b2" href="../R/304538812389f0b2.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>public</b> <a id="c8b0c4d07ea140c0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">RedisService</a>(<span class="t t">IOptions</span>&lt;<a href="/OrchardCore.Redis.Abstractions/A.html#10655a2564a40c5f" class="t t">RedisOptions</a>&gt; <span id="r0 rd" class="r0 r">options</span>, <span class="t t">ILogger</span>&lt;<a href="#bb7f2c629bc83615" class="t t">RedisService</a>&gt; <span id="r1 rd" class="r1 r">logger</span>)
+        {
+            <a href="#2197fe7dabbf6900" class="i field">_options</a> = <span class="r0 r">options</span>;
+            <a href="#672f2c248700de94" class="i field">_logger</a> = <span class="r1 r">logger</span>;
+ 
+            <a href="#47885df22f7f0bf4" class="i property">InstancePrefix</a> = <span class="r0 r">options</span>.<span class="i property">Value</span>.<a href="/OrchardCore.Redis.Abstractions/A.html#9591bd37ac50a128" class="i property">InstancePrefix</a>;
+        }
+ 
+        <b>public</b> <span class="i">IConnectionMultiplexer</span> <a id="32285a55bd8499bc" href="../R/32285a55bd8499bc.html" target="n" data-glyph="102,1" class="i property">Connection</a> { <b>get</b>; <b>private set</b>; }
+        <b>public string</b> <a id="47885df22f7f0bf4" href="../R/47885df22f7f0bf4.html" target="n" data-glyph="102,1" class="i property">InstancePrefix</a> { <b>get</b>; <b>private set</b>; }
+        <b>public</b> <span class="i">IDatabase</span> <a id="732441aa1bf2d836" href="../R/732441aa1bf2d836.html" target="n" data-glyph="102,1" class="i property">Database</a> { <b>get</b>; <b>private set</b>; }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="42be6dc5fc9ca275" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ActivatingAsync</a>() =&gt; <a href="#723e98bdd36d8929" class="i method">ConnectAsync</a>();
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="723e98bdd36d8929" href="../R/723e98bdd36d8929.html" target="n" data-glyph="72,1" class="i method">ConnectAsync</a>()
+        {
+            <b>if</b> (<a href="#732441aa1bf2d836" class="i property">Database</a> != <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#304538812389f0b2" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+ 
+            <b>try</b>
+            {
+                <b>if</b> (<a href="#732441aa1bf2d836" class="i property">Database</a> == <b>null</b>)
+                {
+                    <a href="#32285a55bd8499bc" class="i property">Connection</a> = <b>await</b> <span class="i">ConnectionMultiplexer</span>.<span class="i">ConnectAsync</span>(<a href="#2197fe7dabbf6900" class="i field">_options</a>.<span class="i property">Value</span>.<a href="/OrchardCore.Redis.Abstractions/A.html#e5b191dfaa9ef411" class="i property">ConfigurationOptions</a>);
+                    <a href="#732441aa1bf2d836" class="i property">Database</a> = <a href="#32285a55bd8499bc" class="i property">Connection</a>.<span class="i">GetDatabase</span>();
+                }
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r2 rd" class="r2 r">e</span>)
+            {
+                <a href="#672f2c248700de94" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r2 r">e</span>, <span class="s">&quot;Unable to connect to Redis.&quot;</span>);
+            }
+            <b>finally</b>
+            {
+                <a href="#304538812389f0b2" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>public void</b> <a id="812c95b7b49183ef" href="../R/812c95b7b49183ef.html" target="n" data-glyph="72,1" class="i method">Dispose</a>()
+        {
+            <b>if</b> (<a href="#32285a55bd8499bc" class="i property">Connection</a> != <b>null</b>)
+            {
+                <a href="#32285a55bd8499bc" class="i property">Connection</a>.<span class="i">Close</span>();
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

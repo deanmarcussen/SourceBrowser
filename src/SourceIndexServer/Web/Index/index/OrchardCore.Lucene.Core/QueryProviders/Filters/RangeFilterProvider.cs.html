@@ -1,0 +1,118 @@
+﻿<!DOCTYPE html>
+<html><head><title>RangeFilterProvider.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(109);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene.Core/QueryProviders/Filters/RangeFilterProvider.cs" target="_top">QueryProviders\Filters\RangeFilterProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene.Core" target="_top">src\OrchardCore\OrchardCore.Lucene.Core\OrchardCore.Lucene.Core.csproj</a> (OrchardCore.Lucene.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Index</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">QueryProviders</span>.<span class="i n">Filters</span>
+{
+    <b>public class</b> <a id="87ca575cf7498035" href="../../R/87ca575cf7498035.html" target="n" data-glyph="0,0" class="t t"><span id="39bcc9d46f224050">RangeFilterProvider</span></a> : <a href="ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="t t">ILuceneBooleanFilterProvider</a>
+    {
+        <b>public</b> <span class="i">FilteredQuery</span> <a id="c71c6d573f721dda" href="../../R/c71c6d573f721dda.html" target="n" data-glyph="72,1" class="i method">CreateFilteredQuery</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a> <span id="r0 rd" class="r0 r">builder</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r1 rd" class="r1 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">type</span>, <span class="i">JToken</span> <span id="r3 rd" class="r3 r">filter</span>, <span class="i">Query</span> <span id="r4 rd" class="r4 r">toFilter</span>)
+        {
+            <b>if</b> (<span class="r2 r">type</span> != <span class="s">&quot;range&quot;</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (!(<span class="r4 r">toFilter</span> <b>is</b> <span class="i">BooleanQuery</span> <span id="r5 rd" class="r5 r">booleanQuery</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">queryObj</span> = <span class="r3 r">filter</span> <b>as</b> <span class="i">JObject</span>;
+            <b>var</b> <span id="r7 rd" class="r7 r">range</span> = <span class="r6 r">queryObj</span>.<span class="i">Properties</span>().<span class="i">First</span>();
+ 
+            <span class="i">Query</span> <span id="r8 rd" class="r8 r">rangeQuery</span>;
+ 
+            <b>switch</b> (<span class="r7 r">range</span>.<span class="i">Value</span>.<span class="i">Type</span>)
+            {
+                <b>case</b> <span class="i">JTokenType</span>.<span class="i">Object</span>:
+                    <b>var</b> <span id="r9 rd" class="r9 r">field</span> = <span class="r7 r">range</span>.<span class="i">Name</span>;
+ 
+                    <span class="i">JToken</span> <span id="r10 rd" class="r10 r">gt</span> = <b>null</b>;
+                    <span class="i">JToken</span> <span id="r11 rd" class="r11 r">lt</span> = <b>null</b>;
+                    <b>var</b> <span id="r12 rd" class="r12 r">tokenType</span> = <span class="i">JTokenType</span>.<span class="i">None</span>;
+                    <b>float</b>? <span id="r13 rd" class="r13 r">boost</span> = <b>null</b>;
+ 
+                    <b>bool</b> <span id="r14 rd" class="r14 r">includeLower</span> = <b>false</b>, <span id="r15 rd" class="r15 r">includeUpper</span> = <b>false</b>;
+ 
+                    <b>foreach</b> (<b>var</b> <span id="r16 rd" class="r16 r">element</span> <b>in</b> ((<span class="i">JObject</span>)<span class="r7 r">range</span>.<span class="i">Value</span>).<span class="i">Properties</span>())
+                    {
+                        <b>switch</b> (<span class="r16 r">element</span>.<span class="i">Name</span>.<span class="i">ToLowerInvariant</span>())
+                        {
+                            <b>case</b> <span class="s">&quot;gt&quot;</span>:
+                                <span class="r10 r">gt</span> = <span class="r16 r">element</span>.<span class="i">Value</span>;
+                                <span class="r12 r">tokenType</span> = <span class="r10 r">gt</span>.<span class="i">Type</span>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;gte&quot;</span>:
+                                <span class="r10 r">gt</span> = <span class="r16 r">element</span>.<span class="i">Value</span>;
+                                <span class="r12 r">tokenType</span> = <span class="r10 r">gt</span>.<span class="i">Type</span>;
+                                <span class="r14 r">includeLower</span> = <b>true</b>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;lt&quot;</span>:
+                                <span class="r11 r">lt</span> = <span class="r16 r">element</span>.<span class="i">Value</span>;
+                                <span class="r12 r">tokenType</span> = <span class="r11 r">lt</span>.<span class="i">Type</span>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;lte&quot;</span>:
+                                <span class="r11 r">lt</span> = <span class="r16 r">element</span>.<span class="i">Value</span>;
+                                <span class="r12 r">tokenType</span> = <span class="r11 r">lt</span>.<span class="i">Type</span>;
+                                <span class="r15 r">includeUpper</span> = <b>true</b>;
+                                <b>break</b>;
+                            <b>case</b> <span class="s">&quot;boost&quot;</span>:
+                                <span class="r13 r">boost</span> = <span class="r16 r">element</span>.<span class="i">Value</span>.<span class="i">Value</span>&lt;<b>float</b>&gt;();
+                                <b>break</b>;
+                        }
+                    }
+ 
+                    <b>if</b> (<span class="r10 r">gt</span> != <b>null</b> &amp;&amp; <span class="r11 r">lt</span> != <b>null</b> &amp;&amp; <span class="r10 r">gt</span>.<span class="i">Type</span> != <span class="r11 r">lt</span>.<span class="i">Type</span>)
+                    {
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Lower and upper bound range types don&#39;t match&quot;</span>);
+                    }
+ 
+                    <b>switch</b> (<span class="r12 r">tokenType</span>)
+                    {
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">Integer</span>:
+                            <b>var</b> <span id="r17 rd" class="r17 r">minInt</span> = <span class="r10 r">gt</span>?.<span class="i">Value</span>&lt;<b>long</b>&gt;();
+                            <b>var</b> <span id="r18 rd" class="r18 r">maxInt</span> = <span class="r11 r">lt</span>?.<span class="i">Value</span>&lt;<b>long</b>&gt;();
+                            <span class="r8 r">rangeQuery</span> = <span class="i">NumericRangeQuery</span>.<span class="i">NewInt64Range</span>(<span class="r9 r">field</span>, <span class="r17 r">minInt</span>, <span class="r18 r">maxInt</span>, <span class="r14 r">includeLower</span>, <span class="r15 r">includeUpper</span>);
+                            <b>break</b>;
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">Float</span>:
+                            <b>var</b> <span id="r19 rd" class="r19 r">minFloat</span> = <span class="r10 r">gt</span>?.<span class="i">Value</span>&lt;<b>double</b>&gt;();
+                            <b>var</b> <span id="r20 rd" class="r20 r">maxFloat</span> = <span class="r11 r">lt</span>?.<span class="i">Value</span>&lt;<b>double</b>&gt;();
+                            <span class="r8 r">rangeQuery</span> = <span class="i">NumericRangeQuery</span>.<span class="i">NewDoubleRange</span>(<span class="r9 r">field</span>, <span class="r19 r">minFloat</span>, <span class="r20 r">maxFloat</span>, <span class="r14 r">includeLower</span>, <span class="r15 r">includeUpper</span>);
+                            <b>break</b>;
+                        <b>case</b> <span class="i">JTokenType</span>.<span class="i">String</span>:
+                            <b>var</b> <span id="r21 rd" class="r21 r">minString</span> = <span class="r10 r">gt</span>?.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                            <b>var</b> <span id="r22 rd" class="r22 r">maxString</span> = <span class="r11 r">lt</span>?.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+                            <span class="r8 r">rangeQuery</span> = <span class="i">TermRangeQuery</span>.<span class="i">NewStringRange</span>(<span class="r9 r">field</span>, <span class="r21 r">minString</span>, <span class="r22 r">maxString</span>, <span class="r14 r">includeLower</span>, <span class="r15 r">includeUpper</span>);
+                            <b>break</b>;
+                        <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">$&quot;</span><span class="s">Unsupported range value type: </span>{<span class="r2 r">type</span>}<span class="s">&quot;</span>);
+                    }
+ 
+                    <b>if</b> (<span class="r13 r">boost</span> != <b>null</b>)
+                    {
+                        <span class="r8 r">rangeQuery</span>.<span class="i">Boost</span> = <span class="r13 r">boost</span>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>;
+                    }
+ 
+                    <b>break</b>;
+                <b>default</b>: <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#eb98012a74461437" class="t constructor">ArgumentException</a>(<span class="s">&quot;Invalid range query&quot;</span>);
+            }
+ 
+            <span class="r5 r">booleanQuery</span>.<span class="i">Add</span>(<span class="r8 r">rangeQuery</span>, <span class="i">Occur</span>.<span class="i">MUST</span>);
+            <b>var</b> <span id="r23 rd" class="r23 r">queryFilter</span> = <b>new</b> <span class="i">QueryWrapperFilter</span>(<span class="r8 r">rangeQuery</span>);
+ 
+            <b>return</b> <b>new</b> <span class="i">FilteredQuery</span>(<span class="r5 r">booleanQuery</span>, <span class="r23 r">queryFilter</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

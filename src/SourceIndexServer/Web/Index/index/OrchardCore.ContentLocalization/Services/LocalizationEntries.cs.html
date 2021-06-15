@@ -1,0 +1,227 @@
+﻿<!DOCTYPE html>
+<html><head><title>LocalizationEntries.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(218);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentLocalization/Services/LocalizationEntries.cs" target="_top">Services\LocalizationEntries.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentLocalization" target="_top">src\OrchardCore.Modules\OrchardCore.ContentLocalization\OrchardCore.ContentLocalization.csproj</a> (OrchardCore.ContentLocalization)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Immutable</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="3dfc8cbebb7a45e6" href="../R/3dfc8cbebb7a45e6.html" target="n" data-glyph="0,0" class="t t">LocalizationEntries</a> : <a href="ILocalizationEntries.cs.html#c58b4375f37c4d43" class="t t">ILocalizationEntries</a>
+    {
+        <b>private readonly</b> <span class="i">IVolatileDocumentManager</span>&lt;<a href="LocalizationStateDocument.cs.html#ffd08ba3517f11b1" class="t t">LocalizationStateDocument</a>&gt; <a id="0d94eec5d84bf5bc" href="../R/0d94eec5d84bf5bc.html" target="n" data-glyph="46,1" class="i field">_localizationStateManager</a>;
+ 
+        <b>private</b> <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt; <a id="c7af6f4393cd022e" href="../R/c7af6f4393cd022e.html" target="n" data-glyph="46,1" class="i field">_localizations</a> = <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt;.<a href="@1@System.Collections.Immutable/A.html#e239e18c083931b5" class="i field">Empty</a>;
+ 
+        <b>private</b> <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Collections.Immutable/A.html#a61ab3aec9d5b050" class="t t">ImmutableList</a>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt;&gt; <a id="8dc990e3e61ef816" href="../R/8dc990e3e61ef816.html" target="n" data-glyph="46,1" class="i field">_localizationSets</a> =
+            <a href="@1@System.Collections.Immutable/A.html#38c00c1e1679c190" class="t t">ImmutableDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Collections.Immutable/A.html#a61ab3aec9d5b050" class="t t">ImmutableList</a>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt;&gt;.<a href="@1@System.Collections.Immutable/A.html#e239e18c083931b5" class="i field">Empty</a>;
+ 
+        <b>private readonly</b> <span class="t t">SemaphoreSlim</span> <a id="d52bd73536035668" href="../R/d52bd73536035668.html" target="n" data-glyph="46,1" class="i field">_semaphore</a> = <b>new</b> <span class="t constructor">SemaphoreSlim</span>(1);
+ 
+        <b>private int</b> <a id="2b80e9026fbc15e4" href="../R/2b80e9026fbc15e4.html" target="n" data-glyph="46,1" class="i field">_lastIndexId</a>;
+        <b>private string</b> <a id="56f7df722cde9e9e" href="../R/56f7df722cde9e9e.html" target="n" data-glyph="46,1" class="i field">_stateIdentifier</a>;
+        <b>private bool</b> <a id="47b5a36d6dcca710" href="../R/47b5a36d6dcca710.html" target="n" data-glyph="46,1" class="i field">_initialized</a>;
+ 
+        <b>public</b> <a id="b85b9c831d40da3a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LocalizationEntries</a>(<span class="i">IVolatileDocumentManager</span>&lt;<a href="LocalizationStateDocument.cs.html#ffd08ba3517f11b1" class="t t">LocalizationStateDocument</a>&gt; <span id="r0 rd" class="r0 r">localizationStateManager</span>)
+        {
+            <a href="#0d94eec5d84bf5bc" class="i field">_localizationStateManager</a> = <span class="r0 r">localizationStateManager</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;(<b>bool</b>, <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>)&gt; <a id="b192f1fd421ce01f" href="../R/b192f1fd421ce01f.html" target="n" data-glyph="72,1" class="i method">TryGetLocalizationAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">contentItemId</span>)
+        {
+            <b>await</b> <a href="#447e1a5d33ab7250" class="i method">EnsureInitializedAsync</a>();
+ 
+            <b>if</b> (<a href="#c7af6f4393cd022e" class="i field">_localizations</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r1 r">contentItemId</span>, <b>out</b> <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="k">var</a> <span id="r2 rd" class="r2 r">localization</span>))
+            {
+                <b>return</b> (<b>true</b>, <span class="r2 r">localization</span>);
+            }
+ 
+            <b>return</b> (<b>false</b>, <span class="r2 r">localization</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt;&gt; <a id="34223d536668df70" href="../R/34223d536668df70.html" target="n" data-glyph="72,1" class="i method">GetLocalizationsAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r3 rd" class="r3 r">localizationSet</span>)
+        {
+            <b>await</b> <a href="#447e1a5d33ab7250" class="i method">EnsureInitializedAsync</a>();
+ 
+            <b>if</b> (<a href="#8dc990e3e61ef816" class="i field">_localizationSets</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r3 r">localizationSet</span>, <b>out</b> <a href="@1@System.Collections.Immutable/A.html#a61ab3aec9d5b050" class="k">var</a> <span id="r4 rd" class="r4 r">localizations</span>))
+            {
+                <b>return</b> <span class="r4 r">localizations</span>;
+            }
+ 
+            <b>return</b> <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt;();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="811cdbe7838a6b76" href="../R/811cdbe7838a6b76.html" target="n" data-glyph="72,1" class="i method">UpdateEntriesAsync</a>()
+        {
+            <b>await</b> <a href="#447e1a5d33ab7250" class="i method">EnsureInitializedAsync</a>();
+ 
+            <span class="c">// Update the cache with a new state and then refresh entries as it would be done on a next request.</span>
+            <b>await</b> <a href="#0d94eec5d84bf5bc" class="i field">_localizationStateManager</a>.<span class="i">UpdateAsync</span>(<b>new</b> <a href="LocalizationStateDocument.cs.html#ffd08ba3517f11b1" class="t constructor">LocalizationStateDocument</a>(), <span class="i">afterUpdateAsync</span>: <span class="i">RefreshEntriesAsync</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="447e1a5d33ab7250" href="../R/447e1a5d33ab7250.html" target="n" data-glyph="76,1" class="i method">EnsureInitializedAsync</a>()
+        {
+            <b>if</b> (!<a href="#47b5a36d6dcca710" class="i field">_initialized</a>)
+            {
+                <b>await</b> <a href="#f843c3904f1470ea" class="i method">InitializeEntriesAsync</a>();
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">state</span> = <b>await</b> <a href="#0d94eec5d84bf5bc" class="i field">_localizationStateManager</a>.<span class="i">GetOrCreateImmutableAsync</span>();
+                <b>if</b> (<a href="#56f7df722cde9e9e" class="i field">_stateIdentifier</a> != <span class="r5 r">state</span>.<span class="i">Identifier</span>)
+                {
+                    <b>await</b> <span class="i">RefreshEntriesAsync</span>(<span class="r5 r">state</span>);
+                }
+            }
+        }
+ 
+        <b>protected void</b> <a id="c11176306c50b285" href="../R/../../0000000000.html" target="n" data-glyph="75,1" class="i method">AddEntries</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt; <span id="r6 rd" class="r6 r">entries</span>)
+        {
+            <b>foreach</b> (<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="k">var</a> <span id="r7 rd" class="r7 r">entry</span> <b>in</b> <span class="r6 r">entries</span>)
+            {
+                <b>if</b> (<a href="#c7af6f4393cd022e" class="i field">_localizations</a>.<a href="@1@System.Collections.Immutable/A.html#9b287caef13000f8" class="i method">ContainsKey</a>(<span class="r7 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#d6be2e3cd66a5edc" class="i field">ContentItemId</a>))
+                {
+                    <b>continue</b>;
+                }
+ 
+                <a href="#c7af6f4393cd022e" class="i field">_localizations</a> = <a href="#c7af6f4393cd022e" class="i field">_localizations</a>.<a href="@1@System.Collections.Immutable/A.html#23e689c7f9817995" class="i method">SetItem</a>(<span class="r7 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#d6be2e3cd66a5edc" class="i field">ContentItemId</a>, <span class="r7 r">entry</span>);
+ 
+                <b>if</b> (<a href="#8dc990e3e61ef816" class="i field">_localizationSets</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r7 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#03bed8ec33d88dee" class="i field">LocalizationSet</a>, <b>out</b> <a href="@1@System.Collections.Immutable/A.html#a61ab3aec9d5b050" class="k">var</a> <span id="r8 rd" class="r8 r">localizations</span>))
+                {
+                    <span class="r8 r">localizations</span> = <span class="r8 r">localizations</span>.<a href="@1@System.Collections.Immutable/A.html#fecba2fd14010823" class="i method">Add</a>(<span class="r7 r">entry</span>);
+                }
+                <b>else</b>
+                {
+                    <span class="r8 r">localizations</span> = <a href="@1@System.Collections.Immutable/A.html#09f69c7fbaddb910" class="t t">ImmutableList</a>.<a href="@1@System.Collections.Immutable/A.html#446f952dfb59d58a" class="i method">Create</a>(<span class="r7 r">entry</span>);
+                }
+ 
+                <a href="#8dc990e3e61ef816" class="i field">_localizationSets</a> = <a href="#8dc990e3e61ef816" class="i field">_localizationSets</a>.<a href="@1@System.Collections.Immutable/A.html#23e689c7f9817995" class="i method">SetItem</a>(<span class="r7 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#03bed8ec33d88dee" class="i field">LocalizationSet</a>, <span class="r8 r">localizations</span>);
+            }
+        }
+ 
+        <b>protected void</b> <a id="88262c51f4768a0f" href="../R/../../0000000000.html" target="n" data-glyph="75,1" class="i method">RemoveEntries</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t t">LocalizationEntry</a>&gt; <span id="r9 rd" class="r9 r">entries</span>)
+        {
+            <b>foreach</b> (<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="k">var</a> <span id="r10 rd" class="r10 r">entry</span> <b>in</b> <span class="r9 r">entries</span>)
+            {
+                <b>if</b> (!<a href="#c7af6f4393cd022e" class="i field">_localizations</a>.<a href="@1@System.Collections.Immutable/A.html#9b287caef13000f8" class="i method">ContainsKey</a>(<span class="r10 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#d6be2e3cd66a5edc" class="i field">ContentItemId</a>))
+                {
+                    <b>continue</b>;
+                }
+ 
+                <a href="#c7af6f4393cd022e" class="i field">_localizations</a> = <a href="#c7af6f4393cd022e" class="i field">_localizations</a>.<a href="@1@System.Collections.Immutable/A.html#b6bb40b429f535d0" class="i method">Remove</a>(<span class="r10 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#d6be2e3cd66a5edc" class="i field">ContentItemId</a>);
+ 
+                <b>if</b> (<a href="#8dc990e3e61ef816" class="i field">_localizationSets</a>.<a href="@1@System.Collections.Immutable/A.html#a8763529b5a59820" class="i method">TryGetValue</a>(<span class="r10 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#03bed8ec33d88dee" class="i field">LocalizationSet</a>, <b>out</b> <a href="@1@System.Collections.Immutable/A.html#a61ab3aec9d5b050" class="k">var</a> <span id="r11 rd" class="r11 r">localizations</span>))
+                {
+                    <span class="r11 r">localizations</span> = <span class="r11 r">localizations</span>.<a href="@1@System.Collections.Immutable/A.html#3cf042a221838b7c" class="i method">RemoveAll</a>(<span id="r12 rd" class="r12 r">l</span> =&gt; <span class="r12 r">l</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#f63e6543947e4432" class="i field">Culture</a> == <span class="r10 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#f63e6543947e4432" class="i field">Culture</a>);
+                    <a href="#8dc990e3e61ef816" class="i field">_localizationSets</a> = <a href="#8dc990e3e61ef816" class="i field">_localizationSets</a>.<a href="@1@System.Collections.Immutable/A.html#23e689c7f9817995" class="i method">SetItem</a>(<span class="r10 r">entry</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#03bed8ec33d88dee" class="i field">LocalizationSet</a>, <span class="r11 r">localizations</span>);
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="09621f5432a9be10" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">RefreshEntriesAsync</a>(<a href="LocalizationStateDocument.cs.html#ffd08ba3517f11b1" class="t t">LocalizationStateDocument</a> <span id="r13 rd" class="r13 r">state</span>)
+        {
+            <b>if</b> (<a href="#56f7df722cde9e9e" class="i field">_stateIdentifier</a> == <span class="r13 r">state</span>.<a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#d52bd73536035668" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>if</b> (<a href="#56f7df722cde9e9e" class="i field">_stateIdentifier</a> != <span class="r13 r">state</span>.<a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a>)
+                {
+                    <b>var</b> <span id="r14 rd" class="r14 r">indexes</span> = <b>await</b> <a href="#bd7d9494f030671f" class="i property">Session</a>.<span class="i">QueryIndex</span>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#85a43987b9750a9b" class="t t">LocalizedContentItemIndex</a>&gt;(<span id="r15 rd" class="r15 r">i</span> =&gt; <span class="r15 r">i</span>.<span class="i">Id</span> &gt; <a href="#2b80e9026fbc15e4" class="i field">_lastIndexId</a>).<span class="i">ListAsync</span>();
+ 
+                    <span class="c">// A draft is indexed to check for conflicts, and to remove an entry, but only if an item is unpublished,</span>
+                    <span class="c">// so only if the entry &#39;DocumentId&#39; matches, this because when a draft is saved more than once, the index</span>
+                    <span class="c">// is not updated for the published version that may be already scanned, so the entry may not be re-added.</span>
+ 
+                    <b>var</b> <span id="r16 rd" class="r16 r">entriesToRemove</span> = <span class="r14 r">indexes</span>
+                        .<span class="i">Where</span>(<span id="r17 rd" class="r17 r">i</span> =&gt; !<span class="r17 r">i</span>.<span class="i">Published</span> || <span class="r17 r">i</span>.<span class="i">Culture</span> == <b>null</b>)
+                        .<span class="i">SelectMany</span>(<span id="r18 rd" class="r18 r">i</span> =&gt; <a href="#c7af6f4393cd022e" class="i field">_localizations</a>.<a href="@1@System.Collections.Immutable/A.html#fcef75d0d45c76eb" class="i property">Values</a>.<span class="i method">Where</span>(<span id="r19 rd" class="r19 r">e</span> =&gt;
+                            <span class="c">// The item was removed.</span>
+                            ((!<span class="r18 r">i</span>.<span class="i">Published</span> &amp;&amp; !<span class="r18 r">i</span>.<span class="i">Latest</span>) ||
+                            <span class="c">// The part was removed.</span>
+                            (<span class="r18 r">i</span>.<span class="i">Culture</span> == <b>null</b> &amp;&amp; <span class="r18 r">i</span>.<span class="i">Published</span>) ||
+                            <span class="c">// The item was unpublished.</span>
+                            (!<span class="r18 r">i</span>.<span class="i">Published</span> &amp;&amp; <span class="r19 r">e</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#91fc6cc7a3bbb95f" class="i field">DocumentId</a> == <span class="r18 r">i</span>.<span class="i">DocumentId</span>)) &amp;&amp;
+                            (<span class="r19 r">e</span>.<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#d6be2e3cd66a5edc" class="i field">ContentItemId</a> == <span class="r18 r">i</span>.<span class="i">ContentItemId</span>)));
+ 
+                    <b>var</b> <span id="r20 rd" class="r20 r">entriesToAdd</span> = <span class="r14 r">indexes</span>.
+                        <span class="i">Where</span>(<span id="r21 rd" class="r21 r">i</span> =&gt; <span class="r21 r">i</span>.<span class="i">Published</span> &amp;&amp; <span class="r21 r">i</span>.<span class="i">Culture</span> != <b>null</b>)
+                        .<span class="i">Select</span>(<span id="r22 rd" class="r22 r">i</span> =&gt; <b>new</b> <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t constructor">LocalizationEntry</a>
+                        {
+                            <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#91fc6cc7a3bbb95f" class="i field">DocumentId</a> = <span class="r22 r">i</span>.<span class="i">DocumentId</span>,
+                            <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#d6be2e3cd66a5edc" class="i field">ContentItemId</a> = <span class="r22 r">i</span>.<span class="i">ContentItemId</span>,
+                            <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#03bed8ec33d88dee" class="i field">LocalizationSet</a> = <span class="r22 r">i</span>.<span class="i">LocalizationSet</span>,
+                            <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#f63e6543947e4432" class="i field">Culture</a> = <span class="r22 r">i</span>.<span class="i">Culture</span>.<span class="i">ToLowerInvariant</span>()
+                        });
+ 
+                    <span class="i">RemoveEntries</span>(<span class="r16 r">entriesToRemove</span>);
+                    <span class="i">AddEntries</span>(<span class="r20 r">entriesToAdd</span>);
+ 
+                    <a href="#2b80e9026fbc15e4" class="i field">_lastIndexId</a> = <span class="r14 r">indexes</span>.<span class="i">LastOrDefault</span>()?.<span class="i">Id</span> ?? 0;
+                    <a href="#56f7df722cde9e9e" class="i field">_stateIdentifier</a> = <span class="r13 r">state</span>.<a href="/OrchardCore.Data.Abstractions/A.html#8dd015c194b55051" class="i property">Identifier</a>;
+                }
+            }
+            <b>finally</b>
+            {
+                <a href="#d52bd73536035668" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>protected virtual async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="f843c3904f1470ea" href="../R/f843c3904f1470ea.html" target="n" data-glyph="75,1" class="i method">InitializeEntriesAsync</a>()
+        {
+            <b>if</b> (<a href="#47b5a36d6dcca710" class="i field">_initialized</a>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>await</b> <a href="#d52bd73536035668" class="i field">_semaphore</a>.<span class="i method">WaitAsync</span>();
+            <b>try</b>
+            {
+                <b>if</b> (!<a href="#47b5a36d6dcca710" class="i field">_initialized</a>)
+                {
+                    <b>var</b> <span id="r23 rd" class="r23 r">state</span> = <b>await</b> <a href="#0d94eec5d84bf5bc" class="i field">_localizationStateManager</a>.<span class="i">GetOrCreateImmutableAsync</span>();
+ 
+                    <b>var</b> <span id="r24 rd" class="r24 r">indexes</span> = <b>await</b> <a href="#bd7d9494f030671f" class="i property">Session</a>.<span class="i">QueryIndex</span>&lt;<a href="/OrchardCore.ContentLocalization.Abstractions/A.html#85a43987b9750a9b" class="t t">LocalizedContentItemIndex</a>&gt;(<span id="r25 rd" class="r25 r">i</span> =&gt; <span class="r25 r">i</span>.<span class="i">Published</span> &amp;&amp; <span class="r25 r">i</span>.<span class="i">Culture</span> != <b>null</b>).<span class="i">ListAsync</span>();
+                    <b>var</b> <span id="r26 rd" class="r26 r">entries</span> = <span class="r24 r">indexes</span>.<span class="i">Select</span>(<span id="r27 rd" class="r27 r">i</span> =&gt; <b>new</b> <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#1895d2f33a514a10" class="t constructor">LocalizationEntry</a>
+                    {
+                        <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#91fc6cc7a3bbb95f" class="i field">DocumentId</a> = <span class="r27 r">i</span>.<span class="i">DocumentId</span>,
+                        <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#d6be2e3cd66a5edc" class="i field">ContentItemId</a> = <span class="r27 r">i</span>.<span class="i">ContentItemId</span>,
+                        <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#03bed8ec33d88dee" class="i field">LocalizationSet</a> = <span class="r27 r">i</span>.<span class="i">LocalizationSet</span>,
+                        <a href="/OrchardCore.ContentLocalization.Abstractions/A.html#f63e6543947e4432" class="i field">Culture</a> = <span class="r27 r">i</span>.<span class="i">Culture</span>.<span class="i">ToLowerInvariant</span>()
+                    });
+ 
+                    <span class="i">AddEntries</span>(<span class="r26 r">entries</span>);
+ 
+                    <a href="#2b80e9026fbc15e4" class="i field">_lastIndexId</a> = <span class="r24 r">indexes</span>.<span class="i">LastOrDefault</span>()?.<span class="i">Id</span> ?? 0;
+                    <a href="#56f7df722cde9e9e" class="i field">_stateIdentifier</a> = <span class="r23 r">state</span>.<span class="i">Identifier</span>;
+ 
+                    <a href="#47b5a36d6dcca710" class="i field">_initialized</a> = <b>true</b>;
+                }
+            }
+            <b>finally</b>
+            {
+                <a href="#d52bd73536035668" class="i field">_semaphore</a>.<span class="i method">Release</span>();
+            }
+        }
+ 
+        <b>private static</b> <span class="i">ISession</span> <a id="bd7d9494f030671f" href="../R/bd7d9494f030671f.html" target="n" data-glyph="106,1" class="i property">Session</a> =&gt; <span class="i">ShellScope</span>.<span class="i">Services</span>.<span class="i">GetRequiredService</span>&lt;<span class="i">ISession</span>&gt;();
+    }
+}
+</pre></td></tr></table></div></body></html>

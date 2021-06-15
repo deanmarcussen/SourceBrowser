@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html><head><title>BuildDisplayFilter.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(78);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Liquid/BuildDisplayFilter.cs" target="_top">Liquid\BuildDisplayFilter.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Display</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Liquid</span>
+{
+    <b>public class</b> <a id="f346ebc5c3c789de" href="../R/f346ebc5c3c789de.html" target="n" data-glyph="0,0" class="t t">BuildDisplayFilter</a> : <a href="/OrchardCore.Liquid.Abstractions/A.html#e3ebfc606d5ff056" class="t t">ILiquidFilter</a>
+    {
+        <b>private const int</b> <a id="3a38f37aa8aebd53" href="../R/3a38f37aa8aebd53.html" target="n" data-glyph="10,1" class="i field">DefaultMaxContentItemRecursions</a> = 20;
+ 
+        <b>private readonly</b> <a href="ContentItemRecursionHelper.cs.html#7fc1280b2284b80d" class="t t">IContentItemRecursionHelper</a>&lt;<a href="#f346ebc5c3c789de" class="t t">BuildDisplayFilter</a>&gt; <a id="912621b825753b9d" href="../R/912621b825753b9d.html" target="n" data-glyph="46,1" class="i field">_buildDisplayRecursionHelper</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Display/A.html#ccb0f2621bf941ec" class="t t">IContentItemDisplayManager</a> <a id="2820f06bc26079c0" href="../R/2820f06bc26079c0.html" target="n" data-glyph="46,1" class="i field">_contentItemDisplayManager</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="e0473ff0c54ecbd0" href="../R/e0473ff0c54ecbd0.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+ 
+        <b>public</b> <a id="6bcf8d97f1fe999b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">BuildDisplayFilter</a>(<a href="ContentItemRecursionHelper.cs.html#7fc1280b2284b80d" class="t t">IContentItemRecursionHelper</a>&lt;<a href="#f346ebc5c3c789de" class="t t">BuildDisplayFilter</a>&gt; <span id="r0 rd" class="r0 r">buildDisplayRecursionHelper</span>,
+            <a href="/OrchardCore.ContentManagement.Display/A.html#ccb0f2621bf941ec" class="t t">IContentItemDisplayManager</a> <span id="r1 rd" class="r1 r">contentItemDisplayManager</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r2 rd" class="r2 r">updateModelAccessor</span>)
+        {
+            <a href="#912621b825753b9d" class="i field">_buildDisplayRecursionHelper</a> = <span class="r0 r">buildDisplayRecursionHelper</span>;
+            <a href="#2820f06bc26079c0" class="i field">_contentItemDisplayManager</a> = <span class="r1 r">contentItemDisplayManager</span>;
+            <a href="#e0473ff0c54ecbd0" class="i field">_updateModelAccessor</a> = <span class="r2 r">updateModelAccessor</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="d96912391ba819b1" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="i">FluidValue</span> <span id="r3 rd" class="r3 r">input</span>, <span class="i">FilterArguments</span> <span id="r4 rd" class="r4 r">arguments</span>, <a href="/OrchardCore.Liquid.Abstractions/A.html#e17bfc00558bbb3a" class="t t">LiquidTemplateContext</a> <span id="r5 rd" class="r5 r">ctx</span>)
+        {
+            <b>static async</b> <a href="@1@System.Runtime/A.html#77a292425839ae85" class="t t">ValueTask</a>&lt;<span class="i">FluidValue</span>&gt; <a id="3af937be035079fd" href="../R/../../0000000000.html" target="n" data-glyph="76,2" class="i method">Awaited</a>(<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">IShape</span>&gt; <span id="r6 rd" class="r6 r">task</span>, <span class="i">TemplateOptions</span> <span id="r7 rd" class="r7 r">options</span>)
+            {
+                <b>return</b> <span class="i">FluidValue</span>.<span class="i">Create</span>(<b>await</b> <span class="r6 r">task</span>, <span class="r7 r">options</span>);
+            }
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">obj</span> = <span class="r3 r">input</span>.<span class="i">ToObjectValue</span>();
+ 
+            <b>if</b> (!(<span class="r8 r">obj</span> <b>is</b> <span class="i">ContentItem</span> <span id="r9 rd" class="r9 r">contentItem</span>))
+            {
+                <span class="r9 r">contentItem</span> = <b>null</b>;
+ 
+                <b>if</b> (<span class="r8 r">obj</span> <b>is</b> <span class="i">JObject</span> <span id="r10 rd" class="r10 r">jObject</span>)
+                {
+                    <span class="r9 r">contentItem</span> = <span class="r10 r">jObject</span>.<span class="i">ToObject</span>&lt;<span class="i">ContentItem</span>&gt;();
+                }
+            }
+ 
+            <span class="c">// If input is a &#39;JObject&#39; but which not represents a &#39;ContentItem&#39;,</span>
+            <span class="c">// a &#39;ContentItem&#39; is still created but with some null properties.</span>
+            <b>if</b> (<span class="r9 r">contentItem</span>?.<span class="i">ContentItemId</span> == <b>null</b>)
+            {
+                <b>return</b> <b>new</b> <span class="t">ValueTask</span>&lt;<span class="i">FluidValue</span>&gt;(<span class="i">NilValue</span>.<span class="i">Instance</span>);
+            }
+ 
+            <span class="c">// When {{ Model.ContentItem | shape_build_display | shape_render }} is called prevent unlimited recursions.</span>
+            <span class="c">// max_recursions is an optional argument to override the default limit of 20.</span>
+            <b>var</b> <span id="r11 rd" class="r11 r">maxRecursions</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;max_recursions&quot;</span>];
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r12 rd" class="r12 r">recursionLimit</span> = <span class="r11 r">maxRecursions</span>.<span class="i">Type</span> == <span class="i">FluidValues</span>.<span class="i">Number</span> ? <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<span class="i">ToInt32</span>(<span class="r11 r">maxRecursions</span>.<span class="i">ToNumberValue</span>()) : <a href="#3a38f37aa8aebd53" class="i field">DefaultMaxContentItemRecursions</a>;
+            <b>if</b> (<a href="#912621b825753b9d" class="i field">_buildDisplayRecursionHelper</a>.<a href="ContentItemRecursionHelper.cs.html#9ff9b20673c10f10" class="i method">IsRecursive</a>(<span class="r9 r">contentItem</span>, <span class="r12 r">recursionLimit</span>))
+            {
+                <b>return</b> <b>new</b> <span class="t">ValueTask</span>&lt;<span class="i">FluidValue</span>&gt;(<span class="i">NilValue</span>.<span class="i">Instance</span>);
+            }
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">displayType</span> = <span class="r4 r">arguments</span>[<span class="s">&quot;type&quot;</span>].<span class="i">Or</span>(<span class="r4 r">arguments</span>.<span class="i">At</span>(0)).<span class="i">ToStringValue</span>();
+ 
+            <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="k">var</a> <span id="r14 rd" class="r14 r">task</span> = <a href="#2820f06bc26079c0" class="i field">_contentItemDisplayManager</a>.<span class="i">BuildDisplayAsync</span>(<span class="r9 r">contentItem</span>, <a href="#e0473ff0c54ecbd0" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <span class="r13 r">displayType</span>);
+            <b>if</b> (<span class="r14 r">task</span>.<a href="@1@System.Runtime/A.html#6a5dbf3b29faed67" class="i property">IsCompletedSuccessfully</a>)
+            {
+                <b>return</b> <b>new</b> <span class="t">ValueTask</span>&lt;<span class="i">FluidValue</span>&gt;(<span class="i">FluidValue</span>.<span class="i">Create</span>(<span class="r14 r">task</span>.<a href="@1@System.Runtime/A.html#826690b09f24e719" class="i property">Result</a>, <span class="r5 r">ctx</span>.<span class="i">Options</span>));
+            }
+ 
+            <b>return</b> <span class="i">Awaited</span>(<span class="r14 r">task</span>, <span class="r5 r">ctx</span>.<span class="i">Options</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

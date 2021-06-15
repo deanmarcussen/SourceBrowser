@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html><head><title>LocalizeContentAuthorizationHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(87);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ContentLocalization/Security/LocalizeContentAuthorizationHandler.cs" target="_top">Security\LocalizeContentAuthorizationHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ContentLocalization" target="_top">src\OrchardCore.Modules\OrchardCore.ContentLocalization\OrchardCore.ContentLocalization.csproj</a> (OrchardCore.ContentLocalization)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>.<span class="i">Permissions</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentLocalization</span>.<span class="i n">Security</span>
+{
+    <b>public class</b> <a id="bf5fc42bec7b3a51" href="../R/bf5fc42bec7b3a51.html" target="n" data-glyph="0,0" class="t t">LocalizeContentAuthorizationHandler</a> : <span class="t t">AuthorizationHandler</span>&lt;<span class="i">PermissionRequirement</span>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="774e594a03e01ef1" href="../R/774e594a03e01ef1.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private</b> <span class="t t">IAuthorizationService</span> <a id="8ec00c32f90e55c9" href="../R/8ec00c32f90e55c9.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+ 
+        <b>public</b> <a id="cb59cf9632cababe" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LocalizeContentAuthorizationHandler</a>(<span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">serviceProvider</span>)
+        {
+            <a href="#774e594a03e01ef1" class="i field">_serviceProvider</a> = <span class="r0 r">serviceProvider</span>;
+        }
+ 
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="41d6e8194f7a6916" href="../R/41d6e8194f7a6916.html" target="n" data-glyph="75,1" class="i method">HandleRequirementAsync</a>(<span class="t t">AuthorizationHandlerContext</span> <span id="r1 rd" class="r1 r">context</span>, <span class="i">PermissionRequirement</span> <span id="r2 rd" class="r2 r">requirement</span>)
+        {
+            <b>if</b> (<span class="r1 r">context</span>.<span class="i property">HasSucceeded</span>)
+            {
+                <span class="c">// This handler is not revoking any pre-existing grants.</span>
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r1 r">context</span>.<span class="i property">Resource</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r3 rd" class="r3 r">contentItem</span> = <span class="r1 r">context</span>.<span class="i property">Resource</span> <b>as</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>;
+ 
+            <span class="i">Permission</span> <span id="r4 rd" class="r4 r">permission</span> = <b>null</b>;
+ 
+            <b>if</b> (<span class="r3 r">contentItem</span> != <b>null</b>)
+            {
+                <b>if</b> (<span class="i">OwnerVariationExists</span>(<span class="r2 r">requirement</span>.<span class="i">Permission</span>) &amp;&amp; <a href="#0d770ee6da14bf9e" class="i method">HasOwnership</a>(<span class="r1 r">context</span>.<span class="i property">User</span>, <span class="r3 r">contentItem</span>))
+                {
+                    <span class="r4 r">permission</span> = <span class="i">GetOwnerVariation</span>(<span class="r2 r">requirement</span>.<span class="i">Permission</span>);
+                }
+            }
+ 
+            <b>if</b> (<span class="r4 r">permission</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Lazy load to prevent circular dependencies</span>
+            <a href="#8ec00c32f90e55c9" class="i field">_authorizationService</a> ??= <a href="#774e594a03e01ef1" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IAuthorizationService</span>&gt;();
+ 
+            <b>if</b> (<b>await</b> <a href="#8ec00c32f90e55c9" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r1 r">context</span>.<span class="i property">User</span>, <span class="r4 r">permission</span>))
+            {
+                <span class="r1 r">context</span>.<span class="i">Succeed</span>(<span class="r2 r">requirement</span>);
+            }
+        }
+ 
+        <b>private static</b> <span class="i">Permission</span> <a id="8a708676d12de964" href="../R/8a708676d12de964.html" target="n" data-glyph="76,1" class="i method">GetOwnerVariation</a>(<span class="i">Permission</span> <span id="r5 rd" class="r5 r">permission</span>)
+        {
+            <b>if</b> (<span class="r5 r">permission</span>.<span class="i">Name</span> == <a href="../Permissions.cs.html#d9508d81a43c73cf" class="t t">Permissions</a>.<a href="../Permissions.cs.html#dd4a6ca56485cb83" class="i field">LocalizeContent</a>.<span class="i">Name</span>)
+            {
+                <b>return</b> <a href="../Permissions.cs.html#d9508d81a43c73cf" class="t t">Permissions</a>.<a href="../Permissions.cs.html#30fdbb3215ea7aa4" class="i field">LocalizeOwnContent</a>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>private static bool</b> <a id="0d770ee6da14bf9e" href="../R/0d770ee6da14bf9e.html" target="n" data-glyph="76,1" class="i method">HasOwnership</a>(<span class="t t">ClaimsPrincipal</span> <span id="r6 rd" class="r6 r">user</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r7 rd" class="r7 r">content</span>)
+        {
+            <b>if</b> (<span class="r6 r">user</span> == <b>null</b> || <span class="r7 r">content</span> == <b>null</b>)
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>return</b> <span class="r6 r">user</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>) == <span class="r7 r">content</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#e9a39e7f4cd17d33" class="i property">Owner</a>;
+        }
+ 
+        <b>private static bool</b> <a id="c265b6771779d14a" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">OwnerVariationExists</a>(<span class="i">Permission</span> <span id="r8 rd" class="r8 r">permission</span>)
+        {
+            <b>return</b> <a href="#8a708676d12de964" class="i method">GetOwnerVariation</a>(<span class="r8 r">permission</span>) != <b>null</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

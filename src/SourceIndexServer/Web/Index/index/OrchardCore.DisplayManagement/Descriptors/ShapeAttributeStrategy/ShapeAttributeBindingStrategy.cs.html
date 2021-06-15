@@ -1,0 +1,288 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShapeAttributeBindingStrategy.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(279);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/Descriptors/ShapeAttributeStrategy/ShapeAttributeBindingStrategy.cs" target="_top">Descriptors\ShapeAttributeStrategy\ShapeAttributeBindingStrategy.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>.<span class="i n">Expressions</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">ViewFeatures</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Implementation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Extensions</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Descriptors</span>.<span class="i n">ShapeAttributeStrategy</span>
+{
+    <b>public class</b> <a id="82db9100d20c1736" href="../../R/82db9100d20c1736.html" target="n" data-glyph="0,0" class="t t">ShapeAttributeBindingStrategy</a> : <a href="../Interfaces.cs.html#5172c54cd1d3325e" class="t t">IShapeTableHarvester</a>
+    {
+        <b>private readonly</b> <span class="i">ITypeFeatureProvider</span> <a id="486f19038c31c214" href="../../R/486f19038c31c214.html" target="n" data-glyph="46,1" class="i field">_typeFeatureProvider</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="../Interfaces.cs.html#4ed6c423bfefa6c8" class="t t">IShapeAttributeProvider</a>&gt; <a id="d71c20c9ae8e76e2" href="../../R/d71c20c9ae8e76e2.html" target="n" data-glyph="46,1" class="i field">_shapeProviders</a>;
+ 
+        <b>public</b> <a id="b47474f42d2a4ef5" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShapeAttributeBindingStrategy</a>(
+            <span class="i">ITypeFeatureProvider</span> <span id="r0 rd" class="r0 r">typeFeatureProvider</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="../Interfaces.cs.html#4ed6c423bfefa6c8" class="t t">IShapeAttributeProvider</a>&gt; <span id="r1 rd" class="r1 r">shapeProviders</span>)
+        {
+            <a href="#486f19038c31c214" class="i field">_typeFeatureProvider</a> = <span class="r0 r">typeFeatureProvider</span>;
+            <a href="#d71c20c9ae8e76e2" class="i field">_shapeProviders</a> = <span class="r1 r">shapeProviders</span>;
+        }
+ 
+        <b>public void</b> <a id="4f86f1cb7d2e6569" href="../../R/4f86f1cb7d2e6569.html" target="n" data-glyph="72,1" class="i method">Discover</a>(<a href="../ShapeTableBuilder.cs.html#2dceb447d3fdae18" class="t t">ShapeTableBuilder</a> <span id="r2 rd" class="r2 r">builder</span>)
+        {
+            <b>var</b> <span id="r3 rd" class="r3 r">shapeAttributeOccurrences</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="ShapeAttributeOccurrence.cs.html#8217847d08c60666" class="t t">ShapeAttributeOccurrence</a>&gt;();
+ 
+            <b>foreach</b> (<a href="../Interfaces.cs.html#4ed6c423bfefa6c8" class="k">var</a> <span id="r4 rd" class="r4 r">shapeProvider</span> <b>in</b> <a href="#d71c20c9ae8e76e2" class="i field">_shapeProviders</a>)
+            {
+                <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r5 rd" class="r5 r">serviceType</span> = <span class="r4 r">shapeProvider</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>();
+ 
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r6 rd" class="r6 r">method</span> <b>in</b> <span class="r5 r">serviceType</span>.<a href="@1@System.Runtime/A.html#7c091fc4114614b5" class="i method">GetMethods</a>())
+                {
+                    <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r7 rd" class="r7 r">customAttributes</span> = <span class="r6 r">method</span>.<a href="@1@System.Runtime/A.html#3988b4e75e269e91" class="i method">GetCustomAttributes</a>(<b>typeof</b>(<a href="../../ShapeAttribute.cs.html#26ea1fd5c0b07282" class="t t">ShapeAttribute</a>), <b>false</b>).<span class="i method">OfType</span>&lt;<a href="../../ShapeAttribute.cs.html#26ea1fd5c0b07282" class="t t">ShapeAttribute</a>&gt;();
+                    <b>foreach</b> (<a href="../../ShapeAttribute.cs.html#26ea1fd5c0b07282" class="k">var</a> <span id="r8 rd" class="r8 r">customAttribute</span> <b>in</b> <span class="r7 r">customAttributes</span>)
+                    {
+                        <span class="r3 r">shapeAttributeOccurrences</span>.<span class="i method">Add</span>(<b>new</b> <a href="ShapeAttributeOccurrence.cs.html#2008ab1bd71eaee4" class="t constructor">ShapeAttributeOccurrence</a>(<span class="r8 r">customAttribute</span>, <span class="r6 r">method</span>, <span class="r5 r">serviceType</span>));
+                    }
+                }
+            }
+ 
+            <b>foreach</b> (<a href="ShapeAttributeOccurrence.cs.html#8217847d08c60666" class="k">var</a> <span id="r9 rd" class="r9 r">iter</span> <b>in</b> <span class="r3 r">shapeAttributeOccurrences</span>)
+            {
+                <a href="ShapeAttributeOccurrence.cs.html#8217847d08c60666" class="k">var</a> <span id="r10 rd" class="r10 r">occurrence</span> = <span class="r9 r">iter</span>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">shapeType</span> = <span class="r10 r">occurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#7ca8903dc62cb5f2" class="i property">ShapeAttribute</a>.<a href="../../ShapeAttribute.cs.html#7d21dbaab0880c64" class="i property">ShapeType</a> ?? <span class="r10 r">occurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#19ffe541a92be7bf" class="i property">MethodInfo</a>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>;
+                <span class="r2 r">builder</span>.<a href="../ShapeTableBuilder.cs.html#367d1e27b6144761" class="i method">Describe</a>(<span class="r11 r">shapeType</span>)
+                    .<span class="i">From</span>(<a href="#486f19038c31c214" class="i field">_typeFeatureProvider</a>.<span class="i">GetFeatureForDependency</span>(<span class="r10 r">occurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#2a5e5468cbf4cc70" class="i property">ServiceType</a>))
+                    .<a href="../ShapeAlterationBuilder.cs.html#08159412e05b71a7" class="i method">BoundAs</a>(
+                        <span class="r10 r">occurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#19ffe541a92be7bf" class="i property">MethodInfo</a>.<a href="@1@System.Runtime/A.html#3eb1391de297c1a8" class="i property">DeclaringType</a>.<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a> + <span class="s">&quot;::&quot;</span> + <span class="r10 r">occurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#19ffe541a92be7bf" class="i property">MethodInfo</a>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>,
+                        <a href="#3dffecebc0e3ba7f" class="i method">CreateDelegate</a>(<span class="r10 r">occurrence</span>));
+            }
+        }
+ 
+        [<a href="@1@System.Runtime/A.html#15085db4bf5c94f0" class="t constructor">DebuggerStepThrough</a>]
+        <b>private</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../../Implementation/DisplayContext.cs.html#dc4c3fe34aa709f5" class="t t">DisplayContext</a>, <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt;&gt; <a id="3dffecebc0e3ba7f" href="../../R/3dffecebc0e3ba7f.html" target="n" data-glyph="76,1" class="i method">CreateDelegate</a>(<a href="ShapeAttributeOccurrence.cs.html#8217847d08c60666" class="t t">ShapeAttributeOccurrence</a> <span id="r12 rd" class="r12 r">attributeOccurrence</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r13 rd" class="r13 r">type</span> = <span class="r12 r">attributeOccurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#2a5e5468cbf4cc70" class="i property">ServiceType</a>;
+            <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r14 rd" class="r14 r">methodInfo</span> = <span class="r12 r">attributeOccurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#19ffe541a92be7bf" class="i property">MethodInfo</a>;
+            <b>var</b> <span id="r15 rd" class="r15 r">parameters</span> = <span class="r14 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#91801fac9c14db1f" class="i method">GetParameters</a>();
+ 
+            <span class="c">// Create an array of lambdas that will generate the value of each parameter. This prevents from having to test each name and type on every invocation.</span>
+            <b>var</b> <span id="r16 rd" class="r16 r">argumentBuilders</span> = <span class="r15 r">parameters</span>.<span class="i method">Select</span>(<span id="r17 rd" class="r17 r">parameter</span> =&gt; <a href="#95b7b9935b2eae03" class="i method">BindParameter</a>(<span class="r17 r">parameter</span>)).<span class="i method">ToArray</span>();
+ 
+            <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="k">var</a> <span id="r18 rd" class="r18 r">methodWrapper</span> = <a href="#4ab48544dd0e2eac" class="i method">CreateMethodWrapper</a>(<span class="r13 r">type</span>, <span class="r14 r">methodInfo</span>);
+ 
+            <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<b>object</b>, <a href="../../Implementation/DisplayContext.cs.html#dc4c3fe34aa709f5" class="t t">DisplayContext</a>, <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt;&gt; <span id="r19 rd" class="r19 r">action</span>;
+ 
+            <b>if</b> (<span class="r14 r">methodInfo</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt;))
+            {
+                <span class="r19 r">action</span> = (<span id="r20 rd" class="r20 r">s</span>, <span id="r21 rd" class="r21 r">d</span>) =&gt;
+                {
+                    <b>var</b> <span id="r22 rd" class="r22 r">arguments</span> = <b>new</b> <b>object</b>[<span class="r16 r">argumentBuilders</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>];
+                    <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r23 rd" class="r23 r">i</span> = 0; <span class="r23 r">i</span> &lt; <span class="r22 r">arguments</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r23 r">i</span>++)
+                    {
+                        <span class="r22 r">arguments</span>[<span class="r23 r">i</span>] = <span class="r16 r">argumentBuilders</span>[<span class="r23 r">i</span>](<span class="r21 r">d</span>);
+                    }
+ 
+                    <b>return</b> (<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt;)<span class="r18 r">methodWrapper</span>(<span class="r20 r">s</span>, <span class="r22 r">arguments</span>);
+                };
+            }
+            <b>else</b> <b>if</b> (<span class="r12 r">attributeOccurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#19ffe541a92be7bf" class="i property">MethodInfo</a>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> == <b>typeof</b>(<span class="t t">IHtmlContent</span>))
+            {
+                <span class="r19 r">action</span> = (<span id="r24 rd" class="r24 r">s</span>, <span id="r25 rd" class="r25 r">d</span>) =&gt;
+                {
+                    <b>var</b> <span id="r26 rd" class="r26 r">arguments</span> = <b>new</b> <b>object</b>[<span class="r16 r">argumentBuilders</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>];
+                    <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r27 rd" class="r27 r">i</span> = 0; <span class="r27 r">i</span> &lt; <span class="r26 r">arguments</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r27 r">i</span>++)
+                    {
+                        <span class="r26 r">arguments</span>[<span class="r27 r">i</span>] = <span class="r16 r">argumentBuilders</span>[<span class="r27 r">i</span>](<span class="r25 r">d</span>);
+                    }
+ 
+                    <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="t t">IHtmlContent</span>)<span class="r18 r">methodWrapper</span>(<span class="r24 r">s</span>, <span class="r26 r">arguments</span>));
+                };
+            }
+            <b>else</b> <b>if</b> (<span class="r12 r">attributeOccurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#19ffe541a92be7bf" class="i property">MethodInfo</a>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> != <b>typeof</b>(<b>void</b>))
+            {
+                <span class="r19 r">action</span> = (<span id="r28 rd" class="r28 r">s</span>, <span id="r29 rd" class="r29 r">d</span>) =&gt;
+                {
+                    <b>var</b> <span id="r30 rd" class="r30 r">arguments</span> = <b>new</b> <b>object</b>[<span class="r16 r">argumentBuilders</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>];
+                    <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r31 rd" class="r31 r">i</span> = 0; <span class="r31 r">i</span> &lt; <span class="r30 r">arguments</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r31 r">i</span>++)
+                    {
+                        <span class="r30 r">arguments</span>[<span class="r31 r">i</span>] = <span class="r16 r">argumentBuilders</span>[<span class="r31 r">i</span>](<span class="r29 r">d</span>);
+                    }
+ 
+                    <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<a href="#6cd2aa2a1a07b581" class="i method">CoerceHtmlContent</a>(<span class="r18 r">methodWrapper</span>(<span class="r28 r">s</span>, <span class="r30 r">arguments</span>)));
+                };
+            }
+            <b>else</b>
+            {
+                <span class="r19 r">action</span> = (<span id="r32 rd" class="r32 r">s</span>, <span id="r33 rd" class="r33 r">d</span>) =&gt; <b>null</b>;
+            }
+ 
+            <b>return</b> <span id="r34 rd" class="r34 r">context</span> =&gt;
+            {
+                <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r35 rd" class="r35 r">serviceInstance</span> = <span class="r34 r">context</span>.<a href="../../Implementation/DisplayContext.cs.html#02d0ad56ed4bc997" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>(<span class="r12 r">attributeOccurrence</span>.<a href="ShapeAttributeOccurrence.cs.html#2a5e5468cbf4cc70" class="i property">ServiceType</a>);
+                <b>return</b> <span class="r19 r">action</span>(<span class="r35 r">serviceInstance</span>, <span class="r34 r">context</span>);
+            };
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<b>object</b>, <b>object</b>[], <b>object</b>&gt; <a id="4ab48544dd0e2eac" href="../../R/4ab48544dd0e2eac.html" target="n" data-glyph="76,1" class="i method">CreateMethodWrapper</a>(<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a> <span id="r36 rd" class="r36 r">type</span>, <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="t t">MethodInfo</a> <span id="r37 rd" class="r37 r">method</span>)
+        {
+            <a href="#873f73342ef75061" class="i method">CreateParamsExpressions</a>(<span class="r37 r">method</span>, <b>out</b> <span class="t t">ParameterExpression</span> <span id="r38 rd" class="r38 r">argsExp</span>, <b>out</b> <span class="t t">Expression</span>[] <span id="r39 rd" class="r39 r">paramsExps</span>);
+ 
+            <b>var</b> <span id="r40 rd" class="r40 r">targetExp</span> = <span class="t t">Expression</span>.<span class="i method">Parameter</span>(<b>typeof</b>(<b>object</b>), <span class="s">&quot;target&quot;</span>);
+            <b>var</b> <span id="r41 rd" class="r41 r">castTargetExp</span> = <span class="t t">Expression</span>.<span class="i method">Convert</span>(<span class="r40 r">targetExp</span>, <span class="r36 r">type</span>);
+            
+ 
+            <span class="t t">LambdaExpression</span> <span id="r42 rd" class="r42 r">lambdaExp</span>;
+ 
+            <b>if</b> (<span class="r37 r">method</span>.<a href="@1@System.Runtime/A.html#5be6c92e98bc4044" class="i property">ReturnType</a> != <b>typeof</b>(<b>void</b>))
+            {
+                <b>var</b> <span id="r43 rd" class="r43 r">resultExp</span> = <span class="t t">Expression</span>.<span class="i method">Convert</span>(<span class="t t">Expression</span>.<span class="i method">Call</span>(<span class="r41 r">castTargetExp</span>, <span class="r37 r">method</span>, <span class="r39 r">paramsExps</span>), <b>typeof</b>(<b>object</b>));
+                <span class="r42 r">lambdaExp</span> = <span class="t t">Expression</span>.<span class="i method">Lambda</span>(<span class="r43 r">resultExp</span>, <span class="r40 r">targetExp</span>, <span class="r38 r">argsExp</span>);
+            }
+            <b>else</b>
+            {
+                <b>var</b> <span id="r44 rd" class="r44 r">constExp</span> = <span class="t t">Expression</span>.<span class="i method">Constant</span>(<b>null</b>, <b>typeof</b>(<b>object</b>));
+                <b>var</b> <span id="r45 rd" class="r45 r">blockExp</span> = <span class="t t">Expression</span>.<span class="i method">Block</span>(<span class="t t">Expression</span>.<span class="i method">Call</span>(<span class="r41 r">castTargetExp</span>, <span class="r37 r">method</span>, <span class="r39 r">paramsExps</span>), <span class="r44 r">constExp</span>);
+                <span class="r42 r">lambdaExp</span> = <span class="t t">Expression</span>.<span class="i method">Lambda</span>(<span class="r45 r">blockExp</span>, <span class="r40 r">targetExp</span>, <span class="r38 r">argsExp</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#0dd8585ba1833ad7" class="k">var</a> <span id="r46 rd" class="r46 r">lambda</span> = <span class="r42 r">lambdaExp</span>.<span class="i method">Compile</span>();
+            <b>return</b> (<a href="@1@System.Runtime/A.html#8adbe0476ca899db" class="t t">Func</a>&lt;<b>object</b>, <b>object</b>[], <b>object</b>&gt;)<span class="r46 r">lambda</span>;
+        }
+ 
+        <b>private static void</b> <a id="873f73342ef75061" href="../../R/873f73342ef75061.html" target="n" data-glyph="76,1" class="i method">CreateParamsExpressions</a>(<a href="@1@System.Runtime/A.html#1383b72169c6b2ae" class="t t">MethodBase</a> <span id="r47 rd" class="r47 r">method</span>, <b>out</b> <span class="t t">ParameterExpression</span> <span id="r48 rd" class="r48 r">argsExp</span>, <b>out</b> <span class="t t">Expression</span>[] <span id="r49 rd" class="r49 r">paramsExps</span>)
+        {
+            <b>var</b> <span id="r50 rd" class="r50 r">parameters</span> = <span class="r47 r">method</span>.<a href="@1@System.Runtime/A.html#91801fac9c14db1f" class="i method">GetParameters</a>().<span class="i method">Select</span>(<span id="r51 rd" class="r51 r">x</span> =&gt; <span class="r51 r">x</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a>).<span class="i method">ToArray</span>();
+ 
+            <span class="r48 r">argsExp</span> = <span class="t t">Expression</span>.<span class="i method">Parameter</span>(<b>typeof</b>(<b>object</b>[]), <span class="s">&quot;args&quot;</span>);
+            <span class="r49 r">paramsExps</span> = <b>new</b> <span class="t t">Expression</span>[<span class="r50 r">parameters</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>];
+ 
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r52 rd" class="r52 r">i</span> = 0; <span class="r52 r">i</span> &lt; <span class="r50 r">parameters</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r52 r">i</span>++)
+            {
+                <b>var</b> <span id="r53 rd" class="r53 r">constExp</span> = <span class="t t">Expression</span>.<span class="i method">Constant</span>(<span class="r52 r">i</span>, <b>typeof</b>(<b>int</b>));
+                <b>var</b> <span id="r54 rd" class="r54 r">argExp</span> = <span class="t t">Expression</span>.<span class="i method">ArrayIndex</span>(<span class="r48 r">argsExp</span>, <span class="r53 r">constExp</span>);
+                <span class="r49 r">paramsExps</span>[<span class="r52 r">i</span>] = <span class="t t">Expression</span>.<span class="i method">Convert</span>(<span class="r54 r">argExp</span>, <span class="r50 r">parameters</span>[<span class="r52 r">i</span>]);
+            }
+        }
+ 
+        <b>private static</b> <span class="t t">IHtmlContent</span> <a id="6cd2aa2a1a07b581" href="../../R/6cd2aa2a1a07b581.html" target="n" data-glyph="76,1" class="i method">CoerceHtmlContent</a>(<b>object</b> <span id="r55 rd" class="r55 r">invoke</span>)
+        {
+            <b>if</b> (<span class="r55 r">invoke</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="t t">HtmlString</span>.<span class="i field">Empty</span>;
+            }
+ 
+            <b>if</b> (<span class="r55 r">invoke</span> <b>is</b> <span class="t t">IHtmlContent</span> <span id="r56 rd" class="r56 r">htmlContent</span>)
+            {
+                <b>return</b> <span class="r56 r">htmlContent</span>;
+            }
+ 
+            <b>return</b> <b>new</b> <span class="t constructor">HtmlString</span>(<span class="r55 r">invoke</span>.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>());
+        }
+ 
+        <b>private static</b> <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<a href="../../Implementation/DisplayContext.cs.html#dc4c3fe34aa709f5" class="t t">DisplayContext</a>, <b>object</b>&gt; <a id="95b7b9935b2eae03" href="../../R/95b7b9935b2eae03.html" target="n" data-glyph="76,1" class="i method">BindParameter</a>(<a href="@1@System.Runtime/A.html#adf5577c07f51f16" class="t t">ParameterInfo</a> <span id="r57 rd" class="r57 r">parameter</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <span class="s">&quot;Shape&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span id="r58 rd" class="r58 r">d</span> =&gt; <span class="r58 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#e0c4a68f91ac671c" class="i property">Value</a>;
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <span class="s">&quot;DisplayAsync&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span id="r59 rd" class="r59 r">d</span> =&gt; <span class="r59 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#af291d611a02c0a8" class="i property">DisplayHelper</a>;
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <span class="s">&quot;New&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span id="r60 rd" class="r60 r">d</span> =&gt; <span class="r60 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#02d0ad56ed4bc997" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<a href="../../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a>&gt;();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <span class="s">&quot;ShapeFactory&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span id="r61 rd" class="r61 r">d</span> =&gt; <span class="r61 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#02d0ad56ed4bc997" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<a href="../../IShapeFactory.cs.html#b93d6db1df498056" class="t t">IShapeFactory</a>&gt;();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <span class="s">&quot;Html&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span id="r62 rd" class="r62 r">d</span> =&gt;
+                {
+                    <a href="../../ViewContextAccessor.cs.html#e4beefc493c22244" class="k">var</a> <span id="r63 rd" class="r63 r">viewContextAccessor</span> = <span class="r62 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#02d0ad56ed4bc997" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="../../ViewContextAccessor.cs.html#e4beefc493c22244" class="t t">ViewContextAccessor</a>&gt;();
+                    <b>var</b> <span id="r64 rd" class="r64 r">viewContext</span> = <span class="r63 r">viewContextAccessor</span>.<a href="../../ViewContextAccessor.cs.html#508e067b11296606" class="i property">ViewContext</a>;
+ 
+                    <b>return</b> <a href="#2afd8acdcf1018f4" class="i method">MakeHtmlHelper</a>(<span class="r64 r">viewContext</span>, <span class="r64 r">viewContext</span>.<span class="i property">ViewData</span>);
+                };
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <span class="s">&quot;DisplayContext&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span id="r65 rd" class="r65 r">d</span> =&gt; <span class="r65 r">d</span>;
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <span class="s">&quot;Url&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>) &amp;&amp; <b>typeof</b>(<span class="t t">IUrlHelper</span>).<a href="@1@System.Runtime/A.html#ba0cffea035fe210" class="i method">IsAssignableFrom</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a>))
+            {
+                <b>return</b> <span id="r66 rd" class="r66 r">d</span> =&gt;
+                {
+                    <a href="../../ViewContextAccessor.cs.html#e4beefc493c22244" class="k">var</a> <span id="r67 rd" class="r67 r">viewContextAccessor</span> = <span class="r66 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#02d0ad56ed4bc997" class="i property">ServiceProvider</a>.<span class="i method">GetRequiredService</span>&lt;<a href="../../ViewContextAccessor.cs.html#e4beefc493c22244" class="t t">ViewContextAccessor</a>&gt;();
+                    <b>var</b> <span id="r68 rd" class="r68 r">viewContext</span> = <span class="r67 r">viewContextAccessor</span>.<a href="../../ViewContextAccessor.cs.html#508e067b11296606" class="i property">ViewContext</a>;
+ 
+                    <b>var</b> <span id="r69 rd" class="r69 r">urlHelperFactory</span> = <span class="r66 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#02d0ad56ed4bc997" class="i property">ServiceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IUrlHelperFactory</span>&gt;();
+                    <b>return</b> <span class="r69 r">urlHelperFactory</span>.<span class="i method">GetUrlHelper</span>(<span class="r68 r">viewContext</span>);
+                };
+            }
+ 
+            <span class="c">// pre-calculate the default value </span>
+            <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r70 rd" class="r70 r">defaultValue</span> = <span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a>.<a href="@1@System.Runtime/A.html#b77b6aa39ab205fa" class="i property">IsValueType</a> ? <a href="@1@System.Runtime/A.html#955a7437554c8efc" class="t t">Activator</a>.<a href="@1@System.Runtime/A.html#4c7b92371a93f246" class="i method">CreateInstance</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a>) : <b>null</b>;
+ 
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r71 rd" class="r71 r">isDateTimeType</span> =
+                <span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>) ||
+                <span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>?) ||
+                <span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>) ||
+                <span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a> == <b>typeof</b>(<a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>?);
+ 
+            <b>return</b> <span id="r72 rd" class="r72 r">d</span> =&gt;
+            {
+                <b>if</b> (!<span class="r72 r">d</span>.<a href="../../Implementation/DisplayContext.cs.html#e0c4a68f91ac671c" class="i property">Value</a>.<a href="../../IShape.cs.html#3acc733cb89c460c" class="i property">Properties</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#5189606fee27d248" class="i property">Name</a>, <b>out</b> <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r73 rd" class="r73 r">result</span>) || <span class="r73 r">result</span> == <b>null</b>)
+                {
+                    <b>return</b> <span class="r70 r">defaultValue</span>;
+                }
+ 
+                <b>if</b> (<span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a>.<a href="@1@System.Runtime/A.html#ba0cffea035fe210" class="i method">IsAssignableFrom</a>(<span class="r73 r">result</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>()))
+                {
+                    <b>return</b> <span class="r73 r">result</span>;
+                }
+ 
+                <span class="c">// Specific implementation for DateTimes</span>
+                <b>if</b> (<span class="r73 r">result</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>() == <b>typeof</b>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>) &amp;&amp; <span class="r71 r">isDateTimeType</span>)
+                {
+                    <b>return</b> <a href="@1@System.Runtime/A.html#df6b1eba7461813b" class="t t">DateTime</a>.<a href="@1@System.Runtime/A.html#7f7fa04f5481a0ac" class="i method">Parse</a>((<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>)<span class="r73 r">result</span>);
+                }
+ 
+                <b>return</b> <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#dc591cb7008278c6" class="i method">ChangeType</a>(<span class="r73 r">result</span>, <span class="r57 r">parameter</span>.<a href="@1@System.Runtime/A.html#caa6206e7a50fd83" class="i property">ParameterType</a>);
+            };
+        }
+ 
+        <b>private static</b> <span class="t t">IHtmlHelper</span> <a id="2afd8acdcf1018f4" href="../../R/2afd8acdcf1018f4.html" target="n" data-glyph="76,1" class="i method">MakeHtmlHelper</a>(<span class="t t">ViewContext</span> <span id="r74 rd" class="r74 r">viewContext</span>, <span class="t t">ViewDataDictionary</span> <span id="r75 rd" class="r75 r">viewData</span>)
+        {
+            <b>var</b> <span id="r76 rd" class="r76 r">newHelper</span> = <span class="r74 r">viewContext</span>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetRequiredService</span>&lt;<span class="t t">IHtmlHelper</span>&gt;();
+ 
+            <b>var</b> <span id="r77 rd" class="r77 r">contextable</span> = <span class="r76 r">newHelper</span> <b>as</b> <span class="t t">IViewContextAware</span>;
+            <b>if</b> (<span class="r77 r">contextable</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r78 rd" class="r78 r">newViewContext</span> = <b>new</b> <span class="t constructor">ViewContext</span>(<span class="r74 r">viewContext</span>, <span class="r74 r">viewContext</span>.<span class="i property">View</span>, <span class="r75 r">viewData</span>, <span class="r74 r">viewContext</span>.<span class="i property">Writer</span>);
+                <span class="r77 r">contextable</span>.<span class="i method">Contextualize</span>(<span class="r78 r">newViewContext</span>);
+            }
+ 
+            <b>return</b> <span class="r76 r">newHelper</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

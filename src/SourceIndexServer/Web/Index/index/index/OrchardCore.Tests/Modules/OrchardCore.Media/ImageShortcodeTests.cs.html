@@ -1,0 +1,89 @@
+﻿<!DOCTYPE html>
+<html><head><title>ImageShortcodeTests.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(80);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Tests/Modules/OrchardCore.Media/ImageShortcodeTests.cs" target="_top">Modules\OrchardCore.Media\ImageShortcodeTests.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Tests" target="_top">test\OrchardCore.Tests\OrchardCore.Tests.csproj</a> (OrchardCore.Tests)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Moq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">FileStorage</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Infrastructure</span>.<span class="i">Html</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Media</span>.<span class="i">Core</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Media</span>.<span class="i">Events</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Media</span>.<span class="i">Shortcodes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">ResourceManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Shortcodes</span>.<span class="i">Services</span>;
+<b>using</b> <span class="i">Shortcodes</span>;
+<b>using</b> <span class="i">Xunit</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Tests</span>.<span class="i n">Modules</span>.<span class="i n">OrchardCore</span>.<span class="i n">Media</span>
+{
+    <b>public class</b> <a id="f16416f7c02de261" href="../../R/../../0000000000.html" target="n" data-glyph="0,0" class="t t"><span id="3eafee71aee4ed5d">ImageShortcodeTests</span></a>
+    {
+        [<span class="i">Theory</span>]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo bar baz&quot;</span>, <span class="s">&quot;foo bar baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [media]bar[/media] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [media]bar[/media] baz foo [media]bar[/media] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [media]bàr.jpeg?width=100[/media] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bàr.jpeg?width=100&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [media]bàr.jpeg?width=100 onload=\&quot;javascript: alert(&#39;XSS&#39;)[/media] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bàr.jpeg?width=100 onload=&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]bar baz&quot;</span>, <span class="s">&quot;foo [image]bar baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">@&quot;foo [image &quot;&quot;bar&quot;&quot;] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">@&quot;foo [image src=&quot;&quot;bar&quot;&quot;] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;https://cdn.com&quot;</span>, <span class="s">@&quot;foo [image src=&quot;&quot;bar&quot;&quot;] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;https://cdn.com/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+ 
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]~/bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/tenant/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;https://cdn.com&quot;</span>, <span class="s">&quot;foo [image]~/bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;https://cdn.com/tenant/bar&quot;&quot;&gt; baz&quot;</span>)] <span class="c">// new</span>
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]http://bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;http://bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]//bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;//bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">@&quot;foo [image width=&quot;&quot;100&quot;&quot;]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar?width=100&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">@&quot;foo [image width=&quot;&quot;100&quot;&quot; height=&quot;&quot;50&quot;&quot; mode=&quot;&quot;stretch&quot;&quot;]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar?width=100&amp;amp;height=50&amp;amp;rmode=stretch&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">@&quot;foo [image class=&quot;&quot;className&quot;&quot;]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img class=&quot;&quot;className&quot;&quot; src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">@&quot;foo [image alt=&quot;&quot;text&quot;&quot;]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img alt=&quot;&quot;text&quot;&quot; src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">@&quot;foo [image width=&quot;&quot;100&quot;&quot; height=&quot;&quot;50&quot;&quot; mode=&quot;&quot;stretch&quot;&quot; alt=&quot;&quot;text&quot;&quot; class=&quot;&quot;className&quot;&quot;]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img alt=&quot;&quot;text&quot;&quot; class=&quot;&quot;className&quot;&quot; src=&quot;&quot;/media/bar?width=100&amp;amp;height=50&amp;amp;rmode=stretch&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]bar[/image] baz foo [image]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]bar[/image] baz foo [image]bar[/image] baz foo [image]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]bar.png[/image] baz foo-extended [image]bar-extended.png[/image] baz-extended&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar.png&quot;&quot;&gt; baz foo-extended &lt;img src=&quot;&quot;/media/bar-extended.png&quot;&quot;&gt; baz-extended&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [media]bar[/media] baz foo [image]bar[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz foo &lt;img src=&quot;&quot;/media/bar&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]bàr.jpeg?width=100[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bàr.jpeg?width=100&quot;&quot;&gt; baz&quot;</span>)]
+        [<span class="i">InlineData</span>(<span class="s">&quot;&quot;</span>, <span class="s">&quot;foo [image]bàr.jpeg?width=100 onload=\&quot;javascript: alert(&#39;XSS&#39;)[/image] baz&quot;</span>, <span class="s">@&quot;foo &lt;img src=&quot;&quot;/media/bàr.jpeg?width=100 onload=&quot;&quot;&gt; baz&quot;</span>)]
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="bd61eb3b37116d18" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ShouldProcess</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r0 rd" class="r0 r">cdnBaseUrl</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r1 rd" class="r1 r">text</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">expected</span>)
+        {
+            <b>var</b> <span id="r3 rd" class="r3 r">sanitizerOptions</span> = <b>new</b> <span class="i">HtmlSanitizerOptions</span>();
+            <span class="r3 r">sanitizerOptions</span>.<span class="i">Configure</span>.<span class="i">Add</span>(<span id="r4 rd" class="r4 r">opt</span> =&gt; <span class="r4 r">opt</span>.<span class="i">AllowedAttributes</span>.<span class="i">Add</span>(<span class="s">&quot;class&quot;</span>));
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">fileStore</span> = <b>new</b> <span class="i">DefaultMediaFileStore</span>(
+                <span class="i">Mock</span>.<span class="i">Of</span>&lt;<span class="i">IFileStore</span>&gt;(),
+                <span class="s">&quot;/media&quot;</span>,
+                <span class="r0 r">cdnBaseUrl</span>,
+                <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<span class="i">IMediaEventHandler</span>&gt;(),
+                <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<span class="i">IMediaCreatingEventHandler</span>&gt;(),
+                <span class="i">Mock</span>.<span class="i">Of</span>&lt;<span class="t t">ILogger</span>&lt;<span class="i">DefaultMediaFileStore</span>&gt;&gt;());
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">sanitizer</span> = <b>new</b> <span class="i">HtmlSanitizerService</span>(<span class="t t">Options</span>.<span class="i">Create</span>(<span class="r3 r">sanitizerOptions</span>));
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">defaultHttpContext</span> = <b>new</b> <span class="t constructor">DefaultHttpContext</span>();
+            <span class="r7 r">defaultHttpContext</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span> = <b>new</b> <span class="t constructor">PathString</span>(<span class="s">&quot;/tenant&quot;</span>);
+            <b>var</b> <span id="r8 rd" class="r8 r">httpContextAccessor</span> = <span class="i">Mock</span>.<span class="i">Of</span>&lt;<span class="t t">IHttpContextAccessor</span>&gt;(<span id="r9 rd" class="r9 r">hca</span> =&gt; <span class="r9 r">hca</span>.<span class="i">HttpContext</span> == <span class="r7 r">defaultHttpContext</span>);
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">options</span> = <span class="t t">Options</span>.<span class="i">Create</span>(<b>new</b> <span class="i">ResourceManagementOptions</span> { <span class="i">CdnBaseUrl</span> = <span class="r0 r">cdnBaseUrl</span> });
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">imageProvider</span> = <b>new</b> <span class="i">ImageShortcodeProvider</span>(<span class="r5 r">fileStore</span>, <span class="r6 r">sanitizer</span>, <span class="r8 r">httpContextAccessor</span>, <span class="r10 r">options</span>);
+ 
+            <b>var</b> <span id="r12 rd" class="r12 r">processor</span> = <b>new</b> <span class="i">ShortcodeService</span>(<b>new</b> <span class="i">IShortcodeProvider</span>[] { <span class="r11 r">imageProvider</span> }, <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<span class="i">IShortcodeContextProvider</span>&gt;());
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">processed</span> = <b>await</b> <span class="r12 r">processor</span>.<span class="i">ProcessAsync</span>(<span class="r1 r">text</span>);
+            <span class="i">Assert</span>.<span class="i">Equal</span>(<span class="r2 r">expected</span>, <span class="r13 r">processed</span>);
+ 
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

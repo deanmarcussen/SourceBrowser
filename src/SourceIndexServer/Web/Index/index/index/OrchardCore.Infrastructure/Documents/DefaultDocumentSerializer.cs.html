@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html><head><title>DefaultDocumentSerializer.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(97);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Infrastructure/Documents/DefaultDocumentSerializer.cs" target="_top">Documents\DefaultDocumentSerializer.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Infrastructure" target="_top">src\OrchardCore\OrchardCore.Infrastructure\OrchardCore.Infrastructure.csproj</a> (OrchardCore.Infrastructure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>.<span class="i n">Compression</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Documents</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Documents</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Serializes and deserializes an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IDocument</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> into and from a sequence of bytes.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="e0e09cb32605ab25" href="../R/e0e09cb32605ab25.html" target="n" data-glyph="0,0" class="t t">DefaultDocumentSerializer</a> : <a href="/OrchardCore.Infrastructure.Abstractions/A.html#0684de7958dc9617" class="t t">IDocumentSerialiser</a>
+    {
+        <b>public static</b> <a href="#e0e09cb32605ab25" class="t t">DefaultDocumentSerializer</a> <a id="ea72ea152ed1adf2" href="../R/ea72ea152ed1adf2.html" target="n" data-glyph="42,1" class="i field">Instance</a> = <b>new</b> <a href="#47a125150c1c9f75" class="t constructor">DefaultDocumentSerializer</a>();
+ 
+        <b>private static readonly</b> <span class="i">JsonSerializerSettings</span> <a id="4e3887db08f7bbda" href="../R/4e3887db08f7bbda.html" target="n" data-glyph="46,1" class="i field">_jsonSettings</a> = <b>new</b> <span class="i">JsonSerializerSettings</span>
+        {
+            <span class="i">TypeNameHandling</span> = <span class="i">TypeNameHandling</span>.<span class="i">Auto</span>,
+            <span class="i">DateTimeZoneHandling</span> = <span class="i">DateTimeZoneHandling</span>.<span class="i">Utc</span>
+        };
+ 
+        <b>public</b> <a id="47a125150c1c9f75" href="../R/47a125150c1c9f75.html" target="n" data-glyph="72,1" class="t constructor">DefaultDocumentSerializer</a>()
+        {
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>byte</b>[]&gt; <a id="c9514a2603bbb81d" href="../R/c9514a2603bbb81d.html" target="n" data-glyph="72,1" class="i method">SerializeAsync</a>&lt;<span id="r0 rd t" class="r0 r t">TDocument</span>&gt;(<span class="r0 r t">TDocument</span> <span id="r1 rd" class="r1 r">document</span>, <b>int</b> <span id="r2 rd" class="r2 r">compressThreshold</span> = <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="t t">Int32</a>.<a href="@1@System.Runtime/A.html#c45153c0501d7122" class="i field">MaxValue</a>) <b>where</b> <span class="r0 r t">TDocument</span> : <b>class</b>, <span class="i">IDocument</span>, <b>new</b>()
+        {
+            <b>var</b> <span id="r3 rd" class="r3 r">data</span> = <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<span class="i">GetBytes</span>(<span class="i">JsonConvert</span>.<span class="i">SerializeObject</span>(<span class="r1 r">document</span>, <a href="#4e3887db08f7bbda" class="i field">_jsonSettings</a>));
+ 
+            <b>if</b> (<span class="r3 r">data</span>.<span class="i">Length</span> &gt;= <span class="r2 r">compressThreshold</span>)
+            {
+                <span class="r3 r">data</span> = <span class="i">Compress</span>(<span class="r3 r">data</span>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>(<span class="r3 r">data</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r4 r t">TDocument</span>&gt; <a id="0f02b2c523817b22" href="../R/0f02b2c523817b22.html" target="n" data-glyph="72,1" class="i method">DeserializeAsync</a>&lt;<span id="r4 rd t" class="r4 r t">TDocument</span>&gt;(<b>byte</b>[] <span id="r5 rd" class="r5 r">data</span>) <b>where</b> <span class="r4 r t">TDocument</span> : <b>class</b>, <span class="i">IDocument</span>, <b>new</b>()
+        {
+            <b>if</b> (<a href="#4498351e80711866" class="i method">IsCompressed</a>(<span class="r5 r">data</span>))
+            {
+                <span class="r5 r">data</span> = <a href="#ccfd4edc1d73bd05" class="i method">Decompress</a>(<span class="r5 r">data</span>);
+            }
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">document</span> = <span class="i">JsonConvert</span>.<span class="i">DeserializeObject</span>&lt;<span class="r4 r t">TDocument</span>&gt;(<a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>.<a href="@1@System.Runtime/A.html#7310c9cccfaecd17" class="i method">GetString</a>(<span class="r5 r">data</span>), <a href="#4e3887db08f7bbda" class="i field">_jsonSettings</a>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<span class="i">FromResult</span>(<span class="r6 r">document</span>);
+        }
+ 
+        <b>private static readonly byte</b>[] <a id="d6d7cd39d7e148ad" href="../R/d6d7cd39d7e148ad.html" target="n" data-glyph="46,1" class="i field">GZipHeaderBytes</a> = { 0x1f, 0x8b };
+ 
+        <b>internal static bool</b> <a id="4498351e80711866" href="../R/4498351e80711866.html" target="n" data-glyph="74,1" class="i method">IsCompressed</a>(<b>byte</b>[] <span id="r7 rd" class="r7 r">data</span>)
+        {
+            <b>if</b> (<span class="r7 r">data</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> &lt; <a href="#d6d7cd39d7e148ad" class="i field">GZipHeaderBytes</a>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>)
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r8 rd" class="r8 r">i</span> = 0; <span class="r8 r">i</span> &lt; <a href="#d6d7cd39d7e148ad" class="i field">GZipHeaderBytes</a>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r8 r">i</span>++)
+            {
+                <b>if</b> (<span class="r7 r">data</span>[<span class="r8 r">i</span>] != <a href="#d6d7cd39d7e148ad" class="i field">GZipHeaderBytes</a>[<span class="r8 r">i</span>])
+                {
+                    <b>return</b> <b>false</b>;
+                }
+            }
+ 
+            <b>return</b> <b>true</b>;
+        }
+ 
+        <b>internal static byte</b>[] <a id="7f5dcffcfff735b4" href="../R/../../0000000000.html" target="n" data-glyph="74,1" class="i method">Compress</a>(<b>byte</b>[] <span id="r9 rd" class="r9 r">data</span>)
+        {
+            <b>using</b> <a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r10 rd" class="r10 r">input</span> = <b>new</b> <a href="@1@System.Runtime/A.html#f92fa270fda9a82b" class="t constructor">MemoryStream</a>(<span class="r9 r">data</span>);
+            <b>using</b> <a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r11 rd" class="r11 r">output</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>();
+            <b>using</b> (<b>var</b> <span id="r12 rd" class="r12 r">gzip</span> = <b>new</b> <span class="t constructor">GZipStream</span>(<span class="r11 r">output</span>, <span class="t t">CompressionMode</span>.<span class="i field">Compress</span>))
+            {
+                <span class="r10 r">input</span>.<a href="@1@System.Runtime/A.html#295ec16c77d4fafb" class="i method">CopyTo</a>(<span class="r12 r">gzip</span>);
+            }
+ 
+            <b>return</b> <span class="r11 r">output</span>.<a href="@1@System.Runtime/A.html#5df5fc757781f05e" class="i method">ToArray</a>();
+        }
+ 
+        <b>internal static byte</b>[] <a id="ccfd4edc1d73bd05" href="../R/ccfd4edc1d73bd05.html" target="n" data-glyph="74,1" class="i method">Decompress</a>(<b>byte</b>[] <span id="r13 rd" class="r13 r">data</span>)
+        {
+            <b>using</b> <a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r14 rd" class="r14 r">input</span> = <b>new</b> <a href="@1@System.Runtime/A.html#f92fa270fda9a82b" class="t constructor">MemoryStream</a>(<span class="r13 r">data</span>);
+            <b>using</b> <a href="@1@System.Runtime/A.html#1a4dcb744a23ba6f" class="k">var</a> <span id="r15 rd" class="r15 r">output</span> = <b>new</b> <a href="@1@System.Runtime/A.html#d308091cc690e78d" class="t constructor">MemoryStream</a>();
+            <b>using</b> (<b>var</b> <span id="r16 rd" class="r16 r">gzip</span> = <b>new</b> <span class="t constructor">GZipStream</span>(<span class="r14 r">input</span>, <span class="t t">CompressionMode</span>.<span class="i field">Decompress</span>))
+            {
+                <span class="r16 r">gzip</span>.<a href="@1@System.Runtime/A.html#295ec16c77d4fafb" class="i method">CopyTo</a>(<span class="r15 r">output</span>);
+            }
+ 
+            <b>return</b> <span class="r15 r">output</span>.<a href="@1@System.Runtime/A.html#5df5fc757781f05e" class="i method">ToArray</a>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

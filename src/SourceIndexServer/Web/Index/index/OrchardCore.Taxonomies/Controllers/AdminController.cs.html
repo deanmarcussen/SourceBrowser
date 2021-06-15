@@ -1,0 +1,333 @@
+﻿<!DOCTYPE html>
+<html><head><title>AdminController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(324);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Taxonomies/Controllers/AdminController.cs" target="_top">Controllers\AdminController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Taxonomies" target="_top">src\OrchardCore.Modules\OrchardCore.Taxonomies\OrchardCore.Taxonomies.csproj</a> (OrchardCore.Taxonomies)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Display</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Metadata</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">ModelBinding</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Notify</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Taxonomies</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Taxonomies</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="93bc09ec49cca2b3" href="../R/93bc09ec49cca2b3.html" target="n" data-glyph="0,0" class="t t">AdminController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <a id="e1d8d4f72e288a29" href="../R/e1d8d4f72e288a29.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="5eef7ba6b1184b27" href="../R/5eef7ba6b1184b27.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">IContentItemDisplayManager</span> <a id="f5c3d0b400a34064" href="../R/f5c3d0b400a34064.html" target="n" data-glyph="46,1" class="i field">_contentItemDisplayManager</a>;
+        <b>private readonly</b> <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <a id="299a1935747b3d61" href="../R/299a1935747b3d61.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="565dfd38bc323a4c" href="../R/565dfd38bc323a4c.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">IHtmlLocalizer</span> <a id="7526e30b5476ee12" href="../R/7526e30b5476ee12.html" target="n" data-glyph="46,1" class="i field">H</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <a id="7ef913210ee9e1f9" href="../R/7ef913210ee9e1f9.html" target="n" data-glyph="46,1" class="i field">_notifier</a>;
+        <b>private readonly</b> <span class="i">IUpdateModelAccessor</span> <a id="e4632741aaaa321f" href="../R/e4632741aaaa321f.html" target="n" data-glyph="46,1" class="i field">_updateModelAccessor</a>;
+ 
+        <b>public</b> <a id="d1faf881d595b0f0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AdminController</a>(
+            <span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#6ca840219d8dc4cd" class="t t">IContentManager</a> <span id="r1 rd" class="r1 r">contentManager</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r2 rd" class="r2 r">authorizationService</span>,
+            <span class="i">IContentItemDisplayManager</span> <span id="r3 rd" class="r3 r">contentItemDisplayManager</span>,
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#d83ce13dd2923822" class="t t">IContentDefinitionManager</a> <span id="r4 rd" class="r4 r">contentDefinitionManager</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#ec932247fd25e4dd" class="t t">INotifier</a> <span id="r5 rd" class="r5 r">notifier</span>,
+            <span class="t t">IHtmlLocalizer</span>&lt;<a href="#93bc09ec49cca2b3" class="t t">AdminController</a>&gt; <span id="r6 rd" class="r6 r">localizer</span>,
+            <span class="i">IUpdateModelAccessor</span> <span id="r7 rd" class="r7 r">updateModelAccessor</span>)
+        {
+            <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a> = <span class="r1 r">contentManager</span>;
+            <a href="#5eef7ba6b1184b27" class="i field">_authorizationService</a> = <span class="r2 r">authorizationService</span>;
+            <a href="#f5c3d0b400a34064" class="i field">_contentItemDisplayManager</a> = <span class="r3 r">contentItemDisplayManager</span>;
+            <a href="#299a1935747b3d61" class="i field">_contentDefinitionManager</a> = <span class="r4 r">contentDefinitionManager</span>;
+            <a href="#565dfd38bc323a4c" class="i field">_session</a> = <span class="r0 r">session</span>;
+            <a href="#7ef913210ee9e1f9" class="i field">_notifier</a> = <span class="r5 r">notifier</span>;
+            <a href="#e4632741aaaa321f" class="i field">_updateModelAccessor</a> = <span class="r7 r">updateModelAccessor</span>;
+            <a href="#7526e30b5476ee12" class="i field">H</a> = <span class="r6 r">localizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="890a7cd13262fb20" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r9 rd" class="r9 r">taxonomyContentItemId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">taxonomyItemId</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r8 r">id</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#5eef7ba6b1184b27" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b819876a0c31ee8c" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a76ffae3622b2736" class="i field">ManageTaxonomies</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r11 rd" class="r11 r">contentItem</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f72e0fd5ee4423f" class="i method">NewAsync</a>(<span class="r8 r">id</span>);
+            <span class="r11 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#8b823e242e43e825" class="i method">Weld</a>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;();
+            <span class="r11 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b6daf01e1298a6d3" class="i method">Alter</a>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;(<span id="r12 rd" class="r12 r">t</span> =&gt; <span class="r12 r">t</span>.<a href="../Models/TermPart.cs.html#d8c3c95fa2ffd2ca" class="i property">TaxonomyContentItemId</a> = <span class="r9 r">taxonomyContentItemId</span>);
+ 
+            <b>dynamic</b> <span id="r13 rd" class="r13 r">model</span> = <b>await</b> <a href="#f5c3d0b400a34064" class="i field">_contentItemDisplayManager</a>.<span class="i">BuildEditorAsync</span>(<span class="r11 r">contentItem</span>, <a href="#e4632741aaaa321f" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <b>true</b>);
+ 
+            <span class="r13 r">model</span>.<span class="i">TaxonomyContentItemId</span> = <span class="r9 r">taxonomyContentItemId</span>;
+            <span class="r13 r">model</span>.<span class="i">TaxonomyItemId</span> = <span class="r10 r">taxonomyItemId</span>;
+ 
+            <b>return</b> <span class="i">View</span>(<span class="r13 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ActionName</span>(<span class="s">&quot;Create&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="668752faedfa4421" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreatePost</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">id</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r15 rd" class="r15 r">taxonomyContentItemId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">taxonomyItemId</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#5eef7ba6b1184b27" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b819876a0c31ee8c" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a76ffae3622b2736" class="i field">ManageTaxonomies</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r17 rd" class="r17 r">taxonomy</span>;
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r18 rd" class="r18 r">contentTypeDefinition</span> = <a href="#299a1935747b3d61" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="s">&quot;Taxonomy&quot;</span>);
+ 
+            <b>if</b> (!<span class="r18 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3614a679bf8bc0eb" class="i property">Draftable</a>)
+            {
+                <span class="r17 r">taxonomy</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#978b2af9e7b3c1bd" class="i method">GetAsync</a>(<span class="r15 r">taxonomyContentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0f8d2537dc43ea6" class="i property">Latest</a>);
+            }
+            <b>else</b>
+            {
+                <span class="r17 r">taxonomy</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#978b2af9e7b3c1bd" class="i method">GetAsync</a>(<span class="r15 r">taxonomyContentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#8b0f10457a2d09a2" class="i property">DraftRequired</a>);
+            }
+ 
+            <b>if</b> (<span class="r17 r">taxonomy</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r19 rd" class="r19 r">contentItem</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#9f72e0fd5ee4423f" class="i method">NewAsync</a>(<span class="r14 r">id</span>);
+            <span class="r19 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#8b823e242e43e825" class="i method">Weld</a>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;();
+            <span class="r19 r">contentItem</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b6daf01e1298a6d3" class="i method">Alter</a>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;(<span id="r20 rd" class="r20 r">t</span> =&gt; <span class="r20 r">t</span>.<a href="../Models/TermPart.cs.html#d8c3c95fa2ffd2ca" class="i property">TaxonomyContentItemId</a> = <span class="r15 r">taxonomyContentItemId</span>);
+ 
+            <b>dynamic</b> <span id="r21 rd" class="r21 r">model</span> = <b>await</b> <a href="#f5c3d0b400a34064" class="i field">_contentItemDisplayManager</a>.<span class="i">UpdateEditorAsync</span>(<span class="r19 r">contentItem</span>, <a href="#e4632741aaaa321f" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <b>true</b>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r21 r">model</span>.<span class="i">TaxonomyContentItemId</span> = <span class="r15 r">taxonomyContentItemId</span>;
+                <span class="r21 r">model</span>.<span class="i">TaxonomyItemId</span> = <span class="r16 r">taxonomyItemId</span>;
+ 
+                <b>return</b> <span class="i">View</span>(<span class="r21 r">model</span>);
+            }
+ 
+            <b>if</b> (<span class="r16 r">taxonomyItemId</span> == <b>null</b>)
+            {
+                <span class="c">// Use the taxonomy as the parent if no target is specified</span>
+                <span class="r17 r">taxonomy</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b6daf01e1298a6d3" class="i method">Alter</a>&lt;<a href="../Models/TaxonomyPart.cs.html#6c156add0d2ec357" class="t t">TaxonomyPart</a>&gt;(<span id="r22 rd" class="r22 r">part</span> =&gt; <span class="r22 r">part</span>.<a href="../Models/TaxonomyPart.cs.html#d6cb07c461549d89" class="i property">Terms</a>.<span class="i method">Add</span>(<span class="r19 r">contentItem</span>));
+            }
+            <b>else</b>
+            {
+                <span class="c">// Look for the target taxonomy item in the hierarchy</span>
+                <b>var</b> <span id="r23 rd" class="r23 r">parentTaxonomyItem</span> = <a href="#19b62c00de1fb0a7" class="i method">FindTaxonomyItem</a>(<span class="r17 r">taxonomy</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d72ffaa1afcfca20" class="i method">As</a>&lt;<a href="../Models/TaxonomyPart.cs.html#6c156add0d2ec357" class="t t">TaxonomyPart</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>, <span class="r16 r">taxonomyItemId</span>);
+ 
+                <span class="c">// Couldn&#39;t find targeted taxonomy item</span>
+                <b>if</b> (<span class="r23 r">parentTaxonomyItem</span> == <b>null</b>)
+                {
+                    <b>return</b> <span class="i method">NotFound</span>();
+                }
+ 
+                <b>var</b> <span id="r24 rd" class="r24 r">taxonomyItems</span> = <span class="r23 r">parentTaxonomyItem</span>?.<span class="i">Terms</span> <b>as</b> <span class="i">JArray</span>;
+ 
+                <b>if</b> (<span class="r24 r">taxonomyItems</span> == <b>null</b>)
+                {
+                    <span class="r23 r">parentTaxonomyItem</span>[<span class="s">&quot;Terms&quot;</span>] = <span class="r24 r">taxonomyItems</span> = <b>new</b> <span class="i">JArray</span>();
+                }
+ 
+                <span class="r24 r">taxonomyItems</span>.<span class="i">Add</span>(<span class="i">JObject</span>.<span class="i">FromObject</span>(<span class="r19 r">contentItem</span>));
+            }
+ 
+            <a href="#565dfd38bc323a4c" class="i field">_session</a>.<span class="i">Save</span>(<span class="r17 r">taxonomy</span>);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <span class="s">&quot;Admin&quot;</span>, <b>new</b> { <a href="#372d2bea7feada7f" class="i property">area</a> = <span class="s">&quot;OrchardCore.Contents&quot;</span>, <a href="#f2f4652402d034bf" class="i property">contentItemId</a> = <span class="r15 r">taxonomyContentItemId</span> });
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="1d5e3e4df9a39c79" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Edit</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">taxonomyContentItemId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">taxonomyItemId</span>)
+        {
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="k">var</a> <span id="r27 rd" class="r27 r">taxonomy</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#978b2af9e7b3c1bd" class="i method">GetAsync</a>(<span class="r25 r">taxonomyContentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0f8d2537dc43ea6" class="i property">Latest</a>);
+ 
+            <b>if</b> (<span class="r27 r">taxonomy</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#5eef7ba6b1184b27" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b819876a0c31ee8c" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a76ffae3622b2736" class="i field">ManageTaxonomies</a>, <span class="r27 r">taxonomy</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <span class="c">// Look for the target taxonomy item in the hierarchy</span>
+            <span class="i">JObject</span> <span id="r28 rd" class="r28 r">taxonomyItem</span> = <a href="#19b62c00de1fb0a7" class="i method">FindTaxonomyItem</a>(<span class="r27 r">taxonomy</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d72ffaa1afcfca20" class="i method">As</a>&lt;<a href="../Models/TaxonomyPart.cs.html#6c156add0d2ec357" class="t t">TaxonomyPart</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>, <span class="r26 r">taxonomyItemId</span>);
+ 
+            <span class="c">// Couldn&#39;t find targeted taxonomy item</span>
+            <b>if</b> (<span class="r28 r">taxonomyItem</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r29 rd" class="r29 r">contentItem</span> = <span class="r28 r">taxonomyItem</span>.<span class="i">ToObject</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;();
+            <span class="r29 r">contentItem</span>.<span class="i">Weld</span>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;();
+            <span class="r29 r">contentItem</span>.<span class="i">Alter</span>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;(<span id="r30 rd" class="r30 r">t</span> =&gt; <span class="r30 r">t</span>.<span class="i">TaxonomyContentItemId</span> = <span class="r25 r">taxonomyContentItemId</span>);
+ 
+            <b>dynamic</b> <span id="r31 rd" class="r31 r">model</span> = <b>await</b> <a href="#f5c3d0b400a34064" class="i field">_contentItemDisplayManager</a>.<span class="i">BuildEditorAsync</span>(<span class="r29 r">contentItem</span>, <a href="#e4632741aaaa321f" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <b>false</b>);
+ 
+            <span class="r31 r">model</span>.<span class="i">TaxonomyContentItemId</span> = <span class="r25 r">taxonomyContentItemId</span>;
+            <span class="r31 r">model</span>.<span class="i">TaxonomyItemId</span> = <span class="r26 r">taxonomyItemId</span>;
+ 
+            <b>return</b> <span class="i">View</span>(<span class="r31 r">model</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<span class="t constructor">ActionName</span>(<span class="s">&quot;Edit&quot;</span>)]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="7120cbccb7487ef8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">EditPost</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r32 rd" class="r32 r">taxonomyContentItemId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r33 rd" class="r33 r">taxonomyItemId</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#5eef7ba6b1184b27" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b819876a0c31ee8c" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a76ffae3622b2736" class="i field">ManageTaxonomies</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r34 rd" class="r34 r">taxonomy</span>;
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r35 rd" class="r35 r">contentTypeDefinition</span> = <a href="#299a1935747b3d61" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="s">&quot;Taxonomy&quot;</span>);
+ 
+            <b>if</b> (!<span class="r35 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3614a679bf8bc0eb" class="i property">Draftable</a>)
+            {
+                <span class="r34 r">taxonomy</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#978b2af9e7b3c1bd" class="i method">GetAsync</a>(<span class="r32 r">taxonomyContentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0f8d2537dc43ea6" class="i property">Latest</a>);
+            }
+            <b>else</b>
+            {
+                <span class="r34 r">taxonomy</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#978b2af9e7b3c1bd" class="i method">GetAsync</a>(<span class="r32 r">taxonomyContentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#8b0f10457a2d09a2" class="i property">DraftRequired</a>);
+            }
+ 
+            <b>if</b> (<span class="r34 r">taxonomy</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Look for the target taxonomy item in the hierarchy</span>
+            <span class="i">JObject</span> <span id="r36 rd" class="r36 r">taxonomyItem</span> = <a href="#19b62c00de1fb0a7" class="i method">FindTaxonomyItem</a>(<span class="r34 r">taxonomy</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d72ffaa1afcfca20" class="i method">As</a>&lt;<a href="../Models/TaxonomyPart.cs.html#6c156add0d2ec357" class="t t">TaxonomyPart</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>, <span class="r33 r">taxonomyItemId</span>);
+ 
+            <span class="c">// Couldn&#39;t find targeted taxonomy item</span>
+            <b>if</b> (<span class="r36 r">taxonomyItem</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r37 rd" class="r37 r">existing</span> = <span class="r36 r">taxonomyItem</span>.<span class="i">ToObject</span>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>&gt;();
+ 
+            <span class="c">// Create a new item to take into account the current type definition.</span>
+            <b>var</b> <span id="r38 rd" class="r38 r">contentItem</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<span class="i">NewAsync</span>(<span class="r37 r">existing</span>.<span class="i">ContentType</span>);
+ 
+            <span class="r38 r">contentItem</span>.<span class="i">ContentItemId</span> = <span class="r37 r">existing</span>.<span class="i">ContentItemId</span>;
+            <span class="r38 r">contentItem</span>.<span class="i">Merge</span>(<span class="r37 r">existing</span>);            
+            <span class="r38 r">contentItem</span>.<span class="i">Weld</span>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;();
+            <span class="r38 r">contentItem</span>.<span class="i">Alter</span>&lt;<a href="../Models/TermPart.cs.html#a95e8a9c005516dc" class="t t">TermPart</a>&gt;(<span id="r39 rd" class="r39 r">t</span> =&gt; <span class="r39 r">t</span>.<span class="i">TaxonomyContentItemId</span> = <span class="r32 r">taxonomyContentItemId</span>);
+ 
+            <b>dynamic</b> <span id="r40 rd" class="r40 r">model</span> = <b>await</b> <a href="#f5c3d0b400a34064" class="i field">_contentItemDisplayManager</a>.<span class="i">UpdateEditorAsync</span>(<span class="r38 r">contentItem</span>, <a href="#e4632741aaaa321f" class="i field">_updateModelAccessor</a>.<span class="i">ModelUpdater</span>, <b>false</b>);
+ 
+            <b>if</b> (!<span class="i property">ModelState</span>.<span class="i property">IsValid</span>)
+            {
+                <span class="r40 r">model</span>.<span class="i">TaxonomyContentItemId</span> = <span class="r32 r">taxonomyContentItemId</span>;
+                <span class="r40 r">model</span>.<span class="i">TaxonomyItemId</span> = <span class="r33 r">taxonomyItemId</span>;
+ 
+                <b>return</b> <span class="i">View</span>(<span class="r40 r">model</span>);
+            }
+ 
+            <span class="r36 r">taxonomyItem</span>.<span class="i">Merge</span>(<span class="r38 r">contentItem</span>.<span class="i">Content</span>, <b>new</b> <span class="i">JsonMergeSettings</span>
+            {
+                <span class="i">MergeArrayHandling</span> = <span class="i">MergeArrayHandling</span>.<span class="i">Replace</span>,
+                <span class="i">MergeNullValueHandling</span> = <span class="i">MergeNullValueHandling</span>.<span class="i">Merge</span>
+            });
+ 
+            <span class="c">// Merge doesn&#39;t copy the properties</span>
+            <span class="r36 r">taxonomyItem</span>[<b>nameof</b>(<a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#7f8d55c26b93df04" class="i property">DisplayText</a>)] = <span class="r38 r">contentItem</span>.<span class="i">DisplayText</span>;
+ 
+            <a href="#565dfd38bc323a4c" class="i field">_session</a>.<span class="i">Save</span>(<span class="r34 r">taxonomy</span>);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <span class="s">&quot;Admin&quot;</span>, <b>new</b> { <a href="#372d2bea7feada7f" class="i property">area</a> = <span class="s">&quot;OrchardCore.Contents&quot;</span>, <a href="#f2f4652402d034bf" class="i property">contentItemId</a> = <span class="r32 r">taxonomyContentItemId</span> });
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="da9f2d709f38a9f8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Delete</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r41 rd" class="r41 r">taxonomyContentItemId</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r42 rd" class="r42 r">taxonomyItemId</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#5eef7ba6b1184b27" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#b819876a0c31ee8c" class="t t">Permissions</a>.<a href="../Permissions.cs.html#a76ffae3622b2736" class="i field">ManageTaxonomies</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#1099e5a609a8b2e4" class="t t">ContentItem</a> <span id="r43 rd" class="r43 r">taxonomy</span>;
+ 
+            <a href="/OrchardCore.ContentManagement.Abstractions/A.html#a614f837ada54c1e" class="k">var</a> <span id="r44 rd" class="r44 r">contentTypeDefinition</span> = <a href="#299a1935747b3d61" class="i field">_contentDefinitionManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#48d139d3c9980ba3" class="i method">GetTypeDefinition</a>(<span class="s">&quot;Taxonomy&quot;</span>);
+ 
+            <b>if</b> (!<span class="r44 r">contentTypeDefinition</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b5d8b49354c46ec7" class="i method">GetSettings</a>&lt;<a href="/OrchardCore.ContentManagement.Abstractions/A.html#69adbe63539fed6f" class="t t">ContentTypeSettings</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#3614a679bf8bc0eb" class="i property">Draftable</a>)
+            {
+                <span class="r43 r">taxonomy</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#978b2af9e7b3c1bd" class="i method">GetAsync</a>(<span class="r41 r">taxonomyContentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#b0f8d2537dc43ea6" class="i property">Latest</a>);
+            }
+            <b>else</b>
+            {
+                <span class="r43 r">taxonomy</span> = <b>await</b> <a href="#e1d8d4f72e288a29" class="i field">_contentManager</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#978b2af9e7b3c1bd" class="i method">GetAsync</a>(<span class="r41 r">taxonomyContentItemId</span>, <a href="/OrchardCore.ContentManagement.Abstractions/A.html#f6f7b8cf2eae75c0" class="t t">VersionOptions</a>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#8b0f10457a2d09a2" class="i property">DraftRequired</a>);
+            }
+ 
+            <b>if</b> (<span class="r43 r">taxonomy</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="c">// Look for the target taxonomy item in the hierarchy</span>
+            <b>var</b> <span id="r45 rd" class="r45 r">taxonomyItem</span> = <a href="#19b62c00de1fb0a7" class="i method">FindTaxonomyItem</a>(<span class="r43 r">taxonomy</span>.<a href="/OrchardCore.ContentManagement.Abstractions/A.html#d72ffaa1afcfca20" class="i method">As</a>&lt;<a href="../Models/TaxonomyPart.cs.html#6c156add0d2ec357" class="t t">TaxonomyPart</a>&gt;().<a href="/OrchardCore.ContentManagement.Abstractions/A.html#444b02c92e6da322" class="i property">Content</a>, <span class="r42 r">taxonomyItemId</span>);
+ 
+            <span class="c">// Couldn&#39;t find targeted taxonomy item</span>
+            <b>if</b> (<span class="r45 r">taxonomyItem</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="r45 r">taxonomyItem</span>.<span class="i">Remove</span>();
+            <a href="#565dfd38bc323a4c" class="i field">_session</a>.<span class="i">Save</span>(<span class="r43 r">taxonomy</span>);
+ 
+            <a href="#7ef913210ee9e1f9" class="i field">_notifier</a>.<a href="/OrchardCore.DisplayManagement/A.html#e74a41f6547ee61c" class="i method">Success</a>(<a href="#7526e30b5476ee12" class="i field">H</a>[<span class="s">&quot;Taxonomy item deleted successfully.&quot;</span>]);
+ 
+            <b>return</b> <span class="i method">RedirectToAction</span>(<b>nameof</b>(<span class="i">Edit</span>), <span class="s">&quot;Admin&quot;</span>, <b>new</b> { <a href="#372d2bea7feada7f" class="i property">area</a> = <span class="s">&quot;OrchardCore.Contents&quot;</span>, <a href="#f2f4652402d034bf" class="i property">contentItemId</a> = <span class="r41 r">taxonomyContentItemId</span> });
+        }
+ 
+        <b>private</b> <span class="i">JObject</span> <a id="19b62c00de1fb0a7" href="../R/19b62c00de1fb0a7.html" target="n" data-glyph="76,1" class="i method">FindTaxonomyItem</a>(<span class="i">JObject</span> <span id="r46 rd" class="r46 r">contentItem</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r47 rd" class="r47 r">taxonomyItemId</span>)
+        {
+            <b>if</b> (<span class="r46 r">contentItem</span>[<span class="s">&quot;ContentItemId&quot;</span>]?.<span class="i">Value</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;() == <span class="r47 r">taxonomyItemId</span>)
+            {
+                <b>return</b> <span class="r46 r">contentItem</span>;
+            }
+ 
+            <b>if</b> (<span class="r46 r">contentItem</span>.<span class="i">GetValue</span>(<span class="s">&quot;Terms&quot;</span>) == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r48 rd" class="r48 r">taxonomyItems</span> = (<span class="i">JArray</span>)<span class="r46 r">contentItem</span>[<span class="s">&quot;Terms&quot;</span>];
+ 
+            <span class="i">JObject</span> <span id="r49 rd" class="r49 r">result</span>;
+ 
+            <b>foreach</b> (<span class="i">JObject</span> <span id="r50 rd" class="r50 r">taxonomyItem</span> <b>in</b> <span class="r48 r">taxonomyItems</span>)
+            {
+                <span class="c">// Search in inner taxonomy items</span>
+                <span class="r49 r">result</span> = <a href="#19b62c00de1fb0a7" class="i method">FindTaxonomyItem</a>(<span class="r50 r">taxonomyItem</span>, <span class="r47 r">taxonomyItemId</span>);
+ 
+                <b>if</b> (<span class="r49 r">result</span> != <b>null</b>)
+                {
+                    <b>return</b> <span class="r49 r">result</span>;
+                }
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

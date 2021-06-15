@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html><head><title>LuceneContentPickerResultProvider.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(75);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Services/LuceneContentPickerResultProvider.cs" target="_top">Services\LuceneContentPickerResultProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Index</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="42b8e78709399935" href="../R/42b8e78709399935.html" target="n" data-glyph="0,0" class="t t">LuceneContentPickerResultProvider</a> : <span class="i">IContentPickerResultProvider</span>
+    {
+        <b>private readonly</b> <a href="LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <a id="f286070292abd016" href="../R/f286070292abd016.html" target="n" data-glyph="46,1" class="i field">_luceneIndexProvider</a>;
+ 
+        <b>public</b> <a id="b0eaa24ddb0b9808" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LuceneContentPickerResultProvider</a>(<a href="LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <span id="r0 rd" class="r0 r">luceneIndexProvider</span>)
+        {
+            <a href="#f286070292abd016" class="i field">_luceneIndexProvider</a> = <span class="r0 r">luceneIndexProvider</span>;
+        }
+ 
+        <b>public string</b> <a id="0e98327f77d4fdc4" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Name</a> =&gt; <span class="s">&quot;Lucene&quot;</span>;
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ContentPickerResult</span>&gt;&gt; <a id="98eeff252aabea94" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Search</a>(<span class="i">ContentPickerSearchContext</span> <span id="r1 rd" class="r1 r">searchContext</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r2 rd" class="r2 r">indexName</span> = <span class="s">&quot;Search&quot;</span>;
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">fieldSettings</span> = <span class="r1 r">searchContext</span>.<span class="i">PartFieldDefinition</span>?.<span class="i">GetSettings</span>&lt;<a href="../Settings/ContentPickerFieldLuceneEditorSettings.cs.html#fec7d91dbb528cda" class="t t">ContentPickerFieldLuceneEditorSettings</a>&gt;();
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r3 r">fieldSettings</span>?.<span class="i">Index</span>))
+            {
+                <span class="r2 r">indexName</span> = <span class="r3 r">fieldSettings</span>.<span class="i">Index</span>;
+            }
+ 
+            <b>if</b> (!<a href="#f286070292abd016" class="i field">_luceneIndexProvider</a>.<a href="LuceneIndexManager.cs.html#33224a9601558859" class="i method">Exists</a>(<span class="r2 r">indexName</span>))
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">ContentPickerResult</span>&gt;();
+            }
+ 
+            <b>var</b> <span id="r4 rd" class="r4 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">ContentPickerResult</span>&gt;();
+ 
+            <b>await</b> <a href="#f286070292abd016" class="i field">_luceneIndexProvider</a>.<span class="i">SearchAsync</span>(<span class="r2 r">indexName</span>, <span id="r5 rd" class="r5 r">searcher</span> =&gt;
+            {
+                <span class="i">Query</span> <span id="r6 rd" class="r6 r">query</span> = <b>null</b>;
+ 
+                <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<span class="i">IsNullOrWhiteSpace</span>(<span class="r1 r">searchContext</span>.<span class="i">Query</span>))
+                {
+                    <span class="r6 r">query</span> = <b>new</b> <span class="i">MatchAllDocsQuery</span>();
+                }
+                <b>else</b>
+                {
+                    <span class="r6 r">query</span> = <b>new</b> <span class="i">WildcardQuery</span>(<b>new</b> <span class="i">Term</span>(<span class="s">&quot;Content.ContentItem.DisplayText.Analyzed&quot;</span>, <span class="r1 r">searchContext</span>.<span class="i">Query</span>.<span class="i">ToLowerInvariant</span>() + <span class="s">&quot;*&quot;</span>));
+                }
+ 
+                <b>var</b> <span id="r7 rd" class="r7 r">filter</span> = <b>new</b> <span class="i">FieldCacheTermsFilter</span>(<span class="s">&quot;Content.ContentItem.ContentType&quot;</span>, <span class="r1 r">searchContext</span>.<span class="i">ContentTypes</span>.<span class="i">ToArray</span>());
+ 
+                <b>var</b> <span id="r8 rd" class="r8 r">docs</span> = <span class="r5 r">searcher</span>.<span class="i">Search</span>(<span class="r6 r">query</span>, <span class="r7 r">filter</span>, 50, <span class="i">Sort</span>.<span class="i">RELEVANCE</span>);
+ 
+                <b>foreach</b> (<b>var</b> <span id="r9 rd" class="r9 r">hit</span> <b>in</b> <span class="r8 r">docs</span>.<span class="i">ScoreDocs</span>)
+                {
+                    <b>var</b> <span id="r10 rd" class="r10 r">doc</span> = <span class="r5 r">searcher</span>.<span class="i">Doc</span>(<span class="r9 r">hit</span>.<span class="i">Doc</span>);
+ 
+                    <span class="r4 r">results</span>.<span class="i method">Add</span>(<b>new</b> <span class="i">ContentPickerResult</span>
+                    {
+                        <span class="i">ContentItemId</span> = <span class="r10 r">doc</span>.<span class="i">GetField</span>(<span class="s">&quot;ContentItemId&quot;</span>).<span class="i">GetStringValue</span>(),
+                        <span class="i">DisplayText</span> = <span class="r10 r">doc</span>.<span class="i">GetField</span>(<span class="s">&quot;Content.ContentItem.DisplayText&quot;</span>).<span class="i">GetStringValue</span>(),
+                        <span class="i">HasPublished</span> = <span class="r10 r">doc</span>.<span class="i">GetField</span>(<span class="s">&quot;Content.ContentItem.Published&quot;</span>).<span class="i">GetStringValue</span>() == <span class="s">&quot;true&quot;</span> ? <b>true</b> : <b>false</b>
+                    });
+                }
+ 
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            });
+ 
+            <b>return</b> <span class="r4 r">results</span>.<span class="i method">OrderBy</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <span class="r11 r">x</span>.<span class="i">DisplayText</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

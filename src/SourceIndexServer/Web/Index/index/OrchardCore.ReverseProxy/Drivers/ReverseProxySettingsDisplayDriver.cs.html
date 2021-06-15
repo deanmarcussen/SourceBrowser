@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html><head><title>ReverseProxySettingsDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(89);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ReverseProxy/Drivers/ReverseProxySettingsDisplayDriver.cs" target="_top">Drivers\ReverseProxySettingsDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ReverseProxy" target="_top">src\OrchardCore.Modules\OrchardCore.ReverseProxy\OrchardCore.ReverseProxy.csproj</a> (OrchardCore.ReverseProxy)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">HttpOverrides</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ReverseProxy</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ReverseProxy</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ReverseProxy</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="949d7deb37a2aa0a" href="../R/949d7deb37a2aa0a.html" target="n" data-glyph="0,0" class="t t">ReverseProxySettingsDisplayDriver</a> : <a href="/OrchardCore.DisplayManagement/A.html#24bbc1028255b02b" class="t t">SectionDisplayDriver</a>&lt;<span class="i">ISite</span>, <a href="../Settings/ReverseProxySettings.cs.html#2ac8dda0ff3ed631" class="t t">ReverseProxySettings</a>&gt;
+    {
+        <b>private const string</b> <a id="c32b683fd2d28769" href="../R/c32b683fd2d28769.html" target="n" data-glyph="10,1" class="i field">SettingsGroupId</a> = <span class="s">&quot;ReverseProxy&quot;</span>;
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="c2d1c9cdb3b9f97e" href="../R/c2d1c9cdb3b9f97e.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="627c3d050b2382d9" href="../R/627c3d050b2382d9.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="5619037bd2f63443" href="../R/5619037bd2f63443.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="133a2dc2250bbe86" href="../R/133a2dc2250bbe86.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+ 
+        <b>public</b> <a id="34236266c9e16a32" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ReverseProxySettingsDisplayDriver</a>(
+            <span class="i">IShellHost</span> <span id="r0 rd" class="r0 r">shellHost</span>,
+            <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r3 rd" class="r3 r">authorizationService</span>)
+        {
+            <a href="#c2d1c9cdb3b9f97e" class="i field">_shellHost</a> = <span class="r0 r">shellHost</span>;
+            <a href="#627c3d050b2382d9" class="i field">_shellSettings</a> = <span class="r1 r">shellSettings</span>;
+            <a href="#5619037bd2f63443" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+            <a href="#133a2dc2250bbe86" class="i field">_authorizationService</a> = <span class="r3 r">authorizationService</span>;
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="7d1d5fcfed904481" href="../R/7d1d5fcfed904481.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<a href="../Settings/ReverseProxySettings.cs.html#2ac8dda0ff3ed631" class="t t">ReverseProxySettings</a> <span id="r4 rd" class="r4 r">settings</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r5 rd" class="r5 r">context</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">user</span> = <a href="#5619037bd2f63443" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>;
+ 
+            <b>if</b> (!<b>await</b> <a href="#133a2dc2250bbe86" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r6 r">user</span>, <a href="../Permissions.cs.html#860bc9dd40232eeb" class="t t">Permissions</a>.<a href="../Permissions.cs.html#d503a74d7df01e3c" class="i field">ReverseProxySettings</a>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#595b6ceec1ebbfe3" class="t t">ReverseProxySettingsViewModel</a>&gt;(<span class="s">&quot;ReverseProxySettings_Edit&quot;</span>, <span id="r7 rd" class="r7 r">model</span> =&gt;
+            {
+                <span class="r7 r">model</span>.<a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#64a278661f1ed035" class="i property">EnableXForwardedFor</a> = <span class="r4 r">settings</span>.<a href="../Settings/ReverseProxySettings.cs.html#b549be9300411c89" class="i property">ForwardedHeaders</a>.<a href="@1@System.Runtime/A.html#9cd73f33d2df3074" class="i method">HasFlag</a>(<span class="t t">ForwardedHeaders</span>.<span class="i field">XForwardedFor</span>);
+                <span class="r7 r">model</span>.<a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#6f994c087571bef4" class="i property">EnableXForwardedHost</a> = <span class="r4 r">settings</span>.<a href="../Settings/ReverseProxySettings.cs.html#b549be9300411c89" class="i property">ForwardedHeaders</a>.<a href="@1@System.Runtime/A.html#9cd73f33d2df3074" class="i method">HasFlag</a>(<span class="t t">ForwardedHeaders</span>.<span class="i field">XForwardedHost</span>);
+                <span class="r7 r">model</span>.<a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#ed627e18b928ff2e" class="i property">EnableXForwardedProto</a> = <span class="r4 r">settings</span>.<a href="../Settings/ReverseProxySettings.cs.html#b549be9300411c89" class="i property">ForwardedHeaders</a>.<a href="@1@System.Runtime/A.html#9cd73f33d2df3074" class="i method">HasFlag</a>(<span class="t t">ForwardedHeaders</span>.<span class="i field">XForwardedProto</span>);
+            }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Content:2&quot;</span>).<a href="/OrchardCore.DisplayManagement/A.html#5d3c3bbc7f9050df" class="i method">OnGroup</a>(<a href="#c32b683fd2d28769" class="i field">SettingsGroupId</a>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="13f13cdaf99ddc41" href="../R/13f13cdaf99ddc41.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="../Settings/ReverseProxySettings.cs.html#2ac8dda0ff3ed631" class="t t">ReverseProxySettings</a> <span id="r8 rd" class="r8 r">section</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r9 rd" class="r9 r">context</span>)
+        {
+            <b>var</b> <span id="r10 rd" class="r10 r">user</span> = <a href="#5619037bd2f63443" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>;
+ 
+            <b>if</b> (!<b>await</b> <a href="#133a2dc2250bbe86" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r10 r">user</span>, <a href="../Permissions.cs.html#860bc9dd40232eeb" class="t t">Permissions</a>.<a href="../Permissions.cs.html#d503a74d7df01e3c" class="i field">ReverseProxySettings</a>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (<span class="r9 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#4089a2311ccff5cd" class="i property">GroupId</a> == <a href="#c32b683fd2d28769" class="i field">SettingsGroupId</a>)
+            {
+                <a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#595b6ceec1ebbfe3" class="k">var</a> <span id="r11 rd" class="r11 r">model</span> = <b>new</b> <a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#595b6ceec1ebbfe3" class="t constructor">ReverseProxySettingsViewModel</a>();
+ 
+                <b>await</b> <span class="r9 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">TryUpdateModelAsync</span>(<span class="r11 r">model</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>);
+ 
+                <span class="r8 r">section</span>.<a href="../Settings/ReverseProxySettings.cs.html#b549be9300411c89" class="i property">ForwardedHeaders</a> = <span class="t t">ForwardedHeaders</span>.<span class="i field">None</span>;
+ 
+                <b>if</b> (<span class="r11 r">model</span>.<a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#64a278661f1ed035" class="i property">EnableXForwardedFor</a>)
+                    <span class="r8 r">section</span>.<a href="../Settings/ReverseProxySettings.cs.html#b549be9300411c89" class="i property">ForwardedHeaders</a> |= <span class="t t">ForwardedHeaders</span>.<span class="i field">XForwardedFor</span>;
+ 
+                <b>if</b> (<span class="r11 r">model</span>.<a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#6f994c087571bef4" class="i property">EnableXForwardedHost</a>)
+                    <span class="r8 r">section</span>.<a href="../Settings/ReverseProxySettings.cs.html#b549be9300411c89" class="i property">ForwardedHeaders</a> |= <span class="t t">ForwardedHeaders</span>.<span class="i field">XForwardedHost</span>;
+ 
+                <b>if</b> (<span class="r11 r">model</span>.<a href="../ViewModels/ReverseProxySettingsViewModel.cs.html#ed627e18b928ff2e" class="i property">EnableXForwardedProto</a>)
+                    <span class="r8 r">section</span>.<a href="../Settings/ReverseProxySettings.cs.html#b549be9300411c89" class="i property">ForwardedHeaders</a> |= <span class="t t">ForwardedHeaders</span>.<span class="i field">XForwardedProto</span>;
+ 
+                <span class="c">// If the settings are valid, release the current tenant.</span>
+                <b>if</b> (<span class="r9 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">ModelState</span>.<span class="i">IsValid</span>)
+                {
+                    <b>await</b> <a href="#c2d1c9cdb3b9f97e" class="i field">_shellHost</a>.<span class="i">ReleaseShellContextAsync</span>(<a href="#627c3d050b2382d9" class="i field">_shellSettings</a>);
+                }
+            }
+ 
+            <b>return</b> <b>await</b> <a href="#7d1d5fcfed904481" class="i method">EditAsync</a>(<span class="r8 r">section</span>, <span class="r9 r">context</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

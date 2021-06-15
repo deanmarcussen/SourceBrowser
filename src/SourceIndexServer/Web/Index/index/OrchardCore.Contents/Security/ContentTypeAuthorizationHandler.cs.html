@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html><head><title>ContentTypeAuthorizationHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(106);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Contents/Security/ContentTypeAuthorizationHandler.cs" target="_top">Security\ContentTypeAuthorizationHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Contents" target="_top">src\OrchardCore.Modules\OrchardCore.Contents\OrchardCore.Contents.csproj</a> (OrchardCore.Contents)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>.<span class="i">Permissions</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Security</span>
+{
+    <b>public class</b> <a id="97c5b69bc15ccada" href="../R/97c5b69bc15ccada.html" target="n" data-glyph="0,0" class="t t">ContentTypeAuthorizationHandler</a> : <span class="t t">AuthorizationHandler</span>&lt;<span class="i">PermissionRequirement</span>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="a4b534c091cb3125" href="../R/a4b534c091cb3125.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private</b> <span class="t t">IAuthorizationService</span> <a id="c5be78177e831158" href="../R/c5be78177e831158.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+ 
+        <b>public</b> <a id="cc8d7cd7f77417a3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ContentTypeAuthorizationHandler</a>(<span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">serviceProvider</span>)
+        {
+            <a href="#a4b534c091cb3125" class="i field">_serviceProvider</a> = <span class="r0 r">serviceProvider</span>;
+        }
+ 
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b98f690673a981e3" href="../R/b98f690673a981e3.html" target="n" data-glyph="75,1" class="i method">HandleRequirementAsync</a>(<span class="t t">AuthorizationHandlerContext</span> <span id="r1 rd" class="r1 r">context</span>, <span class="i">PermissionRequirement</span> <span id="r2 rd" class="r2 r">requirement</span>)
+        {
+            <b>if</b> (<span class="r1 r">context</span>.<span class="i property">HasSucceeded</span>)
+            {
+                <span class="c">// This handler is not revoking any pre-existing grants.</span>
+                <b>return</b>;
+            }
+ 
+            <span class="c">// If we are not evaluating a ContentItem then return.</span>
+            <b>if</b> (<span class="r1 r">context</span>.<span class="i property">Resource</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r3 rd" class="r3 r">contentItem</span> = <span class="r1 r">context</span>.<span class="i property">Resource</span> <b>as</b> <span class="i">ContentItem</span>;
+ 
+            <span class="i">Permission</span> <span id="r4 rd" class="r4 r">permission</span> = <b>null</b>;
+ 
+            <b>if</b> (<span class="r3 r">contentItem</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r5 rd" class="r5 r">ownerVariation</span> = <span class="i">GetOwnerVariation</span>(<span class="r2 r">requirement</span>.<span class="i">Permission</span>);
+ 
+                <b>if</b> (<span class="i">OwnerVariationExists</span>(<span class="r2 r">requirement</span>.<span class="i">Permission</span>) &amp;&amp; <a href="#1ed05825c602b016" class="i method">HasOwnership</a>(<span class="r1 r">context</span>.<span class="i property">User</span>, <span class="r3 r">contentItem</span>))
+                {
+                    <span class="r4 r">permission</span> = <span class="r5 r">ownerVariation</span>;
+                }
+            }
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">contentTypePermission</span> = <a href="/OrchardCore.Contents.Core/A.html#87892ba23e3659a4" class="t t">ContentTypePermissionsHelper</a>.<span class="i">ConvertToDynamicPermission</span>(<span class="r4 r">permission</span> ?? <span class="r2 r">requirement</span>.<span class="i">Permission</span>);
+ 
+            <b>if</b> (<span class="r6 r">contentTypePermission</span> != <b>null</b>)
+            {
+                <span class="c">// The resource can be a content type name</span>
+                <b>var</b> <span id="r7 rd" class="r7 r">contentType</span> = <span class="r3 r">contentItem</span> != <b>null</b>
+                    ? <span class="r3 r">contentItem</span>.<span class="i">ContentType</span>
+                    : <span class="r1 r">context</span>.<span class="i property">Resource</span>.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>()
+                    ;
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r7 r">contentType</span>))
+                {
+                    <span class="r4 r">permission</span> = <a href="/OrchardCore.Contents.Core/A.html#87892ba23e3659a4" class="t t">ContentTypePermissionsHelper</a>.<span class="i">CreateDynamicPermission</span>(<span class="r6 r">contentTypePermission</span>, <span class="r7 r">contentType</span>);
+                }
+            }
+ 
+            <b>if</b> (<span class="r4 r">permission</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Lazy load to prevent circular dependencies</span>
+            <a href="#c5be78177e831158" class="i field">_authorizationService</a> ??= <a href="#a4b534c091cb3125" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IAuthorizationService</span>&gt;();
+ 
+            <b>if</b> (<b>await</b> <a href="#c5be78177e831158" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r1 r">context</span>.<span class="i property">User</span>, <span class="r4 r">permission</span>))
+            {
+                <span class="r1 r">context</span>.<span class="i">Succeed</span>(<span class="r2 r">requirement</span>);
+            }
+        }
+ 
+        <b>private static</b> <span class="i">Permission</span> <a id="d8ea3365d0a5a912" href="../R/d8ea3365d0a5a912.html" target="n" data-glyph="76,1" class="i method">GetOwnerVariation</a>(<span class="i">Permission</span> <span id="r8 rd" class="r8 r">permission</span>)
+        {
+            <b>if</b> (<a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#7c2638500f8b01e7" class="i field">OwnerPermissionsByName</a>.<span class="i">TryGetValue</span>(<span class="r8 r">permission</span>.<span class="i">Name</span>, <b>out</b> <b>var</b> <span id="r9 rd" class="r9 r">ownerVariation</span>))
+            {
+                <b>return</b> <span class="r9 r">ownerVariation</span>;
+            }
+ 
+            <b>return</b> <b>null</b>;
+        }
+ 
+        <b>private static bool</b> <a id="1ed05825c602b016" href="../R/1ed05825c602b016.html" target="n" data-glyph="76,1" class="i method">HasOwnership</a>(<span class="t t">ClaimsPrincipal</span> <span id="r10 rd" class="r10 r">user</span>, <span class="i">ContentItem</span> <span id="r11 rd" class="r11 r">content</span>)
+        {
+            <b>if</b> (<span class="r10 r">user</span> == <b>null</b> || <span class="r11 r">content</span> == <b>null</b>)
+            {
+                <b>return</b> <b>false</b>;
+            }
+ 
+            <b>return</b> <span class="r10 r">user</span>.<span class="i method">FindFirstValue</span>(<span class="t t">ClaimTypes</span>.<span class="i field">NameIdentifier</span>) == <span class="r11 r">content</span>.<span class="i">Owner</span>;
+        }
+ 
+        <b>private static bool</b> <a id="5d9a754493211bb3" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">OwnerVariationExists</a>(<span class="i">Permission</span> <span id="r12 rd" class="r12 r">permission</span>)
+        {
+            <b>return</b> <a href="#d8ea3365d0a5a912" class="i method">GetOwnerVariation</a>(<span class="r12 r">permission</span>) != <b>null</b>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

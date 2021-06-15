@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html><head><title>ListQueryObjectType.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(62);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lists/GraphQL/ListQueryObjectType.cs" target="_top">GraphQL\ListQueryObjectType.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lists" target="_top">src\OrchardCore.Modules\OrchardCore.Lists\OrchardCore.Lists.csproj</a> (OrchardCore.Lists)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">DataLoader</span>;
+<b>using</b> <span class="i">GraphQL</span>.<span class="i">Types</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Apis</span>.<span class="i n">GraphQL</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">GraphQL</span>.<span class="i n">Queries</span>.<span class="i n">Types</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">GraphQL</span>
+{
+    <b>public class</b> <a id="21889551ca1b9d09" href="../R/21889551ca1b9d09.html" target="n" data-glyph="0,0" class="t t">ListQueryObjectType</a> : <span class="i">ObjectGraphType</span>&lt;<a href="../Models/ListPart.cs.html#9805ddfadd8d801c" class="t t">ListPart</a>&gt;
+    {
+        <b>public</b> <a id="99f05a3609f3520c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ListQueryObjectType</a>(<span class="t t">IStringLocalizer</span>&lt;<a href="#21889551ca1b9d09" class="t t">ListQueryObjectType</a>&gt; <span id="r0 rd" class="r0 r">S</span>)
+        {
+            <span class="i">Name</span> = <span class="s">&quot;ListPart&quot;</span>;
+            <span class="i">Description</span> = <span class="r0 r">S</span>[<span class="s">&quot;Represents a collection of content items.&quot;</span>];
+ 
+            <span class="i">Field</span>&lt;<span class="i">ListGraphType</span>&lt;<a href="/OrchardCore.ContentManagement.GraphQL/A.html#3db8bd8200e6e286" class="t t">ContentItemInterface</a>&gt;, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">ContentItem</span>&gt;&gt;()
+                .<span class="i">Name</span>(<span class="s">&quot;contentItems&quot;</span>)
+                .<span class="i">Description</span>(<span class="s">&quot;the content items&quot;</span>)
+                .<span class="i">Argument</span>&lt;<span class="i">IntGraphType</span>, <b>int</b>&gt;(<span class="s">&quot;first&quot;</span>, <span class="s">&quot;the first n elements (10 by default)&quot;</span>, 10)
+                .<span class="i">Argument</span>&lt;<span class="i">IntGraphType</span>, <b>int</b>&gt;(<span class="s">&quot;skip&quot;</span>, <span class="s">&quot;the number of elements to skip&quot;</span>, 0)
+                .<span class="i">ResolveAsync</span>(<b>async</b> <span id="r1 rd" class="r1 r">g</span> =&gt;
+                {
+                    <b>var</b> <span id="r2 rd" class="r2 r">serviceProvider</span> = <span class="r1 r">g</span>.<span class="i">ResolveServiceProvider</span>();
+                    <b>var</b> <span id="r3 rd" class="r3 r">session</span> = <span class="r2 r">serviceProvider</span>.<span class="i method">GetService</span>&lt;<span class="i">ISession</span>&gt;();
+                    <b>var</b> <span id="r4 rd" class="r4 r">accessor</span> = <span class="r2 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<span class="i">IDataLoaderContextAccessor</span>&gt;();
+ 
+                    <b>var</b> <span id="r5 rd" class="r5 r">dataLoader</span> = <span class="r4 r">accessor</span>.<span class="i">Context</span>.<span class="i">GetOrAddCollectionBatchLoader</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">ContentItem</span>&gt;(<span class="s">&quot;ContainedPublishedContentItems&quot;</span>, <span id="r6 rd" class="r6 r">x</span> =&gt; <span class="i">LoadPublishedContentItemsForListAsync</span>(<span class="r6 r">x</span>, <span class="r3 r">session</span>));
+ 
+                    <b>return</b> (<b>await</b> <span class="r5 r">dataLoader</span>.<span class="i">LoadAsync</span>(<span class="r1 r">g</span>.<span class="i">Source</span>.<span class="i">ContentItem</span>.<span class="i">ContentItemId</span>))
+                                .<span class="i">Skip</span>(<span class="r1 r">g</span>.<span class="i">GetArgument</span>&lt;<b>int</b>&gt;(<span class="s">&quot;skip&quot;</span>))
+                                .<span class="i">Take</span>(<span class="r1 r">g</span>.<span class="i">GetArgument</span>&lt;<b>int</b>&gt;(<span class="s">&quot;first&quot;</span>));
+                });
+        }
+ 
+        <b>private static async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ILookup</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">ContentItem</span>&gt;&gt; <a id="b88493f54bee52bc" href="../R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">LoadPublishedContentItemsForListAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r7 rd" class="r7 r">contentItemIds</span>, <span class="i">ISession</span> <span id="r8 rd" class="r8 r">session</span>)
+        {
+            <b>if</b> (<span class="r7 r">contentItemIds</span> <b>is null</b> || !<span class="r7 r">contentItemIds</span>.<span class="i method">Any</span>())
+            {
+                <b>return</b> <b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">ContentItem</span>&gt;().<span class="i method">ToLookup</span>(<span id="r9 rd" class="r9 r">k</span> =&gt; <span class="r9 r">k</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span id="r10 rd" class="r10 r">v</span> =&gt; <span class="r10 r">v</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+            }
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">query</span> = <b>await</b> <span class="r8 r">session</span>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>&gt;()
+                                     .<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r12 rd" class="r12 r">ci</span> =&gt; <span class="r12 r">ci</span>.<span class="i">Published</span>)
+                                     .<span class="i">With</span>&lt;<a href="../Indexes/ContainedPartIndex.cs.html#130543d941dba153" class="t t">ContainedPartIndex</a>&gt;(<span id="r13 rd" class="r13 r">cp</span> =&gt; <span class="r13 r">cp</span>.<span class="i">ListContentItemId</span>.<span class="i">IsIn</span>(<span class="r7 r">contentItemIds</span>))
+                                     .<span class="i">OrderBy</span>(<span id="r14 rd" class="r14 r">o</span> =&gt; <span class="r14 r">o</span>.<span class="i">Order</span>)
+                                     .<span class="i">ListAsync</span>();
+ 
+            <b>return</b> <span class="r11 r">query</span>.<span class="i">ToLookup</span>(<span id="r15 rd" class="r15 r">k</span> =&gt; <span class="r15 r">k</span>.<span class="i">As</span>&lt;<a href="../Models/ContainedPart.cs.html#bdf556b1c3c3e8a5" class="t t">ContainedPart</a>&gt;().<span class="i">ListContentItemId</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

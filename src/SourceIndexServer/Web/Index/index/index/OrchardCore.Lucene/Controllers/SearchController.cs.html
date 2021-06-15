@@ -1,0 +1,231 @@
+﻿<!DOCTYPE html>
+<html><head><title>SearchController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(222);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Controllers/SearchController.cs" target="_top">Controllers\SearchController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">QueryParsers</span>.<span class="i">Classic</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Model</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Mvc</span>.<span class="i">Utilities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Search</span>.<span class="i n">Abstractions</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>.<span class="i">Permissions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="9a695a0fd643aa19" href="../R/9a695a0fd643aa19.html" target="n" data-glyph="0,0" class="t t">SearchController</a> : <span class="t t">Controller</span>
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="2be4b519af061ddc" href="../R/2be4b519af061ddc.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="i">ISiteService</span> <a id="10feba5f685beaa8" href="../R/10feba5f685beaa8.html" target="n" data-glyph="46,1" class="i field">_siteService</a>;
+        <b>private readonly</b> <a href="../Services/LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <a id="8705e093ed363878" href="../R/8705e093ed363878.html" target="n" data-glyph="46,1" class="i field">_luceneIndexProvider</a>;
+        <b>private readonly</b> <a href="../Services/LuceneIndexingService.cs.html#e2827df3cdff875a" class="t t">LuceneIndexingService</a> <a id="20e94da7f37c89b4" href="../R/20e94da7f37c89b4.html" target="n" data-glyph="46,1" class="i field">_luceneIndexingService</a>;
+        <b>private readonly</b> <a href="../Services/LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <a id="62d9c64bc125d800" href="../R/62d9c64bc125d800.html" target="n" data-glyph="46,1" class="i field">_luceneIndexSettingsService</a>;
+        <b>private readonly</b> <a href="../Services/LuceneAnalyzerManager.cs.html#c9d43f02df73f256" class="t t">LuceneAnalyzerManager</a> <a id="7901d029a9d81ef0" href="../R/7901d029a9d81ef0.html" target="n" data-glyph="46,1" class="i field">_luceneAnalyzerManager</a>;
+        <b>private readonly</b> <a href="../Services/ISearchQueryService.cs.html#d8dc1e2650f07c09" class="t t">ISearchQueryService</a> <a id="3642a751516e5dc6" href="../R/3642a751516e5dc6.html" target="n" data-glyph="46,1" class="i field">_searchQueryService</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="bb6a0d23d5a8ad79" href="../R/bb6a0d23d5a8ad79.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="63fc7916614755ac" href="../R/63fc7916614755ac.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IPermissionProvider</span>&gt; <a id="6c8fd78b45e3de35" href="../R/6c8fd78b45e3de35.html" target="n" data-glyph="46,1" class="i field">_permissionProviders</a>;
+        <b>private readonly dynamic</b> <a id="657f7a3523092815" href="../R/657f7a3523092815.html" target="n" data-glyph="46,1" class="i field">New</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="285871a318d42c88" href="../R/285871a318d42c88.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="89761bb83fb6989a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">SearchController</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <span class="i">ISiteService</span> <span id="r1 rd" class="r1 r">siteService</span>,
+            <a href="../Services/LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <span id="r2 rd" class="r2 r">luceneIndexProvider</span>,
+            <a href="../Services/LuceneIndexingService.cs.html#e2827df3cdff875a" class="t t">LuceneIndexingService</a> <span id="r3 rd" class="r3 r">luceneIndexingService</span>,
+            <a href="../Services/LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <span id="r4 rd" class="r4 r">luceneIndexSettingsService</span>,
+            <a href="../Services/LuceneAnalyzerManager.cs.html#c9d43f02df73f256" class="t t">LuceneAnalyzerManager</a> <span id="r5 rd" class="r5 r">luceneAnalyzerManager</span>,
+            <a href="../Services/ISearchQueryService.cs.html#d8dc1e2650f07c09" class="t t">ISearchQueryService</a> <span id="r6 rd" class="r6 r">searchQueryService</span>,
+            <span class="i">ISession</span> <span id="r7 rd" class="r7 r">session</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#9a695a0fd643aa19" class="t t">SearchController</a>&gt; <span id="r8 rd" class="r8 r">stringLocalizer</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="i">IPermissionProvider</span>&gt; <span id="r9 rd" class="r9 r">permissionProviders</span>,
+            <a href="/OrchardCore.DisplayManagement/A.html#b93d6db1df498056" class="t t">IShapeFactory</a> <span id="r10 rd" class="r10 r">shapeFactory</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#9a695a0fd643aa19" class="t t">SearchController</a>&gt; <span id="r11 rd" class="r11 r">logger</span>
+            )
+        {
+            <a href="#2be4b519af061ddc" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#10feba5f685beaa8" class="i field">_siteService</a> = <span class="r1 r">siteService</span>;
+            <a href="#8705e093ed363878" class="i field">_luceneIndexProvider</a> = <span class="r2 r">luceneIndexProvider</span>;
+            <a href="#20e94da7f37c89b4" class="i field">_luceneIndexingService</a> = <span class="r3 r">luceneIndexingService</span>;
+            <a href="#62d9c64bc125d800" class="i field">_luceneIndexSettingsService</a> = <span class="r4 r">luceneIndexSettingsService</span>;
+            <a href="#7901d029a9d81ef0" class="i field">_luceneAnalyzerManager</a> = <span class="r5 r">luceneAnalyzerManager</span>;
+            <a href="#3642a751516e5dc6" class="i field">_searchQueryService</a> = <span class="r6 r">searchQueryService</span>;
+            <a href="#bb6a0d23d5a8ad79" class="i field">_session</a> = <span class="r7 r">session</span>;
+            <a href="#63fc7916614755ac" class="i field">S</a> = <span class="r8 r">stringLocalizer</span>;
+            <a href="#6c8fd78b45e3de35" class="i field">_permissionProviders</a> = <span class="r9 r">permissionProviders</span>;
+            <a href="#657f7a3523092815" class="i field">New</a> = <span class="r10 r">shapeFactory</span>;
+            <a href="#285871a318d42c88" class="i field">_logger</a> = <span class="r11 r">logger</span>;
+        }
+ 
+        [<span class="t constructor">HttpGet</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="04e7b7b60ba40700" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Search</a>(<a href="/OrchardCore.Search.Abstractions/A.html#4fdd4a40ae6e44a1" class="t t">SearchIndexViewModel</a> <span id="r12 rd" class="r12 r">viewModel</span>, <a href="/OrchardCore.Navigation.Core/A.html#181f4faa49850563" class="t t">PagerSlimParameters</a> <span id="r13 rd" class="r13 r">pagerParameters</span>)
+        {
+            <b>var</b> <span id="r14 rd" class="r14 r">permissionsProvider</span> = <a href="#6c8fd78b45e3de35" class="i field">_permissionProviders</a>.<span class="i method">FirstOrDefault</span>(<span id="r15 rd" class="r15 r">x</span> =&gt; <span class="r15 r">x</span>.<span class="i">GetType</span>().<span class="i">FullName</span> == <span class="s">&quot;OrchardCore.Lucene.Permissions&quot;</span>);
+            <b>var</b> <span id="r16 rd" class="r16 r">permissions</span> = <b>await</b> <span class="r14 r">permissionsProvider</span>.<span class="i">GetPermissionsAsync</span>();
+ 
+            <b>var</b> <span id="r17 rd" class="r17 r">siteSettings</span> = <b>await</b> <a href="#10feba5f685beaa8" class="i field">_siteService</a>.<span class="i">GetSiteSettingsAsync</span>();
+            <b>var</b> <span id="r18 rd" class="r18 r">searchSettings</span> = <span class="r17 r">siteSettings</span>.<span class="i">As</span>&lt;<a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t t">LuceneSettings</a>&gt;();
+ 
+            <b>if</b> (<span class="r16 r">permissions</span>.<span class="i">FirstOrDefault</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <span class="r19 r">x</span>.<span class="i">Name</span> == <span class="s">&quot;QueryLucene&quot;</span> + <span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span> + <span class="s">&quot;Index&quot;</span>) != <b>null</b>)
+            {
+                <b>if</b> (!<b>await</b> <a href="#2be4b519af061ddc" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <span class="r16 r">permissions</span>.<span class="i">FirstOrDefault</span>(<span id="r20 rd" class="r20 r">x</span> =&gt; <span class="r20 r">x</span>.<span class="i">Name</span> == <span class="s">&quot;QueryLucene&quot;</span> + <span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span> + <span class="s">&quot;Index&quot;</span>)))
+                {
+                    <b>return</b> <a href="#9a695a0fd643aa19" class="k">this</a>.<span class="i">ChallengeOrForbid</span>();
+                }
+            }
+            <b>else</b>
+            {
+                <a href="#285871a318d42c88" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Couldn&#39;t execute search. The search index doesn&#39;t exist.&quot;</span>);
+                <b>return</b> <span class="i method">BadRequest</span>(<span class="s">&quot;Search is not configured.&quot;</span>);
+            }
+ 
+            <b>if</b> (<span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span> != <b>null</b> &amp;&amp; !<a href="#8705e093ed363878" class="i field">_luceneIndexProvider</a>.<span class="i">Exists</span>(<span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span>))
+            {
+                <a href="#285871a318d42c88" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Couldn&#39;t execute search. The search index doesn&#39;t exist.&quot;</span>);
+                <b>return</b> <span class="i method">BadRequest</span>(<span class="s">&quot;Search is not configured.&quot;</span>);
+            }
+ 
+            <a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="k">var</a> <span id="r21 rd" class="r21 r">luceneSettings</span> = <b>await</b> <a href="#20e94da7f37c89b4" class="i field">_luceneIndexingService</a>.<a href="../Services/LuceneIndexingService.cs.html#7bf62596e31b629c" class="i method">GetLuceneSettingsAsync</a>();
+ 
+            <b>if</b> (<span class="r21 r">luceneSettings</span> == <b>null</b> || <span class="r21 r">luceneSettings</span>?.<a href="../Model/LuceneSettings.cs.html#68c0c379c72e6bda" class="i property">DefaultSearchFields</a> == <b>null</b>)
+            {
+                <a href="#285871a318d42c88" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;Couldn&#39;t execute search. No Lucene settings was defined.&quot;</span>);
+                <b>return</b> <span class="i method">BadRequest</span>(<span class="s">&quot;Search is not configured.&quot;</span>);
+            }
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">luceneIndexSettings</span> = <b>await</b> <a href="#62d9c64bc125d800" class="i field">_luceneIndexSettingsService</a>.<span class="i">GetSettingsAsync</span>(<span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span>);
+ 
+            <b>if</b> (<span class="r22 r">luceneIndexSettings</span> == <b>null</b>)
+            {
+                <a href="#285871a318d42c88" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">$&quot;</span><span class="s">Couldn&#39;t execute search. No Lucene index settings was defined for (</span>{<span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span>}<span class="s">) index.</span><span class="s">&quot;</span>);
+                <b>return</b> <span class="i method">BadRequest</span>(<span class="s">$&quot;</span><span class="s">Search index (</span>{<span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span>}<span class="s">) is not configured.</span><span class="s">&quot;</span>);
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r12 r">viewModel</span>.<a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a>))
+            {
+                <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="/OrchardCore.Search.Abstractions/A.html#4fdd4a40ae6e44a1" class="t constructor">SearchIndexViewModel</a>
+                {
+                    <a href="/OrchardCore.Search.Abstractions/A.html#70788cae2b44b631" class="i property">SearchForm</a> = <b>new</b> <a href="/OrchardCore.Search.Abstractions/A.html#9f7a4a0300431631" class="t constructor">SearchFormViewModel</a>(<span class="s">&quot;Search__Form&quot;</span>) { },
+                });
+            }
+ 
+            <a href="/OrchardCore.Navigation.Core/A.html#29c43294d5714ea6" class="k">var</a> <span id="r23 rd" class="r23 r">pager</span> = <b>new</b> <span class="t">PagerSlim</span>(<span class="r13 r">pagerParameters</span>, <span class="r17 r">siteSettings</span>.<span class="i">PageSize</span>);
+ 
+            <span class="c">// We Query Lucene index</span>
+            <b>var</b> <span id="r24 rd" class="r24 r">analyzer</span> = <a href="#7901d029a9d81ef0" class="i field">_luceneAnalyzerManager</a>.<span class="i">CreateAnalyzer</span>(<b>await</b> <a href="#62d9c64bc125d800" class="i field">_luceneIndexSettingsService</a>.<span class="i">GetIndexAnalyzerAsync</span>(<span class="r22 r">luceneIndexSettings</span>.<span class="i">IndexName</span>));
+            <b>var</b> <span id="r25 rd" class="r25 r">queryParser</span> = <b>new</b> <span class="i">MultiFieldQueryParser</span>(<a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t t">LuceneSettings</a>.<a href="../Model/LuceneSettings.cs.html#c9b5330dfed002de" class="i field">DefaultVersion</a>, <span class="r21 r">luceneSettings</span>.<a href="../Model/LuceneSettings.cs.html#68c0c379c72e6bda" class="i property">DefaultSearchFields</a>, <span class="r24 r">analyzer</span>);
+ 
+            <span class="c">// Fetch one more result than PageSize to generate &quot;More&quot; links</span>
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r26 rd" class="r26 r">start</span> = 0;
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r27 rd" class="r27 r">end</span> = <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#96d2e45b88819340" class="i property">PageSize</a> + 1;
+ 
+            <b>if</b> (<span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#1f525cf76cd786c3" class="i property">Before</a> != <b>null</b>)
+            {
+                <span class="r26 r">start</span> = <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#069d595792a157df" class="i method">ToInt32</a>(<span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#1f525cf76cd786c3" class="i property">Before</a>) - <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#96d2e45b88819340" class="i property">PageSize</a> - 1;
+                <span class="r27 r">end</span> = <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#069d595792a157df" class="i method">ToInt32</a>(<span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#1f525cf76cd786c3" class="i property">Before</a>);
+            }
+            <b>else</b> <b>if</b> (<span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#84cc387f69d78cdd" class="i property">After</a> != <b>null</b>)
+            {
+                <span class="r26 r">start</span> = <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#069d595792a157df" class="i method">ToInt32</a>(<span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#84cc387f69d78cdd" class="i property">After</a>);
+                <span class="r27 r">end</span> = <a href="@1@System.Runtime/A.html#fc990bd1275d43d6" class="t t">Convert</a>.<a href="@1@System.Runtime/A.html#069d595792a157df" class="i method">ToInt32</a>(<span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#84cc387f69d78cdd" class="i property">After</a>) + <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#96d2e45b88819340" class="i property">PageSize</a> + 1;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r28 rd" class="r28 r">terms</span> = <span class="r12 r">viewModel</span>.<a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a>;
+            <b>if</b> (!<span class="r18 r">searchSettings</span>.<span class="i">AllowLuceneQueriesInSearch</span>)
+            {
+                <span class="r28 r">terms</span> = <span class="i">QueryParser</span>.<span class="i">Escape</span>(<span class="r28 r">terms</span>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r29 rd" class="r29 r">contentItemIds</span>;
+            <b>try</b>
+            {
+                <b>var</b> <span id="r30 rd" class="r30 r">query</span> = <span class="r25 r">queryParser</span>.<span class="i">Parse</span>(<span class="r28 r">terms</span>);
+                <span class="r29 r">contentItemIds</span> = (<b>await</b> <a href="#3642a751516e5dc6" class="i field">_searchQueryService</a>.<span class="i">ExecuteQueryAsync</span>(<span class="r30 r">query</span>, <span class="r18 r">searchSettings</span>.<span class="i">SearchIndex</span>, <span class="r26 r">start</span>, <span class="r27 r">end</span>))
+                    .<span class="i">ToList</span>();
+            }
+            <b>catch</b> (<span class="i">ParseException</span> <span id="r31 rd" class="r31 r">e</span>)
+            {
+                <span class="i property">ModelState</span>.<span class="i method">AddModelError</span>(<span class="s">&quot;Terms&quot;</span>, <a href="#63fc7916614755ac" class="i field">S</a>[<span class="s">&quot;Incorrect query syntax.&quot;</span>]);
+                <a href="#285871a318d42c88" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="r31 r">e</span>, <span class="s">&quot;Incorrect Lucene search query syntax provided in search:&quot;</span>);
+ 
+                <span class="c">// Return a SearchIndexViewModel without SearchResults or Pager shapes since there is an error.</span>
+                <b>return</b> <span class="i method">View</span>(<b>new</b> <a href="/OrchardCore.Search.Abstractions/A.html#4fdd4a40ae6e44a1" class="t constructor">SearchIndexViewModel</a>
+                {
+                    <a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a> = <span class="r12 r">viewModel</span>.<a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a>,
+                    <a href="/OrchardCore.Search.Abstractions/A.html#70788cae2b44b631" class="i property">SearchForm</a> = <b>new</b> <a href="/OrchardCore.Search.Abstractions/A.html#9f7a4a0300431631" class="t constructor">SearchFormViewModel</a>(<span class="s">&quot;Search__Form&quot;</span>) { <a href="/OrchardCore.Search.Abstractions/A.html#7d64ad5b4f7cffe9" class="i property">Terms</a> = <span class="r12 r">viewModel</span>.<a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a> },
+                });
+            }
+ 
+            <span class="c">// We Query database to retrieve content items.</span>
+            <span class="i">IQuery</span>&lt;<span class="i">ContentItem</span>&gt; <span id="r32 rd" class="r32 r">queryDb</span>;
+ 
+            <b>if</b> (<span class="r22 r">luceneIndexSettings</span>.<span class="i">IndexLatest</span>)
+            {
+                <span class="r32 r">queryDb</span> = <a href="#bb6a0d23d5a8ad79" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>, <a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r33 rd" class="r33 r">x</span> =&gt; <span class="r33 r">x</span>.<span class="i">ContentItemId</span>.<span class="i">IsIn</span>(<span class="r29 r">contentItemIds</span>) &amp;&amp; <span class="r33 r">x</span>.<span class="i">Latest</span> == <b>true</b>)
+                    .<span class="i">Take</span>(<span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#96d2e45b88819340" class="i property">PageSize</a> + 1);
+            }
+            <b>else</b>
+            {
+                <span class="r32 r">queryDb</span> = <a href="#bb6a0d23d5a8ad79" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>, <a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                    .<span class="i">Where</span>(<span id="r34 rd" class="r34 r">x</span> =&gt; <span class="r34 r">x</span>.<span class="i">ContentItemId</span>.<span class="i">IsIn</span>(<span class="r29 r">contentItemIds</span>) &amp;&amp; <span class="r34 r">x</span>.<span class="i">Published</span> == <b>true</b>)
+                    .<span class="i">Take</span>(<span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#96d2e45b88819340" class="i property">PageSize</a> + 1);
+            }
+ 
+            <span class="c">// Sort the content items by their rank in the search results returned by Lucene.</span>
+            <b>var</b> <span id="r35 rd" class="r35 r">containedItems</span> = (<b>await</b> <span class="r32 r">queryDb</span>.<span class="i">ListAsync</span>()).<span class="i">OrderBy</span>(<span id="r36 rd" class="r36 r">x</span> =&gt; <span class="r29 r">contentItemIds</span>.<span class="i">IndexOf</span>(<span class="r36 r">x</span>.<span class="i">ContentItemId</span>));
+ 
+            <span class="c">// We set the PagerSlim before and after links</span>
+            <b>if</b> (<span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#84cc387f69d78cdd" class="i property">After</a> != <b>null</b> || <span class="r13 r">pagerParameters</span>.<a href="/OrchardCore.Navigation.Core/A.html#1f525cf76cd786c3" class="i property">Before</a> != <b>null</b>)
+            {
+                <b>if</b> (<span class="r26 r">start</span> + 1 &gt; 1)
+                {
+                    <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2f7ccf21f164e158" class="i property">Before</a> = (<span class="r26 r">start</span> + 1).<a href="@1@System.Runtime/A.html#8d6f2d8bc0589463" class="i method">ToString</a>();
+                }
+                <b>else</b>
+                {
+                    <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#2f7ccf21f164e158" class="i property">Before</a> = <b>null</b>;
+                }
+            }
+ 
+            <b>if</b> (<span class="r35 r">containedItems</span>.<span class="i">Count</span>() == <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#96d2e45b88819340" class="i property">PageSize</a> + 1)
+            {
+                <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#a4883f6caa27e428" class="i property">After</a> = (<span class="r27 r">end</span> - 1).<a href="@1@System.Runtime/A.html#8d6f2d8bc0589463" class="i method">ToString</a>();
+            }
+            <b>else</b>
+            {
+                <span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#a4883f6caa27e428" class="i property">After</a> = <b>null</b>;
+            }
+ 
+            <a href="/OrchardCore.Search.Abstractions/A.html#4fdd4a40ae6e44a1" class="k">var</a> <span id="r37 rd" class="r37 r">model</span> = <b>new</b> <a href="/OrchardCore.Search.Abstractions/A.html#4fdd4a40ae6e44a1" class="t constructor">SearchIndexViewModel</a>
+            {
+                <a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a> = <span class="r12 r">viewModel</span>.<a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a>,
+                <a href="/OrchardCore.Search.Abstractions/A.html#70788cae2b44b631" class="i property">SearchForm</a> = <b>new</b> <a href="/OrchardCore.Search.Abstractions/A.html#9f7a4a0300431631" class="t constructor">SearchFormViewModel</a>(<span class="s">&quot;Search__Form&quot;</span>) { <a href="/OrchardCore.Search.Abstractions/A.html#7d64ad5b4f7cffe9" class="i property">Terms</a> = <span class="r12 r">viewModel</span>.<a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a> },
+                <a href="/OrchardCore.Search.Abstractions/A.html#aeaaee76b800ae54" class="i property">SearchResults</a> = <b>new</b> <a href="/OrchardCore.Search.Abstractions/A.html#31bc977067d330ee" class="t constructor">SearchResultsViewModel</a>(<span class="s">&quot;Search__Results&quot;</span>) { <a href="/OrchardCore.Search.Abstractions/A.html#fb6ee603dec33937" class="i property">ContentItems</a> = <span class="r35 r">containedItems</span>.<span class="i">Take</span>(<span class="r23 r">pager</span>.<a href="/OrchardCore.Navigation.Core/A.html#96d2e45b88819340" class="i property">PageSize</a>) },
+                <a href="/OrchardCore.Search.Abstractions/A.html#4ba82ee840af266c" class="i property">Pager</a> = (<b>await</b> <a href="#657f7a3523092815" class="i field">New</a>.<span class="i">PagerSlim</span>(<span class="r23 r">pager</span>)).<span class="i">UrlParams</span>(<b>new</b> <span class="t constructor">Dictionary</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;() { { <span class="s">&quot;Terms&quot;</span>, <span class="r12 r">viewModel</span>.<a href="/OrchardCore.Search.Abstractions/A.html#9a0def502fee30ee" class="i property">Terms</a> } })
+            };
+ 
+            <b>return</b> <span class="i method">View</span>(<span class="r37 r">model</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

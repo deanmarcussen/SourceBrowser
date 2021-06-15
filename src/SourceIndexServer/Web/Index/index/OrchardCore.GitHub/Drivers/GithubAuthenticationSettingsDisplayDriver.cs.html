@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html><head><title>GithubAuthenticationSettingsDisplayDriver.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(107);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.GitHub/Drivers/GithubAuthenticationSettingsDisplayDriver.cs" target="_top">Drivers\GithubAuthenticationSettingsDisplayDriver.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.GitHub" target="_top">src\OrchardCore.Modules\OrchardCore.GitHub\OrchardCore.GitHub.csproj</a> (OrchardCore.GitHub)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Cryptography</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Entities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Views</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">GitHub</span>.<span class="i n">Settings</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">GitHub</span>.<span class="i n">ViewModels</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Settings</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">GitHub</span>.<span class="i n">Drivers</span>
+{
+    <b>public class</b> <a id="2e4af1c328fb204f" href="../R/2e4af1c328fb204f.html" target="n" data-glyph="0,0" class="t t">GitHubAuthenticationSettingsDisplayDriver</a> : <a href="/OrchardCore.DisplayManagement/A.html#24bbc1028255b02b" class="t t">SectionDisplayDriver</a>&lt;<span class="i">ISite</span>, <a href="../Settings/GithubAuthenticationSettings.cs.html#727a4e289318a1e2" class="t t">GitHubAuthenticationSettings</a>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="5bfe143be9211d6e" href="../R/5bfe143be9211d6e.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="50ede6c2254c9c26" href="../R/50ede6c2254c9c26.html" target="n" data-glyph="46,1" class="i field">_dataProtectionProvider</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="5cafd9751b4a405e" href="../R/5cafd9751b4a405e.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="i">IShellHost</span> <a id="41b730dea688b8a9" href="../R/41b730dea688b8a9.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <span class="i">ShellSettings</span> <a id="446a2de34b1ee07f" href="../R/446a2de34b1ee07f.html" target="n" data-glyph="46,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="6131b4855fe9eeee" href="../R/6131b4855fe9eeee.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>public</b> <a id="9e0cf6da56a57b8d" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">GitHubAuthenticationSettingsDisplayDriver</a>(
+            <span class="t t">IAuthorizationService</span> <span id="r0 rd" class="r0 r">authorizationService</span>,
+            <span class="t t">IDataProtectionProvider</span> <span id="r1 rd" class="r1 r">dataProtectionProvider</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r2 rd" class="r2 r">httpContextAccessor</span>,
+            <span class="i">IShellHost</span> <span id="r3 rd" class="r3 r">shellHost</span>,
+            <span class="i">ShellSettings</span> <span id="r4 rd" class="r4 r">shellSettings</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#2e4af1c328fb204f" class="t t">GitHubAuthenticationSettingsDisplayDriver</a>&gt; <span id="r5 rd" class="r5 r">logger</span>)
+        {
+            <a href="#5bfe143be9211d6e" class="i field">_authorizationService</a> = <span class="r0 r">authorizationService</span>;
+            <a href="#50ede6c2254c9c26" class="i field">_dataProtectionProvider</a> = <span class="r1 r">dataProtectionProvider</span>;
+            <a href="#5cafd9751b4a405e" class="i field">_httpContextAccessor</a> = <span class="r2 r">httpContextAccessor</span>;
+            <a href="#41b730dea688b8a9" class="i field">_shellHost</a> = <span class="r3 r">shellHost</span>;
+            <a href="#446a2de34b1ee07f" class="i field">_shellSettings</a> = <span class="r4 r">shellSettings</span>;
+            <a href="#6131b4855fe9eeee" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="82f0634a6cfd908a" href="../R/82f0634a6cfd908a.html" target="n" data-glyph="72,1" class="i method">EditAsync</a>(<a href="../Settings/GithubAuthenticationSettings.cs.html#727a4e289318a1e2" class="t t">GitHubAuthenticationSettings</a> <span id="r6 rd" class="r6 r">settings</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r7 rd" class="r7 r">context</span>)
+        {
+            <b>var</b> <span id="r8 rd" class="r8 r">user</span> = <a href="#5cafd9751b4a405e" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>;
+            <b>if</b> (!<b>await</b> <a href="#5bfe143be9211d6e" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r8 r">user</span>, <a href="../Permissions.cs.html#f4d5b2836c106a17" class="t t">Permissions</a>.<a href="../Permissions.cs.html#ed4dd7585344eede" class="i field">ManageGitHubAuthentication</a>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <a href="/OrchardCore.DisplayManagement/A.html#9e6cf9cb4a2056c2" class="i method">Initialize</a>&lt;<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#9861acfa47d2b28e" class="t t">GitHubAuthenticationSettingsViewModel</a>&gt;(<span class="s">&quot;GitHubAuthenticationSettings_Edit&quot;</span>, <span id="r9 rd" class="r9 r">model</span> =&gt;
+            {
+                <span class="r9 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#c18415fc2ab71174" class="i property">ClientID</a> = <span class="r6 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#d73aa709a39ca60f" class="i property">ClientID</a>;
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r6 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#01a1b07185a8bb2a" class="i property">ClientSecret</a>))
+                {
+                    <b>try</b>
+                    {
+                        <b>var</b> <span id="r10 rd" class="r10 r">protector</span> = <a href="#50ede6c2254c9c26" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="../GithubConstants.cs.html#3c635b9ddc173c85" class="t t">GitHubConstants</a>.<a href="../GithubConstants.cs.html#e6fa17e191cfdc05" class="t t">Features</a>.<a href="../GithubConstants.cs.html#ab710ddd7bf2e4f7" class="i field">GitHubAuthentication</a>);
+                        <span class="r9 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#a67a7ad535d2e8bc" class="i property">ClientSecret</a> = <span class="r10 r">protector</span>.<span class="i method">Unprotect</span>(<span class="r6 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#01a1b07185a8bb2a" class="i property">ClientSecret</a>);
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#0b7aa8a209a7f19f" class="t t">CryptographicException</a>)
+                    {
+                        <a href="#6131b4855fe9eeee" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;The client secret could not be decrypted. It may have been encrypted using a different key.&quot;</span>);
+                        <span class="r9 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#a67a7ad535d2e8bc" class="i property">ClientSecret</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                        <span class="r9 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#9fb48368e0739ff6" class="i property">HasDecryptionError</a> = <b>true</b>;
+                    }
+                }
+                <b>else</b>
+                {
+                    <span class="r9 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#a67a7ad535d2e8bc" class="i property">ClientSecret</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>;
+                }
+                <b>if</b> (<span class="r6 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#29c795c368147f9f" class="i property">CallbackPath</a>.<span class="i property">HasValue</span>)
+                {
+                    <span class="r9 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#59f3249427047dd7" class="i property">CallbackUrl</a> = <span class="r6 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#29c795c368147f9f" class="i property">CallbackPath</a>.<span class="i property">Value</span>;
+                }
+                <span class="r9 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#3af24335002aad85" class="i property">SaveTokens</a> = <span class="r6 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#da02931fa622cd63" class="i property">SaveTokens</a>;
+            }).<a href="/OrchardCore.DisplayManagement/A.html#6680925eae103c79" class="i method">Location</a>(<span class="s">&quot;Content:5&quot;</span>).<a href="/OrchardCore.DisplayManagement/A.html#5d3c3bbc7f9050df" class="i method">OnGroup</a>(<a href="../GithubConstants.cs.html#3c635b9ddc173c85" class="t t">GitHubConstants</a>.<a href="../GithubConstants.cs.html#e6fa17e191cfdc05" class="t t">Features</a>.<a href="../GithubConstants.cs.html#ab710ddd7bf2e4f7" class="i field">GitHubAuthentication</a>);
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.DisplayManagement/A.html#90581056f92b6ffb" class="t t">IDisplayResult</a>&gt; <a id="e7c9affd4f3935b8" href="../R/e7c9affd4f3935b8.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="../Settings/GithubAuthenticationSettings.cs.html#727a4e289318a1e2" class="t t">GitHubAuthenticationSettings</a> <span id="r11 rd" class="r11 r">settings</span>, <a href="/OrchardCore.DisplayManagement/A.html#9eae17d52bac5e90" class="t t">BuildEditorContext</a> <span id="r12 rd" class="r12 r">context</span>)
+        {
+            <b>if</b> (<span class="r12 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#4089a2311ccff5cd" class="i property">GroupId</a> == <a href="../GithubConstants.cs.html#3c635b9ddc173c85" class="t t">GitHubConstants</a>.<a href="../GithubConstants.cs.html#e6fa17e191cfdc05" class="t t">Features</a>.<a href="../GithubConstants.cs.html#ab710ddd7bf2e4f7" class="i field">GitHubAuthentication</a>)
+            {
+                <b>var</b> <span id="r13 rd" class="r13 r">user</span> = <a href="#5cafd9751b4a405e" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">User</span>;
+                <b>if</b> (!<b>await</b> <a href="#5bfe143be9211d6e" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="r13 r">user</span>, <a href="../Permissions.cs.html#f4d5b2836c106a17" class="t t">Permissions</a>.<a href="../Permissions.cs.html#ed4dd7585344eede" class="i field">ManageGitHubAuthentication</a>))
+                {
+                    <b>return</b> <b>null</b>;
+                }
+ 
+                <a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#9861acfa47d2b28e" class="k">var</a> <span id="r14 rd" class="r14 r">model</span> = <b>new</b> <a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#9861acfa47d2b28e" class="t constructor">GitHubAuthenticationSettingsViewModel</a>();
+                <b>await</b> <span class="r12 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">TryUpdateModelAsync</span>(<span class="r14 r">model</span>, <a href="/OrchardCore.DisplayManagement/A.html#1f766833c5eb931e" class="i property">Prefix</a>);
+ 
+                <b>if</b> (<span class="r12 r">context</span>.<a href="/OrchardCore.DisplayManagement/A.html#94678db6f260785f" class="i property">Updater</a>.<span class="i">ModelState</span>.<span class="i">IsValid</span>)
+                {
+                    <b>var</b> <span id="r15 rd" class="r15 r">protector</span> = <a href="#50ede6c2254c9c26" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="../GithubConstants.cs.html#3c635b9ddc173c85" class="t t">GitHubConstants</a>.<a href="../GithubConstants.cs.html#e6fa17e191cfdc05" class="t t">Features</a>.<a href="../GithubConstants.cs.html#ab710ddd7bf2e4f7" class="i field">GitHubAuthentication</a>);
+ 
+                    <span class="r11 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#d73aa709a39ca60f" class="i property">ClientID</a> = <span class="r14 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#c18415fc2ab71174" class="i property">ClientID</a>;
+                    <span class="r11 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#01a1b07185a8bb2a" class="i property">ClientSecret</a> = <span class="r15 r">protector</span>.<span class="i method">Protect</span>(<span class="r14 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#a67a7ad535d2e8bc" class="i property">ClientSecret</a>);
+                    <span class="r11 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#29c795c368147f9f" class="i property">CallbackPath</a> = <span class="r14 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#59f3249427047dd7" class="i property">CallbackUrl</a>;
+                    <span class="r11 r">settings</span>.<a href="../Settings/GithubAuthenticationSettings.cs.html#da02931fa622cd63" class="i property">SaveTokens</a> = <span class="r14 r">model</span>.<a href="../ViewModels/GithubAuthenticationSettingsViewModel.cs.html#3af24335002aad85" class="i property">SaveTokens</a>;
+                    <b>await</b> <a href="#41b730dea688b8a9" class="i field">_shellHost</a>.<span class="i">ReleaseShellContextAsync</span>(<a href="#446a2de34b1ee07f" class="i field">_shellSettings</a>);
+                }
+            }
+            <b>return</b> <b>await</b> <a href="#82f0634a6cfd908a" class="i method">EditAsync</a>(<span class="r11 r">settings</span>, <span class="r12 r">context</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

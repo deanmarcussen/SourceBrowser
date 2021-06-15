@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html>
+<html><head><title>AttachedMediaFieldsFolderAuthorizationHandler.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(86);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Services/AttachedMediaFieldsFolderAuthorizationHandler.cs" target="_top">Services\AttachedMediaFieldsFolderAuthorizationHandler.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Security</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Services</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Check if the path passed as resource is inside the AttachedMediaFieldsFolder</span>
+    <span class="c">///</span><span class="c"> and in case it is, It checks if the user has ManageAttachedMediaFieldsFolder permission</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="5817db6ed0f52a6e" href="../R/5817db6ed0f52a6e.html" target="n" data-glyph="0,0" class="t t">AttachedMediaFieldsFolderAuthorizationHandler</a> : <span class="t t">AuthorizationHandler</span>&lt;<span class="i">PermissionRequirement</span>&gt;
+    {
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="b570b2a3fc7e0e11" href="../R/b570b2a3fc7e0e11.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <a href="AttachedMediaFieldFileService.cs.html#44a3b57f0325407d" class="t t">AttachedMediaFieldFileService</a> <a id="2d9a049b91e9342d" href="../R/2d9a049b91e9342d.html" target="n" data-glyph="46,1" class="i field">_attachedMediaFieldFileService</a>;
+        <b>private readonly</b> <span class="i">IMediaFileStore</span> <a id="5433a73ad55f532d" href="../R/5433a73ad55f532d.html" target="n" data-glyph="46,1" class="i field">_fileStore</a>;
+        <b>private char</b> <a id="288eff252bd946c6" href="../R/288eff252bd946c6.html" target="n" data-glyph="46,1" class="i field">_pathSeparator</a>;
+        <b>private string</b> <a id="ace948028025f6e5" href="../R/ace948028025f6e5.html" target="n" data-glyph="46,1" class="i field">_mediaFieldsFolder</a>;
+ 
+        <b>public</b> <a id="2978a9418728341c" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AttachedMediaFieldsFolderAuthorizationHandler</a>(<span class="t t">IServiceProvider</span> <span id="r0 rd" class="r0 r">serviceProvider</span>,
+            <a href="AttachedMediaFieldFileService.cs.html#44a3b57f0325407d" class="t t">AttachedMediaFieldFileService</a> <span id="r1 rd" class="r1 r">attachedMediaFieldFileService</span>,
+            <span class="i">IMediaFileStore</span> <span id="r2 rd" class="r2 r">fileStore</span>)
+        {
+            <a href="#b570b2a3fc7e0e11" class="i field">_serviceProvider</a> = <span class="r0 r">serviceProvider</span>;
+            <a href="#2d9a049b91e9342d" class="i field">_attachedMediaFieldFileService</a> = <span class="r1 r">attachedMediaFieldFileService</span>;
+            <a href="#5433a73ad55f532d" class="i field">_fileStore</a> = <span class="r2 r">fileStore</span>;
+        }
+ 
+        <b>protected override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c845b0fe19a544ee" href="../R/c845b0fe19a544ee.html" target="n" data-glyph="75,1" class="i method">HandleRequirementAsync</a>(<span class="t t">AuthorizationHandlerContext</span> <span id="r3 rd" class="r3 r">context</span>, <span class="i">PermissionRequirement</span> <span id="r4 rd" class="r4 r">requirement</span>)
+        {
+            <b>if</b> (<span class="r3 r">context</span>.<span class="i property">HasSucceeded</span>)
+            {
+                <span class="c">// This handler is not revoking any pre-existing grants.</span>
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r4 r">requirement</span>.<span class="i">Permission</span>.<span class="i">Name</span> != <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>.<span class="i">Name</span>)
+            {
+                <b>return</b>;
+            }
+ 
+            <b>if</b> (<span class="r3 r">context</span>.<span class="i property">Resource</span> == <b>null</b>)
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#288eff252bd946c6" class="i field">_pathSeparator</a> = <a href="#5433a73ad55f532d" class="i field">_fileStore</a>.<span class="i">Combine</span>(<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>).<span class="i">Contains</span>(<span class="s">&#39;/&#39;</span>) ? <span class="s">&#39;/&#39;</span> : <span class="s">&#39;\\&#39;</span>;
+ 
+            <span class="c">// ensure end trailing slash</span>
+            <a href="#ace948028025f6e5" class="i field">_mediaFieldsFolder</a> = <a href="#5433a73ad55f532d" class="i field">_fileStore</a>.<span class="i">NormalizePath</span>(<a href="#2d9a049b91e9342d" class="i field">_attachedMediaFieldFileService</a>.<a href="AttachedMediaFieldFileService.cs.html#b3158cb7cd9242cb" class="i property">MediaFieldsFolder</a>)
+                                .<span class="i">TrimEnd</span>(<a href="#288eff252bd946c6" class="i field">_pathSeparator</a>) + <a href="#288eff252bd946c6" class="i field">_pathSeparator</a>;
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">path</span> = <span class="r3 r">context</span>.<span class="i property">Resource</span> <b>as string</b>;
+ 
+            <b>if</b> (<a href="#270854a8e0f9ab64" class="i method">IsMediaFieldsFolder</a>(<span class="r5 r">path</span>) || <a href="#b78de208ebbdc153" class="i method">IsDescendantOfMediaFieldsFolder</a>(<span class="r5 r">path</span>))
+            {
+                <b>return</b>;
+            }
+ 
+            <span class="c">// Lazy load to prevent circular dependencies</span>
+            <b>var</b> <span id="r6 rd" class="r6 r">authorizationService</span> = <a href="#b570b2a3fc7e0e11" class="i field">_serviceProvider</a>.<span class="i method">GetService</span>&lt;<span class="t t">IAuthorizationService</span>&gt;();
+            <b>if</b> (<b>await</b> <span class="r6 r">authorizationService</span>.<span class="i">AuthorizeAsync</span>(<span class="r3 r">context</span>.<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>))
+            {
+                <span class="r3 r">context</span>.<span class="i">Succeed</span>(<span class="r4 r">requirement</span>);
+            }
+        }
+ 
+        <b>private bool</b> <a id="270854a8e0f9ab64" href="../R/270854a8e0f9ab64.html" target="n" data-glyph="76,1" class="i method">IsMediaFieldsFolder</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">childPath</span>)
+        {
+            <span class="c">// ensure end trailing slash</span>
+            <span class="r7 r">childPath</span> = <a href="#5433a73ad55f532d" class="i field">_fileStore</a>.<span class="i">NormalizePath</span>(<span class="r7 r">childPath</span>)
+                        .<span class="i">TrimEnd</span>(<a href="#288eff252bd946c6" class="i field">_pathSeparator</a>) + <a href="#288eff252bd946c6" class="i field">_pathSeparator</a>;
+ 
+            <b>return</b> <span class="r7 r">childPath</span>.<a href="@1@System.Runtime/A.html#31b307b02a3bd6b9" class="i method">Equals</a>(<a href="#ace948028025f6e5" class="i field">_mediaFieldsFolder</a>);
+        }
+ 
+        <b>private bool</b> <a id="b78de208ebbdc153" href="../R/b78de208ebbdc153.html" target="n" data-glyph="76,1" class="i method">IsDescendantOfMediaFieldsFolder</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r8 rd" class="r8 r">childPath</span>)
+        {
+            <span class="r8 r">childPath</span> = <a href="#5433a73ad55f532d" class="i field">_fileStore</a>.<span class="i">NormalizePath</span>(<span class="r8 r">childPath</span>);
+            <b>return</b> <span class="r8 r">childPath</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<a href="#ace948028025f6e5" class="i field">_mediaFieldsFolder</a>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

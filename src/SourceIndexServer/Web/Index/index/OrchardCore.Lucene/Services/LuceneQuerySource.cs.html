@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html><head><title>LuceneQuerySource.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(107);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene/Services/LuceneQuerySource.cs" target="_top">Services\LuceneQuerySource.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene" target="_top">src\OrchardCore.Modules\OrchardCore.Lucene\OrchardCore.Lucene.csproj</a> (OrchardCore.Lucene)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Model</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Queries</span>;
+<b>using</b> <span class="i">YesSql</span>;
+<b>using</b> <span class="i">YesSql</span>.<span class="i">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>
+{
+    <b>public class</b> <a id="04326579e104fa69" href="../R/04326579e104fa69.html" target="n" data-glyph="0,0" class="t t">LuceneQuerySource</a> : <span class="i">IQuerySource</span>
+    {
+        <b>private readonly</b> <a href="LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <a id="40998fcafe3e9dc7" href="../R/40998fcafe3e9dc7.html" target="n" data-glyph="46,1" class="i field">_luceneIndexProvider</a>;
+        <b>private readonly</b> <a href="LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <a id="ee281338979af325" href="../R/ee281338979af325.html" target="n" data-glyph="46,1" class="i field">_luceneIndexSettingsService</a>;
+        <b>private readonly</b> <a href="LuceneAnalyzerManager.cs.html#c9d43f02df73f256" class="t t">LuceneAnalyzerManager</a> <a id="d90e5488141da431" href="../R/d90e5488141da431.html" target="n" data-glyph="46,1" class="i field">_luceneAnalyzerManager</a>;
+        <b>private readonly</b> <span class="i">ILuceneQueryService</span> <a id="40569fbdd112c7a4" href="../R/40569fbdd112c7a4.html" target="n" data-glyph="46,1" class="i field">_queryService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <a id="d6c5b981088af96c" href="../R/d6c5b981088af96c.html" target="n" data-glyph="46,1" class="i field">_liquidTemplateManager</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="65e31bd5c77e00d3" href="../R/65e31bd5c77e00d3.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">JavaScriptEncoder</span> <a id="e5d2c7a51ba5ab20" href="../R/e5d2c7a51ba5ab20.html" target="n" data-glyph="46,1" class="i field">_javaScriptEncoder</a>;
+        <b>private readonly</b> <span class="i">TemplateOptions</span> <a id="22cc303a06ff428e" href="../R/22cc303a06ff428e.html" target="n" data-glyph="46,1" class="i field">_templateOptions</a>;
+ 
+        <b>public</b> <a id="062e31947e27d638" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LuceneQuerySource</a>(
+            <a href="LuceneIndexManager.cs.html#8e92d0a8267c60a3" class="t t">LuceneIndexManager</a> <span id="r0 rd" class="r0 r">luceneIndexProvider</span>,
+            <a href="LuceneIndexSettingsService.cs.html#bf05dbd481185a70" class="t t">LuceneIndexSettingsService</a> <span id="r1 rd" class="r1 r">luceneIndexSettingsService</span>,
+            <a href="LuceneAnalyzerManager.cs.html#c9d43f02df73f256" class="t t">LuceneAnalyzerManager</a> <span id="r2 rd" class="r2 r">luceneAnalyzerManager</span>,
+            <span class="i">ILuceneQueryService</span> <span id="r3 rd" class="r3 r">queryService</span>,
+            <a href="/OrchardCore.Liquid.Abstractions/A.html#8268b40b0aa1bcfa" class="t t">ILiquidTemplateManager</a> <span id="r4 rd" class="r4 r">liquidTemplateManager</span>,
+            <span class="i">ISession</span> <span id="r5 rd" class="r5 r">session</span>,
+            <span class="t t">JavaScriptEncoder</span> <span id="r6 rd" class="r6 r">javaScriptEncoder</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">TemplateOptions</span>&gt; <span id="r7 rd" class="r7 r">templateOptions</span>)
+        {
+            <a href="#40998fcafe3e9dc7" class="i field">_luceneIndexProvider</a> = <span class="r0 r">luceneIndexProvider</span>;
+            <a href="#ee281338979af325" class="i field">_luceneIndexSettingsService</a> = <span class="r1 r">luceneIndexSettingsService</span>;
+            <a href="#d90e5488141da431" class="i field">_luceneAnalyzerManager</a> = <span class="r2 r">luceneAnalyzerManager</span>;
+            <a href="#40569fbdd112c7a4" class="i field">_queryService</a> = <span class="r3 r">queryService</span>;
+            <a href="#d6c5b981088af96c" class="i field">_liquidTemplateManager</a> = <span class="r4 r">liquidTemplateManager</span>;
+            <a href="#65e31bd5c77e00d3" class="i field">_session</a> = <span class="r5 r">session</span>;
+            <a href="#e5d2c7a51ba5ab20" class="i field">_javaScriptEncoder</a> = <span class="r6 r">javaScriptEncoder</span>;
+            <a href="#22cc303a06ff428e" class="i field">_templateOptions</a> = <span class="r7 r">templateOptions</span>.<span class="i property">Value</span>;
+        }
+ 
+        <b>public string</b> <a id="3b60f83ba49765ca" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Name</a> =&gt; <span class="s">&quot;Lucene&quot;</span>;
+ 
+        <b>public</b> <span class="i">Query</span> <a id="f43a89f75b526984" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Create</a>()
+        {
+            <b>return</b> <b>new</b> <a href="LuceneQuery.cs.html#5e6bf136a00f03cb" class="t constructor">LuceneQuery</a>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="i">IQueryResults</span>&gt; <a id="7fd3e3402ac88309" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">ExecuteQueryAsync</a>(<span class="i">Query</span> <span id="r8 rd" class="r8 r">query</span>, <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <b>object</b>&gt; <span id="r9 rd" class="r9 r">parameters</span>)
+        {
+            <a href="LuceneQuery.cs.html#f33b923fb16807e8" class="k">var</a> <span id="r10 rd" class="r10 r">luceneQuery</span> = <span class="r8 r">query</span> <b>as</b> <a href="LuceneQuery.cs.html#f33b923fb16807e8" class="t t">LuceneQuery</a>;
+            <b>var</b> <span id="r11 rd" class="r11 r">luceneQueryResults</span> = <b>new</b> <span class="i">LuceneQueryResults</span>();
+ 
+            <b>await</b> <a href="#40998fcafe3e9dc7" class="i field">_luceneIndexProvider</a>.<span class="i">SearchAsync</span>(<span class="r10 r">luceneQuery</span>.<a href="LuceneQuery.cs.html#e351fd97661904a2" class="i property">Index</a>, <b>async</b> <span id="r12 rd" class="r12 r">searcher</span> =&gt;
+            {
+                <b>var</b> <span id="r13 rd" class="r13 r">tokenizedContent</span> = <b>await</b> <a href="#d6c5b981088af96c" class="i field">_liquidTemplateManager</a>.<span class="i">RenderStringAsync</span>(<span class="r10 r">luceneQuery</span>.<a href="LuceneQuery.cs.html#4166fced29188cf1" class="i property">Template</a>, <a href="#e5d2c7a51ba5ab20" class="i field">_javaScriptEncoder</a>, <span class="r9 r">parameters</span>.<span class="i">Select</span>(<span id="r14 rd" class="r14 r">x</span> =&gt; <b>new</b> <span class="t">KeyValuePair</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;(<span class="r14 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="i">FluidValue</span>.<span class="i">Create</span>(<span class="r14 r">x</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>, <a href="#22cc303a06ff428e" class="i field">_templateOptions</a>))));
+ 
+                <b>var</b> <span id="r15 rd" class="r15 r">parameterizedQuery</span> = <span class="i">JObject</span>.<span class="i">Parse</span>(<span class="r13 r">tokenizedContent</span>);
+ 
+                <b>var</b> <span id="r16 rd" class="r16 r">analyzer</span> = <a href="#d90e5488141da431" class="i field">_luceneAnalyzerManager</a>.<a href="LuceneAnalyzerManager.cs.html#8cf6eba5f6c703ca" class="i method">CreateAnalyzer</a>(<b>await</b> <a href="#ee281338979af325" class="i field">_luceneIndexSettingsService</a>.<a href="LuceneIndexSettingsService.cs.html#ff68306a37fbb923" class="i method">GetIndexAnalyzerAsync</a>(<span class="r10 r">luceneQuery</span>.<a href="LuceneQuery.cs.html#e351fd97661904a2" class="i property">Index</a>));
+                <b>var</b> <span id="r17 rd" class="r17 r">context</span> = <b>new</b> <span class="i">LuceneQueryContext</span>(<span class="r12 r">searcher</span>, <a href="../Model/LuceneSettings.cs.html#47a5dc531ba41774" class="t t">LuceneSettings</a>.<a href="../Model/LuceneSettings.cs.html#c9b5330dfed002de" class="i field">DefaultVersion</a>, <span class="r16 r">analyzer</span>);
+                <b>var</b> <span id="r18 rd" class="r18 r">docs</span> = <b>await</b> <a href="#40569fbdd112c7a4" class="i field">_queryService</a>.<span class="i">SearchAsync</span>(<span class="r17 r">context</span>, <span class="r15 r">parameterizedQuery</span>);
+                <span class="r11 r">luceneQueryResults</span>.<span class="i">Count</span> = <span class="r18 r">docs</span>.<span class="i">Count</span>;
+ 
+                <b>if</b> (<span class="r10 r">luceneQuery</span>.<a href="LuceneQuery.cs.html#e2d56f9a90718df0" class="i property">ReturnContentItems</a>)
+                {
+                    <span class="c">// We always return an empty collection if the bottom lines queries have no results.</span>
+                    <span class="r11 r">luceneQueryResults</span>.<span class="i">Items</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">ContentItem</span>&gt;();
+ 
+                    <span class="c">// Load corresponding content item versions</span>
+                    <b>var</b> <span id="r19 rd" class="r19 r">indexedContentItemVersionIds</span> = <span class="r18 r">docs</span>.<span class="i">TopDocs</span>.<span class="i">ScoreDocs</span>.<span class="i">Select</span>(<span id="r20 rd" class="r20 r">x</span> =&gt; <span class="r12 r">searcher</span>.<span class="i">Doc</span>(<span class="r20 r">x</span>.<span class="i">Doc</span>).<span class="i">Get</span>(<span class="s">&quot;Content.ContentItem.ContentItemVersionId&quot;</span>)).<span class="i">ToArray</span>();
+                    <b>var</b> <span id="r21 rd" class="r21 r">dbContentItems</span> = <b>await</b> <a href="#65e31bd5c77e00d3" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>, <a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r22 rd" class="r22 r">x</span> =&gt; <span class="r22 r">x</span>.<span class="i">ContentItemVersionId</span>.<span class="i">IsIn</span>(<span class="r19 r">indexedContentItemVersionIds</span>)).<span class="i">ListAsync</span>();
+ 
+                    <span class="c">// Reorder the result to preserve the one from the lucene query</span>
+                    <b>if</b> (<span class="r21 r">dbContentItems</span>.<span class="i">Any</span>())
+                    {
+                        <b>var</b> <span id="r23 rd" class="r23 r">dbContentItemVersionIds</span> = <span class="r21 r">dbContentItems</span>.<span class="i">ToDictionary</span>(<span id="r24 rd" class="r24 r">x</span> =&gt; <span class="r24 r">x</span>.<span class="i">ContentItemVersionId</span>, <span id="r25 rd" class="r25 r">x</span> =&gt; <span class="r25 r">x</span>);
+                        <b>var</b> <span id="r26 rd" class="r26 r">indexedAndInDB</span> = <span class="r19 r">indexedContentItemVersionIds</span>.<span class="i">Where</span>(<span class="r23 r">dbContentItemVersionIds</span>.<span class="i">ContainsKey</span>);
+                        <span class="r11 r">luceneQueryResults</span>.<span class="i">Items</span> = <span class="r26 r">indexedAndInDB</span>.<span class="i">Select</span>(<span id="r27 rd" class="r27 r">x</span> =&gt; <span class="r23 r">dbContentItemVersionIds</span>[<span class="r27 r">x</span>]).<span class="i">ToArray</span>();
+                    }
+                }
+                <b>else</b>
+                {
+                    <b>var</b> <span id="r28 rd" class="r28 r">results</span> = <b>new</b> <span class="t constructor">List</span>&lt;<span class="i">JObject</span>&gt;();
+                    <b>foreach</b> (<b>var</b> <span id="r29 rd" class="r29 r">document</span> <b>in</b> <span class="r18 r">docs</span>.<span class="i">TopDocs</span>.<span class="i">ScoreDocs</span>.<span class="i">Select</span>(<span id="r30 rd" class="r30 r">hit</span> =&gt; <span class="r12 r">searcher</span>.<span class="i">Doc</span>(<span class="r30 r">hit</span>.<span class="i">Doc</span>)))
+                    {
+                        <span class="r28 r">results</span>.<span class="i method">Add</span>(<b>new</b> <span class="i">JObject</span>(<span class="r29 r">document</span>.<span class="i">Select</span>(<span id="r31 rd" class="r31 r">x</span> =&gt; <b>new</b> <span class="i">JProperty</span>(<span class="r31 r">x</span>.<span class="i">Name</span>, <span class="r31 r">x</span>.<span class="i">GetStringValue</span>()))));
+                    }
+ 
+                    <span class="r11 r">luceneQueryResults</span>.<span class="i">Items</span> = <span class="r28 r">results</span>;
+                }
+            });
+ 
+            <b>return</b> <span class="r11 r">luceneQueryResults</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

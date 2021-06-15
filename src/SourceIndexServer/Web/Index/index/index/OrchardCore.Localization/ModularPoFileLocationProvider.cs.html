@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModularPoFileLocationProvider.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(88);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Localization/ModularPoFileLocationProvider.cs" target="_top">ModularPoFileLocationProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Localization" target="_top">src\OrchardCore.Modules\OrchardCore.Localization\OrchardCore.Localization.csproj</a> (OrchardCore.Localization)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">FileProviders</span>.<span class="i n">Physical</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Localization</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Represents a localization provider to provide the locations of the modules PO files.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="fbda3689e4bb7db8" href="R/fbda3689e4bb7db8.html" target="n" data-glyph="0,0" class="t t">ModularPoFileLocationProvider</a> : <a href="/OrchardCore.Localization.Abstractions/A.html#b7de3998a41d563a" class="t t">ILocalizationFileLocationProvider</a>
+    {
+        <b>private const string</b> <a id="e183026ab9723f46" href="R/e183026ab9723f46.html" target="n" data-glyph="10,1" class="i field">PoFileExtension</a> = <span class="s">&quot;.po&quot;</span>;
+        <b>private const string</b> <a id="3e47cbfe29fc036d" href="R/3e47cbfe29fc036d.html" target="n" data-glyph="10,1" class="i field">CultureDelimiter</a> = <span class="s">&quot;-&quot;</span>;
+ 
+        <b>private readonly</b> <span class="i">IExtensionManager</span> <a id="9db81f93d3e48828" href="R/9db81f93d3e48828.html" target="n" data-glyph="46,1" class="i field">_extensionsManager</a>;
+        <b>private readonly</b> <span class="t t">IFileProvider</span> <a id="0587643127181acc" href="R/0587643127181acc.html" target="n" data-glyph="46,1" class="i field">_fileProvider</a>;
+        <b>private readonly string</b> <a id="7c3757a20cb62213" href="R/7c3757a20cb62213.html" target="n" data-glyph="46,1" class="i field">_resourcesContainer</a>;
+        <b>private readonly string</b> <a id="c53d693fbc8e917b" href="R/c53d693fbc8e917b.html" target="n" data-glyph="46,1" class="i field">_applicationDataContainer</a>;
+        <b>private readonly string</b> <a id="8314ddb5a3655ec2" href="R/8314ddb5a3655ec2.html" target="n" data-glyph="46,1" class="i field">_shellDataContainer</a>;
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Creates a new intance of the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#fbda3689e4bb7db8" class="t t">ModularPoFileLocationProvider</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r0 r">extensionsManager</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IExtensionManager</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r1 r">hostingEnvironment</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">IHostEnvironment</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r2 r">shellOptions</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">ShellOptions</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r3 r">localizationOptions</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="t t">LocalizationOptions</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r4 r">shellSettings</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">ShellSettings</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c">.</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <b>public</b> <a id="796c08f5396d9f5b" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ModularPoFileLocationProvider</a>(
+            <span class="i">IExtensionManager</span> <span id="r0 rd" class="r0 r">extensionsManager</span>,
+            <span class="t t">IHostEnvironment</span> <span id="r1 rd" class="r1 r">hostingEnvironment</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">ShellOptions</span>&gt; <span id="r2 rd" class="r2 r">shellOptions</span>,
+            <span class="t t">IOptions</span>&lt;<span class="t t">LocalizationOptions</span>&gt; <span id="r3 rd" class="r3 r">localizationOptions</span>,
+            <span class="i">ShellSettings</span> <span id="r4 rd" class="r4 r">shellSettings</span>)
+        {
+            <a href="#9db81f93d3e48828" class="i field">_extensionsManager</a> = <span class="r0 r">extensionsManager</span>;
+ 
+            <a href="#0587643127181acc" class="i field">_fileProvider</a> = <span class="r1 r">hostingEnvironment</span>.<span class="i property">ContentRootFileProvider</span>;
+            <a href="#7c3757a20cb62213" class="i field">_resourcesContainer</a> = <span class="r3 r">localizationOptions</span>.<span class="i property">Value</span>.<span class="i property">ResourcesPath</span>;
+            <a href="#c53d693fbc8e917b" class="i field">_applicationDataContainer</a> = <span class="r2 r">shellOptions</span>.<span class="i property">Value</span>.<span class="i">ShellsApplicationDataPath</span>;
+            <a href="#8314ddb5a3655ec2" class="i field">_shellDataContainer</a> = <span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="#c53d693fbc8e917b" class="i field">_applicationDataContainer</a>, <span class="r2 r">shellOptions</span>.<span class="i property">Value</span>.<span class="i">ShellsContainerName</span>, <span class="r4 r">shellSettings</span>.<span class="i">Name</span>);
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">inheritdocs</span> <span class="c">/&gt;</span>
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">IFileInfo</span>&gt; <a id="ea088f1de20377cd" href="R/ea088f1de20377cd.html" target="n" data-glyph="72,1" class="i method">GetLocations</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">cultureName</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r6 rd" class="r6 r">poFileName</span> = <span class="r5 r">cultureName</span> + <a href="#e183026ab9723f46" class="i field">PoFileExtension</a>;
+            <b>var</b> <span id="r7 rd" class="r7 r">extensions</span> = <a href="#9db81f93d3e48828" class="i field">_extensionsManager</a>.<span class="i">GetExtensions</span>();
+ 
+            <span class="c">// Load .po files in each extension folder first, based on the extensions order</span>
+            <b>foreach</b> (<b>var</b> <span id="r8 rd" class="r8 r">extension</span> <b>in</b> <span class="r7 r">extensions</span>)
+            {
+                <span class="c">// From [Extension]/Localization</span>
+                <b>yield</b> <b>return</b> <a href="#0587643127181acc" class="i field">_fileProvider</a>.<span class="i">GetFileInfo</span>(<span class="i">PathExtensions</span>.<span class="i">Combine</span>(<span class="r8 r">extension</span>.<span class="i">SubPath</span>, <a href="#7c3757a20cb62213" class="i field">_resourcesContainer</a>, <span class="r6 r">poFileName</span>));
+            }
+ 
+            <span class="c">// Load global .po files from /Localization</span>
+            <b>yield</b> <b>return</b> <a href="#0587643127181acc" class="i field">_fileProvider</a>.<span class="i">GetFileInfo</span>(<span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="#7c3757a20cb62213" class="i field">_resourcesContainer</a>, <span class="r6 r">poFileName</span>));
+ 
+            <span class="c">// Load tenant-specific .po file from /App_Data/Sites/[Tenant]/Localization</span>
+            <b>yield</b> <b>return</b> <b>new</b> <span class="t constructor">PhysicalFileInfo</span>(<b>new</b> <span class="t">FileInfo</span>(<span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="#8314ddb5a3655ec2" class="i field">_shellDataContainer</a>, <a href="#7c3757a20cb62213" class="i field">_resourcesContainer</a>, <span class="r6 r">poFileName</span>)));
+ 
+            <span class="c">// Load each modules .po file for extending localization when using Orchard Core as a NuGet package</span>
+            <b>foreach</b> (<b>var</b> <span id="r9 rd" class="r9 r">extension</span> <b>in</b> <span class="r7 r">extensions</span>)
+            {
+                <span class="c">// \src\OrchardCore.Cms.Web\Localization\OrchardCore.Cms.Web\fr-CA.po</span>
+                <b>yield</b> <b>return</b> <a href="#0587643127181acc" class="i field">_fileProvider</a>.<span class="i">GetFileInfo</span>(<span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="#7c3757a20cb62213" class="i field">_resourcesContainer</a>, <span class="r9 r">extension</span>.<span class="i">Id</span>, <span class="r6 r">poFileName</span>));
+ 
+                <span class="c">// \src\OrchardCore.Cms.Web\Localization\OrchardCore.Cms.Web-fr-CA.po</span>
+                <b>yield</b> <b>return</b> <a href="#0587643127181acc" class="i field">_fileProvider</a>.<span class="i">GetFileInfo</span>(<span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="#7c3757a20cb62213" class="i field">_resourcesContainer</a>, <span class="r9 r">extension</span>.<span class="i">Id</span> + <a href="#3e47cbfe29fc036d" class="i field">CultureDelimiter</a> + <span class="r6 r">poFileName</span>));
+            }
+ 
+            <span class="c">// Load all .po files from a culture specific folder</span>
+            <span class="c">// e.g, \src\OrchardCore.Cms.Web\Localization\fr-CA\*.po</span>
+            <b>foreach</b> (<b>var</b> <span id="r10 rd" class="r10 r">file</span> <b>in</b> <a href="#0587643127181acc" class="i field">_fileProvider</a>.<span class="i">GetDirectoryContents</span>(<span class="i">PathExtensions</span>.<span class="i">Combine</span>(<a href="#7c3757a20cb62213" class="i field">_resourcesContainer</a>, <span class="r5 r">cultureName</span>)))
+            {
+                <b>yield</b> <b>return</b> <span class="r10 r">file</span>;
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,707 @@
+﻿<!DOCTYPE html>
+<html><head><title>UserStore.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(698);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Users.Core/Services/UserStore.cs" target="_top">Services\UserStore.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Users.Core" target="_top">src\OrchardCore\OrchardCore.Users.Core\OrchardCore.Users.Core.csproj</a> (OrchardCore.Users.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">DataProtection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Identity</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Security</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Handlers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Indexes</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Users</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="e31f3cc7cd44686a" href="../R/e31f3cc7cd44686a.html" target="n" data-glyph="0,0" class="t t">UserStore</a> :
+        <span class="t t">IUserClaimStore</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;,
+        <span class="t t">IUserRoleStore</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;,
+        <span class="t t">IUserPasswordStore</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;,
+        <span class="t t">IUserEmailStore</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;,
+        <span class="t t">IUserSecurityStampStore</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;,
+        <span class="t t">IUserLoginStore</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;,
+        <span class="t t">IUserAuthenticationTokenStore</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;
+    {
+        <b>private const string</b> <a id="a490fa7ff05a1174" href="../R/a490fa7ff05a1174.html" target="n" data-glyph="10,1" class="i field">TokenProtector</a> = <span class="s">&quot;OrchardCore.UserStore.Token&quot;</span>;
+ 
+        <b>private readonly</b> <span class="i">ISession</span> <a id="03731806231cfbc6" href="../R/03731806231cfbc6.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <a id="fd56d820d41b3904" href="../R/fd56d820d41b3904.html" target="n" data-glyph="46,1" class="i field">_roleService</a>;
+        <b>private readonly</b> <span class="t t">ILookupNormalizer</span> <a id="f60cc419894dac3e" href="../R/f60cc419894dac3e.html" target="n" data-glyph="46,1" class="i field">_keyNormalizer</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Users.Abstractions/A.html#fc535bede76218ae" class="t t">IUserIdGenerator</a> <a id="6c642e87c1a5ec93" href="../R/6c642e87c1a5ec93.html" target="n" data-glyph="46,1" class="i field">_userIdGenerator</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="dbbdbb35ed3641e2" href="../R/dbbdbb35ed3641e2.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IDataProtectionProvider</span> <a id="760e9546eeb1b179" href="../R/760e9546eeb1b179.html" target="n" data-glyph="46,1" class="i field">_dataProtectionProvider</a>;
+ 
+        <b>public</b> <a id="03f934963ce6fbef" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">UserStore</a>(<span class="i">ISession</span> <span id="r0 rd" class="r0 r">session</span>,
+            <a href="/OrchardCore.Infrastructure.Abstractions/A.html#43c33501555217a7" class="t t">IRoleService</a> <span id="r1 rd" class="r1 r">roleService</span>,
+            <span class="t t">ILookupNormalizer</span> <span id="r2 rd" class="r2 r">keyNormalizer</span>,
+            <a href="/OrchardCore.Users.Abstractions/A.html#fc535bede76218ae" class="t t">IUserIdGenerator</a> <span id="r3 rd" class="r3 r">userIdGenerator</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#e31f3cc7cd44686a" class="t t">UserStore</a>&gt; <span id="r4 rd" class="r4 r">logger</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#4048deba1e52a08c" class="t t">IUserEventHandler</a>&gt; <span id="r5 rd" class="r5 r">handlers</span>,
+            <span class="t t">IDataProtectionProvider</span> <span id="r6 rd" class="r6 r">dataProtectionProvider</span>)
+        {
+            <a href="#03731806231cfbc6" class="i field">_session</a> = <span class="r0 r">session</span>;
+            <a href="#fd56d820d41b3904" class="i field">_roleService</a> = <span class="r1 r">roleService</span>;
+            <a href="#f60cc419894dac3e" class="i field">_keyNormalizer</a> = <span class="r2 r">keyNormalizer</span>;
+            <a href="#6c642e87c1a5ec93" class="i field">_userIdGenerator</a> = <span class="r3 r">userIdGenerator</span>;
+            <a href="#dbbdbb35ed3641e2" class="i field">_logger</a> = <span class="r4 r">logger</span>;
+            <a href="#760e9546eeb1b179" class="i field">_dataProtectionProvider</a> = <span class="r6 r">dataProtectionProvider</span>;
+            <a href="#1923398cf056f40c" class="i property">Handlers</a> = <span class="r5 r">handlers</span>;
+        }
+        <b>public</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#4048deba1e52a08c" class="t t">IUserEventHandler</a>&gt; <a id="1923398cf056f40c" href="../R/1923398cf056f40c.html" target="n" data-glyph="102,1" class="i property">Handlers</a> { <b>get</b>; <b>private set</b>; }
+ 
+        <b>public void</b> <a id="459c8708cbf91c35" href="../R/459c8708cbf91c35.html" target="n" data-glyph="72,1" class="i method">Dispose</a>()
+        {
+        }
+ 
+        <b>public string</b> <a id="1766cd92d1ad3e30" href="../R/1766cd92d1ad3e30.html" target="n" data-glyph="72,1" class="i method">NormalizeKey</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">key</span>)
+        {
+            <b>return</b> <a href="#f60cc419894dac3e" class="i field">_keyNormalizer</a> == <b>null</b> ? <span class="r7 r">key</span> : <a href="#f60cc419894dac3e" class="i field">_keyNormalizer</a>.<span class="i method">NormalizeName</span>(<span class="r7 r">key</span>);
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IUserStore&lt;IUser&gt;
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IdentityResult</span>&gt; <a id="6dc5d3a6ba364a02" href="../R/6dc5d3a6ba364a02.html" target="n" data-glyph="72,1" class="i method">CreateAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r8 rd" class="r8 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r9 rd" class="r9 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r8 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r8 r">user</span>));
+            }
+ 
+            <b>if</b> (!(<span class="r8 r">user</span> <b>is</b> <a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a> <span id="r10 rd" class="r10 r">newUser</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;Expected a User instance.&quot;</span>, <b>nameof</b>(<span class="r8 r">user</span>));
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r11 rd" class="r11 r">newUserId</span> = <span class="r10 r">newUser</span>.<a href="../Models/User.cs.html#5266f2eb7ec27bf4" class="i property">UserId</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r11 r">newUserId</span>))
+            {
+                <span class="c">// Due to database collation we normalize the userId to lower invariant.</span>
+                <span class="r11 r">newUserId</span> = <a href="#6c642e87c1a5ec93" class="i field">_userIdGenerator</a>.<a href="/OrchardCore.Users.Abstractions/A.html#f96b69c69a41d7ff" class="i method">GenerateUniqueId</a>(<span class="r8 r">user</span>).<a href="@1@System.Runtime/A.html#2d51c212cb09178e" class="i method">ToLowerInvariant</a>();
+            }
+ 
+            <b>try</b>
+            {
+                <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r12 rd" class="r12 r">attempts</span> = 10;
+ 
+                <b>while</b> (<b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">QueryIndex</span>&lt;<a href="../Indexes/UserIndex.cs.html#c095c28c73aca951" class="t t">UserIndex</a>&gt;(<span id="r13 rd" class="r13 r">x</span> =&gt; <span class="r13 r">x</span>.<span class="i">UserId</span> == <span class="r11 r">newUserId</span>).<span class="i">CountAsync</span>() != 0)
+                {
+                    <b>if</b> (<span class="r12 r">attempts</span>-- == 0)
+                    {
+                        <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#1bdc83295b86b4d6" class="t constructor">ApplicationException</a>(<span class="s">&quot;Couldn&#39;t generate a unique user id. Too many attempts.&quot;</span>);
+                    }
+ 
+                    <span class="r11 r">newUserId</span> = <a href="#6c642e87c1a5ec93" class="i field">_userIdGenerator</a>.<a href="/OrchardCore.Users.Abstractions/A.html#f96b69c69a41d7ff" class="i method">GenerateUniqueId</a>(<span class="r8 r">user</span>).<a href="@1@System.Runtime/A.html#2d51c212cb09178e" class="i method">ToLowerInvariant</a>();
+                }
+ 
+                <span class="r10 r">newUser</span>.<a href="../Models/User.cs.html#5266f2eb7ec27bf4" class="i property">UserId</a> = <span class="r11 r">newUserId</span>;
+ 
+                <a href="/OrchardCore.Users.Abstractions/A.html#8ec6e88e429e19af" class="k">var</a> <span id="r14 rd" class="r14 r">context</span> = <b>new</b> <a href="/OrchardCore.Users.Abstractions/A.html#7b1e2652f9f907c1" class="t constructor">UserCreateContext</a>(<span class="r8 r">user</span>);
+ 
+                <b>await</b> <a href="#1923398cf056f40c" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r15 rd" class="r15 r">handler</span>, <span id="r16 rd" class="r16 r">context</span>) =&gt; <span class="r15 r">handler</span>.<span class="i">CreatingAsync</span>(<span class="r16 r">context</span>), <span class="r14 r">context</span>, <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>);
+ 
+                <b>if</b> (<span class="r14 r">context</span>.<a href="/OrchardCore.Users.Abstractions/A.html#45c11c428bc9530d" class="i property">Cancel</a>)
+                {
+                    <b>return</b> <span class="t t">IdentityResult</span>.<span class="i method">Failed</span>();
+                }
+ 
+                <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Save</span>(<span class="r8 r">user</span>);
+                <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+                <b>await</b> <a href="#1923398cf056f40c" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r17 rd" class="r17 r">handler</span>, <span id="r18 rd" class="r18 r">context</span>) =&gt; <span class="r17 r">handler</span>.<span class="i">CreatedAsync</span>(<span class="r18 r">context</span>), <span class="r14 r">context</span>, <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r19 rd" class="r19 r">e</span>)
+            {
+                <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r19 r">e</span>, <span class="s">&quot;Unexpected error while creating a new user.&quot;</span>);
+ 
+                <b>return</b> <span class="t t">IdentityResult</span>.<span class="i method">Failed</span>();
+            }
+ 
+            <b>return</b> <span class="t t">IdentityResult</span>.<span class="i property">Success</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IdentityResult</span>&gt; <a id="574cf86f168376e5" href="../R/574cf86f168376e5.html" target="n" data-glyph="72,1" class="i method">DeleteAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r20 rd" class="r20 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r21 rd" class="r21 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r20 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r20 r">user</span>));
+            }
+ 
+            <b>try</b>
+            {
+                <a href="/OrchardCore.Users.Abstractions/A.html#d612b2875a0cc1eb" class="k">var</a> <span id="r22 rd" class="r22 r">context</span> = <b>new</b> <a href="/OrchardCore.Users.Abstractions/A.html#773855441b137f2e" class="t constructor">UserDeleteContext</a>(<span class="r20 r">user</span>);
+                <b>await</b> <a href="#1923398cf056f40c" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r23 rd" class="r23 r">handler</span>, <span id="r24 rd" class="r24 r">context</span>) =&gt; <span class="r23 r">handler</span>.<span class="i">DeletingAsync</span>(<span class="r24 r">context</span>), <span class="r22 r">context</span>, <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>);
+ 
+                <b>if</b> (<span class="r22 r">context</span>.<a href="/OrchardCore.Users.Abstractions/A.html#299687719388987a" class="i property">Cancel</a>)
+                {
+                    <b>return</b> <span class="t t">IdentityResult</span>.<span class="i method">Failed</span>();
+                }
+ 
+                <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Delete</span>(<span class="r20 r">user</span>);
+                <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+                <b>await</b> <a href="#1923398cf056f40c" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r25 rd" class="r25 r">handler</span>, <span id="r26 rd" class="r26 r">context</span>) =&gt; <span class="r25 r">handler</span>.<span class="i">DeletedAsync</span>(<span class="r26 r">context</span>), <span class="r22 r">context</span>, <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r27 rd" class="r27 r">e</span>)
+            {
+                <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r27 r">e</span>, <span class="s">&quot;Unexpected error while deleting a user.&quot;</span>);
+ 
+                <b>return</b> <span class="t t">IdentityResult</span>.<span class="i method">Failed</span>();
+            }
+ 
+            <b>return</b> <span class="t t">IdentityResult</span>.<span class="i property">Success</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt; <a id="a97e28a6e3d03e44" href="../R/a97e28a6e3d03e44.html" target="n" data-glyph="72,1" class="i method">FindByIdAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">userId</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r29 rd" class="r29 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>return</b> <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>, <a href="../Indexes/UserIndex.cs.html#c095c28c73aca951" class="t t">UserIndex</a>&gt;(<span id="r30 rd" class="r30 r">u</span> =&gt; <span class="r30 r">u</span>.<span class="i">UserId</span> == <span class="r28 r">userId</span>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt; <a id="3484b94a6975deb7" href="../R/3484b94a6975deb7.html" target="n" data-glyph="72,1" class="i method">FindByNameAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r31 rd" class="r31 r">normalizedUserName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r32 rd" class="r32 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>return</b> <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>, <a href="../Indexes/UserIndex.cs.html#c095c28c73aca951" class="t t">UserIndex</a>&gt;(<span id="r33 rd" class="r33 r">u</span> =&gt; <span class="r33 r">u</span>.<span class="i">NormalizedUserName</span> == <span class="r31 r">normalizedUserName</span>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="d73f26e8f1500895" href="../R/d73f26e8f1500895.html" target="n" data-glyph="72,1" class="i method">GetNormalizedUserNameAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r34 rd" class="r34 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r35 rd" class="r35 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r34 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r34 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r34 r">user</span>).<a href="../Models/User.cs.html#1b18fd938ed92340" class="i property">NormalizedUserName</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="05b598568239b058" href="../R/05b598568239b058.html" target="n" data-glyph="72,1" class="i method">GetUserIdAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r36 rd" class="r36 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r37 rd" class="r37 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r36 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r36 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r36 r">user</span>).<a href="../Models/User.cs.html#5266f2eb7ec27bf4" class="i property">UserId</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="abcc8f39dadb5b37" href="../R/abcc8f39dadb5b37.html" target="n" data-glyph="72,1" class="i method">GetUserNameAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r38 rd" class="r38 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r39 rd" class="r39 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r38 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r38 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r38 r">user</span>).<a href="../Models/User.cs.html#d3cb3fa5644a34e8" class="i property">UserName</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="70e612f59429bf73" href="../R/70e612f59429bf73.html" target="n" data-glyph="72,1" class="i method">SetNormalizedUserNameAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r40 rd" class="r40 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r41 rd" class="r41 r">normalizedName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r42 rd" class="r42 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r40 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r40 r">user</span>));
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r40 r">user</span>).<a href="../Models/User.cs.html#1b18fd938ed92340" class="i property">NormalizedUserName</a> = <span class="r41 r">normalizedName</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="becffd64934bb261" href="../R/becffd64934bb261.html" target="n" data-glyph="72,1" class="i method">SetUserNameAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r43 rd" class="r43 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r44 rd" class="r44 r">userName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r45 rd" class="r45 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r43 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r43 r">user</span>));
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r43 r">user</span>).<a href="../Models/User.cs.html#d3cb3fa5644a34e8" class="i property">UserName</a> = <span class="r44 r">userName</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IdentityResult</span>&gt; <a id="cb36c8065f8f909d" href="../R/cb36c8065f8f909d.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r46 rd" class="r46 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r47 rd" class="r47 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r46 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r46 r">user</span>));
+            }
+ 
+            <b>try</b>
+            {
+                <a href="/OrchardCore.Users.Abstractions/A.html#aad051064a372ee4" class="k">var</a> <span id="r48 rd" class="r48 r">context</span> = <b>new</b> <a href="/OrchardCore.Users.Abstractions/A.html#47741e75433f58ef" class="t constructor">UserUpdateContext</a>(<span class="r46 r">user</span>);
+                <b>await</b> <a href="#1923398cf056f40c" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r49 rd" class="r49 r">handler</span>, <span id="r50 rd" class="r50 r">context</span>) =&gt; <span class="r49 r">handler</span>.<span class="i">UpdatingAsync</span>(<span class="r50 r">context</span>), <span class="r48 r">context</span>, <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>);
+ 
+                <b>if</b> (<span class="r48 r">context</span>.<a href="/OrchardCore.Users.Abstractions/A.html#7961049874c41f2d" class="i property">Cancel</a>)
+                {
+                    <b>return</b> <span class="t t">IdentityResult</span>.<span class="i method">Failed</span>();
+                }
+                
+                <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Save</span>(<span class="r46 r">user</span>);
+                <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">SaveChangesAsync</span>();
+                <b>await</b> <a href="#1923398cf056f40c" class="i property">Handlers</a>.<span class="i">InvokeAsync</span>((<span id="r51 rd" class="r51 r">handler</span>, <span id="r52 rd" class="r52 r">context</span>) =&gt; <span class="r51 r">handler</span>.<span class="i">UpdatedAsync</span>(<span class="r52 r">context</span>), <span class="r48 r">context</span>, <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r53 rd" class="r53 r">e</span>)
+            {
+                <a href="#dbbdbb35ed3641e2" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r53 r">e</span>, <span class="s">&quot;Unexpected error while updating a user.&quot;</span>);
+ 
+                <b>return</b> <span class="t t">IdentityResult</span>.<span class="i method">Failed</span>();
+            }
+ 
+            <b>return</b> <span class="t t">IdentityResult</span>.<span class="i property">Success</span>;
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IUserStore&lt;IUser&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IUserPasswordStore&lt;IUser&gt;
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="24c07a511fc83e05" href="../R/24c07a511fc83e05.html" target="n" data-glyph="72,1" class="i method">GetPasswordHashAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r54 rd" class="r54 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r55 rd" class="r55 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r54 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r54 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r54 r">user</span>).<a href="../Models/User.cs.html#ef4e31cad7edf9cd" class="i property">PasswordHash</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="922e56a5b67b7d2d" href="../R/922e56a5b67b7d2d.html" target="n" data-glyph="72,1" class="i method">SetPasswordHashAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r56 rd" class="r56 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r57 rd" class="r57 r">passwordHash</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r58 rd" class="r58 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r56 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r56 r">user</span>));
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r56 r">user</span>).<a href="../Models/User.cs.html#ef4e31cad7edf9cd" class="i property">PasswordHash</a> = <span class="r57 r">passwordHash</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="c3bd07caf81a96c5" href="../R/c3bd07caf81a96c5.html" target="n" data-glyph="72,1" class="i method">HasPasswordAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r59 rd" class="r59 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r60 rd" class="r60 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r59 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r59 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r59 r">user</span>).<a href="../Models/User.cs.html#ef4e31cad7edf9cd" class="i property">PasswordHash</a> != <b>null</b>);
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IUserPasswordStore&lt;IUser&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> ISecurityStampValidator&lt;IUser&gt;
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="e32df0187d8beb77" href="../R/e32df0187d8beb77.html" target="n" data-glyph="72,1" class="i method">SetSecurityStampAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r61 rd" class="r61 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r62 rd" class="r62 r">stamp</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r63 rd" class="r63 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r61 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r61 r">user</span>));
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r61 r">user</span>).<a href="../Models/User.cs.html#1dc9bd07c920d6d8" class="i property">SecurityStamp</a> = <span class="r62 r">stamp</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="27273e6c1fdf6d42" href="../R/27273e6c1fdf6d42.html" target="n" data-glyph="72,1" class="i method">GetSecurityStampAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r64 rd" class="r64 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r65 rd" class="r65 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r64 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r64 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r64 r">user</span>).<a href="../Models/User.cs.html#1dc9bd07c920d6d8" class="i property">SecurityStamp</a>);
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> ISecurityStampValidator&lt;IUser&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IUserEmailStore&lt;IUser&gt;
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="cb8c0cab58c4eb99" href="../R/cb8c0cab58c4eb99.html" target="n" data-glyph="72,1" class="i method">SetEmailAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r66 rd" class="r66 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r67 rd" class="r67 r">email</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r68 rd" class="r68 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r66 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r66 r">user</span>));
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r66 r">user</span>).<a href="../Models/User.cs.html#a74bfba9045d0dd7" class="i property">Email</a> = <span class="r67 r">email</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="31eff8f0daf4cfaa" href="../R/31eff8f0daf4cfaa.html" target="n" data-glyph="72,1" class="i method">GetEmailAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r69 rd" class="r69 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r70 rd" class="r70 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r69 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r69 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r69 r">user</span>).<a href="../Models/User.cs.html#a74bfba9045d0dd7" class="i property">Email</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="de40972515dd8d96" href="../R/de40972515dd8d96.html" target="n" data-glyph="72,1" class="i method">GetEmailConfirmedAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r71 rd" class="r71 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r72 rd" class="r72 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r71 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r71 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r71 r">user</span>).<a href="../Models/User.cs.html#a81bf3b3d6c7ea18" class="i property">EmailConfirmed</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="9d861ddecf1cf586" href="../R/9d861ddecf1cf586.html" target="n" data-glyph="72,1" class="i method">SetEmailConfirmedAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r73 rd" class="r73 r">user</span>, <b>bool</b> <span id="r74 rd" class="r74 r">confirmed</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r75 rd" class="r75 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r73 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r73 r">user</span>));
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r73 r">user</span>).<a href="../Models/User.cs.html#a81bf3b3d6c7ea18" class="i property">EmailConfirmed</a> = <span class="r74 r">confirmed</span>;
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt; <a id="f602110d2aa63a50" href="../R/f602110d2aa63a50.html" target="n" data-glyph="72,1" class="i method">FindByEmailAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r76 rd" class="r76 r">normalizedEmail</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r77 rd" class="r77 r">cancellationToken</span>)
+        {
+            <b>return</b> <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>, <a href="../Indexes/UserIndex.cs.html#c095c28c73aca951" class="t t">UserIndex</a>&gt;(<span id="r78 rd" class="r78 r">u</span> =&gt; <span class="r78 r">u</span>.<span class="i">NormalizedEmail</span> == <span class="r76 r">normalizedEmail</span>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="83fac0a7b1946a4e" href="../R/83fac0a7b1946a4e.html" target="n" data-glyph="72,1" class="i method">GetNormalizedEmailAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r79 rd" class="r79 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r80 rd" class="r80 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r79 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r79 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r79 r">user</span>).<a href="../Models/User.cs.html#e9ad5247deea6de9" class="i property">NormalizedEmail</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a32fd00bf191cd52" href="../R/a32fd00bf191cd52.html" target="n" data-glyph="72,1" class="i method">SetNormalizedEmailAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r81 rd" class="r81 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r82 rd" class="r82 r">normalizedEmail</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r83 rd" class="r83 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r81 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r81 r">user</span>));
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r81 r">user</span>).<a href="../Models/User.cs.html#e9ad5247deea6de9" class="i property">NormalizedEmail</a> = <span class="r82 r">normalizedEmail</span>;
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IUserEmailStore&lt;IUser&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IUserRoleStore&lt;IUser&gt;
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="191b748a244efbbc" href="../R/191b748a244efbbc.html" target="n" data-glyph="72,1" class="i method">AddToRoleAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r84 rd" class="r84 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r85 rd" class="r85 r">normalizedRoleName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r86 rd" class="r86 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r84 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r84 r">user</span>));
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r87 rd" class="r87 r">roleNames</span> = <b>await</b> <a href="#fd56d820d41b3904" class="i field">_roleService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#c0d6f9800c7eea42" class="i method">GetRoleNamesAsync</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r88 rd" class="r88 r">roleName</span> = <span class="r87 r">roleNames</span>?.<span class="i method">FirstOrDefault</span>(<span id="r89 rd" class="r89 r">r</span> =&gt; <a href="#1766cd92d1ad3e30" class="i method">NormalizeKey</a>(<span class="r89 r">r</span>) == <span class="r85 r">normalizedRoleName</span>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r88 r">roleName</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">Role </span>{<span class="r85 r">normalizedRoleName</span>}<span class="s"> does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r84 r">user</span>).<a href="../Models/User.cs.html#e971168e3cfbf0bd" class="i property">RoleNames</a>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r88 r">roleName</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b2f04d1453bdf6bc" href="../R/b2f04d1453bdf6bc.html" target="n" data-glyph="72,1" class="i method">RemoveFromRoleAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r90 rd" class="r90 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r91 rd" class="r91 r">normalizedRoleName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r92 rd" class="r92 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r90 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r90 r">user</span>));
+            }
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r93 rd" class="r93 r">roleNames</span> = <b>await</b> <a href="#fd56d820d41b3904" class="i field">_roleService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#c0d6f9800c7eea42" class="i method">GetRoleNamesAsync</a>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r94 rd" class="r94 r">roleName</span> = <span class="r93 r">roleNames</span>?.<span class="i method">FirstOrDefault</span>(<span id="r95 rd" class="r95 r">r</span> =&gt; <a href="#1766cd92d1ad3e30" class="i method">NormalizeKey</a>(<span class="r95 r">r</span>) == <span class="r91 r">normalizedRoleName</span>);
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r94 r">roleName</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">Role </span>{<span class="r91 r">normalizedRoleName</span>}<span class="s"> does not exist.</span><span class="s">&quot;</span>);
+            }
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r90 r">user</span>).<a href="../Models/User.cs.html#e971168e3cfbf0bd" class="i property">RoleNames</a>.<a href="@1@System.Runtime/A.html#12ab6cfa5ca2ceec" class="i method">Remove</a>(<span class="r94 r">roleName</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="9ae751cd71869495" href="../R/9ae751cd71869495.html" target="n" data-glyph="72,1" class="i method">GetRolesAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r96 rd" class="r96 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r97 rd" class="r97 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r96 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r96 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r96 r">user</span>).<a href="../Models/User.cs.html#e971168e3cfbf0bd" class="i property">RoleNames</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<b>bool</b>&gt; <a id="6904f7eb5cd316e1" href="../R/6904f7eb5cd316e1.html" target="n" data-glyph="72,1" class="i method">IsInRoleAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r98 rd" class="r98 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r99 rd" class="r99 r">normalizedRoleName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r100 rd" class="r100 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r98 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r98 r">user</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r99 r">normalizedRoleName</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;Value cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r99 r">normalizedRoleName</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r98 r">user</span>).<a href="../Models/User.cs.html#e971168e3cfbf0bd" class="i property">RoleNames</a>.<span class="i method">Contains</span>(<span class="r99 r">normalizedRoleName</span>, <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>));
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;&gt; <a id="8b548f5879c1bfa6" href="../R/8b548f5879c1bfa6.html" target="n" data-glyph="72,1" class="i method">GetUsersInRoleAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r101 rd" class="r101 r">normalizedRoleName</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r102 rd" class="r102 r">cancellationToken</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r101 r">normalizedRoleName</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r101 r">normalizedRoleName</span>));
+            }
+ 
+            <b>var</b> <span id="r103 rd" class="r103 r">users</span> = <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>, <a href="../Indexes/UserByRoleNameIndex.cs.html#6a27897cbb2125ab" class="t t">UserByRoleNameIndex</a>&gt;(<span id="r104 rd" class="r104 r">u</span> =&gt; <span class="r104 r">u</span>.<span class="i">RoleName</span> == <span class="r101 r">normalizedRoleName</span>).<span class="i">ListAsync</span>();
+            <b>return</b> <span class="r103 r">users</span> == <b>null</b> ? <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;() : <span class="r103 r">users</span>.<span class="i">ToList</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;();
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IUserRoleStore&lt;IUser&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IUserLoginStore&lt;IUser&gt;
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="163f25ed13a41e80" href="../R/163f25ed13a41e80.html" target="n" data-glyph="72,1" class="i method">AddLoginAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r105 rd" class="r105 r">user</span>, <span class="t t">UserLoginInfo</span> <span id="r106 rd" class="r106 r">login</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r107 rd" class="r107 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r105 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r105 r">user</span>));
+            }
+ 
+            <b>if</b> (<span class="r106 r">login</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r106 r">login</span>));
+            }
+ 
+            <b>if</b> (((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r105 r">user</span>).<a href="../Models/User.cs.html#a701789459d9c468" class="i property">LoginInfos</a>.<span class="i method">Any</span>(<span id="r108 rd" class="r108 r">i</span> =&gt; <span class="r108 r">i</span>.<span class="i property">LoginProvider</span> == <span class="r106 r">login</span>.<span class="i property">LoginProvider</span>))
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span><span class="s">Provider </span>{<span class="r106 r">login</span>.<span class="i property">LoginProvider</span>}<span class="s"> is already linked for </span>{<span class="r105 r">user</span>.<a href="/OrchardCore.Users.Abstractions/A.html#18651c9ead5c8767" class="i property">UserName</a>}<span class="s">&quot;</span>);
+ 
+            ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r105 r">user</span>).<a href="../Models/User.cs.html#a701789459d9c468" class="i property">LoginInfos</a>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r106 r">login</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt; <a id="50daeedc8188c7ba" href="../R/50daeedc8188c7ba.html" target="n" data-glyph="72,1" class="i method">FindByLoginAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r109 rd" class="r109 r">loginProvider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r110 rd" class="r110 r">providerKey</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r111 rd" class="r111 r">cancellationToken</span>)
+        {
+            <b>return</b> <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>, <a href="../Indexes/UserByLoginInfoIndex.cs.html#f0339df1342eb938" class="t t">UserByLoginInfoIndex</a>&gt;(<span id="r112 rd" class="r112 r">u</span> =&gt; <span class="r112 r">u</span>.<span class="i">LoginProvider</span> == <span class="r109 r">loginProvider</span> &amp;&amp; <span class="r112 r">u</span>.<span class="i">ProviderKey</span> == <span class="r110 r">providerKey</span>).<span class="i">FirstOrDefaultAsync</span>();
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<span class="t t">UserLoginInfo</span>&gt;&gt; <a id="8ee96b105abf4bfc" href="../R/8ee96b105abf4bfc.html" target="n" data-glyph="72,1" class="i method">GetLoginsAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r113 rd" class="r113 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r114 rd" class="r114 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r113 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r113 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<span class="t t">UserLoginInfo</span>&gt;&gt;(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r113 r">user</span>).<a href="../Models/User.cs.html#a701789459d9c468" class="i property">LoginInfos</a>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="47543f4985344799" href="../R/47543f4985344799.html" target="n" data-glyph="72,1" class="i method">RemoveLoginAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r115 rd" class="r115 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r116 rd" class="r116 r">loginProvider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r117 rd" class="r117 r">providerKey</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r118 rd" class="r118 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r115 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r115 r">user</span>));
+            }
+ 
+            <a href="@1@System.Runtime/A.html#b19f71a84062554b" class="k">var</a> <span id="r119 rd" class="r119 r">externalLogins</span> = ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r115 r">user</span>).<a href="../Models/User.cs.html#a701789459d9c468" class="i property">LoginInfos</a>;
+            <b>if</b> (<span class="r119 r">externalLogins</span> != <b>null</b>)
+            {
+                <b>var</b> <span id="r120 rd" class="r120 r">item</span> = <span class="r119 r">externalLogins</span>.<span class="i method">FirstOrDefault</span>(<span id="r121 rd" class="r121 r">c</span> =&gt; <span class="r121 r">c</span>.<span class="i property">LoginProvider</span> == <span class="r116 r">loginProvider</span> &amp;&amp; <span class="r121 r">c</span>.<span class="i property">ProviderKey</span> == <span class="r117 r">providerKey</span>);
+                <b>if</b> (<span class="r120 r">item</span> != <b>null</b>)
+                {
+                    <span class="r119 r">externalLogins</span>.<a href="@1@System.Runtime/A.html#12ab6cfa5ca2ceec" class="i method">Remove</a>(<span class="r120 r">item</span>);
+                }
+            }
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IUserLoginStore&lt;IUser&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IUserClaimStore&lt;IUser&gt;
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<span class="t t">Claim</span>&gt;&gt; <a id="2aa7f038bd418201" href="../R/2aa7f038bd418201.html" target="n" data-glyph="72,1" class="i method">GetClaimsAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r122 rd" class="r122 r">user</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r123 rd" class="r123 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r122 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r122 r">user</span>));
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<span class="t t">Claim</span>&gt;&gt;(((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r122 r">user</span>).<a href="../Models/User.cs.html#17858ad9d664c89e" class="i property">UserClaims</a>.<span class="i method">Select</span>(<span id="r124 rd" class="r124 r">x</span> =&gt; <span class="r124 r">x</span>.<a href="../Models/UserClaim.cs.html#474338ec35f222b9" class="i method">ToClaim</a>()).<span class="i method">ToList</span>());
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="2cd2392d0201c3e0" href="../R/2cd2392d0201c3e0.html" target="n" data-glyph="72,1" class="i method">AddClaimsAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r125 rd" class="r125 r">user</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">Claim</span>&gt; <span id="r126 rd" class="r126 r">claims</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r127 rd" class="r127 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r125 r">user</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r125 r">user</span>));
+            <b>if</b> (<span class="r126 r">claims</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r126 r">claims</span>));
+ 
+            <b>foreach</b> (<b>var</b> <span id="r128 rd" class="r128 r">claim</span> <b>in</b> <span class="r126 r">claims</span>)
+            {
+                ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r125 r">user</span>).<a href="../Models/User.cs.html#17858ad9d664c89e" class="i property">UserClaims</a>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<b>new</b> <a href="../Models/UserClaim.cs.html#637724ca22bc9e8a" class="t constructor">UserClaim</a> { <a href="../Models/UserClaim.cs.html#ae5cf8de197d356b" class="i property">ClaimType</a> = <span class="r128 r">claim</span>.<span class="i property">Type</span>, <a href="../Models/UserClaim.cs.html#bc92f5abff99a6c0" class="i property">ClaimValue</a> = <span class="r128 r">claim</span>.<span class="i property">Value</span> });
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="e9e36c2ddb5d382c" href="../R/e9e36c2ddb5d382c.html" target="n" data-glyph="72,1" class="i method">ReplaceClaimAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r129 rd" class="r129 r">user</span>, <span class="t t">Claim</span> <span id="r130 rd" class="r130 r">claim</span>, <span class="t t">Claim</span> <span id="r131 rd" class="r131 r">newClaim</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r132 rd" class="r132 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r129 r">user</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r129 r">user</span>));
+            <b>if</b> (<span class="r130 r">claim</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r130 r">claim</span>));
+            <b>if</b> (<span class="r131 r">newClaim</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r131 r">newClaim</span>));
+ 
+            <b>foreach</b> (<a href="../Models/UserClaim.cs.html#637724ca22bc9e8a" class="k">var</a> <span id="r133 rd" class="r133 r">userClaim</span> <b>in</b> ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r129 r">user</span>).<a href="../Models/User.cs.html#17858ad9d664c89e" class="i property">UserClaims</a>.<span class="i method">Where</span>(<span id="r134 rd" class="r134 r">uc</span> =&gt; <span class="r134 r">uc</span>.<a href="../Models/UserClaim.cs.html#bc92f5abff99a6c0" class="i property">ClaimValue</a> == <span class="r130 r">claim</span>.<span class="i property">Value</span> &amp;&amp; <span class="r134 r">uc</span>.<a href="../Models/UserClaim.cs.html#ae5cf8de197d356b" class="i property">ClaimType</a> == <span class="r130 r">claim</span>.<span class="i property">Type</span>))
+            {
+                <span class="r133 r">userClaim</span>.<a href="../Models/UserClaim.cs.html#bc92f5abff99a6c0" class="i property">ClaimValue</a> = <span class="r131 r">newClaim</span>.<span class="i property">Value</span>;
+                <span class="r133 r">userClaim</span>.<a href="../Models/UserClaim.cs.html#ae5cf8de197d356b" class="i property">ClaimType</a> = <span class="r131 r">newClaim</span>.<span class="i property">Type</span>;
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="30d67654f1f33eed" href="../R/30d67654f1f33eed.html" target="n" data-glyph="72,1" class="i method">RemoveClaimsAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r135 rd" class="r135 r">user</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<span class="t t">Claim</span>&gt; <span id="r136 rd" class="r136 r">claims</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r137 rd" class="r137 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r135 r">user</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r135 r">user</span>));
+            <b>if</b> (<span class="r136 r">claims</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r136 r">claims</span>));
+ 
+            <b>foreach</b> (<b>var</b> <span id="r138 rd" class="r138 r">claim</span> <b>in</b> <span class="r136 r">claims</span>)
+            {
+                <b>foreach</b> (<a href="../Models/UserClaim.cs.html#637724ca22bc9e8a" class="k">var</a> <span id="r139 rd" class="r139 r">userClaim</span> <b>in</b> ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r135 r">user</span>).<a href="../Models/User.cs.html#17858ad9d664c89e" class="i property">UserClaims</a>.<span class="i method">Where</span>(<span id="r140 rd" class="r140 r">uc</span> =&gt; <span class="r140 r">uc</span>.<a href="../Models/UserClaim.cs.html#bc92f5abff99a6c0" class="i property">ClaimValue</a> == <span class="r138 r">claim</span>.<span class="i property">Value</span> &amp;&amp; <span class="r140 r">uc</span>.<a href="../Models/UserClaim.cs.html#ae5cf8de197d356b" class="i property">ClaimType</a> == <span class="r138 r">claim</span>.<span class="i property">Type</span>).<span class="i method">ToList</span>())
+                    ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r135 r">user</span>).<a href="../Models/User.cs.html#17858ad9d664c89e" class="i property">UserClaims</a>.<a href="@1@System.Runtime/A.html#12ab6cfa5ca2ceec" class="i method">Remove</a>(<span class="r139 r">userClaim</span>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#b19f71a84062554b" class="t t">IList</a>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;&gt; <a id="b16c40a4ca6f0b6a" href="../R/b16c40a4ca6f0b6a.html" target="n" data-glyph="72,1" class="i method">GetUsersForClaimAsync</a>(<span class="t t">Claim</span> <span id="r141 rd" class="r141 r">claim</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r142 rd" class="r142 r">cancellationToken</span>)
+        {
+            <b>if</b> (<span class="r141 r">claim</span> == <b>null</b>)
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r141 r">claim</span>));
+ 
+            <b>var</b> <span id="r143 rd" class="r143 r">users</span> = <b>await</b> <a href="#03731806231cfbc6" class="i field">_session</a>.<span class="i">Query</span>&lt;<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>, <a href="../Indexes/UserByClaimIndex.cs.html#807501dae693a852" class="t t">UserByClaimIndex</a>&gt;(<span id="r144 rd" class="r144 r">uc</span> =&gt; <span class="r144 r">uc</span>.<span class="i">ClaimType</span> == <span class="r141 r">claim</span>.<span class="i property">Type</span> &amp;&amp; <span class="r144 r">uc</span>.<span class="i">ClaimValue</span> == <span class="r141 r">claim</span>.<span class="i property">Value</span>).<span class="i">ListAsync</span>();
+ 
+            <b>return</b> <span class="r143 r">users</span>.<span class="i">Cast</span>&lt;<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a>&gt;().<span class="i">ToList</span>();
+        }
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span> IUserClaimStore&lt;IUser&gt;
+ 
+        <span class="k preprocess">#</span><span class="k preprocess">region</span> IUserAuthenticationTokenStore
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="35f0ce73166915b1" href="../R/35f0ce73166915b1.html" target="n" data-glyph="72,1" class="i method">GetTokenAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r145 rd" class="r145 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r146 rd" class="r146 r">loginProvider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r147 rd" class="r147 r">name</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r148 rd" class="r148 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r145 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r145 r">user</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r146 r">loginProvider</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The login provider cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r146 r">loginProvider</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r147 r">name</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The name cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r147 r">name</span>));
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r149 rd" class="r149 r">tokenValue</span> = <b>null</b>;
+            <a href="../Models/UserToken.cs.html#1a3f5f2a608b07f9" class="k">var</a> <span id="r150 rd" class="r150 r">userToken</span> = <a href="#20937bd896b68a74" class="i method">GetUserToken</a>(<span class="r145 r">user</span>, <span class="r146 r">loginProvider</span>, <span class="r147 r">name</span>);
+            <b>if</b> (<span class="r150 r">userToken</span> != <b>null</b>)
+            {
+                <span class="r149 r">tokenValue</span> = <a href="#760e9546eeb1b179" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="#a490fa7ff05a1174" class="i field">TokenProtector</a>).<span class="i method">Unprotect</span>(<span class="r150 r">userToken</span>.<a href="../Models/UserToken.cs.html#150c9589f12f86eb" class="i property">Value</a>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>(<span class="r149 r">tokenValue</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="040e0871be024e1c" href="../R/040e0871be024e1c.html" target="n" data-glyph="72,1" class="i method">RemoveTokenAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r151 rd" class="r151 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r152 rd" class="r152 r">loginProvider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r153 rd" class="r153 r">name</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r154 rd" class="r154 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r151 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r151 r">user</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r152 r">loginProvider</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The login provider cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r152 r">loginProvider</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r153 r">name</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The name cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r153 r">name</span>));
+            }
+ 
+            <a href="../Models/UserToken.cs.html#1a3f5f2a608b07f9" class="k">var</a> <span id="r155 rd" class="r155 r">userToken</span> = <a href="#20937bd896b68a74" class="i method">GetUserToken</a>(<span class="r151 r">user</span>, <span class="r152 r">loginProvider</span>, <span class="r153 r">name</span>);
+            <b>if</b> (<span class="r155 r">userToken</span> != <b>null</b>)
+            {
+                ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r151 r">user</span>).<a href="../Models/User.cs.html#b8be412ebe92d973" class="i property">UserTokens</a>.<a href="@1@System.Runtime/A.html#12ab6cfa5ca2ceec" class="i method">Remove</a>(<span class="r155 r">userToken</span>);
+            }
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="824fc6d53ebea1e6" href="../R/824fc6d53ebea1e6.html" target="n" data-glyph="72,1" class="i method">SetTokenAsync</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r156 rd" class="r156 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r157 rd" class="r157 r">loginProvider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r158 rd" class="r158 r">name</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r159 rd" class="r159 r">value</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r160 rd" class="r160 r">cancellationToken</span> = <b>default</b>(<a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a>))
+        {
+            <b>if</b> (<span class="r156 r">user</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r156 r">user</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r157 r">loginProvider</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The login provider cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r157 r">loginProvider</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r158 r">name</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The name cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r158 r">name</span>));
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r159 r">value</span>))
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#4b20cd3790b6426a" class="t constructor">ArgumentException</a>(<span class="s">&quot;The value cannot be null or empty.&quot;</span>, <b>nameof</b>(<span class="r159 r">value</span>));
+            }
+ 
+            <a href="../Models/UserToken.cs.html#1a3f5f2a608b07f9" class="k">var</a> <span id="r161 rd" class="r161 r">userToken</span> = <a href="#20937bd896b68a74" class="i method">GetUserToken</a>(<span class="r156 r">user</span>, <span class="r157 r">loginProvider</span>, <span class="r158 r">name</span>);
+ 
+            <b>if</b> (<span class="r161 r">userToken</span> == <b>null</b>)
+            {
+                <span class="r161 r">userToken</span> = <b>new</b> <a href="../Models/UserToken.cs.html#1a3f5f2a608b07f9" class="t constructor">UserToken</a>
+                {
+                    <a href="../Models/UserToken.cs.html#d6758d379489c648" class="i property">LoginProvider</a> = <span class="r157 r">loginProvider</span>,
+                    <a href="../Models/UserToken.cs.html#7e44520b8703d1fb" class="i property">Name</a> = <span class="r158 r">name</span>
+                };
+                ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r156 r">user</span>).<a href="../Models/User.cs.html#b8be412ebe92d973" class="i property">UserTokens</a>.<a href="@1@System.Runtime/A.html#a9319db8c62ae453" class="i method">Add</a>(<span class="r161 r">userToken</span>);
+            }
+ 
+            <span class="c">// Encrypt the token</span>
+            <span class="r161 r">userToken</span>.<a href="../Models/UserToken.cs.html#150c9589f12f86eb" class="i property">Value</a> = <a href="#760e9546eeb1b179" class="i field">_dataProtectionProvider</a>.<span class="i method">CreateProtector</span>(<a href="#a490fa7ff05a1174" class="i field">TokenProtector</a>).<span class="i method">Protect</span>(<span class="r159 r">value</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>private static</b> <a href="../Models/UserToken.cs.html#1a3f5f2a608b07f9" class="t t">UserToken</a> <a id="20937bd896b68a74" href="../R/20937bd896b68a74.html" target="n" data-glyph="76,1" class="i method">GetUserToken</a>(<a href="/OrchardCore.Users.Abstractions/A.html#673da0370ea1014d" class="t t">IUser</a> <span id="r162 rd" class="r162 r">user</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r163 rd" class="r163 r">loginProvider</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r164 rd" class="r164 r">name</span>)
+        {
+            <b>return</b> ((<a href="../Models/User.cs.html#63066ddf792dff6e" class="t t">User</a>)<span class="r162 r">user</span>).<a href="../Models/User.cs.html#b8be412ebe92d973" class="i property">UserTokens</a>.<span class="i method">FirstOrDefault</span>(<span id="r165 rd" class="r165 r">ut</span> =&gt; <span class="r165 r">ut</span>.<a href="../Models/UserToken.cs.html#d6758d379489c648" class="i property">LoginProvider</a> == <span class="r163 r">loginProvider</span> &amp;&amp;
+                                                                <span class="r165 r">ut</span>.<a href="../Models/UserToken.cs.html#7e44520b8703d1fb" class="i property">Name</a> == <span class="r164 r">name</span>);
+        }
+        <span class="k preprocess">#</span><span class="k preprocess">endregion</span>
+    }
+}
+</pre></td></tr></table></div></body></html>

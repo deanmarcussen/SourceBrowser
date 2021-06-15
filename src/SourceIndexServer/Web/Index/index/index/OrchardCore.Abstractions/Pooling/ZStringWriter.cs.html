@@ -1,0 +1,251 @@
+﻿<!DOCTYPE html>
+<html><head><title>ZStringWriter.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(242);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Abstractions/Pooling/ZStringWriter.cs" target="_top">Pooling\ZStringWriter.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Abstractions" target="_top">src\OrchardCore\OrchardCore.Abstractions\OrchardCore.Abstractions.csproj</a> (OrchardCore.Abstractions)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Cysharp</span>.<span class="i">Text</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Abstractions</span>.<span class="i n">Pooling</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Based StringWriter but made to use ZString as backing implementation.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>internal sealed class</b> <a id="96048688a1df87ef" href="../R/96048688a1df87ef.html" target="n" data-glyph="2,0" class="t t">ZStringWriter</a> : <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a>
+    {
+        <b>private</b> <span class="i">Utf16ValueStringBuilder</span> <a id="6a048c3c3c70b9f3" href="../R/6a048c3c3c70b9f3.html" target="n" data-glyph="46,1" class="i field">_sb</a>;
+        <b>private bool</b> <a id="c44b8b38f10e342d" href="../R/c44b8b38f10e342d.html" target="n" data-glyph="46,1" class="i field">_isOpen</a>;
+        <b>private</b> <span class="t t">UnicodeEncoding</span> <a id="a1be7c0eaa37dca3" href="../R/a1be7c0eaa37dca3.html" target="n" data-glyph="46,1" class="i field">s_encoding</a>;
+ 
+        <b>public</b> <a id="9f6b56c40acd2ebd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ZStringWriter</a>() : <a href="#3cd15be76116d266" class="k">this</a>(<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#1f5907384ac6bb55" class="i property">CurrentCulture</a>)
+        {
+        }
+ 
+        <b>public</b> <a id="3cd15be76116d266" href="../R/3cd15be76116d266.html" target="n" data-glyph="72,1" class="t constructor">ZStringWriter</a>(<a href="@1@System.Runtime/A.html#0dbf315d83aad6ca" class="t t">IFormatProvider</a> <span id="r0 rd" class="r0 r">formatProvider</span>) : <a href="@1@System.Runtime/A.html#fa8b78988e2fd970" class="k">base</a>(<span class="r0 r">formatProvider</span>)
+        {
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a> = <span class="i">ZString</span>.<span class="i">CreateStringBuilder</span>();
+            <a href="#c44b8b38f10e342d" class="i field">_isOpen</a> = <b>true</b>;
+        }
+ 
+        <b>public override void</b> <a id="069979791b0ab828" href="../R/069979791b0ab828.html" target="n" data-glyph="72,1" class="i method">Close</a>()
+        {
+            <a href="#36a48e27ad5e5dfc" class="i method">Dispose</a>(<b>true</b>);
+        }
+ 
+        <b>protected override void</b> <a id="36a48e27ad5e5dfc" href="../R/36a48e27ad5e5dfc.html" target="n" data-glyph="75,1" class="i method">Dispose</a>(<b>bool</b> <span id="r1 rd" class="r1 r">disposing</span>)
+        {
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Dispose</span>();
+            <a href="#c44b8b38f10e342d" class="i field">_isOpen</a> = <b>false</b>;
+            <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="k">base</a>.<a href="@1@System.Runtime/A.html#beba8e94f7b8c917" class="i method">Dispose</a>(<span class="r1 r">disposing</span>);
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a> <a id="03632d32c622419c" href="../R/03632d32c622419c.html" target="n" data-glyph="102,1" class="i property">Encoding</a> =&gt; <a href="#a1be7c0eaa37dca3" class="i field">s_encoding</a> ??= <b>new</b> <span class="t constructor">UnicodeEncoding</span>(<b>false</b>, <b>false</b>);
+ 
+        <span class="c">// Writes a character to the underlying string buffer.</span>
+        <span class="c">//</span>
+        <b>public override void</b> <a id="ffa456f358dbcb58" href="../R/ffa456f358dbcb58.html" target="n" data-glyph="72,1" class="i method">Write</a>(<b>char</b> <span id="r2 rd" class="r2 r">value</span>)
+        {
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r2 r">value</span>);
+        }
+ 
+        <b>public override void</b> <a id="e7f0ac8188f369c7" href="../R/e7f0ac8188f369c7.html" target="n" data-glyph="72,1" class="i method">Write</a>(<b>char</b>[] <span id="r3 rd" class="r3 r">buffer</span>, <b>int</b> <span id="r4 rd" class="r4 r">index</span>, <b>int</b> <span id="r5 rd" class="r5 r">count</span>)
+        {
+            <b>if</b> (<span class="r3 r">buffer</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<b>nameof</b>(<span class="r3 r">buffer</span>));
+            }
+            <b>if</b> (<span class="r4 r">index</span> &lt; 0)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#5fec5e06371b1f6c" class="t constructor">ArgumentOutOfRangeException</a>(<b>nameof</b>(<span class="r4 r">index</span>));
+            }
+            <b>if</b> (<span class="r5 r">count</span> &lt; 0)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#5fec5e06371b1f6c" class="t constructor">ArgumentOutOfRangeException</a>(<b>nameof</b>(<span class="r5 r">count</span>));
+            }
+            <b>if</b> (<span class="r3 r">buffer</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> - <span class="r4 r">index</span> &lt; <span class="r5 r">count</span>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#71d200dcf0047f8b" class="t constructor">ArgumentException</a>();
+            }
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r3 r">buffer</span>.<span class="i method">AsSpan</span>(<span class="r4 r">index</span>, <span class="r5 r">count</span>));
+        }
+ 
+        <b>public override void</b> <a id="d33e8ff57d96b2bd" href="../R/d33e8ff57d96b2bd.html" target="n" data-glyph="72,1" class="i method">Write</a>(<a href="@1@System.Runtime/A.html#2bbf4f6a861f5241" class="t t">ReadOnlySpan</a>&lt;<b>char</b>&gt; <span id="r6 rd" class="r6 r">buffer</span>)
+        {
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r6 r">buffer</span>);
+        }
+ 
+        <span class="c">// Writes a string to the underlying string buffer. If the given string is</span>
+        <span class="c">// null, nothing is written.</span>
+        <span class="c">//</span>
+        <b>public override void</b> <a id="45058f5c4d744171" href="../R/45058f5c4d744171.html" target="n" data-glyph="72,1" class="i method">Write</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">value</span>)
+        {
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <b>if</b> (<span class="r7 r">value</span> != <b>null</b>)
+            {
+                <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r7 r">value</span>);
+            }
+        }
+ 
+        <b>public override void</b> <a id="b0456dc3ad891b68" href="../R/b0456dc3ad891b68.html" target="n" data-glyph="72,1" class="i method">Write</a>(<a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="t t">StringBuilder</a> <span id="r8 rd" class="r8 r">value</span>)
+        {
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r8 r">value</span>);
+        }
+ 
+        <b>public override void</b> <a id="0142a169aa37942a" href="../R/0142a169aa37942a.html" target="n" data-glyph="72,1" class="i method">WriteLine</a>(<a href="@1@System.Runtime/A.html#2bbf4f6a861f5241" class="t t">ReadOnlySpan</a>&lt;<b>char</b>&gt; <span id="r9 rd" class="r9 r">buffer</span>)
+        {
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r9 r">buffer</span>);
+            <a href="@1@System.Runtime/A.html#d2497198aa8f74c0" class="i method">WriteLine</a>();
+        }
+ 
+        <b>public override void</b> <a id="7a3b0fea285a8c13" href="../R/7a3b0fea285a8c13.html" target="n" data-glyph="72,1" class="i method">WriteLine</a>(<a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="t t">StringBuilder</a> <span id="r10 rd" class="r10 r">value</span>)
+        {
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r10 r">value</span>);
+            <a href="@1@System.Runtime/A.html#d2497198aa8f74c0" class="i method">WriteLine</a>();
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="bb0828f988fe3ab3" href="../R/bb0828f988fe3ab3.html" target="n" data-glyph="72,1" class="i method">WriteAsync</a>(<b>char</b> <span id="r11 rd" class="r11 r">value</span>)
+        {
+            <a href="#ffa456f358dbcb58" class="i method">Write</a>(<span class="r11 r">value</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="2916b1964c150fed" href="../R/2916b1964c150fed.html" target="n" data-glyph="72,1" class="i method">WriteAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r12 rd" class="r12 r">value</span>)
+        {
+            <a href="#45058f5c4d744171" class="i method">Write</a>(<span class="r12 r">value</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="7dc674ebe5d1e099" href="../R/7dc674ebe5d1e099.html" target="n" data-glyph="72,1" class="i method">WriteAsync</a>(<b>char</b>[] <span id="r13 rd" class="r13 r">buffer</span>, <b>int</b> <span id="r14 rd" class="r14 r">index</span>, <b>int</b> <span id="r15 rd" class="r15 r">count</span>)
+        {
+            <a href="#e7f0ac8188f369c7" class="i method">Write</a>(<span class="r13 r">buffer</span>, <span class="r14 r">index</span>, <span class="r15 r">count</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="b2e78f81ca6d3aa0" href="../R/b2e78f81ca6d3aa0.html" target="n" data-glyph="72,1" class="i method">WriteAsync</a>(<a href="@1@System.Runtime/A.html#439b47ca0dfb4b1c" class="t t">ReadOnlyMemory</a>&lt;<b>char</b>&gt; <span id="r16 rd" class="r16 r">buffer</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r17 rd" class="r17 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r17 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#3dc5e4fb145ac32f" class="i method">FromCanceled</a>(<span class="r17 r">cancellationToken</span>);
+            }
+ 
+            <a href="#d33e8ff57d96b2bd" class="i method">Write</a>(<span class="r16 r">buffer</span>.<a href="@1@System.Runtime/A.html#db301afdc4fbbe9d" class="i property">Span</a>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="4b70f56ab7d66361" href="../R/4b70f56ab7d66361.html" target="n" data-glyph="72,1" class="i method">WriteAsync</a>(<a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="t t">StringBuilder</a> <span id="r18 rd" class="r18 r">value</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r19 rd" class="r19 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r19 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#3dc5e4fb145ac32f" class="i method">FromCanceled</a>(<span class="r19 r">cancellationToken</span>);
+            }
+ 
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r18 r">value</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="912241f1a7901c20" href="../R/912241f1a7901c20.html" target="n" data-glyph="72,1" class="i method">WriteLineAsync</a>(<b>char</b> <span id="r20 rd" class="r20 r">value</span>)
+        {
+            <a href="@1@System.Runtime/A.html#77907a82920f0c2d" class="i method">WriteLine</a>(<span class="r20 r">value</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="d3e9fab403c39ca5" href="../R/d3e9fab403c39ca5.html" target="n" data-glyph="72,1" class="i method">WriteLineAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">value</span>)
+        {
+            <a href="@1@System.Runtime/A.html#5238cceaebfeaa74" class="i method">WriteLine</a>(<span class="r21 r">value</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="28957ac667c5adaf" href="../R/28957ac667c5adaf.html" target="n" data-glyph="72,1" class="i method">WriteLineAsync</a>(<a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="t t">StringBuilder</a> <span id="r22 rd" class="r22 r">value</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r23 rd" class="r23 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r23 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#3dc5e4fb145ac32f" class="i method">FromCanceled</a>(<span class="r23 r">cancellationToken</span>);
+            }
+ 
+            <b>if</b> (!<a href="#c44b8b38f10e342d" class="i field">_isOpen</a>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#53515c848f859933" class="t constructor">ObjectDisposedException</a>(<b>nameof</b>(<a href="#6a048c3c3c70b9f3" class="i field">_sb</a>));
+            }
+ 
+            <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">Append</span>(<span class="r22 r">value</span>);
+            <a href="@1@System.Runtime/A.html#d2497198aa8f74c0" class="i method">WriteLine</a>();
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="174f1b361e81c74c" href="../R/174f1b361e81c74c.html" target="n" data-glyph="72,1" class="i method">WriteLineAsync</a>(<b>char</b>[] <span id="r24 rd" class="r24 r">buffer</span>, <b>int</b> <span id="r25 rd" class="r25 r">index</span>, <b>int</b> <span id="r26 rd" class="r26 r">count</span>)
+        {
+            <a href="@1@System.Runtime/A.html#0c738d200418fab9" class="i method">WriteLine</a>(<span class="r24 r">buffer</span>, <span class="r25 r">index</span>, <span class="r26 r">count</span>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="ae01e18a5c2d2ddc" href="../R/ae01e18a5c2d2ddc.html" target="n" data-glyph="72,1" class="i method">WriteLineAsync</a>(<a href="@1@System.Runtime/A.html#439b47ca0dfb4b1c" class="t t">ReadOnlyMemory</a>&lt;<b>char</b>&gt; <span id="r27 rd" class="r27 r">buffer</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r28 rd" class="r28 r">cancellationToken</span> = <b>default</b>)
+        {
+            <b>if</b> (<span class="r28 r">cancellationToken</span>.<a href="@1@System.Runtime/A.html#f32abbe8e2f1f6c1" class="i property">IsCancellationRequested</a>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#3dc5e4fb145ac32f" class="i method">FromCanceled</a>(<span class="r28 r">cancellationToken</span>);
+            }
+ 
+            <a href="#0142a169aa37942a" class="i method">WriteLine</a>(<span class="r27 r">buffer</span>.<a href="@1@System.Runtime/A.html#db301afdc4fbbe9d" class="i property">Span</a>);
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c5e163a4605efe7e" href="../R/c5e163a4605efe7e.html" target="n" data-glyph="72,1" class="i method">FlushAsync</a>()
+        {
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>public override string</b> <a id="bece8ffcfa7af676" href="../R/bece8ffcfa7af676.html" target="n" data-glyph="72,1" class="i method">ToString</a>()
+        {
+            <b>return</b> <a href="#6a048c3c3c70b9f3" class="i field">_sb</a>.<span class="i">ToString</span>();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

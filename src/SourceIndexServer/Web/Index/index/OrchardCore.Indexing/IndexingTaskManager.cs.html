@@ -1,0 +1,224 @@
+﻿<!DOCTYPE html>
+<html><head><title>IndexingTaskManager.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(215);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Indexing/IndexingTaskManager.cs" target="_top">IndexingTaskManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Indexing" target="_top">src\OrchardCore.Modules\OrchardCore.Indexing\OrchardCore.Indexing.csproj</a> (OrchardCore.Indexing)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Dapper</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentPreview</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Environment</span>.<span class="i">Shell</span>.<span class="i">Scope</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Indexing</span>.<span class="i n">Services</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This is a scoped service that enlists tasks to be stored in the database.</span>
+    <span class="c">///</span><span class="c"> It enlists a final task using the current </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">ShellScope</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> such</span>
+    <span class="c">///</span><span class="c"> that multiple calls to </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="#5da18d70aa77102a" class="i method">CreateTaskAsync</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> can be done without incurring</span>
+    <span class="c">///</span><span class="c"> a SQL query on every single one.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="96b86c236b13980d" href="R/96b86c236b13980d.html" target="n" data-glyph="0,0" class="t t">IndexingTaskManager</a> : <a href="/OrchardCore.Indexing.Abstractions/A.html#19b554320ff8834a" class="t t">IIndexingTaskManager</a>
+    {
+        <b>private readonly</b> <span class="i">IClock</span> <a id="91269284ed64f09d" href="R/91269284ed64f09d.html" target="n" data-glyph="46,1" class="i field">_clock</a>;
+        <b>private readonly</b> <span class="i">IStore</span> <a id="7d6703afe5b044f8" href="R/7d6703afe5b044f8.html" target="n" data-glyph="46,1" class="i field">_store</a>;
+        <b>private readonly</b> <span class="i">IDbConnectionAccessor</span> <a id="1446449adf7d8877" href="R/1446449adf7d8877.html" target="n" data-glyph="46,1" class="i field">_dbConnectionAccessor</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="b11c4ff8b2b43b77" href="R/b11c4ff8b2b43b77.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="ef44bf25b79fd5de" href="R/ef44bf25b79fd5de.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+ 
+        <b>private readonly string</b> <a id="1d8846bd1b0e0561" href="R/1d8846bd1b0e0561.html" target="n" data-glyph="46,1" class="i field">_tablePrefix</a>;
+        <b>private readonly</b> <span class="t t">List</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>&gt; <a id="accbef040b3a5cf6" href="R/accbef040b3a5cf6.html" target="n" data-glyph="46,1" class="i field">_tasksQueue</a> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>&gt;();
+ 
+        <b>public</b> <a id="d59ec50a821118cc" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">IndexingTaskManager</a>(
+            <span class="i">IClock</span> <span id="r0 rd" class="r0 r">clock</span>,
+            <span class="i">ShellSettings</span> <span id="r1 rd" class="r1 r">shellSettings</span>,
+            <span class="i">IStore</span> <span id="r2 rd" class="r2 r">store</span>,
+            <span class="i">IDbConnectionAccessor</span> <span id="r3 rd" class="r3 r">dbConnectionAccessor</span>,
+            <span class="t t">IHttpContextAccessor</span> <span id="r4 rd" class="r4 r">httpContextAccessor</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#96b86c236b13980d" class="t t">IndexingTaskManager</a>&gt; <span id="r5 rd" class="r5 r">logger</span>)
+        {
+            <a href="#91269284ed64f09d" class="i field">_clock</a> = <span class="r0 r">clock</span>;
+            <a href="#7d6703afe5b044f8" class="i field">_store</a> = <span class="r2 r">store</span>;
+            <a href="#1446449adf7d8877" class="i field">_dbConnectionAccessor</a> = <span class="r3 r">dbConnectionAccessor</span>;
+            <a href="#b11c4ff8b2b43b77" class="i field">_httpContextAccessor</a> = <span class="r4 r">httpContextAccessor</span>;
+            <a href="#ef44bf25b79fd5de" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+ 
+            <a href="#1d8846bd1b0e0561" class="i field">_tablePrefix</a> = <span class="r1 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>];
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#1d8846bd1b0e0561" class="i field">_tablePrefix</a>))
+            {
+                <a href="#1d8846bd1b0e0561" class="i field">_tablePrefix</a> += <span class="s">&#39;_&#39;</span>;
+            }
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5da18d70aa77102a" href="R/5da18d70aa77102a.html" target="n" data-glyph="72,1" class="i method">CreateTaskAsync</a>(<span class="i">ContentItem</span> <span id="r6 rd" class="r6 r">contentItem</span>, <a href="/OrchardCore.Indexing.Abstractions/A.html#2a295d11f547164f" class="t t">IndexingTaskTypes</a> <span id="r7 rd" class="r7 r">type</span>)
+        {
+            <b>if</b> (<span class="r6 r">contentItem</span> == <b>null</b>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<span class="s">&quot;contentItem&quot;</span>);
+            }
+ 
+            <span class="c">// Do not index a preview content item.</span>
+            <b>if</b> (<a href="#b11c4ff8b2b43b77" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>?.<span class="i property">Features</span>.<span class="i method">Get</span>&lt;<a href="/OrchardCore.ContentPreview.Abstractions/A.html#6ca72e815e1ea408" class="t t">ContentPreviewFeature</a>&gt;()?.<a href="/OrchardCore.ContentPreview.Abstractions/A.html#afd96211a7d18a85" class="i property">Previewing</a> == <b>true</b>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <b>if</b> (<span class="r6 r">contentItem</span>.<span class="i">Id</span> == 0)
+            {
+                <span class="c">// Ignore that case, when Update is called on a content item which has not be &quot;created&quot; yet.</span>
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="k">var</a> <span id="r8 rd" class="r8 r">indexingTask</span> = <b>new</b> <a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t constructor">IndexingTask</a>
+            {
+                <a href="/OrchardCore.Indexing.Abstractions/A.html#ea2e778450bc9e77" class="i property">CreatedUtc</a> = <a href="#91269284ed64f09d" class="i field">_clock</a>.<span class="i">UtcNow</span>,
+                <a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a> = <span class="r6 r">contentItem</span>.<span class="i">ContentItemId</span>,
+                <a href="/OrchardCore.Indexing.Abstractions/A.html#4167ffc6747b7a1c" class="i property">Type</a> = <span class="r7 r">type</span>
+            };
+ 
+            <b>if</b> (<a href="#accbef040b3a5cf6" class="i field">_tasksQueue</a>.<span class="i property">Count</span> == 0)
+            {
+                <b>var</b> <span id="r9 rd" class="r9 r">tasksQueue</span> = <a href="#accbef040b3a5cf6" class="i field">_tasksQueue</a>;
+ 
+                <span class="c">// Using a local var prevents the lambda from holding a ref on this scoped service.</span>
+                <span class="i">ShellScope</span>.<span class="i">AddDeferredTask</span>(<span id="r10 rd" class="r10 r">scope</span> =&gt; <span class="i">FlushAsync</span>(<span class="r10 r">scope</span>, <span class="r9 r">tasksQueue</span>));
+            }
+ 
+            <a href="#accbef040b3a5cf6" class="i field">_tasksQueue</a>.<span class="i method">Add</span>(<span class="r8 r">indexingTask</span>);
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>private static async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5f8307301b475295" href="R/../../0000000000.html" target="n" data-glyph="76,1" class="i method">FlushAsync</a>(<span class="i">ShellScope</span> <span id="r11 rd" class="r11 r">scope</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>&gt; <span id="r12 rd" class="r12 r">tasks</span>)
+        {
+            <b>var</b> <span id="r13 rd" class="r13 r">localQueue</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>&gt;(<span class="r12 r">tasks</span>);
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">serviceProvider</span> = <span class="r11 r">scope</span>.<span class="i">ServiceProvider</span>;
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">session</span> = <span class="r14 r">serviceProvider</span>.<span class="i">GetService</span>&lt;<span class="i">YesSql</span>.<span class="i">ISession</span>&gt;();
+            <b>var</b> <span id="r16 rd" class="r16 r">dbConnectionAccessor</span> = <span class="r14 r">serviceProvider</span>.<span class="i">GetService</span>&lt;<span class="i">IDbConnectionAccessor</span>&gt;();
+            <b>var</b> <span id="r17 rd" class="r17 r">shellSettings</span> = <span class="r14 r">serviceProvider</span>.<span class="i">GetService</span>&lt;<span class="i">ShellSettings</span>&gt;();
+            <b>var</b> <span id="r18 rd" class="r18 r">logger</span> = <span class="r14 r">serviceProvider</span>.<span class="i">GetService</span>&lt;<span class="t t">ILogger</span>&lt;<a href="#96b86c236b13980d" class="t t">IndexingTaskManager</a>&gt;&gt;();
+            <b>var</b> <span id="r19 rd" class="r19 r">tablePrefix</span> = <span class="r17 r">shellSettings</span>[<span class="s">&quot;TablePrefix&quot;</span>];
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r19 r">tablePrefix</span>))
+            {
+                <span class="r19 r">tablePrefix</span> += <span class="s">&#39;_&#39;</span>;
+            }
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">contentItemIds</span> = <b>new</b> <span class="t constructor">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <span class="c">// Remove duplicate tasks, only keep the last one</span>
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r21 rd" class="r21 r">i</span> = <span class="r13 r">localQueue</span>.<span class="i property">Count</span>; <span class="r21 r">i</span> &gt; 0; <span class="r21 r">i</span>--)
+            {
+                <a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="k">var</a> <span id="r22 rd" class="r22 r">task</span> = <span class="r13 r">localQueue</span>[<span class="r21 r">i</span> - 1];
+ 
+                <b>if</b> (<span class="r20 r">contentItemIds</span>.<span class="i method">Contains</span>(<span class="r22 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>))
+                {
+                    <span class="r13 r">localQueue</span>.<span class="i method">RemoveAt</span>(<span class="r21 r">i</span> - 1);
+                }
+                <b>else</b>
+                {
+                    <span class="r20 r">contentItemIds</span>.<span class="i method">Add</span>(<span class="r22 r">task</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>);
+                }
+            }
+ 
+            <span class="c">// At this point, content items ids should be unique in localQueue</span>
+            <b>var</b> <span id="r23 rd" class="r23 r">ids</span> = <span class="r13 r">localQueue</span>.<span class="i method">Select</span>(<span id="r24 rd" class="r24 r">x</span> =&gt; <span class="r24 r">x</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>).<span class="i method">ToArray</span>();
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r25 rd" class="r25 r">table</span> = <span class="s">$&quot;</span>{<span class="r19 r">tablePrefix</span>}{<b>nameof</b>(<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>)}<span class="s">&quot;</span>;
+ 
+            <b>using</b> (<b>var</b> <span id="r26 rd" class="r26 r">connection</span> = <span class="r16 r">dbConnectionAccessor</span>.<span class="i">CreateConnection</span>())
+            {
+                <b>await</b> <span class="r26 r">connection</span>.<span class="i">OpenAsync</span>();
+ 
+                <b>using</b> (<b>var</b> <span id="r27 rd" class="r27 r">transaction</span> = <span class="r26 r">connection</span>.<span class="i">BeginTransaction</span>(<span class="r15 r">session</span>.<span class="i">Store</span>.<span class="i">Configuration</span>.<span class="i">IsolationLevel</span>))
+                {
+                    <b>var</b> <span id="r28 rd" class="r28 r">dialect</span> = <span class="r15 r">session</span>.<span class="i">Store</span>.<span class="i">Configuration</span>.<span class="i">SqlDialect</span>;
+ 
+                    <b>try</b>
+                    {
+                        <b>if</b> (<span class="r18 r">logger</span>.<span class="i method">IsEnabled</span>(<span class="t t">LogLevel</span>.<span class="i field">Debug</span>))
+                        {
+                            <span class="r18 r">logger</span>.<span class="i method">LogDebug</span>(<span class="s">&quot;Updating indexing tasks: {ContentItemIds}&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot;, &quot;</span>, <span class="r12 r">tasks</span>.<span class="i method">Select</span>(<span id="r29 rd" class="r29 r">x</span> =&gt; <span class="r29 r">x</span>.<a href="/OrchardCore.Indexing.Abstractions/A.html#7e227a00f0920a80" class="i property">ContentItemId</a>)));
+                        }
+ 
+                        <span class="c">// Page delete statements to prevent the limits from IN sql statements</span>
+                        <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r30 rd" class="r30 r">pageSize</span> = 100;
+ 
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r31 rd" class="r31 r">deleteCmd</span> = <span class="s">$&quot;</span><span class="s">delete from </span>{<span class="r28 r">dialect</span>.<span class="i">QuoteForTableName</span>(<span class="r25 r">table</span>)}<span class="s"> where </span>{<span class="r28 r">dialect</span>.<span class="i">QuoteForColumnName</span>(<span class="s">&quot;ContentItemId&quot;</span>)}<span class="s"> </span>{<span class="r28 r">dialect</span>.<span class="i">InOperator</span>(<span class="s">&quot;@Ids&quot;</span>)}<span class="s">;</span><span class="s">&quot;</span>;
+ 
+                        <b>do</b>
+                        {
+                            <b>var</b> <span id="r32 rd" class="r32 r">pageOfIds</span> = <span class="r23 r">ids</span>.<span class="i method">Take</span>(<span class="r30 r">pageSize</span>).<span class="i method">ToArray</span>();
+ 
+                            <b>if</b> (<span class="r32 r">pageOfIds</span>.<span class="i method">Any</span>())
+                            {
+                                <b>await</b> <span class="r27 r">transaction</span>.<span class="i">Connection</span>.<span class="i">ExecuteAsync</span>(<span class="r31 r">deleteCmd</span>, <b>new</b> { <a href="#a5e277c99ace58b1" class="i property">Ids</a> = <span class="r32 r">pageOfIds</span> }, <span class="r27 r">transaction</span>);
+                                <span class="r23 r">ids</span> = <span class="r23 r">ids</span>.<span class="i method">Skip</span>(<span class="r30 r">pageSize</span>).<span class="i method">ToArray</span>();
+                            }
+                        } <b>while</b> (<span class="r23 r">ids</span>.<span class="i method">Any</span>());
+ 
+                        <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r33 rd" class="r33 r">insertCmd</span> = <span class="s">$&quot;</span><span class="s">insert into </span>{<span class="r28 r">dialect</span>.<span class="i">QuoteForTableName</span>(<span class="r25 r">table</span>)}<span class="s"> (</span>{<span class="r28 r">dialect</span>.<span class="i">QuoteForColumnName</span>(<span class="s">&quot;CreatedUtc&quot;</span>)}<span class="s">, </span>{<span class="r28 r">dialect</span>.<span class="i">QuoteForColumnName</span>(<span class="s">&quot;ContentItemId&quot;</span>)}<span class="s">, </span>{<span class="r28 r">dialect</span>.<span class="i">QuoteForColumnName</span>(<span class="s">&quot;Type&quot;</span>)}<span class="s">) values (@CreatedUtc, @ContentItemId, @Type);</span><span class="s">&quot;</span>;
+                        <b>await</b> <span class="r27 r">transaction</span>.<span class="i">Connection</span>.<span class="i">ExecuteAsync</span>(<span class="r33 r">insertCmd</span>, <span class="r13 r">localQueue</span>, <span class="r27 r">transaction</span>);
+ 
+                        <span class="r27 r">transaction</span>.<span class="i">Commit</span>();
+                    }
+                    <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r34 rd" class="r34 r">e</span>)
+                    {
+                        <span class="r27 r">transaction</span>.<span class="i">Rollback</span>();
+                        <span class="r18 r">logger</span>.<span class="i method">LogError</span>(<span class="r34 r">e</span>, <span class="s">&quot;An error occurred while updating indexing tasks&quot;</span>);
+ 
+                        <b>throw</b>;
+                    }
+                }
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>&gt;&gt; <a id="109ffa9116d5660e" href="R/109ffa9116d5660e.html" target="n" data-glyph="72,1" class="i method">GetIndexingTasksAsync</a>(<b>int</b> <span id="r35 rd" class="r35 r">afterTaskId</span>, <b>int</b> <span id="r36 rd" class="r36 r">count</span>)
+        {
+            <b>using</b> (<b>var</b> <span id="r37 rd" class="r37 r">connection</span> = <a href="#1446449adf7d8877" class="i field">_dbConnectionAccessor</a>.<span class="i">CreateConnection</span>())
+            {
+                <b>await</b> <span class="r37 r">connection</span>.<span class="i">OpenAsync</span>();
+ 
+                <b>try</b>
+                {
+                    <b>var</b> <span id="r38 rd" class="r38 r">dialect</span> = <a href="#7d6703afe5b044f8" class="i field">_store</a>.<span class="i">Configuration</span>.<span class="i">SqlDialect</span>;
+                    <b>var</b> <span id="r39 rd" class="r39 r">sqlBuilder</span> = <span class="r38 r">dialect</span>.<span class="i">CreateBuilder</span>(<a href="#1d8846bd1b0e0561" class="i field">_tablePrefix</a>);
+ 
+                    <span class="r39 r">sqlBuilder</span>.<span class="i">Select</span>();
+                    <span class="r39 r">sqlBuilder</span>.<span class="i">Table</span>(<b>nameof</b>(<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>));
+                    <span class="r39 r">sqlBuilder</span>.<span class="i">Selector</span>(<span class="s">&quot;*&quot;</span>);
+ 
+                    <b>if</b> (<span class="r36 r">count</span> &gt; 0)
+                    {
+                        <span class="r39 r">sqlBuilder</span>.<span class="i">Take</span>(<span class="r36 r">count</span>.<a href="@1@System.Runtime/A.html#8d6f2d8bc0589463" class="i method">ToString</a>());
+                    }
+ 
+                    <span class="r39 r">sqlBuilder</span>.<span class="i">WhereAnd</span>(<span class="s">$&quot;</span>{<span class="r38 r">dialect</span>.<span class="i">QuoteForColumnName</span>(<span class="s">&quot;Id&quot;</span>)}<span class="s"> &gt; @Id</span><span class="s">&quot;</span>);
+ 
+                    <b>return</b> <b>await</b> <span class="r37 r">connection</span>.<span class="i">QueryAsync</span>&lt;<a href="/OrchardCore.Indexing.Abstractions/A.html#b8248d0a1aa4b8ab" class="t t">IndexingTask</a>&gt;(<span class="r39 r">sqlBuilder</span>.<span class="i">ToSqlString</span>(), <b>new</b> { <a href="#2a3ee25196972a45" class="i property">Id</a> = <span class="r35 r">afterTaskId</span> });
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r40 rd" class="r40 r">e</span>)
+                {
+                    <a href="#ef44bf25b79fd5de" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r40 r">e</span>, <span class="s">&quot;An error occurred while reading indexing tasks&quot;</span>);
+                    <b>throw</b>;
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,325 @@
+﻿<!DOCTYPE html>
+<html><head><title>DocumentManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(316);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Infrastructure/Documents/DocumentManager.cs" target="_top">Documents\DocumentManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Infrastructure" target="_top">src\OrchardCore\OrchardCore.Infrastructure\OrchardCore.Infrastructure.csproj</a> (OrchardCore.Infrastructure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Documents</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i">Scope</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Documents</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> A generic service to keep in sync any single </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IDocument</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> between an </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><span class="i">IDocumentStore</span><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> and a multi level cache.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="554c46b214da0bfd" href="../R/554c46b214da0bfd.html" target="n" data-glyph="0,0" class="t t">DocumentManager</a>&lt;<span id="r0 rd t" class="r0 r t">TDocument</span>&gt; : <a href="/OrchardCore.Infrastructure.Abstractions/A.html#d6058be73e6d73ef" class="t t">IDocumentManager</a>&lt;<span class="r0 r t">TDocument</span>&gt; <b>where</b> <span class="r0 r t">TDocument</span> : <b>class</b>, <span class="i">IDocument</span>, <b>new</b>()
+    {
+        <b>private readonly</b> <span class="t t">IDistributedCache</span> <a id="cf49f5c6693166e6" href="../R/cf49f5c6693166e6.html" target="n" data-glyph="46,1" class="i field">_distributedCache</a>;
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="3aa3c64530a5a66a" href="../R/3aa3c64530a5a66a.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+        <b>protected readonly</b> <a href="/OrchardCore.Infrastructure.Abstractions/A.html#64a979e4fc3825af" class="t t">DocumentOptions</a> <a id="ec38a182d0a6035c" href="../R/ec38a182d0a6035c.html" target="n" data-glyph="45,1" class="i field">_options</a>;
+ 
+        <b>private readonly bool</b> <a id="8e1bebbede8d0076" href="../R/8e1bebbede8d0076.html" target="n" data-glyph="46,1" class="i field">_isDistributed</a>;
+        <b>protected bool</b> <a id="f6b55ea4ecfd31aa" href="../R/f6b55ea4ecfd31aa.html" target="n" data-glyph="45,1" class="i field">_isVolatile</a>;
+ 
+        <b>public</b> <a id="0eabfdbe714b0ac8" href="../R/0eabfdbe714b0ac8.html" target="n" data-glyph="72,1" class="t constructor">DocumentManager</a>(
+            <span class="t t">IDistributedCache</span> <span id="r1 rd" class="r1 r">distributedCache</span>,
+            <span class="t t">IMemoryCache</span> <span id="r2 rd" class="r2 r">memoryCache</span>,
+            <span class="t t">IOptionsMonitor</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64a979e4fc3825af" class="t t">DocumentOptions</a>&gt; <span id="r3 rd" class="r3 r">options</span>)
+        {
+            <a href="#cf49f5c6693166e6" class="i field">_distributedCache</a> = <span class="r1 r">distributedCache</span>;
+            <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a> = <span class="r2 r">memoryCache</span>;
+            <a href="#ec38a182d0a6035c" class="i field">_options</a> = <span class="r3 r">options</span>.<span class="i method">Get</span>(<b>typeof</b>(<span class="r0 r t">TDocument</span>).<a href="@1@System.Runtime/A.html#976443bb39dc37cd" class="i property">FullName</a>);
+ 
+            <b>if</b> (!(<a href="#cf49f5c6693166e6" class="i field">_distributedCache</a> <b>is</b> <span class="t t">MemoryDistributedCache</span>))
+            {
+                <a href="#8e1bebbede8d0076" class="i field">_isDistributed</a> = <b>true</b>;
+            }
+ 
+            <a href="#2a41a722c17ee4f7" class="i property">DocumentStoreServiceType</a> = <b>typeof</b>(<span class="i">IDocumentStore</span>);
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a> <a id="2a41a722c17ee4f7" href="../R/2a41a722c17ee4f7.html" target="n" data-glyph="102,1" class="i property">DocumentStoreServiceType</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public</b> <span class="i">IDocumentStore</span> <a id="af5e9f19320b04ce" href="../R/af5e9f19320b04ce.html" target="n" data-glyph="102,1" class="i property">DocumentStore</a>
+        {
+            <b>get</b>
+            {
+                <b>var</b> <span id="r4 rd" class="r4 r">documentStore</span> = (<span class="i">IDocumentStore</span>)<span class="i">ShellScope</span>.<span class="i">Get</span>(<a href="#2a41a722c17ee4f7" class="i property">DocumentStoreServiceType</a>);
+                <b>if</b> (<span class="r4 r">documentStore</span> == <b>null</b>)
+                {
+                    <span class="r4 r">documentStore</span> = (<span class="i">IDocumentStore</span>)<span class="i">ShellScope</span>.<span class="i">Services</span>.<span class="i">GetRequiredService</span>(<a href="#2a41a722c17ee4f7" class="i property">DocumentStoreServiceType</a>);
+                    <span class="i">ShellScope</span>.<span class="i">Set</span>(<a href="#2a41a722c17ee4f7" class="i property">DocumentStoreServiceType</a>, <span class="r4 r">documentStore</span>);
+                }
+ 
+                <b>return</b> <span class="r4 r">documentStore</span>;
+            }
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r0 r t">TDocument</span>&gt; <a id="1519d6ce6b51031f" href="../R/1519d6ce6b51031f.html" target="n" data-glyph="72,1" class="i method">GetOrCreateMutableAsync</a>(<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r0 r t">TDocument</span>&gt;&gt; <span id="r5 rd" class="r5 r">factoryAsync</span> = <b>null</b>)
+        {
+            <span class="r0 r t">TDocument</span> <span id="r6 rd" class="r6 r">document</span> = <b>null</b>;
+ 
+            <b>if</b> (!<a href="#f6b55ea4ecfd31aa" class="i field">_isVolatile</a>)
+            {
+                <span class="r6 r">document</span> = <b>await</b> <a href="#af5e9f19320b04ce" class="i property">DocumentStore</a>.<span class="i">GetOrCreateMutableAsync</span>(<span class="r5 r">factoryAsync</span>);
+ 
+                <b>if</b> (<a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>&lt;<span class="r0 r t">TDocument</span>&gt;(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>, <b>out</b> <span class="r0 r t">var</span> <span id="r7 rd" class="r7 r">cached</span>) &amp;&amp; <span class="r6 r">document</span> == <span class="r7 r">cached</span>)
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Can&#39;t load for update a cached object&quot;</span>);
+                }
+            }
+            <b>else</b>
+            {
+                <span class="r0 r t">var</span> <span id="r8 rd" class="r8 r">volatileCache</span> = <span class="i">ShellScope</span>.<span class="i">Get</span>&lt;<span class="r0 r t">TDocument</span>&gt;(<b>typeof</b>(<span class="r0 r t">TDocument</span>));
+                <b>if</b> (<span class="r8 r">volatileCache</span> != <b>null</b>)
+                {
+                    <span class="r6 r">document</span> = <span class="r8 r">volatileCache</span>;
+                }
+                <b>else</b>
+                {
+                    <span class="r6 r">document</span> = <b>await</b> <a href="#6832f542b5110c79" class="i method">GetFromDistributedCacheAsync</a>()
+                        ?? <b>await</b> (<span class="r5 r">factoryAsync</span>?.<a href="@1@System.Runtime/A.html#a7843bf4f3b2d594" class="i method">Invoke</a>() ?? <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="r0 r t">TDocument</span>)<b>null</b>))
+                        ?? <b>new</b> <span class="t">TDocument</span>();
+ 
+                    <span class="i">ShellScope</span>.<span class="i">Set</span>(<b>typeof</b>(<span class="r0 r t">TDocument</span>), <span class="r6 r">document</span>);
+                }
+            }
+ 
+            <span class="r6 r">document</span>.<span class="i">Identifier</span> = <span class="i">IdGenerator</span>.<span class="i">GenerateId</span>();
+ 
+            <b>return</b> <span class="r6 r">document</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r0 r t">TDocument</span>&gt; <a id="6f61777182147b14" href="../R/6f61777182147b14.html" target="n" data-glyph="72,1" class="i method">GetOrCreateImmutableAsync</a>(<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r0 r t">TDocument</span>&gt;&gt; <span id="r9 rd" class="r9 r">factoryAsync</span> = <b>null</b>)
+        {
+            <span class="c">// If called from a constructor, e.g. through an &#39;IConfigureOptions&#39;, the &#39;IDocumentStore&#39; should</span>
+            <span class="c">// be resolved before any async IO operation to prevent a DI dead lock. So, only if the store may</span>
+            <span class="c">// be used (if non volatile) and an async IO may be done before (if a distributed cache is used).</span>
+ 
+            <b>if</b> (!<a href="#f6b55ea4ecfd31aa" class="i field">_isVolatile</a> &amp;&amp; <a href="#8e1bebbede8d0076" class="i field">_isDistributed</a>)
+            {
+                <span class="c">// Resolve the &#39;IDocumentStore&#39; and hold it in a scoped cache.</span>
+                <b>_</b> = <a href="#af5e9f19320b04ce" class="i property">DocumentStore</a>;
+            }
+ 
+            <span class="c">// May call an async IO if using a distributed cache.</span>
+            <span class="r0 r t">var</span> <span id="r10 rd" class="r10 r">document</span> = <b>await</b> <a href="#96efef7b4f3beaed" class="i method">GetInternalAsync</a>();
+ 
+            <b>if</b> (<span class="r10 r">document</span> == <b>null</b>)
+            {
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r11 rd" class="r11 r">cacheable</span> = <b>true</b>;
+ 
+                <b>if</b> (!<a href="#f6b55ea4ecfd31aa" class="i field">_isVolatile</a>)
+                {
+                    (<span class="r11 r">cacheable</span>, <span class="r10 r">document</span>) = <b>await</b> <a href="#af5e9f19320b04ce" class="i property">DocumentStore</a>.<span class="i">GetOrCreateImmutableAsync</span>(<span class="r9 r">factoryAsync</span>);
+                }
+                <b>else</b>
+                {
+                    <span class="r10 r">document</span> = <b>await</b> (<span class="r9 r">factoryAsync</span>?.<a href="@1@System.Runtime/A.html#a7843bf4f3b2d594" class="i method">Invoke</a>()
+                        ?? <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<span class="r0 r t">TDocument</span>)<b>null</b>))
+                        ?? <b>new</b> <span class="t">TDocument</span>();
+                }
+ 
+                <b>if</b> (<span class="r11 r">cacheable</span>)
+                {
+                    <b>await</b> <a href="#383bbb7795b37fcb" class="i method">SetInternalAsync</a>(<span class="r10 r">document</span>);
+                }
+            }
+ 
+            <b>return</b> <span class="r10 r">document</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="0293339d28eb1f4c" href="../R/0293339d28eb1f4c.html" target="n" data-glyph="72,1" class="i method">UpdateAsync</a>(<span class="r0 r t">TDocument</span> <span id="r12 rd" class="r12 r">document</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="r0 r t">TDocument</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt; <span id="r13 rd" class="r13 r">afterUpdateAsync</span> = <b>null</b>)
+        {
+            <b>if</b> (<a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>&lt;<span class="r0 r t">TDocument</span>&gt;(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>, <b>out</b> <span class="r0 r t">var</span> <span id="r14 rd" class="r14 r">cached</span>) &amp;&amp; <span class="r12 r">document</span> == <span class="r14 r">cached</span>)
+            {
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">&quot;Can&#39;t update a cached object&quot;</span>);
+            }
+ 
+            <span class="r12 r">document</span>.<span class="i">Identifier</span> ??= <span class="i">IdGenerator</span>.<span class="i">GenerateId</span>();
+ 
+            <b>if</b> (!<a href="#f6b55ea4ecfd31aa" class="i field">_isVolatile</a>)
+            {
+                <b>return</b> <a href="#af5e9f19320b04ce" class="i property">DocumentStore</a>.<span class="i">UpdateAsync</span>(<span class="r12 r">document</span>, <b>async</b> <span id="r15 rd" class="r15 r">document</span> =&gt;
+                {
+                    <b>await</b> <span class="i">SetInternalAsync</span>(<span class="r15 r">document</span>);
+ 
+                    <b>if</b> (<span class="r13 r">afterUpdateAsync</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r13 r">afterUpdateAsync</span>(<span class="r15 r">document</span>);
+                    }
+                },
+                <a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#55296455b522c2a8" class="i property">CheckConcurrency</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>);
+            }
+ 
+            <span class="c">// Set the scoped cache in case of multiple updates.</span>
+            <span class="i">ShellScope</span>.<span class="i">Set</span>(<b>typeof</b>(<span class="r0 r t">TDocument</span>), <span class="r12 r">document</span>);
+ 
+            <span class="c">// But still update the shared cache after committing.</span>
+            <a href="#af5e9f19320b04ce" class="i property">DocumentStore</a>.<span class="i">AfterCommitSuccess</span>&lt;<span class="r0 r t">TDocument</span>&gt;(<b>async</b> () =&gt;
+            {
+                <b>await</b> <a href="#383bbb7795b37fcb" class="i method">SetInternalAsync</a>(<span class="r12 r">document</span>);
+ 
+                <b>if</b> (<span class="r13 r">afterUpdateAsync</span> != <b>null</b>)
+                {
+                    <b>await</b> <span class="r13 r">afterUpdateAsync</span>(<span class="r12 r">document</span>);
+                }
+            });
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r0 r t">TDocument</span>&gt; <a id="96efef7b4f3beaed" href="../R/96efef7b4f3beaed.html" target="n" data-glyph="76,1" class="i method">GetInternalAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">id</span>;
+            <b>if</b> (<a href="#8e1bebbede8d0076" class="i field">_isDistributed</a>)
+            {
+                <span class="c">// Cache the id locally for the synchronization latency time.</span>
+                <span class="r16 r">id</span> = <b>await</b> <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">GetOrCreateAsync</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>, <span id="r17 rd" class="r17 r">entry</span> =&gt;
+                {
+                    <span class="r17 r">entry</span>.<span class="i property">AbsoluteExpirationRelativeToNow</span> = <a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#68834d8c094b0cb6" class="i property">SynchronizationLatency</a>;
+                    <b>return</b> <a href="#cf49f5c6693166e6" class="i field">_distributedCache</a>.<span class="i method">GetStringAsync</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>);
+                });
+            }
+            <b>else</b>
+            {
+                <span class="c">// Otherwise, always get the id from the memory cache.</span>
+                <span class="r16 r">id</span> = <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">Get</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>);
+            }
+ 
+            <b>if</b> (<span class="r16 r">id</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (<span class="r16 r">id</span> == <span class="s">&quot;NULL&quot;</span>)
+            {
+                <span class="r16 r">id</span> = <b>null</b>;
+            }
+ 
+            <b>if</b> (<a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>&lt;<span class="r0 r t">TDocument</span>&gt;(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>, <b>out</b> <span class="r0 r t">var</span> <span id="r18 rd" class="r18 r">document</span>))
+            {
+                <b>if</b> (<span class="r18 r">document</span>.<span class="i">Identifier</span> == <span class="r16 r">id</span>)
+                {
+                    <b>if</b> (<a href="#8e1bebbede8d0076" class="i field">_isDistributed</a> &amp;&amp; (<a href="#ec38a182d0a6035c" class="i field">_options</a>?.<span class="i property">SlidingExpiration</span>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> ?? <b>false</b>))
+                    {
+                        <b>await</b> <a href="#cf49f5c6693166e6" class="i field">_distributedCache</a>.<span class="i method">RefreshAsync</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>);
+                    }
+ 
+                    <b>return</b> <span class="r18 r">document</span>;
+                }
+            }
+ 
+            <b>if</b> (!<a href="#8e1bebbede8d0076" class="i field">_isDistributed</a>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <span class="r18 r">document</span> = <b>await</b> <a href="#6832f542b5110c79" class="i method">GetFromDistributedCacheAsync</a>();
+ 
+            <b>if</b> (<span class="r18 r">document</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (<span class="r18 r">document</span>.<span class="i">Identifier</span> != <span class="r16 r">id</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">Set</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>, <span class="r18 r">document</span>, <b>new</b> <span class="t constructor">MemoryCacheEntryOptions</span>()
+            {
+                <span class="i property">AbsoluteExpiration</span> = <a href="#ec38a182d0a6035c" class="i field">_options</a>.<span class="i property">AbsoluteExpiration</span>,
+                <span class="i property">AbsoluteExpirationRelativeToNow</span> = <a href="#ec38a182d0a6035c" class="i field">_options</a>.<span class="i property">AbsoluteExpirationRelativeToNow</span>,
+                <span class="i property">SlidingExpiration</span> = <a href="#ec38a182d0a6035c" class="i field">_options</a>.<span class="i property">SlidingExpiration</span>
+            });
+ 
+            <span class="c">// Remove the id from the one second cache.</span>
+            <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">Remove</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>);
+ 
+            <b>return</b> <span class="r18 r">document</span>;
+        }
+ 
+        <b>protected async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="383bbb7795b37fcb" href="../R/383bbb7795b37fcb.html" target="n" data-glyph="75,1" class="i method">SetInternalAsync</a>(<span class="r0 r t">TDocument</span> <span id="r19 rd" class="r19 r">document</span>)
+        {
+            <b>await</b> <a href="#d9bc84272a622898" class="i method">UpdateDistributedCacheAsync</a>(<span class="r19 r">document</span>);
+ 
+            <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">Set</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>, <span class="r19 r">document</span>, <b>new</b> <span class="t constructor">MemoryCacheEntryOptions</span>()
+            {
+                <span class="i property">AbsoluteExpiration</span> = <a href="#ec38a182d0a6035c" class="i field">_options</a>.<span class="i property">AbsoluteExpiration</span>,
+                <span class="i property">AbsoluteExpirationRelativeToNow</span> = <a href="#ec38a182d0a6035c" class="i field">_options</a>.<span class="i property">AbsoluteExpirationRelativeToNow</span>,
+                <span class="i property">SlidingExpiration</span> = <a href="#ec38a182d0a6035c" class="i field">_options</a>.<span class="i property">SlidingExpiration</span>
+            });
+ 
+            <b>if</b> (<a href="#8e1bebbede8d0076" class="i field">_isDistributed</a>)
+            {
+                <span class="c">// Remove the id from the one second cache.</span>
+                <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">Remove</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>);
+            }
+ 
+            <span class="c">// Consistency: We may have been the last to update the cache but not with the last stored document.</span>
+            <b>if</b> (!<a href="#f6b55ea4ecfd31aa" class="i field">_isVolatile</a> &amp;&amp; <a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#a0179fc21b5f9462" class="i property">CheckConsistency</a>.<a href="@1@System.Runtime/A.html#7b38d1fa76071c95" class="i property">Value</a>)
+            {
+                (<b>_</b>, <b>var</b> <span id="r20 rd" class="r20 r">stored</span>) = <b>await</b> <a href="#af5e9f19320b04ce" class="i property">DocumentStore</a>.<span class="i">GetOrCreateImmutableAsync</span>&lt;<span class="r0 r t">TDocument</span>&gt;();
+ 
+                <b>if</b> (<span class="r20 r">stored</span>.<span class="i">Identifier</span> != <span class="r19 r">document</span>.<span class="i">Identifier</span>)
+                {
+                    <b>if</b> (<a href="#8e1bebbede8d0076" class="i field">_isDistributed</a>)
+                    {
+                        <b>await</b> <a href="#cf49f5c6693166e6" class="i field">_distributedCache</a>.<span class="i method">RemoveAsync</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>);
+                    }
+                    <b>else</b>
+                    {
+                        <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">Remove</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>);
+                    }
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r0 r t">TDocument</span>&gt; <a id="6832f542b5110c79" href="../R/6832f542b5110c79.html" target="n" data-glyph="76,1" class="i method">GetFromDistributedCacheAsync</a>()
+        {
+            <b>byte</b>[] <span id="r21 rd" class="r21 r">data</span> = <b>null</b>;
+ 
+            <b>if</b> (<a href="#8e1bebbede8d0076" class="i field">_isDistributed</a>)
+            {
+                <span class="r21 r">data</span> = <b>await</b> <a href="#cf49f5c6693166e6" class="i field">_distributedCache</a>.<span class="i method">GetAsync</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>);
+            }
+            <b>else</b> <b>if</b> (<a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i method">TryGetValue</span>&lt;<span class="r0 r t">TDocument</span>&gt;(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>, <b>out</b> <span class="r0 r t">var</span> <span id="r22 rd" class="r22 r">cached</span>))
+            {
+                <span class="r21 r">data</span> = <b>await</b> <a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bf0a8a41257d4e66" class="i property">Serializer</a>.<span class="i">SerializeAsync</span>(<span class="r22 r">cached</span>);
+            }
+ 
+            <b>if</b> (<span class="r21 r">data</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>return</b> <b>await</b> <a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bf0a8a41257d4e66" class="i property">Serializer</a>.<span class="i">DeserializeAsync</span>&lt;<span class="r0 r t">TDocument</span>&gt;(<span class="r21 r">data</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="d9bc84272a622898" href="../R/d9bc84272a622898.html" target="n" data-glyph="76,1" class="i method">UpdateDistributedCacheAsync</a>(<span class="r0 r t">TDocument</span> <span id="r23 rd" class="r23 r">document</span>)
+        {
+            <b>if</b> (<a href="#8e1bebbede8d0076" class="i field">_isDistributed</a>)
+            {
+                <b>var</b> <span id="r24 rd" class="r24 r">data</span> = <b>await</b> <a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bf0a8a41257d4e66" class="i property">Serializer</a>.<span class="i">SerializeAsync</span>(<span class="r23 r">document</span>, <a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#3f59b9f30d64b6c8" class="i property">CompressThreshold</a>);
+                <b>await</b> <a href="#cf49f5c6693166e6" class="i field">_distributedCache</a>.<span class="i">SetAsync</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a>, <span class="r24 r">data</span>, <a href="#ec38a182d0a6035c" class="i field">_options</a>);
+                <b>await</b> <a href="#cf49f5c6693166e6" class="i field">_distributedCache</a>.<span class="i">SetStringAsync</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>, <span class="r23 r">document</span>.<span class="i">Identifier</span> ?? <span class="s">&quot;NULL&quot;</span>, <a href="#ec38a182d0a6035c" class="i field">_options</a>);
+            }
+            <b>else</b>
+            {
+                <a href="#3aa3c64530a5a66a" class="i field">_memoryCache</a>.<span class="i">Set</span>(<a href="#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#4396a7e45f35d39d" class="i property">CacheIdKey</a>, <span class="r23 r">document</span>.<span class="i">Identifier</span> ?? <span class="s">&quot;NULL&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

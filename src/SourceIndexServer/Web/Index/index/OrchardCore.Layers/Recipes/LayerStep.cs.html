@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html><head><title>LayerStep.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(157);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Layers/Recipes/LayerStep.cs" target="_top">Recipes\LayerStep.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Layers" target="_top">src\OrchardCore.Modules\OrchardCore.Layers\OrchardCore.Layers.csproj</a> (OrchardCore.Layers)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Layers</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Layers</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Recipes</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Rules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Layers</span>.<span class="i n">Recipes</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This recipe step creates or updates a layer.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="c30ba2607a650012" href="../R/c30ba2607a650012.html" target="n" data-glyph="0,0" class="t t">LayerStep</a> : <a href="/OrchardCore.Recipes.Abstractions/A.html#30c546cf8f65a6eb" class="t t">IRecipeStepHandler</a>
+    {
+        <b>private readonly static</b> <span class="i">JsonSerializer</span> <a id="4e1b5f5c2cd3e384" href="../R/4e1b5f5c2cd3e384.html" target="n" data-glyph="46,1" class="i field">JsonSerializer</a> = <b>new</b> <span class="i">JsonSerializer</span>()
+        {
+            <span class="i">TypeNameHandling</span> = <span class="i">TypeNameHandling</span>.<span class="i">Auto</span>
+        };
+ 
+        <b>private readonly</b> <a href="../Services/ILayerService.cs.html#bd6b049f28eda706" class="t t">ILayerService</a> <a id="5cac2beead31cc82" href="../R/5cac2beead31cc82.html" target="n" data-glyph="46,1" class="i field">_layerService</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Rules.Abstractions/A.html#74c7df5381451890" class="t t">IRuleMigrator</a> <a id="4181c16129ec5650" href="../R/4181c16129ec5650.html" target="n" data-glyph="46,1" class="i field">_ruleMigrator</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Rules.Abstractions/A.html#ad0e2a0eb60359b6" class="t t">IConditionIdGenerator</a> <a id="5f7c2acce35a95f3" href="../R/5f7c2acce35a95f3.html" target="n" data-glyph="46,1" class="i field">_conditionIdGenerator</a>;
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Rules.Abstractions/A.html#82411e52c6f97577" class="t t">IConditionFactory</a>&gt; <a id="a1c8e5628624c53d" href="../R/a1c8e5628624c53d.html" target="n" data-glyph="46,1" class="i field">_factories</a>;
+ 
+        <b>public</b> <a id="9fa5f48ab11bfec8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LayerStep</a>(
+            <a href="../Services/ILayerService.cs.html#bd6b049f28eda706" class="t t">ILayerService</a> <span id="r0 rd" class="r0 r">layerService</span>,
+            <a href="/OrchardCore.Rules.Abstractions/A.html#74c7df5381451890" class="t t">IRuleMigrator</a> <span id="r1 rd" class="r1 r">ruleMigrator</span>,
+            <a href="/OrchardCore.Rules.Abstractions/A.html#ad0e2a0eb60359b6" class="t t">IConditionIdGenerator</a> <span id="r2 rd" class="r2 r">conditionIdGenerator</span>,
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Rules.Abstractions/A.html#82411e52c6f97577" class="t t">IConditionFactory</a>&gt; <span id="r3 rd" class="r3 r">factories</span>)
+        {
+            <a href="#5cac2beead31cc82" class="i field">_layerService</a> = <span class="r0 r">layerService</span>;
+            <a href="#4181c16129ec5650" class="i field">_ruleMigrator</a> = <span class="r1 r">ruleMigrator</span>;
+            <a href="#5f7c2acce35a95f3" class="i field">_conditionIdGenerator</a> = <span class="r2 r">conditionIdGenerator</span>;
+            <a href="#a1c8e5628624c53d" class="i field">_factories</a> = <span class="r3 r">factories</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="6e8db54e10d3b7c3" href="../R/6e8db54e10d3b7c3.html" target="n" data-glyph="72,1" class="i method">ExecuteAsync</a>(<a href="/OrchardCore.Recipes.Abstractions/A.html#62144c85232f4f1c" class="t t">RecipeExecutionContext</a> <span id="r4 rd" class="r4 r">context</span>)
+        {
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r4 r">context</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#21252a5abe295c58" class="i property">Name</a>, <span class="s">&quot;Layers&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b>;
+            }
+ 
+            <b>var</b> <span id="r5 rd" class="r5 r">model</span> = <span class="r4 r">context</span>.<a href="/OrchardCore.Recipes.Abstractions/A.html#615c9d45aa327ca8" class="i property">Step</a>.<span class="i">ToObject</span>&lt;<a href="#0444854712c1f47b" class="t t">LayersStepModel</a>&gt;();
+ 
+            <a href="../Models/LayersDocument.cs.html#945f5e904ce8a1fd" class="k">var</a> <span id="r6 rd" class="r6 r">allLayers</span> = <b>await</b> <a href="#5cac2beead31cc82" class="i field">_layerService</a>.<a href="../Services/ILayerService.cs.html#efa2b7e5b660ffdb" class="i method">LoadLayersAsync</a>();
+ 
+            <b>var</b> <span id="r7 rd" class="r7 r">unknownTypes</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+            <b>var</b> <span id="r8 rd" class="r8 r">factories</span> = <a href="#a1c8e5628624c53d" class="i field">_factories</a>.<span class="i method">ToDictionary</span>(<span id="r9 rd" class="r9 r">x</span> =&gt; <span class="r9 r">x</span>.<a href="/OrchardCore.Rules.Abstractions/A.html#320e689fb5a8219d" class="i property">Name</a>);
+ 
+            <b>foreach</b> (<b>var</b> <span id="r10 rd" class="r10 r">layerStep</span> <b>in</b> <span class="r5 r">model</span>.<span class="i">Layers</span>)
+            {
+                <a href="../Models/Layer.cs.html#1c0d592a36c3a08b" class="k">var</a> <span id="r11 rd" class="r11 r">layer</span> = <span class="r6 r">allLayers</span>.<a href="../Models/LayersDocument.cs.html#9fc90dd2504ea058" class="i property">Layers</a>.<span class="i method">FirstOrDefault</span>(<span id="r12 rd" class="r12 r">x</span> =&gt; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">Equals</span>(<span class="r12 r">x</span>.<a href="../Models/Layer.cs.html#0acefff32be25500" class="i property">Name</a>, <span class="r10 r">layerStep</span>.<span class="i">Name</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>));
+ 
+                <b>if</b> (<span class="r11 r">layer</span> == <b>null</b>)
+                {
+                    <span class="r11 r">layer</span> = <b>new</b> <a href="../Models/Layer.cs.html#1c0d592a36c3a08b" class="t constructor">Layer</a>();
+                    <span class="r6 r">allLayers</span>.<a href="../Models/LayersDocument.cs.html#9fc90dd2504ea058" class="i property">Layers</a>.<span class="i method">Add</span>(<span class="r11 r">layer</span>);
+                }
+ 
+                <span class="c">// Backwards compatability check.</span>
+                <b>if</b> (<span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a> == <b>null</b>)
+                {
+                    <span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a> = <b>new</b> <a href="/OrchardCore.Rules.Abstractions/A.html#96636e2f2bede914" class="t constructor">Rule</a>();
+                    <a href="#5f7c2acce35a95f3" class="i field">_conditionIdGenerator</a>.<a href="/OrchardCore.Rules.Abstractions/A.html#9b0915c883e364aa" class="i method">GenerateUniqueId</a>(<span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a>);
+                }
+ 
+                <span class="c">// Replace any property that is set in the recipe step</span>
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r10 r">layerStep</span>.<span class="i">Name</span>))
+                {
+                    <span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#0acefff32be25500" class="i property">Name</a> = <span class="r10 r">layerStep</span>.<span class="i">Name</span>;
+                }
+                <b>else</b>
+                {
+                    <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#8314938388254d5a" class="t constructor">ArgumentNullException</a>(<span class="s">$&quot;</span>{<b>nameof</b>(<span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#0acefff32be25500" class="i property">Name</a>)}<span class="s"> is required</span><span class="s">&quot;</span>);
+                }
+ 
+                <b>if</b> (<span class="r10 r">layerStep</span>.<span class="i">LayerRule</span> != <b>null</b>)
+                {
+                    <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r10 r">layerStep</span>.<span class="i">LayerRule</span>.<span class="i">ConditionId</span>))
+                    {
+                        <span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a>.<a href="/OrchardCore.Rules.Abstractions/A.html#7ef41ecb0d1c8608" class="i property">ConditionId</a> = <span class="r10 r">layerStep</span>.<span class="i">LayerRule</span>.<span class="i">ConditionId</span>;
+                    }
+ 
+                    <span class="c">// The conditions list is cleared, because we cannot logically merge conditions.</span>
+                    <span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a>.<a href="/OrchardCore.Rules.Abstractions/A.html#883f58ae0898d1bf" class="i property">Conditions</a>.<span class="i method">Clear</span>();
+                    <b>foreach</b> (<b>var</b> <span id="r13 rd" class="r13 r">jCondition</span> <b>in</b> <span class="r10 r">layerStep</span>.<span class="i">LayerRule</span>.<span class="i">Conditions</span>)
+                    {
+                        <b>var</b> <span id="r14 rd" class="r14 r">name</span> = <span class="r13 r">jCondition</span>[<span class="s">&quot;Name&quot;</span>].<span class="i">ToString</span>();
+                        <b>if</b> (<span class="r8 r">factories</span>.<span class="i">TryGetValue</span>(<span class="r14 r">name</span>, <b>out</b> <a href="/OrchardCore.Rules.Abstractions/A.html#82411e52c6f97577" class="k">var</a> <span id="r15 rd" class="r15 r">factory</span>))
+                        {
+                            <a href="/OrchardCore.Rules.Abstractions/A.html#b6dbd3e74203e032" class="k">var</a> <span id="r16 rd" class="r16 r">factoryCondition</span> = (<a href="/OrchardCore.Rules.Abstractions/A.html#b6dbd3e74203e032" class="t t">Condition</a>)<span class="r13 r">jCondition</span>.<span class="i">ToObject</span>(<span class="r15 r">factory</span>.<a href="/OrchardCore.Rules.Abstractions/A.html#a818d3706aa536d2" class="i method">Create</a>().<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>(), <a href="#4e1b5f5c2cd3e384" class="i field">JsonSerializer</a>);
+ 
+                            <span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a>.<a href="/OrchardCore.Rules.Abstractions/A.html#883f58ae0898d1bf" class="i property">Conditions</a>.<span class="i method">Add</span>(<span class="r16 r">factoryCondition</span>);
+                        }
+                        <b>else</b>
+                        {
+                             <span class="r7 r">unknownTypes</span>.<span class="i">Add</span>(<span class="r14 r">name</span>);
+                        }
+                    }
+                }
+ 
+<span class="k preprocess">#</span><span class="k preprocess">pragma</span> <span class="k preprocess">warning</span> <span class="k preprocess">disable</span> 0618
+                <span class="c">// Migrate any old rule in a recipe to the new rule format.</span>
+                <span class="c">// Do not import the old rule.</span>
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r10 r">layerStep</span>.<span class="i">Rule</span>))
+                {
+                    <a href="#4181c16129ec5650" class="i field">_ruleMigrator</a>.<span class="i">Migrate</span>(<span class="r10 r">layerStep</span>.<span class="i">Rule</span>, <span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#be32c18fb8f4026d" class="i property">LayerRule</a>);
+                }
+<span class="k preprocess">#</span><span class="k preprocess">pragma</span> <span class="k preprocess">warning</span> <span class="k preprocess">restore</span> 0618
+ 
+                <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<span class="i">IsNullOrEmpty</span>(<span class="r10 r">layerStep</span>.<span class="i">Description</span>))
+                {
+                    <span class="r11 r">layer</span>.<a href="../Models/Layer.cs.html#0946d0d73ccac2a3" class="i property">Description</a> = <span class="r10 r">layerStep</span>.<span class="i">Description</span>;
+                }
+            }
+ 
+            <b>if</b> (<span class="r7 r">unknownTypes</span>.<span class="i property">Count</span> != 0)
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">prefix</span> = <span class="s">&quot;No changes have been made. The following types of conditions cannot be added:&quot;</span>;
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">suffix</span> = <span class="s">&quot;Please ensure that the related features are enabled to add these types of conditions.&quot;</span>;
+ 
+                <b>throw</b> <b>new</b> <a href="@1@System.Runtime/A.html#265d72f49e915224" class="t constructor">InvalidOperationException</a>(<span class="s">$&quot;</span>{<span class="r17 r">prefix</span>}<span class="s"> </span>{<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot;, &quot;</span>, <span class="r7 r">unknownTypes</span>)}<span class="s">. </span>{<span class="r18 r">suffix</span>}<span class="s">&quot;</span>);
+            }
+ 
+            <b>await</b> <a href="#5cac2beead31cc82" class="i field">_layerService</a>.<a href="../Services/ILayerService.cs.html#2ba6b07ab60762e3" class="i method">UpdateAsync</a>(<span class="r6 r">allLayers</span>);
+        }
+    }
+ 
+    <b>public class</b> <a id="0444854712c1f47b" href="../R/0444854712c1f47b.html" target="n" data-glyph="0,0" class="t t"><span id="df3cfc743b18302a">LayersStepModel</span></a>
+    {
+        <b>public</b> <a href="#fcf1c25a5c3ab4a8" class="t t">LayerStepModel</a>[] <a id="bf2b548d306233d5" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Layers</a> { <b>get</b>; <b>set</b>; }
+    }
+ 
+    <b>public class</b> <a id="fcf1c25a5c3ab4a8" href="../R/fcf1c25a5c3ab4a8.html" target="n" data-glyph="0,0" class="t t"><span id="7e7981efbc1a30f2">LayerStepModel</span></a>
+    {
+        <b>public string</b> <a id="b49cc97832253f0b" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Name</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public string</b> <a id="95b76519aad1937d" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Rule</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="a6019f110132279a" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Description</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public</b> <a href="#c6e97bc93017953b" class="t t">RuleStepModel</a> <a id="c037fd7c5e3362d5" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">LayerRule</a> { <b>get</b>; <b>set</b>; }
+    }    
+ 
+    <b>public class</b> <a id="c6e97bc93017953b" href="../R/c6e97bc93017953b.html" target="n" data-glyph="0,0" class="t t"><span id="715d0ceb7615e032">RuleStepModel</span></a>
+    {
+        <b>public string</b> <a id="587b69edbd63c2b3" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Name</a> { <b>get</b>; <b>set</b>; }
+        <b>public string</b> <a id="b2b823601712680b" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">ConditionId</a> { <b>get</b>; <b>set</b>; }
+        <b>public</b> <span class="i">JArray</span> <a id="8353d049d78effde" href="../R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Conditions</a> { <b>get</b>; <b>set</b>; }
+    }
+}
+</pre></td></tr></table></div></body></html>

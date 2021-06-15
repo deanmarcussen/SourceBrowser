@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html><head><title>ModularTenantContainerMiddleware.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(74);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Modules/ModularTenantContainerMiddleware.cs" target="_top">Modules\ModularTenantContainerMiddleware.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Net</span>.<span class="i n">Http</span>.<span class="i n">Headers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Models</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> This middleware replaces the default service provider by the one for the current tenant</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="297e34ed029d188c" href="../R/297e34ed029d188c.html" target="n" data-glyph="0,0" class="t t">ModularTenantContainerMiddleware</a>
+    {
+        <b>private readonly</b> <span class="t t">RequestDelegate</span> <a id="6030fdadcc21bfcd" href="../R/6030fdadcc21bfcd.html" target="n" data-glyph="46,1" class="i field">_next</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <a id="fedd7735841b55c2" href="../R/fedd7735841b55c2.html" target="n" data-glyph="46,1" class="i field">_shellHost</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#99578f81a6193ddf" class="t t">IRunningShellTable</a> <a id="a5c15ab6d30feb14" href="../R/a5c15ab6d30feb14.html" target="n" data-glyph="46,1" class="i field">_runningShellTable</a>;
+ 
+        <b>public</b> <a id="b35153b52863b4d5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ModularTenantContainerMiddleware</a>(
+            <span class="t t">RequestDelegate</span> <span id="r0 rd" class="r0 r">next</span>,
+            <a href="/OrchardCore.Abstractions/A.html#ed51f9b119330ee5" class="t t">IShellHost</a> <span id="r1 rd" class="r1 r">shellHost</span>,
+            <a href="/OrchardCore.Abstractions/A.html#99578f81a6193ddf" class="t t">IRunningShellTable</a> <span id="r2 rd" class="r2 r">runningShellTable</span>)
+        {
+            <a href="#6030fdadcc21bfcd" class="i field">_next</a> = <span class="r0 r">next</span>;
+            <a href="#fedd7735841b55c2" class="i field">_shellHost</a> = <span class="r1 r">shellHost</span>;
+            <a href="#a5c15ab6d30feb14" class="i field">_runningShellTable</a> = <span class="r2 r">runningShellTable</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="c9f12668a2ab5acc" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Invoke</a>(<span class="t t">HttpContext</span> <span id="r3 rd" class="r3 r">httpContext</span>)
+        {
+            <span class="c">// Ensure all ShellContext are loaded and available.</span>
+            <b>await</b> <a href="#fedd7735841b55c2" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#ff82ecf4bacadcc8" class="i method">InitializeAsync</a>();
+ 
+            <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r4 rd" class="r4 r">shellSettings</span> = <a href="#a5c15ab6d30feb14" class="i field">_runningShellTable</a>.<a href="Extensions/RunningShellTableExtensions.cs.html#c5746ddf20d3d13d" class="i method">Match</a>(<span class="r3 r">httpContext</span>);
+ 
+            <span class="c">// We only serve the next request if the tenant has been resolved.</span>
+            <b>if</b> (<span class="r4 r">shellSettings</span> != <b>null</b>)
+            {
+                <b>if</b> (<span class="r4 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#42a6610d7f01c165" class="i property">State</a> == <a href="/OrchardCore.Abstractions/A.html#386ecd81b926aa48" class="t t">TenantState</a>.<a href="/OrchardCore.Abstractions/A.html#46968226c94abdb9" class="i field">Initializing</a>)
+                {
+                    <span class="r3 r">httpContext</span>.<span class="i property">Response</span>.<span class="i property">Headers</span>.<a href="@1@System.Runtime/A.html#380bc69e46a83183" class="i method">Add</a>(<span class="t t">HeaderNames</span>.<span class="i field">RetryAfter</span>, <span class="s">&quot;10&quot;</span>);
+                    <span class="r3 r">httpContext</span>.<span class="i property">Response</span>.<span class="i property">StatusCode</span> = <span class="t t">StatusCodes</span>.<span class="i field">Status503ServiceUnavailable</span>;
+                    <b>await</b> <span class="r3 r">httpContext</span>.<span class="i property">Response</span>.<span class="i method">WriteAsync</span>(<span class="s">&quot;The requested tenant is currently initializing.&quot;</span>);
+                    <b>return</b>;
+                }
+ 
+                <span class="c">// Makes &#39;RequestServices&#39; aware of the current &#39;ShellScope&#39;.</span>
+                <span class="r3 r">httpContext</span>.<a href="/OrchardCore.Abstractions/A.html#f6599c86f4b50996" class="i method">UseShellScopeServices</a>();
+ 
+                <a href="/OrchardCore.Abstractions/A.html#6bc229032c2ec619" class="k">var</a> <span id="r5 rd" class="r5 r">shellScope</span> = <b>await</b> <a href="#fedd7735841b55c2" class="i field">_shellHost</a>.<a href="/OrchardCore.Abstractions/A.html#ba40af19c73a5806" class="i method">GetScopeAsync</a>(<span class="r4 r">shellSettings</span>);
+ 
+                <span class="c">// Holds the &#39;ShellContext&#39; for the full request.</span>
+                <span class="r3 r">httpContext</span>.<span class="i property">Features</span>.<span class="i method">Set</span>(<b>new</b> <a href="/OrchardCore.Abstractions/A.html#e417096bb46736d2" class="t constructor">ShellContextFeature</a>
+                {
+                    <a href="/OrchardCore.Abstractions/A.html#28180a358ade1eb8" class="i property">ShellContext</a> = <span class="r5 r">shellScope</span>.<a href="/OrchardCore.Abstractions/A.html#e31ecdd9861b326a" class="i property">ShellContext</a>,
+                    <a href="/OrchardCore.Abstractions/A.html#d7fdca8a76e8e0be" class="i property">OriginalPath</a> = <span class="r3 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">Path</span>,
+                    <a href="/OrchardCore.Abstractions/A.html#8eacb3da584c7ee2" class="i property">OriginalPathBase</a> = <span class="r3 r">httpContext</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span>
+                });
+ 
+                <b>await</b> <span class="r5 r">shellScope</span>.<a href="/OrchardCore.Abstractions/A.html#ae74d3684cfadb54" class="i method">UsingAsync</a>(<b>async</b> <span id="r6 rd" class="r6 r">scope</span> =&gt;
+                {
+                    <b>await</b> <a href="#6030fdadcc21bfcd" class="i field">_next</a>.<span class="i method">Invoke</span>(<span class="r3 r">httpContext</span>);
+ 
+                    <b>var</b> <span id="r7 rd" class="r7 r">feature</span> = <span class="r3 r">httpContext</span>.<span class="i property">Features</span>.<span class="i method">Get</span>&lt;<span class="t t">IExceptionHandlerFeature</span>&gt;();
+                    <b>if</b> (<span class="r7 r">feature</span>?.<span class="i property">Error</span> != <b>null</b>)
+                    {
+                        <b>await</b> <span class="r6 r">scope</span>.<a href="/OrchardCore.Abstractions/A.html#d0bbc9a3c754f990" class="i method">HandleExceptionAsync</a>(<span class="r7 r">feature</span>.<span class="i property">Error</span>);
+                    }
+                });
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

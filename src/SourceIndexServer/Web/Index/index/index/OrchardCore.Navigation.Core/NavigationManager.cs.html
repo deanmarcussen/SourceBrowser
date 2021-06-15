@@ -1,0 +1,295 @@
+﻿<!DOCTYPE html>
+<html><head><title>NavigationManager.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(286);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Navigation.Core/NavigationManager.cs" target="_top">NavigationManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Navigation.Core" target="_top">src\OrchardCore\OrchardCore.Navigation.Core\OrchardCore.Navigation.Core.csproj</a> (OrchardCore.Navigation.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Security</span>.<span class="i n">Claims</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Routing</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i">Shell</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Navigation</span>
+{
+    <b>public class</b> <a id="e39d53ba4e7fcef8" href="R/e39d53ba4e7fcef8.html" target="n" data-glyph="0,0" class="t t">NavigationManager</a> : <a href="INavigationManager.cs.html#be29e039372a7e26" class="t t">INavigationManager</a>
+    {
+        <b>private readonly</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="INavigationProvider.cs.html#9919a71a2815e0c1" class="t t">INavigationProvider</a>&gt; <a id="12ee0ca8a3d4ff67" href="R/12ee0ca8a3d4ff67.html" target="n" data-glyph="46,1" class="i field">_navigationProviders</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="239dad44eb8c7efb" href="R/239dad44eb8c7efb.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>protected readonly</b> <span class="i">ShellSettings</span> <a id="8474866edd03d639" href="R/8474866edd03d639.html" target="n" data-glyph="45,1" class="i field">_shellSettings</a>;
+        <b>private readonly</b> <span class="t t">IUrlHelperFactory</span> <a id="6dc8848d3ffe4d0d" href="R/6dc8848d3ffe4d0d.html" target="n" data-glyph="46,1" class="i field">_urlHelperFactory</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="8898b6fb91a96060" href="R/8898b6fb91a96060.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+ 
+        <b>private</b> <span class="t t">IUrlHelper</span> <a id="59eb3a7a05756308" href="R/59eb3a7a05756308.html" target="n" data-glyph="46,1" class="i field">_urlHelper</a>;
+ 
+        <b>public</b> <a id="84bb7bdb55dbe3d1" href="R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">NavigationManager</a>(
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="INavigationProvider.cs.html#9919a71a2815e0c1" class="t t">INavigationProvider</a>&gt; <span id="r0 rd" class="r0 r">navigationProviders</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#e39d53ba4e7fcef8" class="t t">NavigationManager</a>&gt; <span id="r1 rd" class="r1 r">logger</span>,
+            <span class="i">ShellSettings</span> <span id="r2 rd" class="r2 r">shellSettings</span>,
+            <span class="t t">IUrlHelperFactory</span> <span id="r3 rd" class="r3 r">urlHelperFactory</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r4 rd" class="r4 r">authorizationService</span>
+            )
+        {
+            <a href="#12ee0ca8a3d4ff67" class="i field">_navigationProviders</a> = <span class="r0 r">navigationProviders</span>;
+            <a href="#239dad44eb8c7efb" class="i field">_logger</a> = <span class="r1 r">logger</span>;
+            <a href="#8474866edd03d639" class="i field">_shellSettings</a> = <span class="r2 r">shellSettings</span>;
+            <a href="#6dc8848d3ffe4d0d" class="i field">_urlHelperFactory</a> = <span class="r3 r">urlHelperFactory</span>;
+            <a href="#8898b6fb91a96060" class="i field">_authorizationService</a> = <span class="r4 r">authorizationService</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt;&gt; <a id="bddf1d68b1df05e3" href="R/bddf1d68b1df05e3.html" target="n" data-glyph="72,1" class="i method">BuildMenuAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r5 rd" class="r5 r">name</span>, <span class="t t">ActionContext</span> <span id="r6 rd" class="r6 r">actionContext</span>)
+        {
+            <a href="NavigationBuilder.cs.html#4fadd08f10c9eb93" class="k">var</a> <span id="r7 rd" class="r7 r">builder</span> = <b>new</b> <a href="NavigationBuilder.cs.html#32aa7c7c41e5c410" class="t constructor">NavigationBuilder</a>();
+ 
+            <span class="c">// Processes all navigation builders to create a flat list of menu items.</span>
+            <span class="c">// If a navigation builder fails, it is ignored.</span>
+            <b>foreach</b> (<a href="INavigationProvider.cs.html#9919a71a2815e0c1" class="k">var</a> <span id="r8 rd" class="r8 r">navigationProvider</span> <b>in</b> <a href="#12ee0ca8a3d4ff67" class="i field">_navigationProviders</a>)
+            {
+                <b>try</b>
+                {
+                    <b>await</b> <span class="r8 r">navigationProvider</span>.<a href="INavigationProvider.cs.html#f45baedd69a5d096" class="i method">BuildNavigationAsync</a>(<span class="r5 r">name</span>, <span class="r7 r">builder</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r9 rd" class="r9 r">e</span>)
+                {
+                    <a href="#239dad44eb8c7efb" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r9 r">e</span>, <span class="s">&quot;An exception occurred while building the menu &#39;{MenuName}&#39;&quot;</span>, <span class="r5 r">name</span>);
+                }
+            }
+ 
+            <b>var</b> <span id="r10 rd" class="r10 r">menuItems</span> = <span class="r7 r">builder</span>.<a href="NavigationBuilder.cs.html#66913cc0870a558d" class="i method">Build</a>();
+ 
+            <span class="c">// Merge all menu hierarchies into a single one</span>
+            <a href="#8a02887b9b574d1f" class="i method">Merge</a>(<span class="r10 r">menuItems</span>);
+ 
+            <span class="c">// Remove unauthorized menu items</span>
+            <span class="r10 r">menuItems</span> = <b>await</b> <a href="#ad92af4641d162be" class="i method">AuthorizeAsync</a>(<span class="r10 r">menuItems</span>, <span class="r6 r">actionContext</span>.<span class="i property">HttpContext</span>.<span class="i property">User</span>);
+ 
+            <span class="c">// Compute Url and RouteValues properties to Href</span>
+            <span class="r10 r">menuItems</span> = <a href="#7d5b9931fe86f04f" class="i method">ComputeHref</a>(<span class="r10 r">menuItems</span>, <span class="r6 r">actionContext</span>);
+ 
+            <span class="c">// Keep only menu items with an Href, or that have child items with an Href</span>
+            <span class="r10 r">menuItems</span> = <a href="#d35353ee4776ad32" class="i method">Reduce</a>(<span class="r10 r">menuItems</span>);
+ 
+            <b>return</b> <span class="r10 r">menuItems</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Mutates a list of </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> into a hierarchy</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private static void</b> <a id="8a02887b9b574d1f" href="R/8a02887b9b574d1f.html" target="n" data-glyph="76,1" class="i method">Merge</a>(<span class="t t">List</span>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt; <span id="r11 rd" class="r11 r">items</span>)
+        {
+            <span class="c">// Use two cursors to find all similar captions. If the same caption is represented</span>
+            <span class="c">// by multiple menu item, try to merge it recursively.</span>
+            <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r12 rd" class="r12 r">i</span> = 0; <span class="r12 r">i</span> &lt; <span class="r11 r">items</span>.<span class="i property">Count</span>; <span class="r12 r">i</span>++)
+            {
+                <a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="k">var</a> <span id="r13 rd" class="r13 r">source</span> = <span class="r11 r">items</span>[<span class="r12 r">i</span>];
+                <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r14 rd" class="r14 r">merged</span> = <b>false</b>;
+                <b>for</b> (<a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r15 rd" class="r15 r">j</span> = <span class="r11 r">items</span>.<span class="i property">Count</span> - 1; <span class="r15 r">j</span> &gt; <span class="r12 r">i</span>; <span class="r15 r">j</span>--)
+                {
+                    <a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="k">var</a> <span id="r16 rd" class="r16 r">cursor</span> = <span class="r11 r">items</span>[<span class="r15 r">j</span>];
+ 
+                    <span class="c">// A match is found, add all its items to the source</span>
+                    <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#d47c1f57ad1e1e6e" class="i method">Equals</a>(<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#7e6b19657972d66f" class="i property">Text</a>.<span class="i property">Name</span>, <span class="r13 r">source</span>.<a href="MenuItem.cs.html#7e6b19657972d66f" class="i property">Text</a>.<span class="i property">Name</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#6c3139b940557bf9" class="i field">OrdinalIgnoreCase</a>))
+                    {
+                        <span class="r14 r">merged</span> = <b>true</b>;
+                        <b>foreach</b> (<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="k">var</a> <span id="r17 rd" class="r17 r">child</span> <b>in</b> <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>)
+                        {
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>.<span class="i method">Add</span>(<span class="r17 r">child</span>);
+                        }
+ 
+                        <span class="r11 r">items</span>.<span class="i method">RemoveAt</span>(<span class="r15 r">j</span>);
+ 
+                        <span class="c">// If the item to merge is more authoritative then use its values</span>
+                        <b>if</b> (<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#57a0b027563942ca" class="i property">Priority</a> &gt; <span class="r13 r">source</span>.<a href="MenuItem.cs.html#57a0b027563942ca" class="i property">Priority</a>)
+                        {
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#085f6f851ad70393" class="i property">Culture</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#085f6f851ad70393" class="i property">Culture</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#b0b06ea40e184346" class="i property">Href</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#b0b06ea40e184346" class="i property">Href</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#9260861bcb134a45" class="i property">Id</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#9260861bcb134a45" class="i property">Id</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#59f331c3f889348f" class="i property">LinkToFirstChild</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#59f331c3f889348f" class="i property">LinkToFirstChild</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#2e72f82536212c10" class="i property">LocalNav</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#2e72f82536212c10" class="i property">LocalNav</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#7d2b7c35c71be641" class="i property">Position</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#7d2b7c35c71be641" class="i property">Position</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#03e9af878b73dcff" class="i property">Resource</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#03e9af878b73dcff" class="i property">Resource</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#57bc9450e445426b" class="i property">RouteValues</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#57bc9450e445426b" class="i property">RouteValues</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#7e6b19657972d66f" class="i property">Text</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#7e6b19657972d66f" class="i property">Text</a>;
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#8dccb6bb63862306" class="i property">Url</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#8dccb6bb63862306" class="i property">Url</a>;
+ 
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>.<span class="i method">Clear</span>();
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>.<span class="i method">AddRange</span>(<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>);
+ 
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#8430f43e6aec214c" class="i property">Classes</a>.<span class="i method">Clear</span>();
+                            <span class="r13 r">source</span>.<a href="MenuItem.cs.html#8430f43e6aec214c" class="i property">Classes</a>.<span class="i method">AddRange</span>(<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#8430f43e6aec214c" class="i property">Classes</a>);
+                        }
+ 
+                        <span class="c">//Fallback to get the same behavior than before having the Priority var</span>
+                        <b>if</b> (<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#57a0b027563942ca" class="i property">Priority</a> == <span class="r13 r">source</span>.<a href="MenuItem.cs.html#57a0b027563942ca" class="i property">Priority</a>)
+                        {
+                            <b>if</b> (<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#7d2b7c35c71be641" class="i property">Position</a> != <b>null</b> &amp;&amp; <span class="r13 r">source</span>.<a href="MenuItem.cs.html#7d2b7c35c71be641" class="i property">Position</a> == <b>null</b>)
+                            {
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#085f6f851ad70393" class="i property">Culture</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#085f6f851ad70393" class="i property">Culture</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#b0b06ea40e184346" class="i property">Href</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#b0b06ea40e184346" class="i property">Href</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#9260861bcb134a45" class="i property">Id</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#9260861bcb134a45" class="i property">Id</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#59f331c3f889348f" class="i property">LinkToFirstChild</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#59f331c3f889348f" class="i property">LinkToFirstChild</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#2e72f82536212c10" class="i property">LocalNav</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#2e72f82536212c10" class="i property">LocalNav</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#7d2b7c35c71be641" class="i property">Position</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#7d2b7c35c71be641" class="i property">Position</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#03e9af878b73dcff" class="i property">Resource</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#03e9af878b73dcff" class="i property">Resource</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#57bc9450e445426b" class="i property">RouteValues</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#57bc9450e445426b" class="i property">RouteValues</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#7e6b19657972d66f" class="i property">Text</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#7e6b19657972d66f" class="i property">Text</a>;
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#8dccb6bb63862306" class="i property">Url</a> = <span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#8dccb6bb63862306" class="i property">Url</a>;
+ 
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>.<span class="i method">Clear</span>();
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>.<span class="i method">AddRange</span>(<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>);
+ 
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#8430f43e6aec214c" class="i property">Classes</a>.<span class="i method">Clear</span>();
+                                <span class="r13 r">source</span>.<a href="MenuItem.cs.html#8430f43e6aec214c" class="i property">Classes</a>.<span class="i method">AddRange</span>(<span class="r16 r">cursor</span>.<a href="MenuItem.cs.html#8430f43e6aec214c" class="i property">Classes</a>);
+                            }
+                        }
+                    }
+                }
+ 
+                <span class="c">// If some items have been merged, apply recursively</span>
+                <b>if</b> (<span class="r14 r">merged</span>)
+                {
+                    <a href="#8a02887b9b574d1f" class="i method">Merge</a>(<span class="r13 r">source</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>);
+                }
+            }
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Computes the </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>.<a href="MenuItem.cs.html#b0b06ea40e184346" class="i property">Href</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> properties based on </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>.<a href="MenuItem.cs.html#8dccb6bb63862306" class="i property">Url</a><span class="c">&quot;</span><span class="c">/&gt;</span>
+        <span class="c">///</span><span class="c"> and </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>.<a href="MenuItem.cs.html#57bc9450e445426b" class="i property">RouteValues</a><span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> values.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <span class="t t">List</span>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt; <a id="7d5b9931fe86f04f" href="R/7d5b9931fe86f04f.html" target="n" data-glyph="76,1" class="i method">ComputeHref</a>(<span class="t t">List</span>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt; <span id="r18 rd" class="r18 r">menuItems</span>, <span class="t t">ActionContext</span> <span id="r19 rd" class="r19 r">actionContext</span>)
+        {
+            <b>foreach</b> (<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="k">var</a> <span id="r20 rd" class="r20 r">menuItem</span> <b>in</b> <span class="r18 r">menuItems</span>)
+            {
+                <span class="r20 r">menuItem</span>.<a href="MenuItem.cs.html#b0b06ea40e184346" class="i property">Href</a> = <a href="#c3eb4098dee5f8b5" class="i method">GetUrl</a>(<span class="r20 r">menuItem</span>.<a href="MenuItem.cs.html#8dccb6bb63862306" class="i property">Url</a>, <span class="r20 r">menuItem</span>.<a href="MenuItem.cs.html#57bc9450e445426b" class="i property">RouteValues</a>, <span class="r19 r">actionContext</span>);
+                <span class="r20 r">menuItem</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a> = <a href="#7d5b9931fe86f04f" class="i method">ComputeHref</a>(<span class="r20 r">menuItem</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>, <span class="r19 r">actionContext</span>);
+            }
+ 
+            <b>return</b> <span class="r18 r">menuItems</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Gets the url.from a menu item url a routeValueDictionary and an actionContext.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r21 r">menuItemUrl</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">The </span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r22 r">routeValueDictionary</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">param</span> <span class="c">name</span><span class="c">=</span><span class="c">&quot;</span><span class="r23 r">actionContext</span><span class="c">&quot;</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">param</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">returns</span><span class="c">&gt;</span><span class="c">&lt;/</span><span class="c">returns</span><span class="c">&gt;</span>
+        <b>private string</b> <a id="c3eb4098dee5f8b5" href="R/c3eb4098dee5f8b5.html" target="n" data-glyph="76,1" class="i method">GetUrl</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r21 rd" class="r21 r">menuItemUrl</span>, <span class="t t">RouteValueDictionary</span> <span id="r22 rd" class="r22 r">routeValueDictionary</span>, <span class="t t">ActionContext</span> <span id="r23 rd" class="r23 r">actionContext</span>)
+        {
+            <b>if</b> (<span class="r22 r">routeValueDictionary</span>?.<span class="i property">Count</span> &gt; 0)
+            {
+                <b>if</b> (<a href="#59eb3a7a05756308" class="i field">_urlHelper</a> == <b>null</b>)
+                {
+                    <a href="#59eb3a7a05756308" class="i field">_urlHelper</a> = <a href="#6dc8848d3ffe4d0d" class="i field">_urlHelperFactory</a>.<span class="i method">GetUrlHelper</span>(<span class="r23 r">actionContext</span>);
+                }
+ 
+                <b>return</b> <a href="#59eb3a7a05756308" class="i field">_urlHelper</a>.<span class="i method">RouteUrl</span>(<b>new</b> <span class="t constructor">UrlRouteContext</span> { <span class="i property">Values</span> = <span class="r22 r">routeValueDictionary</span> });
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r21 r">menuItemUrl</span>))
+            {
+                <b>return</b> <span class="s">&quot;#&quot;</span>;
+            }
+ 
+            <b>if</b> (<span class="r21 r">menuItemUrl</span>[0] == <span class="s">&#39;/&#39;</span> || <span class="r21 r">menuItemUrl</span>.<a href="@1@System.Runtime/A.html#7d6aed52d875ec59" class="i method">IndexOf</a>(<span class="s">&quot;://&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>) &gt;= 0)
+            {
+                <span class="c">// Return the unescaped url and let the browser generate all uri components.</span>
+                <b>return</b> <span class="r21 r">menuItemUrl</span>;
+            }
+ 
+            <b>if</b> (<span class="r21 r">menuItemUrl</span>.<a href="@1@System.Runtime/A.html#1c787ba07a7b11ab" class="i method">StartsWith</a>(<span class="s">&quot;~/&quot;</span>, <a href="@1@System.Runtime/A.html#702797def97ecb7c" class="t t">StringComparison</a>.<a href="@1@System.Runtime/A.html#87891a6d28c64c9b" class="i field">Ordinal</a>))
+            {
+                <span class="r21 r">menuItemUrl</span> = <span class="r21 r">menuItemUrl</span>.<a href="@1@System.Runtime/A.html#882fa7998d6ca35a" class="i method">Substring</a>(2);
+            }
+ 
+            <span class="c">// Use the unescaped &#39;Value&#39; to not encode some possible reserved delimiters.</span>
+            <b>return</b> <span class="r23 r">actionContext</span>.<span class="i property">HttpContext</span>.<span class="i property">Request</span>.<span class="i property">PathBase</span>.<span class="i method">Add</span>(<span class="s">&#39;/&#39;</span> + <span class="r21 r">menuItemUrl</span>).<span class="i property">Value</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Updates the items by checking for permissions</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">List</span>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt;&gt; <a id="ad92af4641d162be" href="R/ad92af4641d162be.html" target="n" data-glyph="76,1" class="i method">AuthorizeAsync</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt; <span id="r24 rd" class="r24 r">items</span>, <span class="t t">ClaimsPrincipal</span> <span id="r25 rd" class="r25 r">user</span>)
+        {
+            <b>var</b> <span id="r26 rd" class="r26 r">filtered</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt;();
+ 
+            <b>foreach</b> (<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="k">var</a> <span id="r27 rd" class="r27 r">item</span> <b>in</b> <span class="r24 r">items</span>)
+            {
+                <span class="c">// TODO: Attach actual user and remove this clause</span>
+                <b>if</b> (<span class="r25 r">user</span> == <b>null</b>)
+                {
+                    <span class="r26 r">filtered</span>.<span class="i method">Add</span>(<span class="r27 r">item</span>);
+                }
+                <b>else</b> <b>if</b> (!<span class="r27 r">item</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>.<span class="i method">Any</span>())
+                {
+                    <span class="r26 r">filtered</span>.<span class="i method">Add</span>(<span class="r27 r">item</span>);
+                }
+                <b>else</b>
+                {
+                    <span class="c">// When multiple permissions are supplied all permissions must be authorized.</span>
+                    <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r28 rd" class="r28 r">isAuthorized</span> = <b>true</b>;
+                    <b>foreach</b> (<a href="/OrchardCore.Infrastructure.Abstractions/A.html#74a137fee1f477ee" class="k">var</a> <span id="r29 rd" class="r29 r">permission</span> <b>in</b> <span class="r27 r">item</span>.<a href="MenuItem.cs.html#be0e19c4cc2a5fa9" class="i property">Permissions</a>)
+                    {
+                        <b>if</b>(!(<b>await</b> <a href="#8898b6fb91a96060" class="i field">_authorizationService</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#5d243752f5d8d0f0" class="i method">AuthorizeAsync</a>(<span class="r25 r">user</span>, <span class="r29 r">permission</span>, <span class="r27 r">item</span>.<a href="MenuItem.cs.html#03e9af878b73dcff" class="i property">Resource</a>)))
+                        {
+                            <span class="r28 r">isAuthorized</span> = <b>false</b>;
+                            <b>break</b>;
+                        }
+                    }
+                    <b>if</b> (<span class="r28 r">isAuthorized</span>)
+                    {
+                        <span class="r26 r">filtered</span>.<span class="i method">Add</span>(<span class="r27 r">item</span>);
+                    }
+                }
+ 
+                <span class="c">// Process child items</span>
+                <b>var</b> <span id="r30 rd" class="r30 r">oldItems</span> = <span class="r27 r">item</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>;
+ 
+                <span class="r27 r">item</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a> = (<b>await</b> <a href="#ad92af4641d162be" class="i method">AuthorizeAsync</a>(<span class="r27 r">item</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>, <span class="r25 r">user</span>));
+            }
+ 
+            <b>return</b> <span class="r26 r">filtered</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Retains only menu items with an Href, or that have child items with an Href</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <b>private</b> <span class="t t">List</span>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt; <a id="d35353ee4776ad32" href="R/d35353ee4776ad32.html" target="n" data-glyph="76,1" class="i method">Reduce</a>(<a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a>&gt; <span id="r31 rd" class="r31 r">items</span>)
+        {
+            <b>var</b> <span id="r32 rd" class="r32 r">filtered</span> = <span class="r31 r">items</span>.<span class="i method">ToList</span>();
+ 
+            <b>foreach</b> (<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="k">var</a> <span id="r33 rd" class="r33 r">item</span> <b>in</b> <span class="r31 r">items</span>)
+            {
+                <b>if</b> (!<a href="#4dc58da445d73687" class="i method">HasHrefOrChildHref</a>(<span class="r33 r">item</span>))
+                {
+                    <span class="r32 r">filtered</span>.<span class="i method">Remove</span>(<span class="r33 r">item</span>);
+                }
+ 
+                <span class="r33 r">item</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a> = <a href="#d35353ee4776ad32" class="i method">Reduce</a>(<span class="r33 r">item</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>);
+            }
+ 
+            <b>return</b> <span class="r32 r">filtered</span>;
+        }
+ 
+        <b>private static bool</b> <a id="4dc58da445d73687" href="R/4dc58da445d73687.html" target="n" data-glyph="76,1" class="i method">HasHrefOrChildHref</a>(<a href="MenuItem.cs.html#bf7f80a8e1a4549e" class="t t">MenuItem</a> <span id="r34 rd" class="r34 r">item</span>)
+        {
+            <b>if</b> (<span class="r34 r">item</span>.<a href="MenuItem.cs.html#b0b06ea40e184346" class="i property">Href</a> != <span class="s">&quot;#&quot;</span>)
+            {
+                <b>return</b> <b>true</b>;
+            }
+ 
+            <b>return</b> <span class="r34 r">item</span>.<a href="MenuItem.cs.html#157aefea05075764" class="i property">Items</a>.<span class="i method">Any</span>(<a href="#4dc58da445d73687" class="i method">HasHrefOrChildHref</a>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html><head><title>GeoBoundingBoxFilterProvider.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(69);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lucene.Core/QueryProviders/Filters/GeoBoundingBoxFilterProvider.cs" target="_top">QueryProviders\Filters\GeoBoundingBoxFilterProvider.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lucene.Core" target="_top">src\OrchardCore\OrchardCore.Lucene.Core\OrchardCore.Lucene.Core.csproj</a> (OrchardCore.Lucene.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Queries</span>.<span class="i">Function</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Search</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Prefix</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Prefix</span>.<span class="i">Tree</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Queries</span>;
+<b>using</b> <span class="i">Lucene</span>.<span class="i">Net</span>.<span class="i">Spatial</span>.<span class="i">Util</span>;
+<b>using</b> <span class="i">Newtonsoft</span>.<span class="i">Json</span>.<span class="i">Linq</span>;
+<b>using</b> <span class="i">Spatial4n</span>.<span class="i">Core</span>.<span class="i">Context</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lucene</span>.<span class="i n">QueryProviders</span>.<span class="i n">Filters</span>
+{
+    <b>public class</b> <a id="1b84f25b8bb64a81" href="../../R/1b84f25b8bb64a81.html" target="n" data-glyph="0,0" class="t t"><span id="6909ed62876fd507">GeoBoundingBoxFilterProvider</span></a> : <a href="ILuceneBooleanFilterProvider.cs.html#696db2d60b053609" class="t t">ILuceneBooleanFilterProvider</a>
+    {
+        <b>public</b> <span class="i">FilteredQuery</span> <a id="debac17d7afb541f" href="../../R/debac17d7afb541f.html" target="n" data-glyph="72,1" class="i method">CreateFilteredQuery</a>(<a href="/OrchardCore.Lucene.Abstractions/A.html#b4890a27f5efe7a2" class="t t">ILuceneQueryService</a> <span id="r0 rd" class="r0 r">builder</span>, <a href="/OrchardCore.Lucene.Abstractions/A.html#8adac9b8cd00836c" class="t t">LuceneQueryContext</a> <span id="r1 rd" class="r1 r">context</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r2 rd" class="r2 r">type</span>, <span class="i">JToken</span> <span id="r3 rd" class="r3 r">filter</span>, <span class="i">Query</span> <span id="r4 rd" class="r4 r">toFilter</span>)
+        {
+            <b>if</b> (<span class="r2 r">type</span> != <span class="s">&quot;geo_bounding_box&quot;</span>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>if</b> (!(<span class="r4 r">toFilter</span> <b>is</b> <span class="i">BooleanQuery</span> <span id="r5 rd" class="r5 r">booleanQuery</span>))
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r6 rd" class="r6 r">queryObj</span> = <span class="r3 r">filter</span> <b>as</b> <span class="i">JObject</span>;
+            <b>var</b> <span id="r7 rd" class="r7 r">first</span> = <span class="r6 r">queryObj</span>.<span class="i">Properties</span>().<span class="i">First</span>();
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">ctx</span> = <span class="i">SpatialContext</span>.<span class="i">GEO</span>;
+ 
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r9 rd" class="r9 r">maxLevels</span> = 11; <span class="c">//results in sub-meter precision for geohash</span>
+ 
+            <span class="c">//  This can also be constructed from SpatialPrefixTreeFactory</span>
+            <span class="i">SpatialPrefixTree</span> <span id="r10 rd" class="r10 r">grid</span> = <b>new</b> <span class="i">GeohashPrefixTree</span>(<span class="r8 r">ctx</span>, <span class="r9 r">maxLevels</span>);
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">geoPropertyName</span> = <span class="r7 r">first</span>.<span class="i">Name</span>;
+            <b>var</b> <span id="r12 rd" class="r12 r">strategy</span> = <b>new</b> <span class="i">RecursivePrefixTreeStrategy</span>(<span class="r10 r">grid</span>, <span class="r11 r">geoPropertyName</span>);
+ 
+            <b>var</b> <span id="r13 rd" class="r13 r">boundingBox</span> = (<span class="i">JObject</span>)<span class="r7 r">first</span>.<span class="i">Value</span>;
+ 
+            <b>var</b> <span id="r14 rd" class="r14 r">topLeftProperty</span> = <span class="r13 r">boundingBox</span>[<span class="s">&quot;top_left&quot;</span>] <b>as</b> <span class="i">JObject</span>;
+            <b>var</b> <span id="r15 rd" class="r15 r">bottomRightProperty</span> = <span class="r13 r">boundingBox</span>[<span class="s">&quot;bottom_right&quot;</span>] <b>as</b> <span class="i">JObject</span>;
+ 
+            <b>if</b> (<span class="r14 r">topLeftProperty</span> == <b>null</b> || <span class="r15 r">bottomRightProperty</span> == <b>null</b>)
+            {
+                <b>return</b> <b>null</b>;
+            }
+ 
+            <b>var</b> <span id="r16 rd" class="r16 r">left</span> = <span class="r14 r">topLeftProperty</span>[<span class="s">&quot;lon&quot;</span>];
+            <b>var</b> <span id="r17 rd" class="r17 r">top</span> = <span class="r14 r">topLeftProperty</span>[<span class="s">&quot;lat&quot;</span>];
+            <b>var</b> <span id="r18 rd" class="r18 r">bottom</span> = <span class="r15 r">bottomRightProperty</span>[<span class="s">&quot;lat&quot;</span>];
+            <b>var</b> <span id="r19 rd" class="r19 r">right</span> = <span class="r15 r">bottomRightProperty</span>[<span class="s">&quot;lon&quot;</span>];
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">rectangle</span> = <span class="r8 r">ctx</span>.<span class="i">MakeRectangle</span>((<b>double</b>)<span class="r16 r">left</span>, (<b>double</b>)<span class="r19 r">right</span>, (<b>double</b>)<span class="r18 r">bottom</span>, (<b>double</b>)<span class="r17 r">top</span>);
+ 
+            <b>var</b> <span id="r21 rd" class="r21 r">args</span> = <b>new</b> <span class="i">SpatialArgs</span>(<span class="i">SpatialOperation</span>.<span class="i">Intersects</span>, <span class="r20 r">rectangle</span>);
+ 
+            <b>var</b> <span id="r22 rd" class="r22 r">spatialQuery</span> = <span class="r12 r">strategy</span>.<span class="i">MakeQuery</span>(<span class="r21 r">args</span>);
+            <b>var</b> <span id="r23 rd" class="r23 r">valueSource</span> = <span class="r12 r">strategy</span>.<span class="i">MakeRecipDistanceValueSource</span>(<span class="r20 r">rectangle</span>);
+            <b>var</b> <span id="r24 rd" class="r24 r">valueSourceFilter</span> = <b>new</b> <span class="i">ValueSourceFilter</span>(<b>new</b> <span class="i">QueryWrapperFilter</span>(<span class="r22 r">spatialQuery</span>), <span class="r23 r">valueSource</span>, 0, 1);
+ 
+            <span class="r5 r">booleanQuery</span>.<span class="i">Add</span>(<b>new</b> <span class="i">FunctionQuery</span>(<span class="r23 r">valueSource</span>), <span class="i">Occur</span>.<span class="i">MUST</span>);
+ 
+            <b>return</b> <b>new</b> <span class="i">FilteredQuery</span>(<span class="r5 r">booleanQuery</span>, <span class="r24 r">valueSourceFilter</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

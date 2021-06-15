@@ -22,7 +22,7 @@ namespace Microsoft.SourceBrowser.SourceIndexServer
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            RootPath = Path.Combine(Environment.ContentRootPath, "index");
+            RootPath = Path.Combine(Environment.ContentRootPath, "Web/index");
 
             var subfolder = Path.Combine(RootPath, "index");
             if (File.Exists(Path.Combine(subfolder, "Projects.txt")))

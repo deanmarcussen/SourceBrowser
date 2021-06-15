@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html><head><title>ImageResizeTagHelper.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(103);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/TagHelpers/ImageResizeTagHelper.cs" target="_top">TagHelpers\ImageResizeTagHelper.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Fields</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Processing</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">TagHelpers</span>
+{
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;img&quot;</span>, <span class="i property">Attributes</span> = <a href="#d7e0f21f5f243639" class="i field">ImageSizeWidthAttributeName</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;img&quot;</span>, <span class="i property">Attributes</span> = <a href="#0fd437af8f03a553" class="i field">ImageSizeHeightAttributeName</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;img&quot;</span>, <span class="i property">Attributes</span> = <a href="#53ba36a6b8973a70" class="i field">ImageProfileAttributeName</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;img&quot;</span>, <span class="i property">Attributes</span> = <a href="#d7e0f21f5f243639" class="i field">ImageSizeWidthAttributeName</a> + <span class="s">&quot;,&quot;</span> + <a href="#78cdb80644af87b4" class="i field">ImageSizeModeAttributeName</a>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;img&quot;</span>, <span class="i property">Attributes</span> = <a href="#0fd437af8f03a553" class="i field">ImageSizeHeightAttributeName</a> + <span class="s">&quot;,&quot;</span> + <a href="#78cdb80644af87b4" class="i field">ImageSizeModeAttributeName</a>)]
+    <b>public class</b> <a id="b0eedfcdc153158f" href="../R/b0eedfcdc153158f.html" target="n" data-glyph="0,0" class="t t">ImageResizeTagHelper</a> : <span class="t t">TagHelper</span>
+    {
+        <b>private const string</b> <a id="b9dfd1cb57dcfc51" href="../R/b9dfd1cb57dcfc51.html" target="n" data-glyph="10,1" class="i field">ImageSizeAttributePrefix</a> = <span class="s">&quot;img-&quot;</span>;
+        <b>private const string</b> <a id="d7e0f21f5f243639" href="../R/d7e0f21f5f243639.html" target="n" data-glyph="10,1" class="i field">ImageSizeWidthAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;width&quot;</span>;
+        <b>private const string</b> <a id="0fd437af8f03a553" href="../R/0fd437af8f03a553.html" target="n" data-glyph="10,1" class="i field">ImageSizeHeightAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;height&quot;</span>;
+        <b>private const string</b> <a id="78cdb80644af87b4" href="../R/78cdb80644af87b4.html" target="n" data-glyph="10,1" class="i field">ImageSizeModeAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;resize-mode&quot;</span>;
+        <b>private const string</b> <a id="79272d237dde6745" href="../R/79272d237dde6745.html" target="n" data-glyph="10,1" class="i field">ImageQualityAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;quality&quot;</span>;
+        <b>private const string</b> <a id="217e0a100c6f71d3" href="../R/217e0a100c6f71d3.html" target="n" data-glyph="10,1" class="i field">ImageFormatAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;format&quot;</span>;
+        <b>private const string</b> <a id="53ba36a6b8973a70" href="../R/53ba36a6b8973a70.html" target="n" data-glyph="10,1" class="i field">ImageProfileAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;profile&quot;</span>;
+        <b>private const string</b> <a id="b34f4d9987551e99" href="../R/b34f4d9987551e99.html" target="n" data-glyph="10,1" class="i field">ImageAnchorAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;anchor&quot;</span>;
+        <b>private const string</b> <a id="e1eed9b5f78e4c96" href="../R/e1eed9b5f78e4c96.html" target="n" data-glyph="10,1" class="i field">ImageBackgroundColorAttributeName</a> = <a href="#b9dfd1cb57dcfc51" class="i field">ImageSizeAttributePrefix</a> + <span class="s">&quot;bgcolor&quot;</span>;
+ 
+        <b>private readonly</b> <a href="../Services/IMediaProfileService.cs.html#293ab5eeae9c1f84" class="t t">IMediaProfileService</a> <a id="c3e47794eddb8103" href="../R/c3e47794eddb8103.html" target="n" data-glyph="46,1" class="i field">_mediaProfileService</a>;
+        <b>private readonly</b> <span class="i">MediaOptions</span> <a id="a8fa01eb838595ff" href="../R/a8fa01eb838595ff.html" target="n" data-glyph="46,1" class="i field">_mediaOptions</a>;
+        <b>private readonly</b> <span class="i">IMediaTokenService</span> <a id="6f856fa7c87786c3" href="../R/6f856fa7c87786c3.html" target="n" data-glyph="46,1" class="i field">_mediaTokenService</a>;
+ 
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#d7e0f21f5f243639" class="i field">ImageSizeWidthAttributeName</a>)]
+        <b>public int</b>? <a id="db9748d35effd230" href="../R/db9748d35effd230.html" target="n" data-glyph="102,1" class="i property">ImageWidth</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#0fd437af8f03a553" class="i field">ImageSizeHeightAttributeName</a>)]
+        <b>public int</b>? <a id="7b747d845bb49338" href="../R/7b747d845bb49338.html" target="n" data-glyph="102,1" class="i property">ImageHeight</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#79272d237dde6745" class="i field">ImageQualityAttributeName</a>)]
+        <b>public int</b>? <a id="543ef2559fc2c358" href="../R/543ef2559fc2c358.html" target="n" data-glyph="102,1" class="i property">ImageQuality</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#78cdb80644af87b4" class="i field">ImageSizeModeAttributeName</a>)]
+        <b>public</b> <a href="../Processing/ImageSharpUrlFormatter.cs.html#3f2989125d6d6574" class="t t">ResizeMode</a> <a id="b73e3e82e5bb1e28" href="../R/b73e3e82e5bb1e28.html" target="n" data-glyph="102,1" class="i property">ResizeMode</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#217e0a100c6f71d3" class="i field">ImageFormatAttributeName</a>)]
+        <b>public</b> <a href="../Processing/ImageSharpUrlFormatter.cs.html#5c02accb470f5f77" class="t t">Format</a> <a id="31fd62eb02917164" href="../R/31fd62eb02917164.html" target="n" data-glyph="102,1" class="i property">ImageFormat</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#53ba36a6b8973a70" class="i field">ImageProfileAttributeName</a>)]
+        <b>public string</b> <a id="aef3ff8d728b14aa" href="../R/aef3ff8d728b14aa.html" target="n" data-glyph="102,1" class="i property">ImageProfile</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#b34f4d9987551e99" class="i field">ImageAnchorAttributeName</a>)]
+        <b>public</b> <a href="../Fields/Anchor.cs.html#8331f92f85867cdb" class="t t">Anchor</a> <a id="784fd9a58196e987" href="../R/784fd9a58196e987.html" target="n" data-glyph="102,1" class="i property">ImageAnchor</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<a href="#e1eed9b5f78e4c96" class="i field">ImageBackgroundColorAttributeName</a>)]
+        <b>public string</b> <a id="3ea65524a20bd014" href="../R/3ea65524a20bd014.html" target="n" data-glyph="102,1" class="i property">ImageBackgroundColor</a> { <b>get</b>; <b>set</b>; }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<span class="s">&quot;src&quot;</span>)]
+        <b>public string</b> <a id="6cb79ecdb8e4dc7d" href="../R/6cb79ecdb8e4dc7d.html" target="n" data-glyph="102,1" class="i property">Src</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public</b> <a id="a1e5d063eff8e2a8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ImageResizeTagHelper</a>(
+            <a href="../Services/IMediaProfileService.cs.html#293ab5eeae9c1f84" class="t t">IMediaProfileService</a> <span id="r0 rd" class="r0 r">mediaProfileService</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">MediaOptions</span>&gt; <span id="r1 rd" class="r1 r">mediaOptions</span>,
+            <span class="i">IMediaTokenService</span> <span id="r2 rd" class="r2 r">mediaTokenService</span>)
+        {
+            <a href="#c3e47794eddb8103" class="i field">_mediaProfileService</a> = <span class="r0 r">mediaProfileService</span>;
+            <a href="#a8fa01eb838595ff" class="i field">_mediaOptions</a> = <span class="r1 r">mediaOptions</span>.<span class="i property">Value</span>;
+            <a href="#6f856fa7c87786c3" class="i field">_mediaTokenService</a> = <span class="r2 r">mediaTokenService</span>;
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="3570e81d7c722bbb" href="../R/3570e81d7c722bbb.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="t t">TagHelperContext</span> <span id="r3 rd" class="r3 r">context</span>, <span class="t t">TagHelperOutput</span> <span id="r4 rd" class="r4 r">output</span>)
+        {
+            <b>if</b> (!<a href="#db9748d35effd230" class="i property">ImageWidth</a>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> &amp;&amp; !<a href="#7b747d845bb49338" class="i property">ImageHeight</a>.<a href="@1@System.Runtime/A.html#7bbe60e33e857298" class="i property">HasValue</a> &amp;&amp; <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#aef3ff8d728b14aa" class="i property">ImageProfile</a>))
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r5 rd" class="r5 r">imgSrc</span> = <span class="r4 r">output</span>.<span class="i property">Attributes</span>[<span class="s">&quot;src&quot;</span>]?.<span class="i property">Value</span>.<a href="@1@System.Runtime/A.html#ff31a6bf27c58f89" class="i method">ToString</a>() ?? <a href="#6cb79ecdb8e4dc7d" class="i property">Src</a>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r5 r">imgSrc</span>))
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="@1@System.Runtime/A.html#20343df0c96b629b" class="t t">IDictionary</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r6 rd" class="r6 r">queryStringParams</span> = <b>null</b>;
+ 
+            <b>if</b> (!<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#aef3ff8d728b14aa" class="i property">ImageProfile</a>))
+            {
+                <span class="r6 r">queryStringParams</span> = <b>await</b> <a href="#c3e47794eddb8103" class="i field">_mediaProfileService</a>.<a href="../Services/IMediaProfileService.cs.html#36447ef9d554d4b6" class="i method">GetMediaProfileCommands</a>(<a href="#aef3ff8d728b14aa" class="i property">ImageProfile</a>);
+            }
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r7 rd" class="r7 r">resizedSrc</span> = <a href="../Processing/ImageSharpUrlFormatter.cs.html#12297ba509849708" class="t t">ImageSharpUrlFormatter</a>.<a href="../Processing/ImageSharpUrlFormatter.cs.html#800e14dfb9fea557" class="i method">GetImageResizeUrl</a>(<span class="r5 r">imgSrc</span>, <span class="r6 r">queryStringParams</span>, <a href="#db9748d35effd230" class="i property">ImageWidth</a>, <a href="#7b747d845bb49338" class="i property">ImageHeight</a>, <a href="#b73e3e82e5bb1e28" class="i property">ResizeMode</a>, <a href="#543ef2559fc2c358" class="i property">ImageQuality</a>, <a href="#31fd62eb02917164" class="i property">ImageFormat</a>, <a href="#784fd9a58196e987" class="i property">ImageAnchor</a>, <a href="#3ea65524a20bd014" class="i property">ImageBackgroundColor</a>);
+ 
+            <b>if</b> (<a href="#a8fa01eb838595ff" class="i field">_mediaOptions</a>.<span class="i">UseTokenizedQueryString</span>)
+            {
+                <span class="r7 r">resizedSrc</span> = <a href="#6f856fa7c87786c3" class="i field">_mediaTokenService</a>.<span class="i">AddTokenToPath</span>(<span class="r7 r">resizedSrc</span>);
+            }
+ 
+            <span class="r4 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;src&quot;</span>, <span class="r7 r">resizedSrc</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

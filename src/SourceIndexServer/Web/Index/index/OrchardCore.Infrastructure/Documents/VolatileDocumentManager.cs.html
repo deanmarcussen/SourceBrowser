@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html><head><title>VolatileDocumentManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(87);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Infrastructure/Documents/VolatileDocumentManager.cs" target="_top">Documents\VolatileDocumentManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Infrastructure" target="_top">src\OrchardCore\OrchardCore.Infrastructure\OrchardCore.Infrastructure.csproj</a> (OrchardCore.Infrastructure)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Distributed</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Data</span>.<span class="i n">Documents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Documents</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Locking</span>.<span class="i">Distributed</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Documents</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> A </span><span class="c">&lt;</span><span class="c">see</span> <span class="c">cref</span><span class="c">=</span><span class="c">&quot;</span><a href="DocumentManager.cs.html#554c46b214da0bfd" class="t t">DocumentManager</a>{<span class="r0 r t">TDocument</span>}<span class="c">&quot;</span><span class="c">/&gt;</span><span class="c"> using a multi level cache but without any persistent storage.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public class</b> <a id="5911b4f55c575eec" href="../R/5911b4f55c575eec.html" target="n" data-glyph="0,0" class="t t">VolatileDocumentManager</a>&lt;<span id="r1 rd t" class="r1 r t">TDocument</span>&gt; : <a href="DocumentManager.cs.html#554c46b214da0bfd" class="t t">DocumentManager</a>&lt;<span class="r1 r t">TDocument</span>&gt;, <a href="/OrchardCore.Infrastructure.Abstractions/A.html#6e75733ca6dc4aac" class="t t">IVolatileDocumentManager</a>&lt;<span class="r1 r t">TDocument</span>&gt; <b>where</b> <span class="r1 r t">TDocument</span> : <b>class</b>, <span class="i">IDocument</span>, <b>new</b>()
+    {
+        <b>private readonly</b> <span class="i">IDistributedLock</span> <a id="409b89edd98e63a1" href="../R/409b89edd98e63a1.html" target="n" data-glyph="46,1" class="i field">_distributedLock</a>;
+ 
+        <b>private delegate</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r1 r t">TDocument</span>&gt; <a id="dd9c1d1242d3a607" href="../R/dd9c1d1242d3a607.html" target="n" data-glyph="16,1" class="t t"><span id="15eee83b45590d3e">UpdateDelegate</span></a>();
+        <b>private</b> <a href="#dd9c1d1242d3a607" class="t t">UpdateDelegate</a> <a id="a034bd6a0884925b" href="../R/a034bd6a0884925b.html" target="n" data-glyph="46,1" class="i field">_updateDelegateAsync</a>;
+ 
+        <b>private delegate</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="8acee13cb1933a6c" href="../R/8acee13cb1933a6c.html" target="n" data-glyph="16,1" class="t t"><span id="47cf565ce3f65eef">AfterUpdateDelegate</span></a>(<span class="r1 r t">TDocument</span> <span id="r2 rd" class="r2 r">document</span>);
+        <b>private</b> <a href="#8acee13cb1933a6c" class="t t">AfterUpdateDelegate</a> <a id="7b9ab9306c9c97eb" href="../R/7b9ab9306c9c97eb.html" target="n" data-glyph="46,1" class="i field">_afterUpdateDelegateAsync</a>;
+ 
+        <b>public</b> <a id="10f8b37029b06c2b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">VolatileDocumentManager</a>(
+            <span class="t t">IDistributedCache</span> <span id="r3 rd" class="r3 r">distributedCache</span>,
+            <span class="i">IDistributedLock</span> <span id="r4 rd" class="r4 r">distributedLock</span>,
+            <span class="t t">IMemoryCache</span> <span id="r5 rd" class="r5 r">memoryCache</span>,
+            <span class="t t">IOptionsMonitor</span>&lt;<a href="/OrchardCore.Infrastructure.Abstractions/A.html#64a979e4fc3825af" class="t t">DocumentOptions</a>&gt; <span id="r6 rd" class="r6 r">options</span>)
+            : <a href="DocumentManager.cs.html#0eabfdbe714b0ac8" class="k">base</a>(<span class="r3 r">distributedCache</span>, <span class="r5 r">memoryCache</span>, <span class="r6 r">options</span>)
+        {
+            <a href="DocumentManager.cs.html#f6b55ea4ecfd31aa" class="i field">_isVolatile</a> = <b>true</b>;
+            <a href="#409b89edd98e63a1" class="i field">_distributedLock</a> = <span class="r4 r">distributedLock</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="a4dd615036753a11" href="../R/a4dd615036753a11.html" target="n" data-glyph="72,1" class="i method">UpdateAtomicAsync</a>(<a href="@1@System.Runtime/A.html#87d60abb7092d5a4" class="t t">Func</a>&lt;<a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="r1 r t">TDocument</span>&gt;&gt; <span id="r7 rd" class="r7 r">updateAsync</span>, <a href="@1@System.Runtime/A.html#7a86aba051da82dd" class="t t">Func</a>&lt;<span class="r1 r t">TDocument</span>, <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>&gt; <span id="r8 rd" class="r8 r">afterUpdateAsync</span> = <b>null</b>)
+        {
+            <b>if</b> (<span class="r7 r">updateAsync</span> == <b>null</b>)
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <a href="#a034bd6a0884925b" class="i field">_updateDelegateAsync</a> += () =&gt; <span class="r7 r">updateAsync</span>();
+ 
+            <b>if</b> (<span class="r8 r">afterUpdateAsync</span> != <b>null</b>)
+            {
+                <a href="#7b9ab9306c9c97eb" class="i field">_afterUpdateDelegateAsync</a> += <span id="r9 rd" class="r9 r">document</span> =&gt; <span class="r8 r">afterUpdateAsync</span>(<span class="r9 r">document</span>);
+            }
+ 
+            <a href="DocumentManager.cs.html#af5e9f19320b04ce" class="i property">DocumentStore</a>.<span class="i">AfterCommitSuccess</span>&lt;<span class="r1 r t">TDocument</span>&gt;(<b>async</b> () =&gt;
+            {
+                (<b>var</b> <span id="r10 rd" class="r10 r">locker</span>, <b>var</b> <span id="r11 rd" class="r11 r">locked</span>) = <b>await</b> <a href="#409b89edd98e63a1" class="i field">_distributedLock</a>.<span class="i">TryAcquireLockAsync</span>(
+                    <a href="DocumentManager.cs.html#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#bac1278de0fe996e" class="i property">CacheKey</a> + <span class="s">&quot;_LOCK&quot;</span>,
+                    <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(<a href="DocumentManager.cs.html#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#0bd62835ce17d296" class="i property">LockTimeout</a>),
+                    <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#668d91d771bce54b" class="i method">FromMilliseconds</a>(<a href="DocumentManager.cs.html#ec38a182d0a6035c" class="i field">_options</a>.<a href="/OrchardCore.Infrastructure.Abstractions/A.html#9ef1bad4a62743b8" class="i property">LockExpiration</a>));
+ 
+                <b>if</b> (!<span class="r11 r">locked</span>)
+                {
+                    <b>return</b>;
+                }
+ 
+                <b>await using</b> <b>var</b> <span id="r12 rd" class="r12 r">acquiredLock</span> = <span class="r10 r">locker</span>;
+ 
+                <span class="r1 r t">TDocument</span> <span id="r13 rd" class="r13 r">document</span> = <b>null</b>;
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#0dd8585ba1833ad7" class="k">var</a> <span id="r14 rd" class="r14 r">d</span> <b>in</b> <a href="#a034bd6a0884925b" class="i field">_updateDelegateAsync</a>.<a href="@1@System.Runtime/A.html#4f8502d733f4bb5d" class="i method">GetInvocationList</a>())
+                {
+                    <span class="r13 r">document</span> = <b>await</b> ((<a href="#dd9c1d1242d3a607" class="t t">UpdateDelegate</a>)<span class="r14 r">d</span>)();
+                }
+ 
+                <span class="r13 r">document</span>.<span class="i">Identifier</span> ??= <span class="i">IdGenerator</span>.<span class="i">GenerateId</span>();
+ 
+                <b>await</b> <a href="DocumentManager.cs.html#383bbb7795b37fcb" class="i method">SetInternalAsync</a>(<span class="r13 r">document</span>);
+ 
+                <b>if</b> (<a href="#7b9ab9306c9c97eb" class="i field">_afterUpdateDelegateAsync</a> != <b>null</b>)
+                {
+                    <b>foreach</b> (<a href="@1@System.Runtime/A.html#0dd8585ba1833ad7" class="k">var</a> <span id="r15 rd" class="r15 r">d</span> <b>in</b> <a href="#7b9ab9306c9c97eb" class="i field">_afterUpdateDelegateAsync</a>.<a href="@1@System.Runtime/A.html#4f8502d733f4bb5d" class="i method">GetInvocationList</a>())
+                    {
+                        <b>await</b> ((<a href="#8acee13cb1933a6c" class="t t">AfterUpdateDelegate</a>)<span class="r15 r">d</span>)(<span class="r13 r">document</span>);
+                    }
+                }
+            });
+ 
+            <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

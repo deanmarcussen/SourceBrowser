@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html>
+<html><head><title>ListsAdminNodeNavigationBuilder.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(134);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Lists/AdminNodes/ListsAdminNodeNavigationBuilder.cs" target="_top">AdminNodes\ListsAdminNodeNavigationBuilder.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Lists" target="_top">src\OrchardCore.Modules\OrchardCore.Lists\OrchardCore.Lists.csproj</a> (OrchardCore.Lists)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">AdminMenu</span>.<span class="i n">Services</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i">Metadata</span>.<span class="i">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ContentManagement</span>.<span class="i n">Records</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Contents</span>.<span class="i n">Security</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Navigation</span>;
+<b>using</b> <span class="i">YesSql</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Lists</span>.<span class="i n">AdminNodes</span>
+{
+    <b>public class</b> <a id="94b33d2cc783c60d" href="../R/94b33d2cc783c60d.html" target="n" data-glyph="0,0" class="t t">ListsAdminNodeNavigationBuilder</a> : <a href="/OrchardCore.AdminMenu.Abstractions/A.html#576c9f53cddc0450" class="t t">IAdminNodeNavigationBuilder</a>
+    {
+        <b>private readonly</b> <span class="i">IContentDefinitionManager</span> <a id="717dc95d0c110ff2" href="../R/717dc95d0c110ff2.html" target="n" data-glyph="46,1" class="i field">_contentDefinitionManager</a>;
+        <b>private readonly</b> <span class="i">IContentManager</span> <a id="727600c92d780aff" href="../R/727600c92d780aff.html" target="n" data-glyph="46,1" class="i field">_contentManager</a>;
+        <b>private readonly</b> <span class="i">ISession</span> <a id="ef9f0f3435dee330" href="../R/ef9f0f3435dee330.html" target="n" data-glyph="46,1" class="i field">_session</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="876ada72fd80903c" href="../R/876ada72fd80903c.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private</b> <a href="ListsAdminNode.cs.html#74176894b58f8ccf" class="t t">ListsAdminNode</a> <a id="4cb330404937912d" href="../R/4cb330404937912d.html" target="n" data-glyph="46,1" class="i field">_node</a>;
+        <b>private</b> <span class="i">ContentTypeDefinition</span> <a id="85c9a8f0860864ff" href="../R/85c9a8f0860864ff.html" target="n" data-glyph="46,1" class="i field">_contentType</a>;
+ 
+        <b>private const int</b> <a id="e87f7b02942f0972" href="../R/e87f7b02942f0972.html" target="n" data-glyph="10,1" class="i field">MaxItemsInNode</a> = 100; <span class="c">// security check</span>
+ 
+        <b>public</b> <a id="62bad554c5d3b7c0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ListsAdminNodeNavigationBuilder</a>(
+            <span class="i">IContentDefinitionManager</span> <span id="r0 rd" class="r0 r">contentDefinitionManager</span>,
+            <span class="i">IContentManager</span> <span id="r1 rd" class="r1 r">contentManager</span>,
+            <span class="i">ISession</span> <span id="r2 rd" class="r2 r">session</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#94b33d2cc783c60d" class="t t">ListsAdminNodeNavigationBuilder</a>&gt; <span id="r3 rd" class="r3 r">logger</span>)
+        {
+            <a href="#717dc95d0c110ff2" class="i field">_contentDefinitionManager</a> = <span class="r0 r">contentDefinitionManager</span>;
+            <a href="#727600c92d780aff" class="i field">_contentManager</a> = <span class="r1 r">contentManager</span>;
+            <a href="#ef9f0f3435dee330" class="i field">_session</a> = <span class="r2 r">session</span>;
+            <a href="#876ada72fd80903c" class="i field">_logger</a> = <span class="r3 r">logger</span>;
+        }
+ 
+        <b>public string</b> <a id="f3fc8df532c056b6" href="../R/f3fc8df532c056b6.html" target="n" data-glyph="102,1" class="i property">Name</a> =&gt; <b>typeof</b>(<a href="ListsAdminNode.cs.html#74176894b58f8ccf" class="t t">ListsAdminNode</a>).<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a>;
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="5611f8967c222fe0" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">BuildNavigationAsync</a>(<span class="i">MenuItem</span> <span id="r4 rd" class="r4 r">menuItem</span>, <span class="i">NavigationBuilder</span> <span id="r5 rd" class="r5 r">builder</span>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.AdminMenu.Abstractions/A.html#576c9f53cddc0450" class="t t">IAdminNodeNavigationBuilder</a>&gt; <span id="r6 rd" class="r6 r">treeNodeBuilders</span>)
+        {
+            <a href="#4cb330404937912d" class="i field">_node</a> = <span class="r4 r">menuItem</span> <b>as</b> <a href="ListsAdminNode.cs.html#74176894b58f8ccf" class="t t">ListsAdminNode</a>;
+ 
+            <b>if</b> (<a href="#4cb330404937912d" class="i field">_node</a> == <b>null</b> || !<a href="#4cb330404937912d" class="i field">_node</a>.<a href="/OrchardCore.AdminMenu.Abstractions/A.html#e471626608e215d3" class="i property">Enabled</a> || <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<a href="#4cb330404937912d" class="i field">_node</a>.<a href="ListsAdminNode.cs.html#5de0b7b50bfdbacc" class="i property">ContentType</a>))
+            {
+                <b>return</b>;
+            }
+ 
+            <a href="#85c9a8f0860864ff" class="i field">_contentType</a> = <a href="#717dc95d0c110ff2" class="i field">_contentDefinitionManager</a>.<span class="i">GetTypeDefinition</span>(<a href="#4cb330404937912d" class="i field">_node</a>.<a href="ListsAdminNode.cs.html#5de0b7b50bfdbacc" class="i property">ContentType</a>);
+ 
+            <b>if</b> (<a href="#4cb330404937912d" class="i field">_node</a>.<a href="ListsAdminNode.cs.html#1d4819a95459677f" class="i property">AddContentTypeAsParent</a>)
+            {
+                <b>if</b> (<a href="#85c9a8f0860864ff" class="i field">_contentType</a> == <b>null</b>)
+                {
+                    <a href="#876ada72fd80903c" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="s">&quot;Can&#39;t find The content type &#39;{ContentType}&#39; for list admin node.&quot;</span>, <a href="#4cb330404937912d" class="i field">_node</a>.<a href="ListsAdminNode.cs.html#5de0b7b50bfdbacc" class="i property">ContentType</a>);
+                }
+ 
+                <b>await</b> <span class="r5 r">builder</span>.<span class="i">AddAsync</span>(<b>new</b> <span class="t">LocalizedString</span>(<a href="#85c9a8f0860864ff" class="i field">_contentType</a>.<span class="i">DisplayName</span>, <a href="#85c9a8f0860864ff" class="i field">_contentType</a>.<span class="i">DisplayName</span>), <b>async</b> <span id="r7 rd" class="r7 r">listTypeMenu</span> =&gt;
+                {
+                    <a href="#2f2151400aad0e36" class="i method">AddPrefixToClasses</a>(<a href="#4cb330404937912d" class="i field">_node</a>.<a href="ListsAdminNode.cs.html#19757df1566f35ad" class="i property">IconForParentLink</a>).<span class="i method">ForEach</span>(<span id="r8 rd" class="r8 r">c</span> =&gt; <span class="r7 r">listTypeMenu</span>.<span class="i">AddClass</span>(<span class="r8 r">c</span>));
+                    <span class="r7 r">listTypeMenu</span>.<span class="i">Permission</span>(<a href="/OrchardCore.Contents.Core/A.html#87892ba23e3659a4" class="t t">ContentTypePermissionsHelper</a>.<span class="i">CreateDynamicPermission</span>(
+                        <a href="/OrchardCore.Contents.Core/A.html#87892ba23e3659a4" class="t t">ContentTypePermissionsHelper</a>.<a href="/OrchardCore.Contents.Core/A.html#dfa9ff6e7cecde47" class="i field">PermissionTemplates</a>[<a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>.<span class="i">Name</span>], <a href="#85c9a8f0860864ff" class="i field">_contentType</a>));
+                    <b>await</b> <span class="i">AddContentItemsAsync</span>(<span class="r7 r">listTypeMenu</span>);
+                });
+            }
+            <b>else</b>
+            {
+                <b>await</b> <a href="#0111d085b0ac99c1" class="i method">AddContentItemsAsync</a>(<span class="r5 r">builder</span>);
+            }
+ 
+            <span class="c">// Add external children</span>
+            <b>foreach</b> (<b>var</b> <span id="r9 rd" class="r9 r">childNode</span> <b>in</b> <a href="#4cb330404937912d" class="i field">_node</a>.<span class="i">Items</span>)
+            {
+                <b>try</b>
+                {
+                    <a href="/OrchardCore.AdminMenu.Abstractions/A.html#576c9f53cddc0450" class="k">var</a> <span id="r10 rd" class="r10 r">treeBuilder</span> = <span class="r6 r">treeNodeBuilders</span>.<span class="i method">Where</span>(<span id="r11 rd" class="r11 r">x</span> =&gt; <span class="r11 r">x</span>.<a href="/OrchardCore.AdminMenu.Abstractions/A.html#03fa3ca1af0fd2cc" class="i property">Name</a> == <span class="r9 r">childNode</span>.<span class="i">GetType</span>().<span class="i">Name</span>).<span class="i method">FirstOrDefault</span>();
+                    <b>await</b> <span class="r10 r">treeBuilder</span>.<span class="i">BuildNavigationAsync</span>(<span class="r9 r">childNode</span>, <span class="r5 r">builder</span>, <span class="r6 r">treeNodeBuilders</span>);
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r12 rd" class="r12 r">e</span>)
+                {
+                    <a href="#876ada72fd80903c" class="i field">_logger</a>.<span class="i">LogError</span>(<span class="r12 r">e</span>, <span class="s">&quot;An exception occurred while building the &#39;{MenuItem}&#39; child Menu Item.&quot;</span>, <span class="r9 r">childNode</span>.<span class="i">GetType</span>().<span class="i">Name</span>);
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="0111d085b0ac99c1" href="../R/0111d085b0ac99c1.html" target="n" data-glyph="76,1" class="i method">AddContentItemsAsync</a>(<span class="i">NavigationBuilder</span> <span id="r13 rd" class="r13 r">listTypeMenu</span>)
+        {
+            <b>foreach</b> (<b>var</b> <span id="r14 rd" class="r14 r">ci</span> <b>in</b> <b>await</b> <a href="#34a431ec9b7dd5ad" class="i method">getContentItemsAsync</a>())
+            {
+                <b>var</b> <span id="r15 rd" class="r15 r">cim</span> = <b>await</b> <a href="#727600c92d780aff" class="i field">_contentManager</a>.<span class="i">PopulateAspectAsync</span>&lt;<span class="i">ContentItemMetadata</span>&gt;(<span class="r14 r">ci</span>);
+ 
+                <b>if</b> (<span class="r15 r">cim</span>.<span class="i">AdminRouteValues</span>.<span class="i">Any</span>() &amp;&amp; <span class="r14 r">ci</span>.<span class="i">DisplayText</span> != <b>null</b>)
+                {
+                    <span class="r13 r">listTypeMenu</span>.<span class="i">Add</span>(<b>new</b> <span class="t">LocalizedString</span>(<span class="r14 r">ci</span>.<span class="i">DisplayText</span>, <span class="r14 r">ci</span>.<span class="i">DisplayText</span>), <span id="r16 rd" class="r16 r">m</span> =&gt;
+                    {
+                        <span class="r16 r">m</span>.<span class="i">Action</span>(<span class="r15 r">cim</span>.<span class="i">AdminRouteValues</span>[<span class="s">&quot;Action&quot;</span>] <b>as string</b>, <span class="r15 r">cim</span>.<span class="i">AdminRouteValues</span>[<span class="s">&quot;Controller&quot;</span>] <b>as string</b>, <span class="r15 r">cim</span>.<span class="i">AdminRouteValues</span>);
+                        <span class="r16 r">m</span>.<span class="i">Resource</span>(<span class="r14 r">ci</span>);
+                        <span class="r16 r">m</span>.<span class="i">Priority</span>(<a href="#4cb330404937912d" class="i field">_node</a>.<span class="i">Priority</span>);
+                        <span class="r16 r">m</span>.<span class="i">Position</span>(<a href="#4cb330404937912d" class="i field">_node</a>.<span class="i">Position</span>);
+                        <span class="r16 r">m</span>.<span class="i">LocalNav</span>();
+                        <a href="#2f2151400aad0e36" class="i method">AddPrefixToClasses</a>(<a href="#4cb330404937912d" class="i field">_node</a>.<a href="ListsAdminNode.cs.html#379e0bd5b9df655b" class="i property">IconForContentItems</a>).<span class="i method">ToList</span>().<span class="i method">ForEach</span>(<span id="r17 rd" class="r17 r">c</span> =&gt; <span class="r16 r">m</span>.<span class="i">AddClass</span>(<span class="r17 r">c</span>));
+ 
+                        <span class="r16 r">m</span>.<span class="i">Permission</span>(<a href="/OrchardCore.Contents.Core/A.html#87892ba23e3659a4" class="t t">ContentTypePermissionsHelper</a>.<span class="i">CreateDynamicPermission</span>(
+                        <a href="/OrchardCore.Contents.Core/A.html#87892ba23e3659a4" class="t t">ContentTypePermissionsHelper</a>.<a href="/OrchardCore.Contents.Core/A.html#dfa9ff6e7cecde47" class="i field">PermissionTemplates</a>[<a href="/OrchardCore.Contents.Core/A.html#bd66a2ecce51e752" class="t t">CommonPermissions</a>.<a href="/OrchardCore.Contents.Core/A.html#acf455aed0c4389e" class="i field">EditContent</a>.<span class="i">Name</span>], <a href="#85c9a8f0860864ff" class="i field">_contentType</a>));
+                    });
+                }
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">List</span>&lt;<span class="i">ContentItem</span>&gt;&gt; <a id="34a431ec9b7dd5ad" href="../R/34a431ec9b7dd5ad.html" target="n" data-glyph="76,1" class="i method">getContentItemsAsync</a>()
+        {
+            <b>return</b> (<b>await</b> <a href="#ef9f0f3435dee330" class="i field">_session</a>.<span class="i">Query</span>&lt;<span class="i">ContentItem</span>, <a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;()
+                .<span class="i">With</span>&lt;<a href="/OrchardCore.ContentManagement/A.html#6661bef7de8cf3d4" class="t t">ContentItemIndex</a>&gt;(<span id="r18 rd" class="r18 r">x</span> =&gt; <span class="r18 r">x</span>.<span class="i">Latest</span> &amp;&amp; <span class="r18 r">x</span>.<span class="i">ContentType</span> == <a href="#4cb330404937912d" class="i field">_node</a>.<a href="ListsAdminNode.cs.html#5de0b7b50bfdbacc" class="i property">ContentType</a>)
+                .<span class="i">Take</span>(<a href="#e87f7b02942f0972" class="i field">MaxItemsInNode</a>)
+                .<span class="i">ListAsync</span>())
+                .<span class="i">OrderBy</span>(<span id="r19 rd" class="r19 r">x</span> =&gt; <span class="r19 r">x</span>.<span class="i">DisplayText</span>)
+                .<span class="i">ToList</span>();
+        }
+ 
+        <b>private</b> <span class="t t">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="2f2151400aad0e36" href="../R/2f2151400aad0e36.html" target="n" data-glyph="76,1" class="i method">AddPrefixToClasses</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r20 rd" class="r20 r">unprefixed</span>)
+        {
+            <b>return</b> <span class="r20 r">unprefixed</span>?.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39; &#39;</span>)
+                .<span class="i method">ToList</span>()
+                .<span class="i method">Select</span>(<span id="r21 rd" class="r21 r">c</span> =&gt; <span class="s">&quot;icon-class-&quot;</span> + <span class="r21 r">c</span>)
+                .<span class="i method">ToList</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;()
+                ?? <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

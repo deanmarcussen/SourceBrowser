@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html><head><title>ReCaptchaTagHelper.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(106);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.ReCaptcha.Core/TagHelpers/ReCaptchaTagHelper.cs" target="_top">TagHelpers\ReCaptchaTagHelper.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.ReCaptcha.Core" target="_top">src\OrchardCore\OrchardCore.ReCaptcha.Core\OrchardCore.ReCaptcha.Core.csproj</a> (OrchardCore.ReCaptcha.Core)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>.<span class="i n">Globalization</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>.<span class="i n">Rendering</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Razor</span>.<span class="i n">TagHelpers</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">Modules</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ReCaptcha</span>.<span class="i n">ActionFilters</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ReCaptcha</span>.<span class="i n">ActionFilters</span>.<span class="i n">Detection</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ReCaptcha</span>.<span class="i n">Configuration</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">ResourceManagement</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">ReCaptcha</span>.<span class="i n">TagHelpers</span>
+{
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;captcha&quot;</span>, <span class="i property">TagStructure</span> = <span class="t t">TagStructure</span>.<span class="i field">WithoutEndTag</span>)]
+    [<span class="t constructor">HtmlTargetElement</span>(<span class="s">&quot;captcha&quot;</span>, <span class="i property">Attributes</span> = <span class="s">&quot;mode,language&quot;</span>, <span class="i property">TagStructure</span> = <span class="t t">TagStructure</span>.<span class="i field">WithoutEndTag</span>)]
+    <b>public class</b> <a id="58e4618dabbeae98" href="../R/58e4618dabbeae98.html" target="n" data-glyph="0,0" class="t t">ReCaptchaTagHelper</a> : <span class="t t">TagHelper</span>
+    {
+        <b>private readonly</b> <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#e74e7986e124f65f" class="t t">IResourceManager</a> <a id="94c5dbca73a84e2c" href="../R/94c5dbca73a84e2c.html" target="n" data-glyph="46,1" class="i field">_resourceManager</a>;
+        <b>private readonly</b> <span class="t t">IHttpContextAccessor</span> <a id="c95fcf5a9862e89c" href="../R/c95fcf5a9862e89c.html" target="n" data-glyph="46,1" class="i field">_httpContextAccessor</a>;
+        <b>private readonly</b> <a href="../Configuration/ReCaptchaSettings.cs.html#12de092abc7bfa45" class="t t">ReCaptchaSettings</a> <a id="4e0eb961607569bb" href="../R/4e0eb961607569bb.html" target="n" data-glyph="46,1" class="i field">_settings</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="62e88d43fdc7f831" href="../R/62e88d43fdc7f831.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="i">ILocalizationService</span> <a id="e8b0ab987a69ed59" href="../R/e8b0ab987a69ed59.html" target="n" data-glyph="46,1" class="i field">_localizationService</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="5c78cf1daaf3f6fd" href="../R/5c78cf1daaf3f6fd.html" target="n" data-glyph="46,1" class="i field">S</a>;
+ 
+        <b>public</b> <a id="d16277be95128609" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ReCaptchaTagHelper</a>(<span class="t t">IOptions</span>&lt;<a href="../Configuration/ReCaptchaSettings.cs.html#12de092abc7bfa45" class="t t">ReCaptchaSettings</a>&gt; <span id="r0 rd" class="r0 r">optionsAccessor</span>, <a href="/OrchardCore.ResourceManagement.Abstractions/A.html#e74e7986e124f65f" class="t t">IResourceManager</a> <span id="r1 rd" class="r1 r">resourceManager</span>, <span class="i">ILocalizationService</span> <span id="r2 rd" class="r2 r">localizationService</span>, <span class="t t">IHttpContextAccessor</span> <span id="r3 rd" class="r3 r">httpContextAccessor</span>, <span class="t t">ILogger</span>&lt;<a href="#58e4618dabbeae98" class="t t">ReCaptchaTagHelper</a>&gt; <span id="r4 rd" class="r4 r">logger</span>, <span class="t t">IStringLocalizer</span>&lt;<a href="#58e4618dabbeae98" class="t t">ReCaptchaTagHelper</a>&gt; <span id="r5 rd" class="r5 r">localizer</span>)
+        {
+            <a href="#94c5dbca73a84e2c" class="i field">_resourceManager</a> = <span class="r1 r">resourceManager</span>;
+            <a href="#c95fcf5a9862e89c" class="i field">_httpContextAccessor</a> = <span class="r3 r">httpContextAccessor</span>;
+            <a href="#4e0eb961607569bb" class="i field">_settings</a> = <span class="r0 r">optionsAccessor</span>.<span class="i property">Value</span>;
+            <a href="#ccadff1de91321e1" class="i property">Mode</a> = <a href="../ActionFilters/ReCaptchaMode.cs.html#9dcdeddbb8935e05" class="t t">ReCaptchaMode</a>.<a href="../ActionFilters/ReCaptchaMode.cs.html#8d5f031f3f7f235e" class="i field">PreventRobots</a>;
+            <a href="#62e88d43fdc7f831" class="i field">_logger</a> = <span class="r4 r">logger</span>;
+            <a href="#e8b0ab987a69ed59" class="i field">_localizationService</a> = <span class="r2 r">localizationService</span>;
+            <a href="#5c78cf1daaf3f6fd" class="i field">S</a> = <span class="r5 r">localizer</span>;
+        }
+ 
+        [<span class="t constructor">HtmlAttributeName</span>(<span class="s">&quot;mode&quot;</span>)]
+        <b>public</b> <a href="../ActionFilters/ReCaptchaMode.cs.html#9dcdeddbb8935e05" class="t t">ReCaptchaMode</a> <a id="ccadff1de91321e1" href="../R/ccadff1de91321e1.html" target="n" data-glyph="102,1" class="i property">Mode</a> { <b>get</b>; <b>set</b>; }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> The two letter ISO code of the language the captcha should be displayed in</span>
+        <span class="c">///</span><span class="c"> When left blank it will fall back to the default OrchardCore language</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        [<span class="t constructor">HtmlAttributeName</span>(<span class="s">&quot;language&quot;</span>)]
+        <b>public string</b> <a id="f7a520c26d69f092" href="../R/f7a520c26d69f092.html" target="n" data-glyph="102,1" class="i property">Language</a> { <b>get</b>; <b>set</b>; }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="d947fea1481ef221" href="../R/d947fea1481ef221.html" target="n" data-glyph="72,1" class="i method">ProcessAsync</a>(<span class="t t">TagHelperContext</span> <span id="r6 rd" class="r6 r">context</span>, <span class="t t">TagHelperOutput</span> <span id="r7 rd" class="r7 r">output</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r8 rd" class="r8 r">robotDetectors</span> = <a href="#c95fcf5a9862e89c" class="i field">_httpContextAccessor</a>.<span class="i property">HttpContext</span>.<span class="i property">RequestServices</span>.<span class="i method">GetServices</span>&lt;<a href="../ActionFilters/Detection/IDetectRobots.cs.html#08a0989845b789c2" class="t t">IDetectRobots</a>&gt;();
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r9 rd" class="r9 r">robotDetected</span> = <span class="r8 r">robotDetectors</span>.<span class="i">Invoke</span>(<span id="r10 rd" class="r10 r">d</span> =&gt; <span class="r10 r">d</span>.<span class="i">DetectRobot</span>(), <a href="#62e88d43fdc7f831" class="i field">_logger</a>).<span class="i">Any</span>(<span id="r11 rd" class="r11 r">d</span> =&gt; <span class="r11 r">d</span>.<span class="i">IsRobot</span>) &amp;&amp; <a href="#ccadff1de91321e1" class="i property">Mode</a> == <a href="../ActionFilters/ReCaptchaMode.cs.html#9dcdeddbb8935e05" class="t t">ReCaptchaMode</a>.<a href="../ActionFilters/ReCaptchaMode.cs.html#8d5f031f3f7f235e" class="i field">PreventRobots</a>;
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r12 rd" class="r12 r">alwaysShow</span> = <a href="#ccadff1de91321e1" class="i property">Mode</a> == <a href="../ActionFilters/ReCaptchaMode.cs.html#9dcdeddbb8935e05" class="t t">ReCaptchaMode</a>.<a href="../ActionFilters/ReCaptchaMode.cs.html#8dc45c86aff848b4" class="i field">AlwaysShow</a>;
+            <a href="@1@System.Runtime/A.html#f1b135ff6c380b37" class="k">var</a> <span id="r13 rd" class="r13 r">isConfigured</span> = <a href="#4e0eb961607569bb" class="i field">_settings</a> != <b>null</b>;
+ 
+            <b>if</b> (<span class="r13 r">isConfigured</span> &amp;&amp; (<span class="r9 r">robotDetected</span> || <span class="r12 r">alwaysShow</span>))
+            {
+                <b>await</b> <a href="#66250133d6adeef0" class="i method">ShowCaptcha</a>(<span class="r7 r">output</span>);
+            }
+            <b>else</b>
+            {
+                <span class="r7 r">output</span>.<span class="i method">SuppressOutput</span>();
+            }
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="66250133d6adeef0" href="../R/66250133d6adeef0.html" target="n" data-glyph="76,1" class="i method">ShowCaptcha</a>(<span class="t t">TagHelperOutput</span> <span id="r14 rd" class="r14 r">output</span>)
+        {
+            <span class="r14 r">output</span>.<span class="i property">TagName</span> = <span class="s">&quot;div&quot;</span>;
+            <span class="r14 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;class&quot;</span>, <span class="s">&quot;g-recaptcha&quot;</span>);
+            <span class="r14 r">output</span>.<span class="i property">Attributes</span>.<span class="i method">SetAttribute</span>(<span class="s">&quot;data-sitekey&quot;</span>, <a href="#4e0eb961607569bb" class="i field">_settings</a>.<a href="../Configuration/ReCaptchaSettings.cs.html#9da4b8af57019300" class="i property">SiteKey</a>);
+            <span class="r14 r">output</span>.<span class="i property">TagMode</span> = <span class="t t">TagMode</span>.<span class="i field">StartTagAndEndTag</span>;
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">builder</span> = <b>new</b> <span class="t constructor">TagBuilder</span>(<span class="s">&quot;script&quot;</span>);
+            <a href="@1@System.Runtime/A.html#e319c6636909012f" class="k">var</a> <span id="r16 rd" class="r16 r">cultureInfo</span> = <b>await</b> <a href="#5f741932c6bc6924" class="i method">GetCultureAsync</a>();
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r17 rd" class="r17 r">settingsUrl</span> = <span class="s">$&quot;</span>{<a href="#4e0eb961607569bb" class="i field">_settings</a>.<a href="../Configuration/ReCaptchaSettings.cs.html#a533ffb0db6a64a3" class="i property">ReCaptchaScriptUri</a>}<span class="s">?hl=</span>{<span class="r16 r">cultureInfo</span>.<a href="@1@System.Runtime/A.html#befd4d6d91c2e5a5" class="i property">TwoLetterISOLanguageName</a>}<span class="s">&quot;</span>;
+ 
+            <span class="r15 r">builder</span>.<span class="i property">Attributes</span>.<span class="i method">Add</span>(<span class="s">&quot;src&quot;</span>, <span class="r17 r">settingsUrl</span>);
+            <a href="#94c5dbca73a84e2c" class="i field">_resourceManager</a>.<a href="/OrchardCore.ResourceManagement.Abstractions/A.html#d30a1425a8ad3add" class="i method">RegisterFootScript</a>(<span class="r15 r">builder</span>);
+        }
+ 
+        <b>private async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>&gt; <a id="5f741932c6bc6924" href="../R/5f741932c6bc6924.html" target="n" data-glyph="76,1" class="i method">GetCultureAsync</a>()
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">language</span> = <a href="#f7a520c26d69f092" class="i property">Language</a>;
+            <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a> <span id="r19 rd" class="r19 r">culture</span> = <b>null</b>;
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r18 r">language</span>))
+                <span class="r18 r">language</span> = <b>await</b> <a href="#e8b0ab987a69ed59" class="i field">_localizationService</a>.<span class="i">GetDefaultCultureAsync</span>();
+ 
+            <b>try</b>
+            {
+                <span class="r19 r">culture</span> = <a href="@1@System.Runtime/A.html#e319c6636909012f" class="t t">CultureInfo</a>.<a href="@1@System.Runtime/A.html#fec605b3b773ab26" class="i method">GetCultureInfo</a>(<span class="r18 r">language</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#ef19ff62ab7db69b" class="t t">CultureNotFoundException</a>)
+            {
+                <a href="#62e88d43fdc7f831" class="i field">_logger</a>.<span class="i method">LogWarning</span>(<a href="#5c78cf1daaf3f6fd" class="i field">S</a>[<span class="s">&quot;Language with name {0} not found&quot;</span>, <span class="r18 r">language</span>]);
+            }
+ 
+            <b>return</b> <span class="r19 r">culture</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html><head><title>ShellContainerFactory.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(202);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore/Shell/Builders/ShellContainerFactory.cs" target="_top">Shell\Builders\ShellContainerFactory.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore" target="_top">src\OrchardCore\OrchardCore\OrchardCore.csproj</a> (OrchardCore)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Reflection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Hosting</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Extensions</span>.<span class="i n">Features</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Modules</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Environment</span>.<span class="i n">Shell</span>.<span class="i n">Builders</span>
+{
+    <b>public class</b> <a id="3aae172ab15f1076" href="../../R/3aae172ab15f1076.html" target="n" data-glyph="0,0" class="t t">ShellContainerFactory</a> : <a href="/OrchardCore.Abstractions/A.html#dc94165ad1920320" class="t t">IShellContainerFactory</a>
+    {
+        <b>private</b> <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="t t">IFeatureInfo</a> <a id="ccbe195f7c57e688" href="../../R/ccbe195f7c57e688.html" target="n" data-glyph="46,1" class="i field">_applicationFeature</a>;
+ 
+        <b>private readonly</b> <span class="t t">IHostEnvironment</span> <a id="a10009ee3231574f" href="../../R/a10009ee3231574f.html" target="n" data-glyph="46,1" class="i field">_hostingEnvironment</a>;
+        <b>private readonly</b> <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <a id="6ce516d205049508" href="../../R/6ce516d205049508.html" target="n" data-glyph="46,1" class="i field">_extensionManager</a>;
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="185655b6b95e49e3" href="../../R/185655b6b95e49e3.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+        <b>private readonly</b> <span class="t t">IServiceCollection</span> <a id="4f767b91bbfb5498" href="../../R/4f767b91bbfb5498.html" target="n" data-glyph="46,1" class="i field">_applicationServices</a>;
+ 
+        <b>public</b> <a id="edb610439b04a4ca" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">ShellContainerFactory</a>(
+            <span class="t t">IHostEnvironment</span> <span id="r0 rd" class="r0 r">hostingEnvironment</span>,
+            <a href="/OrchardCore.Abstractions/A.html#81047cb84527d570" class="t t">IExtensionManager</a> <span id="r1 rd" class="r1 r">extensionManager</span>,
+            <span class="t t">IServiceProvider</span> <span id="r2 rd" class="r2 r">serviceProvider</span>,
+            <span class="t t">IServiceCollection</span> <span id="r3 rd" class="r3 r">applicationServices</span>)
+        {
+            <a href="#a10009ee3231574f" class="i field">_hostingEnvironment</a> = <span class="r0 r">hostingEnvironment</span>;
+            <a href="#6ce516d205049508" class="i field">_extensionManager</a> = <span class="r1 r">extensionManager</span>;
+            <a href="#4f767b91bbfb5498" class="i field">_applicationServices</a> = <span class="r3 r">applicationServices</span>;
+            <a href="#185655b6b95e49e3" class="i field">_serviceProvider</a> = <span class="r2 r">serviceProvider</span>;
+        }
+ 
+        <b>public</b> <span class="t t">IServiceProvider</span> <a id="871d211d656e32fc" href="../../R/871d211d656e32fc.html" target="n" data-glyph="72,1" class="i method">CreateContainer</a>(<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a> <span id="r4 rd" class="r4 r">settings</span>, <a href="/OrchardCore.Abstractions/A.html#155107f1d2a14540" class="t t">ShellBlueprint</a> <span id="r5 rd" class="r5 r">blueprint</span>)
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">tenantServiceCollection</span> = <a href="#185655b6b95e49e3" class="i field">_serviceProvider</a>.<a href="Extensions/ServiceProviderExtensions.cs.html#de1e41bef2f3cad7" class="i method">CreateChildContainer</a>(<a href="#4f767b91bbfb5498" class="i field">_applicationServices</a>);
+ 
+            <span class="r6 r">tenantServiceCollection</span>.<span class="i method">AddSingleton</span>(<span class="r4 r">settings</span>);
+            <span class="r6 r">tenantServiceCollection</span>.<span class="i method">AddSingleton</span>(<span id="r7 rd" class="r7 r">sp</span> =&gt;
+            {
+                <span class="c">// Resolve it lazily as it&#39;s constructed lazily</span>
+                <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r8 rd" class="r8 r">shellSettings</span> = <span class="r7 r">sp</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt;();
+                <b>return</b> <span class="r8 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#e4b9d4720fdc9d27" class="i property">ShellConfiguration</a>;
+            });
+ 
+            <span class="r6 r">tenantServiceCollection</span>.<span class="i method">AddSingleton</span>(<span class="r5 r">blueprint</span>.<a href="/OrchardCore.Abstractions/A.html#32f59a878ccc4927" class="i property">Descriptor</a>);
+            <span class="r6 r">tenantServiceCollection</span>.<span class="i method">AddSingleton</span>(<span class="r5 r">blueprint</span>);
+ 
+            <span class="c">// Execute IStartup registrations</span>
+ 
+            <b>var</b> <span id="r9 rd" class="r9 r">moduleServiceCollection</span> = <a href="#185655b6b95e49e3" class="i field">_serviceProvider</a>.<a href="Extensions/ServiceProviderExtensions.cs.html#de1e41bef2f3cad7" class="i method">CreateChildContainer</a>(<a href="#4f767b91bbfb5498" class="i field">_applicationServices</a>);
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r10 rd" class="r10 r">dependency</span> <b>in</b> <span class="r5 r">blueprint</span>.<a href="/OrchardCore.Abstractions/A.html#834f38f04c40650d" class="i property">Dependencies</a>.<span class="i method">Where</span>(<span id="r11 rd" class="r11 r">t</span> =&gt; <b>typeof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>).<a href="@1@System.Runtime/A.html#ba0cffea035fe210" class="i method">IsAssignableFrom</a>(<span class="r11 r">t</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>)))
+            {
+                <span class="r9 r">moduleServiceCollection</span>.<span class="i method">TryAddEnumerable</span>(<span class="t t">ServiceDescriptor</span>.<span class="i method">Singleton</span>(<b>typeof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>), <span class="r10 r">dependency</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>));
+                <span class="r6 r">tenantServiceCollection</span>.<span class="i method">TryAddEnumerable</span>(<span class="t t">ServiceDescriptor</span>.<span class="i method">Singleton</span>(<b>typeof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>), <span class="r10 r">dependency</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>));
+            }
+ 
+            <span class="c">// To not trigger features loading before it is normally done by &#39;ShellHost&#39;,</span>
+            <span class="c">// init here the application feature in place of doing it in the constructor.</span>
+            <a href="#b72967ef63575925" class="i method">EnsureApplicationFeature</a>();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r12 rd" class="r12 r">rawStartup</span> <b>in</b> <span class="r5 r">blueprint</span>.<a href="/OrchardCore.Abstractions/A.html#834f38f04c40650d" class="i property">Dependencies</a>.<a href="@1@System.Runtime/A.html#6141d2484c7e5c1a" class="i property">Keys</a>.<span class="i method">Where</span>(<span id="r13 rd" class="r13 r">t</span> =&gt; <span class="r13 r">t</span>.<a href="@1@System.Runtime/A.html#aa4f112f79364b6e" class="i property">Name</a> == <span class="s">&quot;Startup&quot;</span>))
+            {
+                <span class="c">// Startup classes inheriting from IStartup are already treated</span>
+                <b>if</b> (<b>typeof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>).<a href="@1@System.Runtime/A.html#ba0cffea035fe210" class="i method">IsAssignableFrom</a>(<span class="r12 r">rawStartup</span>))
+                {
+                    <b>continue</b>;
+                }
+ 
+                <span class="c">// Ignore Startup class from main application</span>
+                <b>if</b> (<span class="r5 r">blueprint</span>.<a href="/OrchardCore.Abstractions/A.html#834f38f04c40650d" class="i property">Dependencies</a>.<a href="@1@System.Runtime/A.html#6b9f9049901aacea" class="i method">TryGetValue</a>(<span class="r12 r">rawStartup</span>, <b>out</b> <a href="/OrchardCore.Abstractions/A.html#204e84183184dcda" class="k">var</a> <span id="r14 rd" class="r14 r">startupFeature</span>) &amp;&amp; <span class="r14 r">startupFeature</span>.<a href="/OrchardCore.Abstractions/A.html#5744eb14f49d4d46" class="i property">FeatureInfo</a>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <a href="#ccbe195f7c57e688" class="i field">_applicationFeature</a>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a>)
+                {
+                    <b>continue</b>;
+                }
+ 
+                <span class="c">// Create a wrapper around this method</span>
+                <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r15 rd" class="r15 r">configureServicesMethod</span> = <span class="r12 r">rawStartup</span>.<a href="@1@System.Runtime/A.html#c75699acd9f29c03" class="i method">GetMethod</a>(
+                    <b>nameof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>.<span class="i">ConfigureServices</span>),
+                    <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>,
+                    <b>null</b>,
+                    <a href="@1@System.Runtime/A.html#a9a8e5027a625ee7" class="t t">CallingConventions</a>.<a href="@1@System.Runtime/A.html#038613ef8ae997e5" class="i field">Any</a>,
+                    <b>new</b> <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="t t">Type</a>[] { <b>typeof</b>(<span class="t t">IServiceCollection</span>) },
+                    <b>null</b>);
+ 
+                <a href="@1@System.Runtime/A.html#382d90b1fa682bac" class="k">var</a> <span id="r16 rd" class="r16 r">configureMethod</span> = <span class="r12 r">rawStartup</span>.<a href="@1@System.Runtime/A.html#f24e0c9fd5441fd5" class="i method">GetMethod</a>(
+                    <b>nameof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>.<span class="i">Configure</span>),
+                    <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>);
+ 
+                <a href="@1@System.Runtime/A.html#f3f0ea5f89a8f162" class="k">var</a> <span id="r17 rd" class="r17 r">orderProperty</span> = <span class="r12 r">rawStartup</span>.<a href="@1@System.Runtime/A.html#90cb501901e16fa4" class="i method">GetProperty</a>(
+                    <b>nameof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>.<a href="/OrchardCore.Abstractions/A.html#e567f8cb64c86ee6" class="i property">Order</a>),
+                    <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>);
+ 
+                <a href="@1@System.Runtime/A.html#f3f0ea5f89a8f162" class="k">var</a> <span id="r18 rd" class="r18 r">configureOrderProperty</span> = <span class="r12 r">rawStartup</span>.<a href="@1@System.Runtime/A.html#90cb501901e16fa4" class="i method">GetProperty</a>(
+                    <b>nameof</b>(<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>.<a href="/OrchardCore.Abstractions/A.html#89d3216022844680" class="i property">ConfigureOrder</a>),
+                    <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#ef2ef39bdfa059df" class="i field">Public</a> | <a href="@1@System.Runtime/A.html#4795caf3b483702d" class="t t">BindingFlags</a>.<a href="@1@System.Runtime/A.html#54a14f747b06c614" class="i field">Instance</a>);
+ 
+                <span class="c">// Add the startup class to the DI so we can instantiate it with</span>
+                <span class="c">// valid ctor arguments</span>
+                <span class="r9 r">moduleServiceCollection</span>.<span class="i method">AddSingleton</span>(<span class="r12 r">rawStartup</span>);
+                <span class="r6 r">tenantServiceCollection</span>.<span class="i method">AddSingleton</span>(<span class="r12 r">rawStartup</span>);
+ 
+                <span class="r9 r">moduleServiceCollection</span>.<span class="i method">AddSingleton</span>&lt;<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>&gt;(<span id="r19 rd" class="r19 r">sp</span> =&gt;
+                {
+                    <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r20 rd" class="r20 r">startupInstance</span> = <span class="r19 r">sp</span>.<span class="i method">GetService</span>(<span class="r12 r">rawStartup</span>);
+                    <b>return</b> <b>new</b> <a href="StartupBaseMock.cs.html#0f013fc5f022daf4" class="t constructor">StartupBaseMock</a>(<span class="r20 r">startupInstance</span>, <span class="r15 r">configureServicesMethod</span>, <span class="r16 r">configureMethod</span>, <span class="r17 r">orderProperty</span>, <span class="r18 r">configureOrderProperty</span>);
+                });
+ 
+                <span class="r6 r">tenantServiceCollection</span>.<span class="i method">AddSingleton</span>&lt;<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>&gt;(<span id="r21 rd" class="r21 r">sp</span> =&gt;
+                {
+                    <a href="@1@System.Runtime/A.html#d9262ceecc1719ab" class="k">var</a> <span id="r22 rd" class="r22 r">startupInstance</span> = <span class="r21 r">sp</span>.<span class="i method">GetService</span>(<span class="r12 r">rawStartup</span>);
+                    <b>return</b> <b>new</b> <a href="StartupBaseMock.cs.html#0f013fc5f022daf4" class="t constructor">StartupBaseMock</a>(<span class="r22 r">startupInstance</span>, <span class="r15 r">configureServicesMethod</span>, <span class="r16 r">configureMethod</span>, <span class="r17 r">orderProperty</span>, <span class="r18 r">configureOrderProperty</span>);
+                });
+            }
+ 
+            <span class="c">// Make shell settings available to the modules</span>
+            <span class="r9 r">moduleServiceCollection</span>.<span class="i method">AddSingleton</span>(<span class="r4 r">settings</span>);
+            <span class="r9 r">moduleServiceCollection</span>.<span class="i method">AddSingleton</span>(<span id="r23 rd" class="r23 r">sp</span> =&gt;
+            {
+                <span class="c">// Resolve it lazily as it&#39;s constructed lazily</span>
+                <a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="k">var</a> <span id="r24 rd" class="r24 r">shellSettings</span> = <span class="r23 r">sp</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#368947b748b893a0" class="t t">ShellSettings</a>&gt;();
+                <b>return</b> <span class="r24 r">shellSettings</span>.<a href="/OrchardCore.Abstractions/A.html#e4b9d4720fdc9d27" class="i property">ShellConfiguration</a>;
+            });
+ 
+            <b>var</b> <span id="r25 rd" class="r25 r">moduleServiceProvider</span> = <span class="r9 r">moduleServiceCollection</span>.<span class="i method">BuildServiceProvider</span>(<b>true</b>);
+ 
+            <span class="c">// Index all service descriptors by their feature id</span>
+            <a href="FeatureAwareServiceCollection.cs.html#e4a46f545e8189a4" class="k">var</a> <span id="r26 rd" class="r26 r">featureAwareServiceCollection</span> = <b>new</b> <a href="FeatureAwareServiceCollection.cs.html#f8f2d276f502d504" class="t constructor">FeatureAwareServiceCollection</a>(<span class="r6 r">tenantServiceCollection</span>);
+ 
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r27 rd" class="r27 r">startups</span> = <span class="r25 r">moduleServiceProvider</span>.<span class="i method">GetServices</span>&lt;<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="t t">IStartup</a>&gt;();
+ 
+            <span class="c">// IStartup instances are ordered by module dependency with an Order of 0 by default.</span>
+            <span class="c">// OrderBy performs a stable sort so order is preserved among equal Order values.</span>
+            <span class="r27 r">startups</span> = <span class="r27 r">startups</span>.<span class="i method">OrderBy</span>(<span id="r28 rd" class="r28 r">s</span> =&gt; <span class="r28 r">s</span>.<a href="/OrchardCore.Abstractions/A.html#e567f8cb64c86ee6" class="i property">Order</a>);
+ 
+            <span class="c">// Let any module add custom service descriptors to the tenant</span>
+            <b>foreach</b> (<a href="/OrchardCore.Abstractions/A.html#2cadd4d26e96a3fc" class="k">var</a> <span id="r29 rd" class="r29 r">startup</span> <b>in</b> <span class="r27 r">startups</span>)
+            {
+                <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="k">var</a> <span id="r30 rd" class="r30 r">feature</span> = <span class="r5 r">blueprint</span>.<a href="/OrchardCore.Abstractions/A.html#834f38f04c40650d" class="i property">Dependencies</a>.<span class="i method">FirstOrDefault</span>(<span id="r31 rd" class="r31 r">x</span> =&gt; <span class="r31 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a> == <span class="r29 r">startup</span>.<a href="@1@System.Runtime/A.html#4d73eb225aef8a61" class="i method">GetType</a>()).<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>?.<a href="/OrchardCore.Abstractions/A.html#5744eb14f49d4d46" class="i property">FeatureInfo</a>;
+ 
+                <span class="c">// If the startup is not coming from an extension, associate it to the application feature.</span>
+                <span class="c">// For instance when Startup classes are registered with Configure&lt;Startup&gt;() from the application.</span>
+ 
+                <span class="r26 r">featureAwareServiceCollection</span>.<a href="FeatureAwareServiceCollection.cs.html#da3dcfcf1c0141f3" class="i method">SetCurrentFeature</a>(<span class="r30 r">feature</span> ?? <a href="#ccbe195f7c57e688" class="i field">_applicationFeature</a>);
+                <span class="r29 r">startup</span>.<a href="/OrchardCore.Abstractions/A.html#15144d59ed33039c" class="i method">ConfigureServices</a>(<span class="r26 r">featureAwareServiceCollection</span>);
+            }
+ 
+            (<span class="r25 r">moduleServiceProvider</span> <b>as</b> <a href="@1@System.Runtime/A.html#1f55292c3174123d" class="t t">IDisposable</a>).<a href="@1@System.Runtime/A.html#4e23fed29bd598fa" class="i method">Dispose</a>();
+ 
+            <b>var</b> <span id="r32 rd" class="r32 r">shellServiceProvider</span> = <span class="r6 r">tenantServiceCollection</span>.<span class="i method">BuildServiceProvider</span>(<b>true</b>);
+ 
+            <span class="c">// Register all DIed types in ITypeFeatureProvider</span>
+            <a href="/OrchardCore.Abstractions/A.html#1a9a5e92836c8867" class="k">var</a> <span id="r33 rd" class="r33 r">typeFeatureProvider</span> = <span class="r32 r">shellServiceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.Abstractions/A.html#1a9a5e92836c8867" class="t t">ITypeFeatureProvider</a>&gt;();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r34 rd" class="r34 r">featureServiceCollection</span> <b>in</b> <span class="r26 r">featureAwareServiceCollection</span>.<a href="FeatureAwareServiceCollection.cs.html#d0af1c173e7eb8b4" class="i property">FeatureCollections</a>)
+            {
+                <b>foreach</b> (<b>var</b> <span id="r35 rd" class="r35 r">serviceDescriptor</span> <b>in</b> <span class="r34 r">featureServiceCollection</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>)
+                {
+                    <a href="@1@System.Runtime/A.html#3d00eeab9feb80f3" class="k">var</a> <span id="r36 rd" class="r36 r">type</span> = <span class="r35 r">serviceDescriptor</span>.<a href="/OrchardCore.Abstractions/A.html#bf42b35062ef4c7e" class="i method">GetImplementationType</a>();
+ 
+                    <b>if</b> (<span class="r36 r">type</span> != <b>null</b>)
+                    {
+                        <a href="/OrchardCore.Abstractions/A.html#134494577ac3818c" class="k">var</a> <span id="r37 rd" class="r37 r">feature</span> = <span class="r34 r">featureServiceCollection</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>;
+ 
+                        <b>if</b> (<span class="r37 r">feature</span> == <a href="#ccbe195f7c57e688" class="i field">_applicationFeature</a>)
+                        {
+                            <a href="/OrchardCore.Abstractions/A.html#defb48b164943d7d" class="k">var</a> <span id="r38 rd" class="r38 r">attribute</span> = <span class="r36 r">type</span>.<a href="@1@System.Runtime/A.html#a461242e0c3f3b72" class="i method">GetCustomAttributes</a>&lt;<a href="/OrchardCore.Abstractions/A.html#defb48b164943d7d" class="t t">FeatureAttribute</a>&gt;(<b>false</b>).<span class="i method">FirstOrDefault</span>();
+ 
+                            <b>if</b> (<span class="r38 r">attribute</span> != <b>null</b>)
+                            {
+                                <span class="r37 r">feature</span> = <span class="r34 r">featureServiceCollection</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>.<a href="/OrchardCore.Abstractions/A.html#76f75a213f3562d3" class="i property">Extension</a>.<a href="/OrchardCore.Abstractions/A.html#e2b90b6b8dc616b4" class="i property">Features</a>
+                                    .<span class="i method">FirstOrDefault</span>(<span id="r39 rd" class="r39 r">f</span> =&gt; <span class="r39 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <span class="r38 r">attribute</span>.<a href="/OrchardCore.Abstractions/A.html#68907cc4d83a4b7e" class="i property">FeatureName</a>)
+                                    ?? <span class="r37 r">feature</span>;
+                            }
+                        }
+ 
+                        <span class="r33 r">typeFeatureProvider</span>.<a href="/OrchardCore.Abstractions/A.html#69b556e3c39c3e6e" class="i method">TryAdd</a>(<span class="r36 r">type</span>, <span class="r37 r">feature</span>);
+                    }
+                }
+            }
+ 
+            <b>return</b> <span class="r32 r">shellServiceProvider</span>;
+        }
+ 
+        <b>private void</b> <a id="b72967ef63575925" href="../../R/b72967ef63575925.html" target="n" data-glyph="76,1" class="i method">EnsureApplicationFeature</a>()
+        {
+            <b>if</b> (<a href="#ccbe195f7c57e688" class="i field">_applicationFeature</a> == <b>null</b>)
+            {
+                <b>lock</b> (<a href="#3aae172ab15f1076" class="k">this</a>)
+                {
+                    <b>if</b> (<a href="#ccbe195f7c57e688" class="i field">_applicationFeature</a> == <b>null</b>)
+                    {
+                        <a href="#ccbe195f7c57e688" class="i field">_applicationFeature</a> = <a href="#6ce516d205049508" class="i field">_extensionManager</a>.<a href="/OrchardCore.Abstractions/A.html#8e77536f90629787" class="i method">GetFeatures</a>()
+                            .<span class="i method">FirstOrDefault</span>(<span id="r40 rd" class="r40 r">f</span> =&gt; <span class="r40 r">f</span>.<a href="/OrchardCore.Abstractions/A.html#708f9b0fbc75896d" class="i property">Id</a> == <a href="#a10009ee3231574f" class="i field">_hostingEnvironment</a>.<span class="i property">ApplicationName</span>);
+                    }
+                }
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

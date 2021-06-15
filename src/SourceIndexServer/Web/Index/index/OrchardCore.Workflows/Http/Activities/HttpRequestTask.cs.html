@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html><head><title>HttpRequestTask.cs</title><link rel="stylesheet" href="../../../styles.css"><script src="../../../scripts.js"></script></head>
+<body class="cB" onload="i(220);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Workflows/Http/Activities/HttpRequestTask.cs" target="_top">Http\Activities\HttpRequestTask.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Workflows" target="_top">src\OrchardCore.Modules\OrchardCore.Workflows\OrchardCore.Workflows.csproj</a> (OrchardCore.Workflows)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Net</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Abstractions</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Activities</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Models</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Workflows</span>.<span class="i n">Http</span>.<span class="i n">Activities</span>
+{
+    <b>public class</b> <a id="89b247818b64f268" href="../../R/89b247818b64f268.html" target="n" data-glyph="0,0" class="t t">HttpRequestTask</a> : <a href="/OrchardCore.Workflows.Abstractions/A.html#e0c71b7cb2244e67" class="t t">TaskActivity</a>
+    {
+        <b>private static readonly</b> <span class="t t">Dictionary</span>&lt;<b>int</b>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="829b839e7fd8bc1a" href="../../R/829b839e7fd8bc1a.html" target="n" data-glyph="46,1" class="i field">HttpStatusCodeDictionary</a> = <b>new</b> <span class="t constructor">Dictionary</span>&lt;<b>int</b>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;
+        {
+            { 100, <span class="s">&quot;Continue&quot;</span> },
+            { 101, <span class="s">&quot; Switching Protocols&quot;</span> },
+            { 102 , <span class="s">&quot;Processing&quot;</span> },
+            { 200 , <span class="s">&quot;OK&quot;</span> },
+            { 201 , <span class="s">&quot;Created&quot;</span> },
+            { 202 , <span class="s">&quot;Accepted&quot;</span> },
+            { 203 , <span class="s">&quot;Non-authoritative Information&quot;</span> },
+            { 204 , <span class="s">&quot;No Content&quot;</span> },
+            { 205 , <span class="s">&quot;Reset Content&quot;</span> },
+            { 206 , <span class="s">&quot;Partial Content&quot;</span> },
+            { 207 , <span class="s">&quot;Multi-Status&quot;</span> },
+            { 208 , <span class="s">&quot;Already Reported&quot;</span> },
+            { 226 , <span class="s">&quot;IM Used&quot;</span> },
+            { 300 , <span class="s">&quot;Multiple Choices&quot;</span> },
+            { 301 , <span class="s">&quot;Moved Permanently&quot;</span> },
+            { 302 , <span class="s">&quot;Found&quot;</span> },
+            { 303 , <span class="s">&quot;See Other&quot;</span> },
+            { 304 , <span class="s">&quot;Not Modified&quot;</span> },
+            { 305 , <span class="s">&quot;Use Proxy&quot;</span> },
+            { 307 , <span class="s">&quot;Temporary Redirect&quot;</span> },
+            { 308 , <span class="s">&quot;Permanent Redirect&quot;</span> },
+            { 400 , <span class="s">&quot;Bad Request&quot;</span> },
+            { 401 , <span class="s">&quot;Unauthorized&quot;</span> },
+            { 402 , <span class="s">&quot;Payment Required&quot;</span> },
+            { 403 , <span class="s">&quot;Forbidden&quot;</span> },
+            { 404 , <span class="s">&quot;Not Found&quot;</span> },
+            { 405 , <span class="s">&quot;Method Not Allowed&quot;</span> },
+            { 406 , <span class="s">&quot;Not Acceptable&quot;</span> },
+            { 407 , <span class="s">&quot;Proxy Authentication Required&quot;</span> },
+            { 408 , <span class="s">&quot;Request Timeout&quot;</span> },
+            { 409 , <span class="s">&quot;Conflict&quot;</span> },
+            { 410 , <span class="s">&quot;Gone&quot;</span> },
+            { 411 , <span class="s">&quot;Length Required&quot;</span> },
+            { 412 , <span class="s">&quot;Precondition Failed&quot;</span> },
+            { 413 , <span class="s">&quot;Payload Too Large&quot;</span> },
+            { 414 , <span class="s">&quot;Request-URI Too Long&quot;</span> },
+            { 415 , <span class="s">&quot;Unsupported Media Type&quot;</span> },
+            { 416 , <span class="s">&quot;Requested Range Not Satisfiable&quot;</span> },
+            { 417 , <span class="s">&quot;Expectation Failed&quot;</span> },
+            { 418 , <span class="s">&quot;I&#39;m a teapot&quot;</span> },
+            { 421 , <span class="s">&quot;Misdirected Request&quot;</span> },
+            { 422 , <span class="s">&quot;Unprocessable Entity&quot;</span> },
+            { 423 , <span class="s">&quot;Locked&quot;</span> },
+            { 424 , <span class="s">&quot;Failed Dependency&quot;</span> },
+            { 426 , <span class="s">&quot;Upgrade Required&quot;</span> },
+            { 428 , <span class="s">&quot;Precondition Required&quot;</span> },
+            { 429 , <span class="s">&quot;Too Many Requests&quot;</span> },
+            { 431 , <span class="s">&quot;Request Header Fields Too Large&quot;</span> },
+            { 444 , <span class="s">&quot;Connection Closed Without Response&quot;</span> },
+            { 451 , <span class="s">&quot;Unavailable For Legal Reasons&quot;</span> },
+            { 499 , <span class="s">&quot;Client Closed Request&quot;</span> },
+            { 500 , <span class="s">&quot;Internal Server Error&quot;</span> },
+            { 501 , <span class="s">&quot;Not Implemented&quot;</span> },
+            { 502 , <span class="s">&quot;Bad Gateway&quot;</span> },
+            { 503 , <span class="s">&quot;Service Unavailable&quot;</span> },
+            { 504 , <span class="s">&quot;Gateway Timeout&quot;</span> },
+            { 505 , <span class="s">&quot;HTTP Version Not Supported&quot;</span> },
+            { 506 , <span class="s">&quot;Variant Also Negotiates&quot;</span> },
+            { 507 , <span class="s">&quot;Insufficient Storage&quot;</span> },
+            { 508 , <span class="s">&quot;Loop Detected&quot;</span> },
+            { 510 , <span class="s">&quot;Not Extended&quot;</span> },
+            { 511 , <span class="s">&quot;Network Authentication Required&quot;</span> },
+            { 599 , <span class="s">&quot;Network Connect Timeout Error&quot;</span> }
+        };
+ 
+        <b>private static readonly</b> <span class="t t">HttpClient</span> <a id="8ac499172171e27d" href="../../R/8ac499172171e27d.html" target="n" data-glyph="46,1" class="i field">_httpClient</a> = <b>new</b> <span class="t constructor">HttpClient</span>();
+        <b>private readonly</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#3d648d89c6aacd19" class="t t">IWorkflowExpressionEvaluator</a> <a id="ea24bbaab1e75cb4" href="../../R/ea24bbaab1e75cb4.html" target="n" data-glyph="46,1" class="i field">_expressionEvaluator</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="cfdb345eb1d049a6" href="../../R/cfdb345eb1d049a6.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="t t">UrlEncoder</span> <a id="30efe2800f03910e" href="../../R/30efe2800f03910e.html" target="n" data-glyph="46,1" class="i field">_urlEncoder</a>;
+ 
+        <b>public</b> <a id="a28e7c9535bcfc86" href="../../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">HttpRequestTask</a>(
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#89b247818b64f268" class="t t">HttpRequestTask</a>&gt; <span id="r0 rd" class="r0 r">localizer</span>,
+            <a href="/OrchardCore.Workflows.Abstractions/A.html#3d648d89c6aacd19" class="t t">IWorkflowExpressionEvaluator</a> <span id="r1 rd" class="r1 r">expressionEvaluator</span>,
+            <span class="t t">UrlEncoder</span> <span id="r2 rd" class="r2 r">urlEncoder</span>
+        )
+        {
+            <a href="#cfdb345eb1d049a6" class="i field">S</a> = <span class="r0 r">localizer</span>;
+            <a href="#ea24bbaab1e75cb4" class="i field">_expressionEvaluator</a> = <span class="r1 r">expressionEvaluator</span>;
+            <a href="#30efe2800f03910e" class="i field">_urlEncoder</a> = <span class="r2 r">urlEncoder</span>;
+        }
+ 
+        <b>public override string</b> <a id="5a2bfbff4ac383ee" href="../../R/5a2bfbff4ac383ee.html" target="n" data-glyph="102,1" class="i property">Name</a> =&gt; <b>nameof</b>(<a href="#89b247818b64f268" class="t t">HttpRequestTask</a>);
+ 
+        <b>public override</b> <span class="t t">LocalizedString</span> <a id="c00b0dcff62e6846" href="../../R/c00b0dcff62e6846.html" target="n" data-glyph="102,1" class="i property">DisplayText</a> =&gt; <a href="#cfdb345eb1d049a6" class="i field">S</a>[<span class="s">&quot;Http Request Task&quot;</span>];
+ 
+        <b>public override</b> <span class="t t">LocalizedString</span> <a id="b4d51a4b5393392c" href="../../R/b4d51a4b5393392c.html" target="n" data-glyph="102,1" class="i property">Category</a> =&gt; <a href="#cfdb345eb1d049a6" class="i field">S</a>[<span class="s">&quot;HTTP&quot;</span>];
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="f6993c7b39b4d26b" href="../../R/f6993c7b39b4d26b.html" target="n" data-glyph="102,1" class="i property">Url</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public string</b> <a id="57d05704a144610e" href="../../R/57d05704a144610e.html" target="n" data-glyph="102,1" class="i property">HttpMethod</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <span class="t t">HttpMethods</span>.<span class="i field">Get</span>);
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="c0aa78ee8cca061b" href="../../R/c0aa78ee8cca061b.html" target="n" data-glyph="102,1" class="i property">Headers</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="7c9dc4e43b42cc68" href="../../R/7c9dc4e43b42cc68.html" target="n" data-glyph="102,1" class="i property">Body</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#b3bc782e0d92b907" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;());
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#acbdda67d2f30177" class="t t">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="7c51715226db414b" href="../../R/7c51715226db414b.html" target="n" data-glyph="102,1" class="i property">ContentType</a>
+        {
+            <b>get</b> =&gt; <span class="i">GetProperty</span>(() =&gt; <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#cd230232deabd216" class="t constructor">WorkflowExpression</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="s">&quot;application/json&quot;</span>));
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public string</b> <a id="63f542ad249d66db" href="../../R/63f542ad249d66db.html" target="n" data-glyph="102,1" class="i property">HttpResponseCodes</a>
+        {
+            <b>get</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#3aa47be8f1b24a84" class="i method">GetProperty</a>(() =&gt; <span class="s">&quot;200&quot;</span>);
+            <b>set</b> =&gt; <a href="/OrchardCore.Workflows.Abstractions/A.html#88a30da19130c2d4" class="i method">SetProperty</a>(<b>value</b>);
+        }
+ 
+        <b>public override</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#896cd41950be540c" class="t t">Outcome</a>&gt; <a id="ecb97e07d4153452" href="../../R/ecb97e07d4153452.html" target="n" data-glyph="72,1" class="i method">GetPossibleOutcomes</a>(<a href="/OrchardCore.Workflows.Abstractions/A.html#6f67695a3f6cde25" class="t t">WorkflowExecutionContext</a> <span id="r3 rd" class="r3 r">workflowContext</span>, <a href="/OrchardCore.Workflows.Abstractions/A.html#9e67ef319c1dd26d" class="t t">ActivityContext</a> <span id="r4 rd" class="r4 r">activityContext</span>)
+        {
+            <b>var</b> <span id="r5 rd" class="r5 r">outcomes</span> = !<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<a href="#63f542ad249d66db" class="i property">HttpResponseCodes</a>)
+                ? <a href="#63f542ad249d66db" class="i property">HttpResponseCodes</a>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;,&#39;</span>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>).<span class="i">Select</span>(<span id="r6 rd" class="r6 r">x</span> =&gt;
+                {
+                    <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r7 rd" class="r7 r">status</span> = <b>int</b>.<a href="@1@System.Runtime/A.html#a438016f815a35c3" class="i method">Parse</a>(<span class="r6 r">x</span>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>());
+ 
+                    <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r8 rd" class="r8 r">description</span> = <a href="#829b839e7fd8bc1a" class="i field">HttpStatusCodeDictionary</a>.<span class="i method">TryGetValue</span>(<span class="r7 r">status</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r9 rd" class="r9 r">text</span>)
+                        ? <span class="s">$&quot;</span>{<span class="r7 r">status</span>}<span class="s"> </span>{<span class="r9 r">text</span>}<span class="s">&quot;</span>
+                        : <span class="r7 r">status</span>.<a href="@1@System.Runtime/A.html#8d6f2d8bc0589463" class="i method">ToString</a>()
+                        ;
+ 
+                    <b>return</b> <b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#1df77134f36a5075" class="t constructor">Outcome</a>(<span class="r7 r">status</span>.<a href="@1@System.Runtime/A.html#8d6f2d8bc0589463" class="i method">ToString</a>(), <b>new</b> <span class="t constructor">LocalizedString</span>(<span class="r8 r">description</span>, <span class="r8 r">description</span>));
+                }).<span class="i">ToList</span>()
+                : <b>new</b> <span class="t constructor">List</span>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#896cd41950be540c" class="t t">Outcome</a>&gt;();
+            <span class="r5 r">outcomes</span>.<span class="i">Add</span>(<b>new</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#1df77134f36a5075" class="t constructor">Outcome</a>(<span class="s">&quot;UnhandledHttpStatus&quot;</span>, <a href="#cfdb345eb1d049a6" class="i field">S</a>[<span class="s">&quot;Unhandled Http Status&quot;</span>]));
+ 
+            <b>return</b> <span class="r5 r">outcomes</span>;
+        }
+ 
+        <b>public override async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="/OrchardCore.Workflows.Abstractions/A.html#d58e24256eaeafa5" class="t t">ActivityExecutionResult</a>&gt; <a id="ad412867364deb2b" href="../../R/ad412867364deb2b.html" target="n" data-glyph="72,1" class="i method">ExecuteAsync</a>(<a href="/OrchardCore.Workflows.Abstractions/A.html#6f67695a3f6cde25" class="t t">WorkflowExecutionContext</a> <span id="r10 rd" class="r10 r">workflowContext</span>, <a href="/OrchardCore.Workflows.Abstractions/A.html#9e67ef319c1dd26d" class="t t">ActivityContext</a> <span id="r11 rd" class="r11 r">activityContext</span>)
+        {
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r12 rd" class="r12 r">headersText</span> = <b>await</b> <a href="#ea24bbaab1e75cb4" class="i field">_expressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#c0aa78ee8cca061b" class="i property">Headers</a>, <span class="r10 r">workflowContext</span>, <a href="#30efe2800f03910e" class="i field">_urlEncoder</a>);
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r13 rd" class="r13 r">headers</span> = <a href="#bfb9e0aa3d6c93c7" class="i method">ParseHeaders</a>(<span class="r12 r">headersText</span>);
+ 
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r14 rd" class="r14 r">httpMethod</span> = <a href="#57d05704a144610e" class="i property">HttpMethod</a>;
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r15 rd" class="r15 r">url</span> = <b>await</b> <a href="#ea24bbaab1e75cb4" class="i field">_expressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#f6993c7b39b4d26b" class="i property">Url</a>, <span class="r10 r">workflowContext</span>, <a href="#30efe2800f03910e" class="i field">_urlEncoder</a>);
+            <b>var</b> <span id="r16 rd" class="r16 r">request</span> = <b>new</b> <span class="t constructor">HttpRequestMessage</span>(<b>new</b> <span class="t constructor">HttpMethod</span>(<span class="r14 r">httpMethod</span>), <span class="r15 r">url</span>);
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r17 rd" class="r17 r">header</span> <b>in</b> <span class="r13 r">headers</span>)
+            {
+                <span class="r16 r">request</span>.<span class="i property">Headers</span>.<span class="i method">TryAddWithoutValidation</span>(<span class="r17 r">header</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r17 r">header</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+            }
+ 
+            <b>if</b> (<span class="t t">HttpMethods</span>.<span class="i method">IsPatch</span>(<span class="r14 r">httpMethod</span>) || <span class="t t">HttpMethods</span>.<span class="i method">IsPost</span>(<span class="r14 r">httpMethod</span>) || <span class="t t">HttpMethods</span>.<span class="i method">IsPut</span>(<span class="r14 r">httpMethod</span>))
+            {
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r18 rd" class="r18 r">body</span> = <b>await</b> <a href="#ea24bbaab1e75cb4" class="i field">_expressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#7c9dc4e43b42cc68" class="i property">Body</a>, <span class="r10 r">workflowContext</span>, <b>null</b>);
+                <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r19 rd" class="r19 r">contentType</span> = <b>await</b> <a href="#ea24bbaab1e75cb4" class="i field">_expressionEvaluator</a>.<a href="/OrchardCore.Workflows.Abstractions/A.html#423f55af0852f2df" class="i method">EvaluateAsync</a>(<a href="#7c51715226db414b" class="i property">ContentType</a>, <span class="r10 r">workflowContext</span>, <a href="#30efe2800f03910e" class="i field">_urlEncoder</a>);
+                <span class="r16 r">request</span>.<span class="i property">Content</span> = <b>new</b> <span class="t constructor">StringContent</span>(<span class="r18 r">body</span>, <a href="@1@System.Runtime/A.html#3b6090c501893c25" class="t t">Encoding</a>.<a href="@1@System.Runtime/A.html#a10eb90a3d884500" class="i property">UTF8</a>, <span class="r19 r">contentType</span>);
+            }
+ 
+            <b>var</b> <span id="r20 rd" class="r20 r">response</span> = <b>await</b> <a href="#8ac499172171e27d" class="i field">_httpClient</a>.<span class="i method">SendAsync</span>(<span class="r16 r">request</span>, <span class="t t">HttpCompletionOption</span>.<span class="i field">ResponseContentRead</span>);
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r21 rd" class="r21 r">responseCodes</span> = <a href="#039abf397e45eb67" class="i method">ParseResponseCodes</a>(<a href="#63f542ad249d66db" class="i property">HttpResponseCodes</a>);
+            <a href="@1@System.Runtime/A.html#225942ed7b7a3252" class="k">var</a> <span id="r22 rd" class="r22 r">outcome</span> = <span class="r21 r">responseCodes</span>.<span class="i method">FirstOrDefault</span>(<span id="r23 rd" class="r23 r">x</span> =&gt; <span class="r23 r">x</span> == (<b>int</b>)<span class="r20 r">response</span>.<span class="i property">StatusCode</span>);
+ 
+            <span class="r10 r">workflowContext</span>.<a href="/OrchardCore.Workflows.Abstractions/A.html#3d784f37085b00d7" class="i property">LastResult</a> = <b>new</b>
+            {
+                <a href="#d2b9a3e0f9cf862d" class="i property">Body</a> = <b>await</b> <span class="r20 r">response</span>.<span class="i property">Content</span>.<span class="i method">ReadAsStringAsync</span>(),
+                <a href="#8c21486b6ebcc54a" class="i property">Headers</a> = <span class="r20 r">response</span>.<span class="i property">Headers</span>.<span class="i method">ToDictionary</span>(<span id="r24 rd" class="r24 r">x</span> =&gt; <span class="r24 r">x</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>),
+                <a href="#a6ad44fd174cd8d6" class="i property">StatusCode</a> = <span class="r20 r">response</span>.<span class="i property">StatusCode</span>,
+                <a href="#69928d958a182f79" class="i property">ReasonPhrase</a> = <span class="r20 r">response</span>.<span class="i property">ReasonPhrase</span>,
+                <a href="#28cda2f2bf7ad565" class="i property">IsSuccessStatusCode</a> = <span class="r20 r">response</span>.<span class="i property">IsSuccessStatusCode</span>
+            };
+ 
+            <b>return</b> <a href="/OrchardCore.Workflows.Abstractions/A.html#a996bf7f57721f30" class="i method">Outcomes</a>(<span class="r22 r">outcome</span> != 0 ? <span class="r22 r">outcome</span>.<a href="@1@System.Runtime/A.html#8d6f2d8bc0589463" class="i method">ToString</a>() : <span class="s">&quot;UnhandledHttpStatus&quot;</span>);
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt; <a id="bfb9e0aa3d6c93c7" href="../../R/bfb9e0aa3d6c93c7.html" target="n" data-glyph="76,1" class="i method">ParseHeaders</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r25 rd" class="r25 r">text</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r25 r">text</span>))
+                <b>return</b> <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;&gt;();
+ 
+            <b>return</b>
+                <b>from</b> <span class="i">header</span> <b>in</b> <span class="r25 r">text</span>.<a href="@1@System.Runtime/A.html#8c6886dc1045de5b" class="i method">Split</a>(<b>new</b>[] { <span class="s">&quot;\r\n&quot;</span>, <span class="s">&quot;\n&quot;</span>, <span class="s">&quot;\r&quot;</span> }, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>).<span class="i method">Select</span>(<span id="r26 rd" class="r26 r">x</span> =&gt; <span class="r26 r">x</span>.<a href="@1@System.Runtime/A.html#06a5f7c688e69307" class="i method">Trim</a>())
+                <b>let</b> <span class="i">pair</span> = <span class="i">header</span>.<a href="@1@System.Runtime/A.html#aafeabcf00718a05" class="i method">Split</a>(<span class="s">&#39;:&#39;</span>, 2)
+                <b>where</b> <span class="i">pair</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> == 2
+                <b>select</b> <b>new</b> <a href="@1@System.Runtime/A.html#0d04c81b31e41262" class="t constructor">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;(<span class="i">pair</span>[0], <span class="i">pair</span>[1]);
+        }
+ 
+        <b>private</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<b>int</b>&gt; <a id="039abf397e45eb67" href="../../R/039abf397e45eb67.html" target="n" data-glyph="76,1" class="i method">ParseResponseCodes</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">text</span>)
+        {
+            <b>return</b>
+                <b>from</b> <span class="i">code</span> <b>in</b> <span class="r27 r">text</span>.<a href="@1@System.Runtime/A.html#b06c6275ef677846" class="i method">Split</a>(<span class="s">&#39;,&#39;</span>, <a href="@1@System.Runtime/A.html#a948431c3f385783" class="t t">StringSplitOptions</a>.<a href="@1@System.Runtime/A.html#249c323b50d44651" class="i field">RemoveEmptyEntries</a>)
+                <b>select int</b>.<a href="@1@System.Runtime/A.html#a438016f815a35c3" class="i method">Parse</a>(<span class="i">code</span>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

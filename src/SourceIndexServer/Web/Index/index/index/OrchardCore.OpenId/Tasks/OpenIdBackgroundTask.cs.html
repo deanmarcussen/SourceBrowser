@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html><head><title>OpenIdBackgroundTask.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(90);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.OpenId/Tasks/OpenIdBackgroundTask.cs" target="_top">Tasks\OpenIdBackgroundTask.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.OpenId" target="_top">src\OrchardCore.Modules\OrchardCore.OpenId\OrchardCore.OpenId.csproj</a> (OrchardCore.OpenId)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">DependencyInjection</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i">OpenIddict</span>.<span class="i">Abstractions</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i">BackgroundTasks</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Abstractions</span>.<span class="i n">Managers</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">OpenId</span>.<span class="i n">Tasks</span>
+{
+    [<span class="i">BackgroundTask</span>(<span class="i">Schedule</span> = <span class="s">&quot;*/30 * * * *&quot;</span>, <span class="i">Description</span> = <span class="s">&quot;Performs various cleanup operations for OpenID-related features.&quot;</span>)]
+    <b>public class</b> <a id="4b0c37b3567e1585" href="../R/4b0c37b3567e1585.html" target="n" data-glyph="0,0" class="t t">OpenIdBackgroundTask</a> : <span class="i">IBackgroundTask</span>
+    {
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="87bb406270c27a56" href="../R/87bb406270c27a56.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <a href="../Services/IOpenIdServerService.cs.html#16b68e76cf5b848a" class="t t">IOpenIdServerService</a> <a id="6761495c70d4f7cd" href="../R/6761495c70d4f7cd.html" target="n" data-glyph="46,1" class="i field">_serverService</a>;
+ 
+        <b>public</b> <a id="010f5335009dd774" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">OpenIdBackgroundTask</a>(
+            <span class="t t">ILogger</span>&lt;<a href="#4b0c37b3567e1585" class="t t">OpenIdBackgroundTask</a>&gt; <span id="r0 rd" class="r0 r">logger</span>,
+            <a href="../Services/IOpenIdServerService.cs.html#16b68e76cf5b848a" class="t t">IOpenIdServerService</a> <span id="r1 rd" class="r1 r">serverService</span>)
+        {
+            <a href="#87bb406270c27a56" class="i field">_logger</a> = <span class="r0 r">logger</span>;
+            <a href="#6761495c70d4f7cd" class="i field">_serverService</a> = <span class="r1 r">serverService</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="620ab2a84e82d82a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DoWorkAsync</a>(<span class="t t">IServiceProvider</span> <span id="r2 rd" class="r2 r">serviceProvider</span>, <a href="@1@System.Runtime/A.html#36b17ded8b1a228c" class="t t">CancellationToken</a> <span id="r3 rd" class="r3 r">cancellationToken</span>)
+        {
+            <b>try</b>
+            {
+                <b>await</b> <a href="#6761495c70d4f7cd" class="i field">_serverService</a>.<a href="../Services/IOpenIdServerService.cs.html#021a41f233710dd8" class="i method">PruneManagedCertificatesAsync</a>();
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#a0a8b79c277cf327" class="t t">OperationCanceledException</a> <span id="r4 rd" class="r4 r">exception</span>) <b>when</b> (<span class="r4 r">exception</span>.<a href="@1@System.Runtime/A.html#be128335b36021ef" class="i property">CancellationToken</a> == <span class="r3 r">cancellationToken</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;The X.509 certificates pruning task was aborted.&quot;</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r5 rd" class="r5 r">exception</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r5 r">exception</span>, <span class="s">&quot;An error occurred while pruning X.509 certificates from the shell storage.&quot;</span>);
+            }
+ 
+            <span class="c">// Note: this background task is responsible of automatically removing orphaned tokens/authorizations</span>
+            <span class="c">// (i.e tokens that are no longer valid and ad-hoc authorizations that have no valid tokens associated).</span>
+            <span class="c">// Import: since tokens associated to ad-hoc authorizations are not removed as part of the same operation,</span>
+            <span class="c">// the tokens MUST be deleted before removing the ad-hoc authorizations that no longer have any token.</span>
+ 
+            <span class="c">// Note: the authorization/token managers MUST be resolved from the scoped provider</span>
+            <span class="c">// as they depend on scoped stores that should be disposed as soon as possible.</span>
+ 
+            <span class="c">// Note: this task uses a hardcoded minimum token/authorization lifespan of 14 days,</span>
+            <span class="c">// which matches the default value used by the OpenIddict Quartz.NET integration.</span>
+            <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="k">var</a> <span id="r6 rd" class="r6 r">threshold</span> = <a href="@1@System.Runtime/A.html#68b4bb83ce8d1c31" class="t t">DateTimeOffset</a>.<a href="@1@System.Runtime/A.html#04abe0cac293ebd0" class="i property">UtcNow</a> - <a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#e7c4baa19fa38e8e" class="i method">FromDays</a>(14);
+ 
+            <b>try</b>
+            {
+                <b>await</b> <span class="r2 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.OpenId.Core/A.html#a14e4361b795aede" class="t t">IOpenIdTokenManager</a>&gt;().<span class="i">PruneAsync</span>(<span class="r6 r">threshold</span>, <span class="r3 r">cancellationToken</span>);
+            }
+            <b>catch</b> (<span class="i">OpenIddictExceptions</span>.<span class="i">ConcurrencyException</span> <span id="r7 rd" class="r7 r">exception</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i">LogDebug</span>(<span class="r7 r">exception</span>, <span class="s">&quot;A concurrency error occurred while pruning tokens from the database.&quot;</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#a0a8b79c277cf327" class="t t">OperationCanceledException</a> <span id="r8 rd" class="r8 r">exception</span>) <b>when</b> (<span class="r8 r">exception</span>.<a href="@1@System.Runtime/A.html#be128335b36021ef" class="i property">CancellationToken</a> == <span class="r3 r">cancellationToken</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;The tokens pruning task was aborted.&quot;</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r9 rd" class="r9 r">exception</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r9 r">exception</span>, <span class="s">&quot;An error occurred while pruning tokens from the database.&quot;</span>);
+            }
+ 
+            <b>try</b>
+            {
+                <b>await</b> <span class="r2 r">serviceProvider</span>.<span class="i method">GetRequiredService</span>&lt;<a href="/OrchardCore.OpenId.Core/A.html#29eaa4dac80ccb3b" class="t t">IOpenIdAuthorizationManager</a>&gt;().<span class="i">PruneAsync</span>(<span class="r6 r">threshold</span>, <span class="r3 r">cancellationToken</span>);
+            }
+            <b>catch</b> (<span class="i">OpenIddictExceptions</span>.<span class="i">ConcurrencyException</span> <span id="r10 rd" class="r10 r">exception</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i">LogDebug</span>(<span class="r10 r">exception</span>, <span class="s">&quot;A concurrency error occurred while pruning authorizations from the database.&quot;</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#a0a8b79c277cf327" class="t t">OperationCanceledException</a> <span id="r11 rd" class="r11 r">exception</span>) <b>when</b> (<span class="r11 r">exception</span>.<a href="@1@System.Runtime/A.html#be128335b36021ef" class="i property">CancellationToken</a> == <span class="r3 r">cancellationToken</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i method">LogDebug</span>(<span class="s">&quot;The authorizations pruning task was aborted.&quot;</span>);
+            }
+            <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r12 rd" class="r12 r">exception</span>)
+            {
+                <a href="#87bb406270c27a56" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r12 r">exception</span>, <span class="s">&quot;An error occurred while pruning authorizations from the database.&quot;</span>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

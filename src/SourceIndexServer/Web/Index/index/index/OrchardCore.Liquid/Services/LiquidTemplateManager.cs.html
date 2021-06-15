@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+<html><head><title>LiquidTemplateManager.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(133);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Liquid/Services/LiquidTemplateManager.cs" target="_top">Services\LiquidTemplateManager.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Liquid" target="_top">src\OrchardCore.Modules\OrchardCore.Liquid\OrchardCore.Liquid.csproj</a> (OrchardCore.Liquid)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>.<span class="i n">Encodings</span>.<span class="i n">Web</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i">Fluid</span>;
+<b>using</b> <span class="i">Fluid</span>.<span class="i">Values</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Html</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Caching</span>.<span class="i n">Memory</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>.<span class="i n">Liquid</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Liquid</span>.<span class="i n">Services</span>
+{
+    <b>public class</b> <a id="d411c3966605a7b0" href="../R/d411c3966605a7b0.html" target="n" data-glyph="0,0" class="t t">LiquidTemplateManager</a> : <span class="i">ILiquidTemplateManager</span>
+    {
+        <b>private readonly</b> <span class="t t">IMemoryCache</span> <a id="86c8d3d9796f358a" href="../R/86c8d3d9796f358a.html" target="n" data-glyph="46,1" class="i field">_memoryCache</a>;
+        <b>private readonly</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#10c79fc080ed5f86" class="t t">LiquidViewParser</a> <a id="4cec93276052ccbf" href="../R/4cec93276052ccbf.html" target="n" data-glyph="46,1" class="i field">_liquidViewParser</a>;
+        <b>private readonly</b> <span class="i">TemplateOptions</span> <a id="4807830b6d5e9a29" href="../R/4807830b6d5e9a29.html" target="n" data-glyph="46,1" class="i field">_templateOptions</a>;
+        <b>private readonly</b> <span class="t t">IServiceProvider</span> <a id="5558047730693ee9" href="../R/5558047730693ee9.html" target="n" data-glyph="46,1" class="i field">_serviceProvider</a>;
+ 
+        <b>public</b> <a id="3b75d60950bdfb4a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">LiquidTemplateManager</a>(
+            <span class="t t">IMemoryCache</span> <span id="r0 rd" class="r0 r">memoryCache</span>, 
+            <a href="/OrchardCore.DisplayManagement.Liquid/A.html#10c79fc080ed5f86" class="t t">LiquidViewParser</a> <span id="r1 rd" class="r1 r">liquidViewParser</span>, 
+            <span class="t t">IOptions</span>&lt;<span class="i">TemplateOptions</span>&gt; <span id="r2 rd" class="r2 r">templateOptions</span>,
+            <span class="t t">IServiceProvider</span> <span id="r3 rd" class="r3 r">serviceProvider</span>
+            )
+        {
+            <a href="#86c8d3d9796f358a" class="i field">_memoryCache</a> = <span class="r0 r">memoryCache</span>;
+            <a href="#4cec93276052ccbf" class="i field">_liquidViewParser</a> = <span class="r1 r">liquidViewParser</span>;
+            <a href="#4807830b6d5e9a29" class="i field">_templateOptions</a> = <span class="r2 r">templateOptions</span>.<span class="i property">Value</span>;
+            <a href="#5558047730693ee9" class="i field">_serviceProvider</a> = <span class="r3 r">serviceProvider</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="8bc4c2f75eb51e6b" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderStringAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r4 rd" class="r4 r">source</span>, <span class="t t">TextEncoder</span> <span id="r5 rd" class="r5 r">encoder</span>, <b>object</b> <span id="r6 rd" class="r6 r">model</span> = <b>null</b>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;&gt; <span id="r7 rd" class="r7 r">properties</span> = <b>null</b>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r4 r">source</span>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#11a386e7d7cae64a" class="i method">FromResult</a>((<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>)<b>null</b>);
+            }
+ 
+            <a href="/OrchardCore.DisplayManagement.Liquid/A.html#9fbef59705c4102a" class="k">var</a> <span id="r8 rd" class="r8 r">result</span> = <a href="#613ee2d07ae96473" class="i method">GetCachedTemplate</a>(<span class="r4 r">source</span>);
+            <b>var</b> <span id="r9 rd" class="r9 r">context</span> = <b>new</b> <span class="i">LiquidTemplateContext</span>(<a href="#5558047730693ee9" class="i field">_serviceProvider</a>, <a href="#4807830b6d5e9a29" class="i field">_templateOptions</a>);
+ 
+            <b>if</b> (<span class="r7 r">properties</span> != <b>null</b>)
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r10 rd" class="r10 r">property</span> <b>in</b> <span class="r7 r">properties</span>)
+                {
+                    <span class="r9 r">context</span>.<span class="i">SetValue</span>(<span class="r10 r">property</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r10 r">property</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                }
+            }
+ 
+            <b>return</b> <span class="r8 r">result</span>.<span class="i">RenderAsync</span>(<span class="r5 r">encoder</span>, <span class="r9 r">context</span>, <span class="r6 r">model</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IHtmlContent</span>&gt; <a id="40a95a10d6451ff7" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderHtmlContentAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r11 rd" class="r11 r">source</span>, <span class="t t">TextEncoder</span> <span id="r12 rd" class="r12 r">encoder</span>, <b>object</b> <span id="r13 rd" class="r13 r">model</span> = <b>null</b>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;&gt; <span id="r14 rd" class="r14 r">properties</span> = <b>null</b>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r11 r">source</span>))
+            {
+                <b>return</b> <span class="t t">HtmlString</span>.<span class="i field">Empty</span>;
+            }
+ 
+            <a href="/OrchardCore.DisplayManagement.Liquid/A.html#9fbef59705c4102a" class="k">var</a> <span id="r15 rd" class="r15 r">result</span> = <a href="#613ee2d07ae96473" class="i method">GetCachedTemplate</a>(<span class="r11 r">source</span>);
+            <b>var</b> <span id="r16 rd" class="r16 r">context</span> = <b>new</b> <span class="i">LiquidTemplateContext</span>(<a href="#5558047730693ee9" class="i field">_serviceProvider</a>, <a href="#4807830b6d5e9a29" class="i field">_templateOptions</a>);
+ 
+            <b>if</b> (<span class="r14 r">properties</span> != <b>null</b>)
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r17 rd" class="r17 r">property</span> <b>in</b> <span class="r14 r">properties</span>)
+                {
+                    <span class="r16 r">context</span>.<span class="i">SetValue</span>(<span class="r17 r">property</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r17 r">property</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                }
+            }
+ 
+            <a href="/OrchardCore.DisplayManagement.Liquid/A.html#3e60ca0522d36009" class="k">var</a> <span id="r18 rd" class="r18 r">htmlContentWriter</span> = <b>new</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#94a84e77763f63a2" class="t constructor">ViewBufferTextWriterContent</a>();
+ 
+            <b>await</b> <span class="r15 r">result</span>.<span class="i">RenderAsync</span>(<span class="r18 r">htmlContentWriter</span>, <span class="r12 r">encoder</span>, <span class="r16 r">context</span>, <span class="r13 r">model</span>);
+ 
+            <b>return</b> <span class="r18 r">htmlContentWriter</span>;
+        }
+ 
+        <b>public</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a> <a id="916aad546a8bec6a" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">RenderAsync</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r19 rd" class="r19 r">source</span>, <a href="@1@System.Runtime/A.html#6e84a88dc2be46e3" class="t t">TextWriter</a> <span id="r20 rd" class="r20 r">writer</span>, <span class="t t">TextEncoder</span> <span id="r21 rd" class="r21 r">encoder</span>, <b>object</b> <span id="r22 rd" class="r22 r">model</span> = <b>null</b>, <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8585965bb176a426" class="t t">KeyValuePair</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>, <span class="i">FluidValue</span>&gt;&gt; <span id="r23 rd" class="r23 r">properties</span> = <b>null</b>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#55e241b6143365ef" class="i method">IsNullOrWhiteSpace</a>(<span class="r19 r">source</span>))
+            {
+                <b>return</b> <a href="@1@System.Runtime/A.html#045a746eb48cbaa9" class="t t">Task</a>.<a href="@1@System.Runtime/A.html#66f1c3e3e272f591" class="i property">CompletedTask</a>;
+            }
+ 
+            <a href="/OrchardCore.DisplayManagement.Liquid/A.html#9fbef59705c4102a" class="k">var</a> <span id="r24 rd" class="r24 r">result</span> = <a href="#613ee2d07ae96473" class="i method">GetCachedTemplate</a>(<span class="r19 r">source</span>);
+            <b>var</b> <span id="r25 rd" class="r25 r">context</span> = <b>new</b> <span class="i">LiquidTemplateContext</span>(<a href="#5558047730693ee9" class="i field">_serviceProvider</a>, <a href="#4807830b6d5e9a29" class="i field">_templateOptions</a>);
+ 
+            <b>if</b> (<span class="r23 r">properties</span> != <b>null</b>)
+            {
+                <b>foreach</b> (<a href="@1@System.Runtime/A.html#8585965bb176a426" class="k">var</a> <span id="r26 rd" class="r26 r">property</span> <b>in</b> <span class="r23 r">properties</span>)
+                {
+                    <span class="r25 r">context</span>.<span class="i">SetValue</span>(<span class="r26 r">property</span>.<a href="@1@System.Runtime/A.html#f9d1c04feb1af032" class="i property">Key</a>, <span class="r26 r">property</span>.<a href="@1@System.Runtime/A.html#38c0e86cc4b30170" class="i property">Value</a>);
+                }
+            }
+ 
+            <b>return</b> <span class="r24 r">result</span>.<span class="i">RenderAsync</span>(<span class="r20 r">writer</span>, <span class="r21 r">encoder</span>, <span class="r25 r">context</span>, <span class="r22 r">model</span>);
+        }
+ 
+        <b>public</b> <a href="/OrchardCore.DisplayManagement.Liquid/A.html#9fbef59705c4102a" class="t t">LiquidViewTemplate</a> <a id="613ee2d07ae96473" href="../R/613ee2d07ae96473.html" target="n" data-glyph="72,1" class="i method">GetCachedTemplate</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r27 rd" class="r27 r">source</span>)
+        {
+            <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="k">var</a> <span id="r28 rd" class="r28 r">errors</span> = <span class="t t">Enumerable</span>.<span class="i method">Empty</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <a href="/OrchardCore.DisplayManagement.Liquid/A.html#9fbef59705c4102a" class="k">var</a> <span id="r29 rd" class="r29 r">result</span> = <a href="#86c8d3d9796f358a" class="i field">_memoryCache</a>.<span class="i">GetOrCreate</span>(<span class="r27 r">source</span>, (<span class="t t">ICacheEntry</span> <span id="r30 rd" class="r30 r">e</span>) =&gt;
+            {
+                <b>if</b> (!<a href="#4cec93276052ccbf" class="i field">_liquidViewParser</a>.<span class="i">TryParse</span>(<span class="r27 r">source</span>, <b>out</b> <b>var</b> <span id="r31 rd" class="r31 r">parsed</span>, <b>out</b> <b>var</b> <span id="r32 rd" class="r32 r">error</span>))
+                {
+                    <span class="c">// If the source string cannot be parsed, create a template that contains the parser errors</span>
+                    <a href="#4cec93276052ccbf" class="i field">_liquidViewParser</a>.<span class="i">TryParse</span>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#63a04833d43dd9d3" class="i property">NewLine</a>, <span class="r28 r">errors</span>), <b>out</b> <span class="r31 r">parsed</span>, <b>out</b> <span class="r32 r">error</span>);
+                }
+ 
+                <span class="c">// Define a default sliding expiration to prevent the</span>
+                <span class="c">// cache from being filled and still apply some micro-caching</span>
+                <span class="c">// in case the template is used commonly</span>
+                <span class="r30 r">e</span>.<span class="i method">SetSlidingExpiration</span>(<a href="@1@System.Runtime/A.html#865ef7b89f41b632" class="t t">TimeSpan</a>.<a href="@1@System.Runtime/A.html#c24437e069f958f9" class="i method">FromSeconds</a>(30));
+                <b>return</b> <b>new</b> <span class="t">LiquidViewTemplate</span>(<span class="r31 r">parsed</span>);
+            });
+ 
+            <b>return</b> <span class="r29 r">result</span>;
+        }
+ 
+        <b>public bool</b> <a id="9434995dd4b2d758" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Validate</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r33 rd" class="r33 r">template</span>, <b>out</b> <a href="@1@System.Runtime/A.html#3acf01620172c7f0" class="t t">IEnumerable</a>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <span id="r34 rd" class="r34 r">errors</span>)
+        {
+            <b>var</b> <span id="r35 rd" class="r35 r">success</span> = <a href="#4cec93276052ccbf" class="i field">_liquidViewParser</a>.<span class="i">TryParse</span>(<span class="r33 r">template</span>, <b>out _</b>, <b>out</b> <b>var</b> <span id="r36 rd" class="r36 r">error</span>);
+            <span class="r34 r">errors</span> = <b>new</b> [] { <span class="r36 r">error</span> };
+            <b>return</b> <span class="r35 r">success</span>;
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

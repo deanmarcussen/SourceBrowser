@@ -1,0 +1,272 @@
+﻿<!DOCTYPE html>
+<html><head><title>ObjectPool.cs</title><link rel="stylesheet" href="../styles.css"><script src="../scripts.js"></script></head>
+<body class="cB" onload="i(263);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.DisplayManagement/ObjectPool.cs" target="_top">ObjectPool.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.DisplayManagement" target="_top">src\OrchardCore\OrchardCore.DisplayManagement\OrchardCore.DisplayManagement.csproj</a> (OrchardCore.DisplayManagement)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<span class="c">// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.</span>
+ 
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Diagnostics</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Text</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">DisplayManagement</span>
+{
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> Generic implementation of object pooling pattern with predefined pool size limit. The main</span>
+    <span class="c">///</span><span class="c"> purpose is that limited number of frequently used objects can be kept in the pool for</span>
+    <span class="c">///</span><span class="c"> further recycling.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> Notes:</span>
+    <span class="c">///</span><span class="c"> 1) it is not the goal to keep all returned objects. Pool is not meant for storage. If there</span>
+    <span class="c">///</span><span class="c">    is no space in the pool, extra returned objects will be dropped.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> 2) it is implied that if object was obtained from a pool, the caller will return it back in</span>
+    <span class="c">///</span><span class="c">    a relatively short time. Keeping checked out objects for long durations is ok, but</span>
+    <span class="c">///</span><span class="c">    reduces usefulness of pooling. Just new up your own.</span>
+    <span class="c">///</span>
+    <span class="c">///</span><span class="c"> Not returning objects to the pool in not detrimental to the pool&#39;s work, but is a bad practice.</span>
+    <span class="c">///</span><span class="c"> Rationale:</span>
+    <span class="c">///</span><span class="c">    If there is no intent for reusing the object, do not use pool - just use &quot;new&quot;.</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>internal class</b> <a id="23f3455f4526dd2d" href="R/23f3455f4526dd2d.html" target="n" data-glyph="2,0" class="t t">ObjectPool</a>&lt;<span id="r0 rd t" class="r0 r t">T</span>&gt; <b>where</b> <span class="r0 r t">T</span> : <b>class</b>
+    {
+        [<a href="@1@System.Runtime/A.html#761078d4519dc54e" class="t constructor">DebuggerDisplay</a>(<span class="s">&quot;{Value,nq}&quot;</span>)]
+        <b>private struct</b> <a id="9e961447ed862530" href="R/9e961447ed862530.html" target="n" data-glyph="112,1" class="t t"><span id="ed59e1265dcd220b">Element</span></a>
+        {
+            <b>internal</b> <span class="r0 r t">T</span> <a id="8d64fca81cc4ef72" href="R/8d64fca81cc4ef72.html" target="n" data-glyph="44,2" class="i field">Value</a>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Not using System.Func{T} because this file is linked into the (debugger) Formatter,</span>
+        <span class="c">///</span><span class="c"> which does not have that type (since it compiles against .NET 2.0).</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <b>internal delegate</b> <span class="r0 r t">T</span> <a id="bc13dce307e08381" href="R/bc13dce307e08381.html" target="n" data-glyph="14,1" class="t t"><span id="2b01dbf45e31d9a4">Factory</span></a>();
+ 
+        <span class="c">// Storage for the pool objects. The first item is stored in a dedicated field because we</span>
+        <span class="c">// expect to be able to satisfy most requests from it.</span>
+        <b>private</b> <span class="r0 r t">T</span> <a id="ecbe57cfc062bcf5" href="R/ecbe57cfc062bcf5.html" target="n" data-glyph="46,1" class="i field">_firstItem</a>;
+ 
+        <b>private readonly</b> <a href="#9e961447ed862530" class="t t">Element</a>[] <a id="97b840cd41a130f8" href="R/97b840cd41a130f8.html" target="n" data-glyph="46,1" class="i field">_items</a>;
+ 
+        <span class="c">// factory is stored for the lifetime of the pool. We will call this only when pool needs to</span>
+        <span class="c">// expand. compared to &quot;new T()&quot;, Func gives more flexibility to implementers and faster</span>
+        <span class="c">// than &quot;new T()&quot;.</span>
+        <b>private readonly</b> <a href="#bc13dce307e08381" class="t t">Factory</a> <a id="299ad96d97b397c9" href="R/299ad96d97b397c9.html" target="n" data-glyph="46,1" class="i field">_factory</a>;
+ 
+<span class="k preprocess">#</span><span class="k preprocess">if</span> <span class="i">DETECT_LEAKS</span>
+<span class="e">        private static readonly ConditionalWeakTable&lt;T, LeakTracker&gt; leakTrackers = new ConditionalWeakTable&lt;T, LeakTracker&gt;();
+ 
+        private class LeakTracker : IDisposable
+        {
+            private volatile bool disposed;
+ 
+</span><span class="k preprocess">#</span><span class="k preprocess">if</span> <span class="i">TRACE_LEAKS</span>
+<span class="e">            internal volatile object Trace = null;
+</span><span class="k preprocess">#</span><span class="k preprocess">endif</span>
+<span class="e">
+            public void Dispose()
+            {
+                disposed = true;
+                GC.SuppressFinalize(this);
+            }
+ 
+            private string GetTrace()
+            {
+</span><span class="k preprocess">#</span><span class="k preprocess">if</span> <span class="i">TRACE_LEAKS</span>
+<span class="e">                return Trace == null ? &quot;&quot; : Trace.ToString();
+</span><span class="k preprocess">#</span><span class="k preprocess">else</span>
+<span class="e">                return &quot;Leak tracing information is disabled. Define TRACE_LEAKS on ObjectPool`1.cs to get more info \n&quot;;
+</span><span class="k preprocess">#</span><span class="k preprocess">endif</span>
+<span class="e">            }
+ 
+            ~LeakTracker()
+            {
+                if (!this.disposed &amp;&amp; !Environment.HasShutdownStarted)
+                {
+                    var trace = GetTrace();
+ 
+                    // If you are seeing this message it means that object has been allocated from the pool
+                    // and has not been returned back. This is not critical, but turns pool into rather
+                    // inefficient kind of &quot;new&quot;.
+                    Debug.WriteLine($&quot;TRACEOBJECTPOOLLEAKS_BEGIN\nPool detected potential leaking of {typeof(T)}. \n Location of the leak: \n {GetTrace()} TRACEOBJECTPOOLLEAKS_END&quot;);
+                }
+            }
+        }
+</span><span class="k preprocess">#</span><span class="k preprocess">endif</span>
+ 
+        <b>internal</b> <a id="d7907e1a3aa4dd72" href="R/../../0000000000.html" target="n" data-glyph="74,1" class="t constructor">ObjectPool</a>(<a href="#bc13dce307e08381" class="t t">Factory</a> <span id="r1 rd" class="r1 r">factory</span>)
+            : <a href="#bf607918b1302a25" class="k">this</a>(<span class="r1 r">factory</span>, <span class="i n">System</span>.<a href="@1@System.Runtime/A.html#7d2f1469d916fc63" class="t t">Environment</a>.<a href="@1@System.Runtime/A.html#e5c0f3a0c450c2f3" class="i property">ProcessorCount</a> * 2)
+        { }
+ 
+        <b>internal</b> <a id="bf607918b1302a25" href="R/bf607918b1302a25.html" target="n" data-glyph="74,1" class="t constructor">ObjectPool</a>(<a href="#bc13dce307e08381" class="t t">Factory</a> <span id="r2 rd" class="r2 r">factory</span>, <b>int</b> <span id="r3 rd" class="r3 r">size</span>)
+        {
+            <a href="@1@System.Runtime/A.html#632c6da37ce825df" class="t t">Debug</a>.<a href="@1@System.Runtime/A.html#74ae7c85c0e36e34" class="i method">Assert</a>(<span class="r3 r">size</span> &gt;= 1);
+            <a href="#299ad96d97b397c9" class="i field">_factory</a> = <span class="r2 r">factory</span>;
+            <a href="#97b840cd41a130f8" class="i field">_items</a> = <b>new</b> <a href="#9e961447ed862530" class="t t">Element</a>[<span class="r3 r">size</span> - 1];
+        }
+ 
+        <b>private</b> <span class="r0 r t">T</span> <a id="e17f46a3bde8a211" href="R/e17f46a3bde8a211.html" target="n" data-glyph="76,1" class="i method">CreateInstance</a>()
+        {
+            <span class="r0 r t">var</span> <span id="r4 rd" class="r4 r">inst</span> = <a href="#299ad96d97b397c9" class="i field">_factory</a>();
+            <b>return</b> <span class="r4 r">inst</span>;
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Produces an instance.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Search strategy is a simple linear probing which is chosen for it cache-friendliness.</span>
+        <span class="c">///</span><span class="c"> Note that Free will try to store recycled objects close to the start thus statistically</span>
+        <span class="c">///</span><span class="c"> reducing how far we will typically search.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <b>internal</b> <span class="r0 r t">T</span> <a id="dd6467eb83a737c0" href="R/dd6467eb83a737c0.html" target="n" data-glyph="74,1" class="i method">Allocate</a>()
+        {
+            <span class="c">// PERF: Examine the first element. If that fails, AllocateSlow will look at the remaining elements.</span>
+            <span class="c">// Note that the initial read is optimistically not synchronized. That is intentional.</span>
+            <span class="c">// We will interlock only when we have a candidate. in a worst case we may miss some</span>
+            <span class="c">// recently returned objects. Not a big deal.</span>
+            <span class="r0 r t">T</span> <span id="r5 rd" class="r5 r">inst</span> = <a href="#ecbe57cfc062bcf5" class="i field">_firstItem</a>;
+            <b>if</b> (<span class="r5 r">inst</span> == <b>null</b> || <span class="r5 r">inst</span> != <span class="t t">Interlocked</span>.<span class="i method">CompareExchange</span>(<b>ref</b> <a href="#ecbe57cfc062bcf5" class="i field">_firstItem</a>, <b>null</b>, <span class="r5 r">inst</span>))
+            {
+                <span class="r5 r">inst</span> = <a href="#c9e62b5032145b93" class="i method">AllocateSlow</a>();
+            }
+ 
+<span class="k preprocess">#</span><span class="k preprocess">if</span> <span class="i">DETECT_LEAKS</span>
+<span class="e">            var tracker = new LeakTracker();
+            leakTrackers.Add(inst, tracker);
+ 
+</span><span class="k preprocess">#</span><span class="k preprocess">if</span> <span class="i">TRACE_LEAKS</span>
+<span class="e">            var frame = CaptureStackTrace();
+            tracker.Trace = frame;
+</span><span class="k preprocess">#</span><span class="k preprocess">endif</span>
+<span class="k preprocess">#</span><span class="k preprocess">endif</span>
+            <b>return</b> <span class="r5 r">inst</span>;
+        }
+ 
+        <b>private</b> <span class="r0 r t">T</span> <a id="c9e62b5032145b93" href="R/c9e62b5032145b93.html" target="n" data-glyph="76,1" class="i method">AllocateSlow</a>()
+        {
+            <b>var</b> <span id="r6 rd" class="r6 r">items</span> = <a href="#97b840cd41a130f8" class="i field">_items</a>;
+ 
+            <b>for</b> (<b>int</b> <span id="r7 rd" class="r7 r">i</span> = 0; <span class="r7 r">i</span> &lt; <span class="r6 r">items</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r7 r">i</span>++)
+            {
+                <span class="c">// Note that the initial read is optimistically not synchronized. That is intentional.</span>
+                <span class="c">// We will interlock only when we have a candidate. in a worst case we may miss some</span>
+                <span class="c">// recently returned objects. Not a big deal.</span>
+                <span class="r0 r t">T</span> <span id="r8 rd" class="r8 r">inst</span> = <span class="r6 r">items</span>[<span class="r7 r">i</span>].<a href="#8d64fca81cc4ef72" class="i field">Value</a>;
+                <b>if</b> (<span class="r8 r">inst</span> != <b>null</b>)
+                {
+                    <b>if</b> (<span class="r8 r">inst</span> == <span class="t t">Interlocked</span>.<span class="i method">CompareExchange</span>(<b>ref</b> <span class="r6 r">items</span>[<span class="r7 r">i</span>].<a href="#8d64fca81cc4ef72" class="i field">Value</a>, <b>null</b>, <span class="r8 r">inst</span>))
+                    {
+                        <b>return</b> <span class="r8 r">inst</span>;
+                    }
+                }
+            }
+ 
+            <b>return</b> <a href="#e17f46a3bde8a211" class="i method">CreateInstance</a>();
+        }
+ 
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Returns objects to the pool.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <span class="c">///</span><span class="c"> Search strategy is a simple linear probing which is chosen for it cache-friendliness.</span>
+        <span class="c">///</span><span class="c"> Note that Free will try to store recycled objects close to the start thus statistically</span>
+        <span class="c">///</span><span class="c"> reducing how far we will typically search in Allocate.</span>
+        <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">remarks</span><span class="c">&gt;</span>
+        <b>internal void</b> <a id="4c58cc44059157f5" href="R/4c58cc44059157f5.html" target="n" data-glyph="74,1" class="i method">Free</a>(<span class="r0 r t">T</span> <span id="r9 rd" class="r9 r">obj</span>)
+        {
+            <b>if</b> (<a href="#ecbe57cfc062bcf5" class="i field">_firstItem</a> == <b>null</b>)
+            {
+                <span class="c">// Intentionally not using interlocked here.</span>
+                <span class="c">// In a worst case scenario two objects may be stored into same slot.</span>
+                <span class="c">// It is very unlikely to happen and will only mean that one of the objects will get collected.</span>
+                <a href="#ecbe57cfc062bcf5" class="i field">_firstItem</a> = <span class="r9 r">obj</span>;
+            }
+            <b>else</b>
+            {
+                <a href="#1288259724f7e444" class="i method">FreeSlow</a>(<span class="r9 r">obj</span>);
+            }
+        }
+ 
+        <b>private void</b> <a id="1288259724f7e444" href="R/1288259724f7e444.html" target="n" data-glyph="76,1" class="i method">FreeSlow</a>(<span class="r0 r t">T</span> <span id="r10 rd" class="r10 r">obj</span>)
+        {
+            <b>var</b> <span id="r11 rd" class="r11 r">items</span> = <a href="#97b840cd41a130f8" class="i field">_items</a>;
+            <b>for</b> (<b>int</b> <span id="r12 rd" class="r12 r">i</span> = 0; <span class="r12 r">i</span> &lt; <span class="r11 r">items</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a>; <span class="r12 r">i</span>++)
+            {
+                <b>if</b> (<span class="r11 r">items</span>[<span class="r12 r">i</span>].<a href="#8d64fca81cc4ef72" class="i field">Value</a> == <b>null</b>)
+                {
+                    <span class="c">// Intentionally not using interlocked here.</span>
+                    <span class="c">// In a worst case scenario two objects may be stored into same slot.</span>
+                    <span class="c">// It is very unlikely to happen and will only mean that one of the objects will get collected.</span>
+                    <span class="r11 r">items</span>[<span class="r12 r">i</span>].<a href="#8d64fca81cc4ef72" class="i field">Value</a> = <span class="r10 r">obj</span>;
+                    <b>break</b>;
+                }
+            }
+        }
+    }
+ 
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;</span><span class="c">summary</span><span class="c">&gt;</span>
+    <span class="c">///</span><span class="c"> The usage is:</span>
+    <span class="c">///</span><span class="c">        var inst = PooledStringBuilder.GetInstance();</span>
+    <span class="c">///</span><span class="c">        var sb = inst.builder;</span>
+    <span class="c">///</span><span class="c">        ... Do Stuff...</span>
+    <span class="c">///</span><span class="c">        ... sb.ToString() ...</span>
+    <span class="c">///</span><span class="c">        inst.Free();</span>
+    <span class="c">///</span><span class="c"> </span><span class="c">&lt;/</span><span class="c">summary</span><span class="c">&gt;</span>
+    <b>public sealed class</b> <a id="d4a545a0dc67cb23" href="R/d4a545a0dc67cb23.html" target="n" data-glyph="0,0" class="t t">StringBuilderPool</a> : <a href="@1@System.Runtime/A.html#1f55292c3174123d" class="t t">IDisposable</a>
+    {
+        <b>private const int</b> <a id="697aeeeb5a7da09f" href="R/697aeeeb5a7da09f.html" target="n" data-glyph="10,1" class="i field">DefaultCapacity</a> = 1 * 1024;
+ 
+        <span class="c">// global pool</span>
+        <b>private static readonly</b> <a href="#23f3455f4526dd2d" class="t t">ObjectPool</a>&lt;<a href="#d4a545a0dc67cb23" class="t t">StringBuilderPool</a>&gt; <a id="209ab2bfaf1574af" href="R/209ab2bfaf1574af.html" target="n" data-glyph="46,1" class="i field">s_poolInstance</a> = <a href="#eb43a4781364896c" class="i method">CreatePool</a>();
+ 
+        <b>public readonly</b> <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="t t">StringBuilder</a> <a id="b2a3149661920a1a" href="R/b2a3149661920a1a.html" target="n" data-glyph="42,1" class="i field">Builder</a> = <b>new</b> <a href="@1@System.Runtime/A.html#ec674e2123a44860" class="t constructor">StringBuilder</a>(<a href="#697aeeeb5a7da09f" class="i field">DefaultCapacity</a>);
+        <b>private readonly</b> <a href="#23f3455f4526dd2d" class="t t">ObjectPool</a>&lt;<a href="#d4a545a0dc67cb23" class="t t">StringBuilderPool</a>&gt; <a id="93fdff6e5348a26e" href="R/93fdff6e5348a26e.html" target="n" data-glyph="46,1" class="i field">_pool</a>;
+ 
+        <b>private</b> <a id="985a1a5700b42b7f" href="R/985a1a5700b42b7f.html" target="n" data-glyph="76,1" class="t constructor">StringBuilderPool</a>(<a href="#23f3455f4526dd2d" class="t t">ObjectPool</a>&lt;<a href="#d4a545a0dc67cb23" class="t t">StringBuilderPool</a>&gt; <span id="r13 rd" class="r13 r">pool</span>)
+        {
+            <a href="@1@System.Runtime/A.html#632c6da37ce825df" class="t t">Debug</a>.<a href="@1@System.Runtime/A.html#74ae7c85c0e36e34" class="i method">Assert</a>(<span class="r13 r">pool</span> != <b>null</b>);
+            <a href="#93fdff6e5348a26e" class="i field">_pool</a> = <span class="r13 r">pool</span>;
+        }
+ 
+        <b>public int</b> <a id="38b36f7985b47db9" href="R/../../0000000000.html" target="n" data-glyph="102,1" class="i property">Length</a> =&gt; <a href="#b2a3149661920a1a" class="i field">Builder</a>.<a href="@1@System.Runtime/A.html#7d7729bd88adac53" class="i property">Length</a>;
+ 
+        <b>internal static</b> <a href="#23f3455f4526dd2d" class="t t">ObjectPool</a>&lt;<a href="#d4a545a0dc67cb23" class="t t">StringBuilderPool</a>&gt; <a id="eb43a4781364896c" href="R/eb43a4781364896c.html" target="n" data-glyph="74,1" class="i method">CreatePool</a>(<b>int</b> <span id="r14 rd" class="r14 r">size</span> = 1000)
+        {
+            <a href="#23f3455f4526dd2d" class="t t">ObjectPool</a>&lt;<a href="#d4a545a0dc67cb23" class="t t">StringBuilderPool</a>&gt; <span id="r15 rd" class="r15 r">pool</span> = <b>null</b>;
+            <span class="r15 r">pool</span> = <b>new</b> <a href="#bf607918b1302a25" class="t constructor">ObjectPool</a>&lt;<a href="#d4a545a0dc67cb23" class="t t">StringBuilderPool</a>&gt;(() =&gt; <b>new</b> <a href="#985a1a5700b42b7f" class="t constructor">StringBuilderPool</a>(<span class="r15 r">pool</span>), <span class="r14 r">size</span>);
+            <b>return</b> <span class="r15 r">pool</span>;
+        }
+ 
+        <b>public static</b> <a href="#d4a545a0dc67cb23" class="t t">StringBuilderPool</a> <a id="e8c2c86c2f516fa5" href="R/e8c2c86c2f516fa5.html" target="n" data-glyph="72,1" class="i method">GetInstance</a>()
+        {
+            <a href="#d4a545a0dc67cb23" class="k">var</a> <span id="r16 rd" class="r16 r">builder</span> = <a href="#209ab2bfaf1574af" class="i field">s_poolInstance</a>.<a href="#dd6467eb83a737c0" class="i method">Allocate</a>();
+            <a href="@1@System.Runtime/A.html#632c6da37ce825df" class="t t">Debug</a>.<a href="@1@System.Runtime/A.html#74ae7c85c0e36e34" class="i method">Assert</a>(<span class="r16 r">builder</span>.<a href="#b2a3149661920a1a" class="i field">Builder</a>.<a href="@1@System.Runtime/A.html#7d7729bd88adac53" class="i property">Length</a> == 0);
+            <b>return</b> <span class="r16 r">builder</span>;
+        }
+ 
+        <b>public override string</b> <a id="0b3a8cf60ec3fffb" href="R/0b3a8cf60ec3fffb.html" target="n" data-glyph="72,1" class="i method">ToString</a>()
+        {
+            <b>return</b> <a href="#b2a3149661920a1a" class="i field">Builder</a>.<a href="@1@System.Runtime/A.html#5a97da49a158a3c9" class="i method">ToString</a>();
+        }
+ 
+        <b>public void</b> <a id="25e8b3288cd34934" href="R/25e8b3288cd34934.html" target="n" data-glyph="72,1" class="i method">Dispose</a>()
+        {
+            <a href="@1@System.Runtime/A.html#adf60ee46ebd299f" class="k">var</a> <span id="r17 rd" class="r17 r">builder</span> = <a href="#b2a3149661920a1a" class="i field">Builder</a>;
+ 
+            <span class="c">// Do not store builders that are too large.</span>
+ 
+            <b>if</b> (<span class="r17 r">builder</span>.<a href="@1@System.Runtime/A.html#7529ccd440df5320" class="i property">Capacity</a> == <a href="#697aeeeb5a7da09f" class="i field">DefaultCapacity</a>)
+            {
+                <span class="r17 r">builder</span>.<a href="@1@System.Runtime/A.html#12bafac7fd9481fd" class="i method">Clear</a>();
+                <a href="#93fdff6e5348a26e" class="i field">_pool</a>.<a href="#4c58cc44059157f5" class="i method">Free</a>(<a href="#d4a545a0dc67cb23" class="k">this</a>);
+            }
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>

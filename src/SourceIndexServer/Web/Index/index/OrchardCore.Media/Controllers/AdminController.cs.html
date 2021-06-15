@@ -1,0 +1,450 @@
+﻿<!DOCTYPE html>
+<html><head><title>AdminController.cs</title><link rel="stylesheet" href="../../styles.css"><script src="../../scripts.js"></script></head>
+<body class="cB" onload="i(441);"><div class="dH">
+<table style="width: 100%">
+<tr><td>File: <a id="filePath" class="blueLink" href="/#OrchardCore.Media/Controllers/AdminController.cs" target="_top">Controllers\AdminController.cs</a><br/></td><td></td></tr>
+<tr><td>Project: <a id="projectPath" class="blueLink" href="/#OrchardCore.Media" target="_top">src\OrchardCore.Modules\OrchardCore.Media\OrchardCore.Media.csproj</a> (OrchardCore.Media)</td><td></td></tr>
+</table>
+</div>
+<div class="cz"><table class="tb" cellpadding="0" cellspacing="0"><tr><td valign="top" align="right"><pre id="ln"></pre></td><td valign="top" align="left"><pre id="code">
+<b>using</b> <span class="i n">System</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Collections</span>.<span class="i n">Generic</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">IO</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Linq</span>;
+<b>using</b> <span class="i n">System</span>.<span class="i n">Threading</span>.<span class="i n">Tasks</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Authorization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Http</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">Mvc</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">AspNetCore</span>.<span class="i n">StaticFiles</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Localization</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Logging</span>;
+<b>using</b> <span class="i n">Microsoft</span>.<span class="i n">Extensions</span>.<span class="i n">Options</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">FileStorage</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Fields</span>;
+<b>using</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Services</span>;
+ 
+<b>namespace</b> <span class="i n">OrchardCore</span>.<span class="i n">Media</span>.<span class="i n">Controllers</span>
+{
+    <b>public class</b> <a id="b2b339e7c17ac133" href="../R/b2b339e7c17ac133.html" target="n" data-glyph="0,0" class="t t">AdminController</a> : <span class="t t">Controller</span>
+    {
+        <b>private static readonly char</b>[] <a id="ae8dde9fa7442863" href="../R/ae8dde9fa7442863.html" target="n" data-glyph="46,1" class="i field">_invalidFolderNameCharacters</a> = <b>new</b> <b>char</b>[] { <span class="s">&#39;\\&#39;</span>, <span class="s">&#39;/&#39;</span> };
+ 
+        <b>private readonly</b> <span class="t t">HashSet</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt; <a id="a5826180b2572da2" href="../R/a5826180b2572da2.html" target="n" data-glyph="46,1" class="i field">_allowedFileExtensions</a>;
+        <b>private readonly</b> <span class="i">IMediaFileStore</span> <a id="97426e7c2c23c00a" href="../R/97426e7c2c23c00a.html" target="n" data-glyph="46,1" class="i field">_mediaFileStore</a>;
+        <b>private readonly</b> <span class="i">IMediaNameNormalizerService</span> <a id="f39192ab5b543f6a" href="../R/f39192ab5b543f6a.html" target="n" data-glyph="46,1" class="i field">_mediaNameNormalizerService</a>;
+        <b>private readonly</b> <span class="t t">IAuthorizationService</span> <a id="b2667963774facb7" href="../R/b2667963774facb7.html" target="n" data-glyph="46,1" class="i field">_authorizationService</a>;
+        <b>private readonly</b> <span class="t t">IContentTypeProvider</span> <a id="780bab12b41b981f" href="../R/780bab12b41b981f.html" target="n" data-glyph="46,1" class="i field">_contentTypeProvider</a>;
+        <b>private readonly</b> <span class="t t">ILogger</span> <a id="2f0e268aa34f9982" href="../R/2f0e268aa34f9982.html" target="n" data-glyph="46,1" class="i field">_logger</a>;
+        <b>private readonly</b> <span class="t t">IStringLocalizer</span> <a id="955f9d31be248508" href="../R/955f9d31be248508.html" target="n" data-glyph="46,1" class="i field">S</a>;
+        <b>private readonly</b> <span class="i">MediaOptions</span> <a id="1bab85af1a479bc4" href="../R/1bab85af1a479bc4.html" target="n" data-glyph="46,1" class="i field">_mediaOptions</a>;
+ 
+        <b>public</b> <a id="67ef49f28bc0fe26" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="t constructor">AdminController</a>(
+            <span class="i">IMediaFileStore</span> <span id="r0 rd" class="r0 r">mediaFileStore</span>,
+            <span class="i">IMediaNameNormalizerService</span> <span id="r1 rd" class="r1 r">mediaNameNormalizerService</span>,
+            <span class="t t">IAuthorizationService</span> <span id="r2 rd" class="r2 r">authorizationService</span>,
+            <span class="t t">IContentTypeProvider</span> <span id="r3 rd" class="r3 r">contentTypeProvider</span>,
+            <span class="t t">IOptions</span>&lt;<span class="i">MediaOptions</span>&gt; <span id="r4 rd" class="r4 r">options</span>,
+            <span class="t t">ILogger</span>&lt;<a href="#b2b339e7c17ac133" class="t t">AdminController</a>&gt; <span id="r5 rd" class="r5 r">logger</span>,
+            <span class="t t">IStringLocalizer</span>&lt;<a href="#b2b339e7c17ac133" class="t t">AdminController</a>&gt; <span id="r6 rd" class="r6 r">stringLocalizer</span>
+            )
+        {
+            <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a> = <span class="r0 r">mediaFileStore</span>;
+            <a href="#f39192ab5b543f6a" class="i field">_mediaNameNormalizerService</a> = <span class="r1 r">mediaNameNormalizerService</span>;
+            <a href="#b2667963774facb7" class="i field">_authorizationService</a> = <span class="r2 r">authorizationService</span>;
+            <a href="#780bab12b41b981f" class="i field">_contentTypeProvider</a> = <span class="r3 r">contentTypeProvider</span>;
+            <a href="#1bab85af1a479bc4" class="i field">_mediaOptions</a> = <span class="r4 r">options</span>.<span class="i property">Value</span>;
+            <a href="#a5826180b2572da2" class="i field">_allowedFileExtensions</a> = <a href="#1bab85af1a479bc4" class="i field">_mediaOptions</a>.<span class="i">AllowedFileExtensions</span>;
+            <a href="#2f0e268aa34f9982" class="i field">_logger</a> = <span class="r5 r">logger</span>;
+            <a href="#955f9d31be248508" class="i field">S</a> = <span class="r6 r">stringLocalizer</span>;
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="ebcc192f0672a8ac" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Index</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&lt;<a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<span class="i">IFileStoreEntry</span>&gt;&gt;&gt; <a id="b711fd5380548ab4" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetFolders</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r7 rd" class="r7 r">path</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r7 r">path</span>))
+            {
+                <span class="r7 r">path</span> = <span class="s">&quot;&quot;</span>;
+            }
+ 
+            <b>if</b> (<b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetDirectoryInfoAsync</span>(<span class="r7 r">path</span>) == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r8 rd" class="r8 r">allowed</span> = <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetDirectoryContentAsync</span>(<span class="r7 r">path</span>)
+                .<span class="i">WhereAwait</span>(<b>async</b> <span id="r9 rd" class="r9 r">e</span> =&gt; <span class="r9 r">e</span>.<span class="i">IsDirectory</span> &amp;&amp; <b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r9 r">e</span>.<span class="i">Path</span>));
+ 
+            <b>return</b> <span class="i">Ok</span>(<span class="r8 r">allowed</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&lt;<a href="@1@System.Runtime/A.html#40a1440c806710a7" class="t t">IAsyncEnumerable</a>&lt;<b>object</b>&gt;&gt;&gt; <a id="c46c830ba91c51d3" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetMediaItems</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r10 rd" class="r10 r">path</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r10 r">path</span>))
+            {
+                <span class="r10 r">path</span> = <span class="s">&quot;&quot;</span>;
+            }
+ 
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>)
+                || !<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r10 r">path</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetDirectoryInfoAsync</span>(<span class="r10 r">path</span>) == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r11 rd" class="r11 r">allowed</span> = <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetDirectoryContentAsync</span>(<span class="r10 r">path</span>)
+                .<span class="i">WhereAwait</span>(<b>async</b> <span id="r12 rd" class="r12 r">e</span> =&gt; !<span class="r12 r">e</span>.<span class="i">IsDirectory</span> &amp;&amp; <b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r12 r">e</span>.<span class="i">Path</span>))
+                .<span class="i">Select</span>(<span id="r13 rd" class="r13 r">e</span> =&gt; <span class="i">CreateFileResult</span>(<span class="r13 r">e</span>));
+ 
+            <b>return</b> <span class="i">Ok</span>(<span class="r11 r">allowed</span>);
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&lt;<b>object</b>&gt;&gt; <a id="97b60f933af65509" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">GetMediaItem</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r14 rd" class="r14 r">path</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r14 r">path</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>var</b> <span id="r15 rd" class="r15 r">f</span> = <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r14 r">path</span>);
+ 
+            <b>if</b> (<span class="r15 r">f</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>return</b> <span class="i">CreateFileResult</span>(<span class="r15 r">f</span>);
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        [<a href="/OrchardCore.Media.Core/A.html#ae8dbac3f697f3e1" class="t constructor">MediaSizeLimit</a>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&lt;<b>object</b>&gt;&gt; <a id="0c0b67d0ceb2a149" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Upload</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r16 rd" class="r16 r">path</span>,
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r17 rd" class="r17 r">contentType</span>,
+            <a href="@1@System.Runtime/A.html#a9bf1395d3addc77" class="t t">ICollection</a>&lt;<span class="t t">IFormFile</span>&gt; <span id="r18 rd" class="r18 r">files</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r16 r">path</span>))
+            {
+                <span class="r16 r">path</span> = <span class="s">&quot;&quot;</span>;
+            }
+ 
+            <b>var</b> <span id="r19 rd" class="r19 r">result</span> = <b>new</b> <span class="t constructor">List</span>&lt;<b>object</b>&gt;();
+ 
+            <span class="c">// Loop through each file in the request</span>
+            <b>foreach</b> (<b>var</b> <span id="r20 rd" class="r20 r">file</span> <b>in</b> <span class="r18 r">files</span>)
+            {
+                <span class="c">// TODO: support clipboard</span>
+ 
+                <b>if</b> (!<a href="#a5826180b2572da2" class="i field">_allowedFileExtensions</a>.<span class="i method">Contains</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f424e433705aeb09" class="i method">GetExtension</a>(<span class="r20 r">file</span>.<span class="i property">FileName</span>), <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>))
+                {
+                    <span class="r19 r">result</span>.<span class="i method">Add</span>(<b>new</b>
+                    {
+                        <a href="#7f2c76320f26c965" class="i property">name</a> = <span class="r20 r">file</span>.<span class="i property">FileName</span>,
+                        <a href="#91509040ea5c4a0f" class="i property">size</a> = <span class="r20 r">file</span>.<span class="i property">Length</span>,
+                        <a href="#c588665cf6db2ac7" class="i property">folder</a> = <span class="r16 r">path</span>,
+                        <a href="#db4f124e8969f1d8" class="i property">error</a> = <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;This file extension is not allowed: {0}&quot;</span>, <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f424e433705aeb09" class="i method">GetExtension</a>(<span class="r20 r">file</span>.<span class="i property">FileName</span>)].<span class="i method">ToString</span>()
+                    });
+ 
+                    <a href="#2f0e268aa34f9982" class="i field">_logger</a>.<span class="i method">LogInformation</span>(<span class="s">&quot;File extension not allowed: &#39;{File}&#39;&quot;</span>, <span class="r20 r">file</span>.<span class="i property">FileName</span>);
+ 
+                    <b>continue</b>;
+                }
+ 
+                <b>var</b> <span id="r21 rd" class="r21 r">fileName</span> = <a href="#f39192ab5b543f6a" class="i field">_mediaNameNormalizerService</a>.<span class="i">NormalizeFileName</span>(<span class="r20 r">file</span>.<span class="i property">FileName</span>);
+ 
+                <a href="@1@System.Runtime/A.html#f956b0c07e86df64" class="t t">Stream</a> <span id="r22 rd" class="r22 r">stream</span> = <b>null</b>;
+                <b>try</b>
+                {
+                    <b>var</b> <span id="r23 rd" class="r23 r">mediaFilePath</span> = <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">Combine</span>(<span class="r16 r">path</span>, <span class="r21 r">fileName</span>);
+                    <span class="r22 r">stream</span> = <span class="r20 r">file</span>.<span class="i method">OpenReadStream</span>();
+                    <span class="r23 r">mediaFilePath</span> = <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">CreateFileFromStreamAsync</span>(<span class="r23 r">mediaFilePath</span>, <span class="r22 r">stream</span>);
+ 
+                    <b>var</b> <span id="r24 rd" class="r24 r">mediaFile</span> = <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r23 r">mediaFilePath</span>);
+ 
+                    <span class="r19 r">result</span>.<span class="i method">Add</span>(<span class="i">CreateFileResult</span>(<span class="r24 r">mediaFile</span>));
+                }
+                <b>catch</b> (<a href="@1@System.Runtime/A.html#f092fb2b893a0162" class="t t">Exception</a> <span id="r25 rd" class="r25 r">ex</span>)
+                {
+                    <a href="#2f0e268aa34f9982" class="i field">_logger</a>.<span class="i method">LogError</span>(<span class="r25 r">ex</span>, <span class="s">&quot;An error occurred while uploading a media&quot;</span>);
+ 
+                    <span class="r19 r">result</span>.<span class="i method">Add</span>(<b>new</b>
+                    {
+                        <a href="#7f2c76320f26c965" class="i property">name</a> = <span class="r21 r">fileName</span>,
+                        <a href="#91509040ea5c4a0f" class="i property">size</a> = <span class="r20 r">file</span>.<span class="i property">Length</span>,
+                        <a href="#c588665cf6db2ac7" class="i property">folder</a> = <span class="r16 r">path</span>,
+                        <a href="#db4f124e8969f1d8" class="i property">error</a> = <span class="r25 r">ex</span>.<a href="@1@System.Runtime/A.html#5fba0e16215b42a3" class="i property">Message</a>
+                    });
+                }
+                <b>finally</b>
+                {
+                    <span class="r22 r">stream</span>?.<a href="@1@System.Runtime/A.html#f1b4285950a82354" class="i method">Dispose</a>();
+                }
+            }
+ 
+            <b>return</b> <b>new</b> { <a href="#2928c87aaaf90c87" class="i property">files</a> = <span class="r19 r">result</span>.<span class="i method">ToArray</span>() };
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="7454534a64f1e9e8" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DeleteFolder</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r26 rd" class="r26 r">path</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>)
+                || !<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r26 r">path</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r26 r">path</span>))
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(<span class="t t">StatusCodes</span>.<span class="i field">Status403Forbidden</span>, <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;Cannot delete root media folder&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r27 rd" class="r27 r">mediaFolder</span> = <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetDirectoryInfoAsync</span>(<span class="r26 r">path</span>);
+            <b>if</b> (<span class="r27 r">mediaFolder</span> != <b>null</b> &amp;&amp; !<span class="r27 r">mediaFolder</span>.<span class="i">IsDirectory</span>)
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(<span class="t t">StatusCodes</span>.<span class="i field">Status403Forbidden</span>, <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;Cannot delete path because it is not a directory&quot;</span>]);
+            }
+ 
+            <b>if</b> (<b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">TryDeleteDirectoryAsync</span>(<span class="r26 r">path</span>) == <b>false</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>return</b> <span class="i method">Ok</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="ef5d62e1f6a90030" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DeleteMedia</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r28 rd" class="r28 r">path</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>)
+                || !<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r28 r">path</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r28 r">path</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">TryDeleteFileAsync</span>(<span class="r28 r">path</span>) == <b>false</b>)
+                <b>return</b> <span class="i method">NotFound</span>();
+ 
+            <b>return</b> <span class="i method">Ok</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="ee1659ff684828bd" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">MoveMedia</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r29 rd" class="r29 r">oldPath</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r30 rd" class="r30 r">newPath</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>)
+                || !<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r29 r">oldPath</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r29 r">oldPath</span>) || <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r30 r">newPath</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (<b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r29 r">oldPath</span>) == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>if</b> (!<a href="#a5826180b2572da2" class="i field">_allowedFileExtensions</a>.<span class="i method">Contains</span>(<a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f424e433705aeb09" class="i method">GetExtension</a>(<span class="r30 r">newPath</span>), <a href="@1@System.Runtime/A.html#a1c3d85bbf4ae20e" class="t t">StringComparer</a>.<a href="@1@System.Runtime/A.html#59b9c33842417944" class="i property">OrdinalIgnoreCase</a>))
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(<span class="t t">StatusCodes</span>.<span class="i field">Status400BadRequest</span>, <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;This file extension is not allowed: {0}&quot;</span>, <a href="@1@System.Runtime/A.html#090eca8621a248ee" class="t t">Path</a>.<a href="@1@System.Runtime/A.html#f424e433705aeb09" class="i method">GetExtension</a>(<span class="r30 r">newPath</span>)]);
+            }
+ 
+            <b>if</b> (<b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r30 r">newPath</span>) != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(<span class="t t">StatusCodes</span>.<span class="i field">Status400BadRequest</span>, <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;Cannot move media because a file already exists with the same name&quot;</span>]);
+            }
+ 
+            <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">MoveFileAsync</span>(<span class="r29 r">oldPath</span>, <span class="r30 r">newPath</span>);
+ 
+            <b>return</b> <span class="i method">Ok</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="e8edf9c59ba553eb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">DeleteMediaList</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r31 rd" class="r31 r">paths</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r32 rd" class="r32 r">path</span> <b>in</b> <span class="r31 r">paths</span>)
+            {
+                <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r32 r">path</span>))
+                {
+                    <b>return</b> <span class="i method">Forbid</span>();
+                }
+            }
+ 
+            <b>if</b> (<span class="r31 r">paths</span> == <b>null</b>)
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r33 rd" class="r33 r">p</span> <b>in</b> <span class="r31 r">paths</span>)
+            {
+                <b>if</b> (<b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">TryDeleteFileAsync</span>(<span class="r33 r">p</span>) == <b>false</b>)
+                    <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <b>return</b> <span class="i method">Ok</span>();
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="da19c83ce50c8bf5" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">MoveMediaList</a>(<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>[] <span id="r34 rd" class="r34 r">mediaNames</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r35 rd" class="r35 r">sourceFolder</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r36 rd" class="r36 r">targetFolder</span>)
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>)
+                || !<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r35 r">sourceFolder</span>)
+                || !<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r36 r">targetFolder</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>if</b> ((<span class="r34 r">mediaNames</span> == <b>null</b>) || (<span class="r34 r">mediaNames</span>.<a href="@1@System.Runtime/A.html#42e9b7616956cf94" class="i property">Length</a> &lt; 1)
+                || <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r35 r">sourceFolder</span>)
+                || <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r36 r">targetFolder</span>))
+            {
+                <b>return</b> <span class="i method">NotFound</span>();
+            }
+ 
+            <span class="r35 r">sourceFolder</span> = <span class="r35 r">sourceFolder</span> == <span class="s">&quot;root&quot;</span> ? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a> : <span class="r35 r">sourceFolder</span>;
+            <span class="r36 r">targetFolder</span> = <span class="r36 r">targetFolder</span> == <span class="s">&quot;root&quot;</span> ? <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a> : <span class="r36 r">targetFolder</span>;
+ 
+            <b>var</b> <span id="r37 rd" class="r37 r">filesOnError</span> = <b>new</b> <span class="t constructor">List</span>&lt;<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>&gt;();
+ 
+            <b>foreach</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r38 rd" class="r38 r">name</span> <b>in</b> <span class="r34 r">mediaNames</span>)
+            {
+                <b>var</b> <span id="r39 rd" class="r39 r">sourcePath</span> = <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">Combine</span>(<span class="r35 r">sourceFolder</span>, <span class="r38 r">name</span>);
+                <b>var</b> <span id="r40 rd" class="r40 r">targetPath</span> = <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">Combine</span>(<span class="r36 r">targetFolder</span>, <span class="r38 r">name</span>);
+                <b>try</b>
+                {
+                    <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">MoveFileAsync</span>(<span class="r39 r">sourcePath</span>, <span class="r40 r">targetPath</span>);
+                }
+                <b>catch</b> (<span class="i">FileStoreException</span>)
+                {
+                    <span class="r37 r">filesOnError</span>.<span class="i">Add</span>(<span class="r39 r">sourcePath</span>);
+                }
+            }
+ 
+            <b>if</b> (<span class="r37 r">filesOnError</span>.<span class="i property">Count</span> &gt; 0)
+            {
+                <b>return</b> <span class="i method">BadRequest</span>(<a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;Error when moving files. Maybe they already exist on the target folder? Files on error: {0}&quot;</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#fa961ce440526a4d" class="i method">Join</a>(<span class="s">&quot;,&quot;</span>, <span class="r37 r">filesOnError</span>)].<span class="i method">ToString</span>());
+            }
+            <b>else</b>
+            {
+                <b>return</b> <span class="i method">Ok</span>();
+            }
+        }
+ 
+        [<span class="t constructor">HttpPost</span>]
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">ActionResult</span>&lt;<span class="i">IFileStoreEntry</span>&gt;&gt; <a id="ba0777378ae18ebb" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreateFolder</a>(
+            <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r41 rd" class="r41 r">path</span>, <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a> <span id="r42 rd" class="r42 r">name</span>,
+            [<span class="t constructor">FromServices</span>] <span class="t t">IAuthorizationService</span> <span id="r43 rd" class="r43 r">authorizationService</span>)
+        {
+            <b>if</b> (<a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">string</a>.<a href="@1@System.Runtime/A.html#23a8597f842071f4" class="i method">IsNullOrEmpty</a>(<span class="r41 r">path</span>))
+            {
+                <span class="r41 r">path</span> = <span class="s">&quot;&quot;</span>;
+            }
+ 
+            <span class="r42 r">name</span> = <a href="#f39192ab5b543f6a" class="i field">_mediaNameNormalizerService</a>.<span class="i">NormalizeFolderName</span>(<span class="r42 r">name</span>);
+ 
+            <b>if</b> (<a href="#ae8dde9fa7442863" class="i field">_invalidFolderNameCharacters</a>.<span class="i method">Any</span>(<span id="r44 rd" class="r44 r">invalidChar</span> =&gt; <span class="r42 r">name</span>.<a href="@1@System.Runtime/A.html#98876d0c1980f5ef" class="i method">Contains</a>(<span class="r44 r">invalidChar</span>)))
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(<span class="t t">StatusCodes</span>.<span class="i field">Status400BadRequest</span>, <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;Cannot create folder because the folder name contains invalid characters&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r45 rd" class="r45 r">newPath</span> = <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">Combine</span>(<span class="r41 r">path</span>, <span class="r42 r">name</span>);
+ 
+            <b>if</b> (!<b>await</b> <span class="r43 r">authorizationService</span>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#4c8924c92c94f503" class="i field">ManageMedia</a>)
+                || !<b>await</b> <span class="r43 r">authorizationService</span>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#c50d4e249630a85a" class="i field">ManageAttachedMediaFieldsFolder</a>, (<b>object</b>)<span class="r45 r">newPath</span>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>var</b> <span id="r46 rd" class="r46 r">mediaFolder</span> = <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetDirectoryInfoAsync</span>(<span class="r45 r">newPath</span>);
+            <b>if</b> (<span class="r46 r">mediaFolder</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(<span class="t t">StatusCodes</span>.<span class="i field">Status400BadRequest</span>, <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;Cannot create folder because a folder already exists with the same name&quot;</span>]);
+            }
+ 
+            <b>var</b> <span id="r47 rd" class="r47 r">existingFile</span> = <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetFileInfoAsync</span>(<span class="r45 r">newPath</span>);
+            <b>if</b> (<span class="r47 r">existingFile</span> != <b>null</b>)
+            {
+                <b>return</b> <span class="i method">StatusCode</span>(<span class="t t">StatusCodes</span>.<span class="i field">Status400BadRequest</span>, <a href="#955f9d31be248508" class="i field">S</a>[<span class="s">&quot;Cannot create folder because a file already exists with the same name&quot;</span>]);
+            }
+ 
+            <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">TryCreateDirectoryAsync</span>(<span class="r45 r">newPath</span>);
+ 
+            <span class="r46 r">mediaFolder</span> = <b>await</b> <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">GetDirectoryInfoAsync</span>(<span class="r45 r">newPath</span>);
+ 
+            <b>return</b> <b>new</b> <span class="t">ObjectResult</span>(<span class="r46 r">mediaFolder</span>);
+        }
+ 
+        <b>public object</b> <a id="c341a70908177e27" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">CreateFileResult</a>(<span class="i">IFileStoreEntry</span> <span id="r48 rd" class="r48 r">mediaFile</span>)
+        {
+            <a href="#780bab12b41b981f" class="i field">_contentTypeProvider</a>.<span class="i">TryGetContentType</span>(<span class="r48 r">mediaFile</span>.<span class="i">Name</span>, <b>out</b> <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="k">var</a> <span id="r49 rd" class="r49 r">contentType</span>);
+ 
+            <b>return</b> <b>new</b>
+            {
+                <a href="#7f2c76320f26c965" class="i property">name</a> = <span class="r48 r">mediaFile</span>.<span class="i">Name</span>,
+                <a href="#91509040ea5c4a0f" class="i property">size</a> = <span class="r48 r">mediaFile</span>.<span class="i">Length</span>,
+                <a href="#8c88990158284528" class="i property">lastModify</a> = <span class="r48 r">mediaFile</span>.<span class="i">LastModifiedUtc</span>.<span class="i">Subtract</span>(<b>new</b> <a href="@1@System.Runtime/A.html#9a4ea08df247f05f" class="t constructor">DateTime</a>(1970, 1, 1, 0, 0, 0, <a href="@1@System.Runtime/A.html#0fc5fd70e6154b43" class="t t">DateTimeKind</a>.<a href="@1@System.Runtime/A.html#58a49ca04b18b1f2" class="i field">Utc</a>)).<span class="i">TotalMilliseconds</span>,
+                <a href="#c588665cf6db2ac7" class="i property">folder</a> = <span class="r48 r">mediaFile</span>.<span class="i">DirectoryPath</span>,
+                <a href="#213bdcb648770e7e" class="i property">url</a> = <a href="#97426e7c2c23c00a" class="i field">_mediaFileStore</a>.<span class="i">MapPathToPublicUrl</span>(<span class="r48 r">mediaFile</span>.<span class="i">Path</span>),
+                <a href="#2b2d1d5fe57ae306" class="i property">mediaPath</a> = <span class="r48 r">mediaFile</span>.<span class="i">Path</span>,
+                <a href="#78fee55f192635f0" class="i property">mime</a> = <span class="r49 r">contentType</span> ?? <span class="s">&quot;application/octet-stream&quot;</span>,
+                <a href="#f111b8026eccb8fb" class="i property">mediaText</a> = <a href="@1@System.Runtime/A.html#8281103e6f23cb5c" class="t t">String</a>.<a href="@1@System.Runtime/A.html#c9f70a27facb27cf" class="i field">Empty</a>,
+                <a href="#d5629d0b00b2a29e" class="i property">anchor</a> = <b>new</b> { <a href="#f9fe8125b057276f" class="i property">x</a> = 0.5f, <a href="#80ff967d01087527" class="i property">y</a> = 0.5f }
+            };
+        }
+ 
+        <b>public</b> <span class="t t">IActionResult</span> <a id="03cf00ff66bde700" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">MediaApplication</a>()
+        {
+            <b>return</b> <span class="i method">View</span>();
+        }
+ 
+        <b>public async</b> <a href="@1@System.Runtime/A.html#5ca7b77f3df89fc6" class="t t">Task</a>&lt;<span class="t t">IActionResult</span>&gt; <a id="196e07de5d9a31ac" href="../R/../../0000000000.html" target="n" data-glyph="72,1" class="i method">Options</a>()
+        {
+            <b>if</b> (!<b>await</b> <a href="#b2667963774facb7" class="i field">_authorizationService</a>.<span class="i">AuthorizeAsync</span>(<span class="i property">User</span>, <a href="../Permissions.cs.html#7b43d234a46a0112" class="t t">Permissions</a>.<a href="../Permissions.cs.html#b12ec51d207ef87d" class="i field">ViewMediaOptions</a>))
+            {
+                <b>return</b> <span class="i method">Forbid</span>();
+            }
+ 
+            <b>return</b> <span class="i">View</span>(<a href="#1bab85af1a479bc4" class="i field">_mediaOptions</a>);
+        }
+    }
+}
+</pre></td></tr></table></div></body></html>
